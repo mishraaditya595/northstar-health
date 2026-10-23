@@ -33,3 +33,7 @@
 2. Verify mobile iOS simulator and native watchOS build in macOS CI, then replace placeholder bundle identifiers with final approved organization IDs and signing configuration.
 3. Implement transactional ObjectBox workout repo and mobile native adapters; only then add sensor/HealthKit/Health Services features.
 4. Implement cloud backup and independent watch event queues against v1 protocol; add multi-device permission/reconnect and version migration tests.
+
+## CI/CD cutover status
+
+Codemagic will become the main build/release provider, but `codemagic.yaml` is currently a **manual-only, intentionally failing template**. Refer to [Codemagic setup](CODEMAGIC.md). Existing GitHub Actions checks remain the only verified build automation until Codemagic is connected and equivalent builds pass. No CI template authorizes store delivery or watchOS companion release.

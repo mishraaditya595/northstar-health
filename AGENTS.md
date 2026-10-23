@@ -39,3 +39,9 @@ Applies to **all AI coding, design, test and review agents**. Read `README.md`, 
 - `contracts/workout_sync/v1/` defines portable wire messages with fixtures for eventual Swift, Kotlin and Dart adapters; no direct Dart models shared into Swift/Kotlin.
 - `supabase/` remains backend schema/tests only after reviewed implementations; `packages/` and `experiments/` remain isolation boundaries. Keep original web prototype files intact.
 - Read any nested `AGENTS.md` when working inside an app, and update layout/build docs when paths change.
+
+## Codemagic rules
+
+- `codemagic.yaml` at repo root is the **future primary CI/CD definition**. Follow `docs/CODEMAGIC.md`. Manual template stubs are deliberately nonfunctional and must not be reported as successful builds.
+- Do not add automatic triggers, signing references, credential groups, release artifacts or publishing before owner-approved integration and explicit privacy/security review.
+- Keep existing GitHub Actions quality gates until matching Codemagic validation actually passes; avoid duplicate builds after cutover.
