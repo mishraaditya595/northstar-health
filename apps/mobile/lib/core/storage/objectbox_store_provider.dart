@@ -1,6 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:objectbox/objectbox.dart';
-
 import '../../objectbox.g.dart';
 
 /// A single app-scoped Store, overridden during app bootstrap.
