@@ -1,0 +1,54 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+@AGENTS.md
+
+`AGENTS.md` (imported above) holds the binding rules: data ownership, durable write/sync contract, review checklist, Codemagic limits. Nested `AGENTS.md` files in `apps/mobile/`, `apps/watch_os/`, `apps/wear_os/` add per-app rules — read the one for the app you touch.
+
+## Project state
+
+Foundation only. Flutter app shows fictional demo screens, Riverpod theme state, go_router routing, adaptive nav. **No** working ObjectBox entities, Supabase, Firebase, HealthKit/Health Connect, or watch recording yet. Never describe these as implemented, and never report Codemagic templates as working builds (they intentionally fail).
+
+## Commands
+
+Flutter project root is `apps/mobile/` (repo root has no `pubspec.yaml`). Flutter 3.47.7 stable.
+
+```sh
+cd apps/mobile
+flutter pub get --enforce-lockfile
+dart format --output=none --set-exit-if-changed lib test
+flutter analyze
+flutter test                                   # all tests
+flutter test test/app_test.dart                # one file
+flutter test --plain-name "<test name>"        # one test
+flutter build apk --debug --no-pub
+dart run build_runner build --delete-conflicting-outputs   # ObjectBox codegen; commit objectbox.g.dart + objectbox-model.json
+```
+
+Other CI gates (`.github/workflows/`):
+
+```sh
+# repo/protocol contracts (needs jsonschema==4.23.0, PyYAML==6.0.2)
+python3 -m unittest discover -s tool -p 'test_*.py'
+python3 -m unittest tool.test_protocol_contract    # single module
+
+# Wear OS (JDK 17, Android SDK 35)
+cd apps/wear_os && ./gradlew :app:assembleDebug
+
+# watchOS proof target (macOS)
+cd apps/watch_os && xcodegen generate --spec project.yml
+xcodebuild -project NorthStarWatch.xcodeproj -scheme NorthStarWatch -configuration Debug \
+  -sdk watchsimulator -destination 'generic/platform=watchOS Simulator' CODE_SIGNING_ALLOWED=NO build
+```
+
+`tool/test_*.py` enforce README asset paths, monorepo layout, Codemagic config shape and protocol fixtures — moving files or editing `codemagic.yaml`/README images can break them.
+
+## Architecture
+
+- `apps/mobile/lib/`: `app/` (app shell, router, theme controller), `core/design/` (Performance V2 tokens), `features/<today|train|progress|health>/` feature-first pages. UI renders Riverpod state; platform/storage/network access goes through repositories, never widgets.
+- `apps/watch_os/` (SwiftUI + XcodeGen) and `apps/wear_os/` (Kotlin/Compose, Gradle) are independent native apps, not Flutter. Watch Swift sources live only in `apps/watch_os/Sources`, not in `apps/mobile/ios`.
+- `contracts/workout_sync/v1/`: language-neutral JSON Schema envelope + fixtures; the only shared wire contract between phone and watches (no shared Dart models).
+- `prototypes/performance-v2/`: original HTML prototype, visual authority alongside `docs/DESIGN_SYSTEM.md`. Do not modify. Run: `cd prototypes/performance-v2 && python3 -m http.server 4173`.
+- `supabase/`, `packages/`, `experiments/`: placeholders/isolation boundaries.
+- Decisions live in `docs/adr/`; policy/provider/backup-scope/watch-ownership changes need a new numbered ADR.
