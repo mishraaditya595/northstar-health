@@ -54,48 +54,53 @@ void main() {
       startedAtUtc: DateTime.utc(2026, 10, 24, 9),
       originalOffsetMinutes: 330,
     );
-    repository.addExercise(WorkoutExerciseRecord(
-      uuid: exerciseId,
-      sessionUuid: id,
-      nameSnapshot: 'Bench press',
-      position: 0,
-    ));
+    repository.addExercise(
+      WorkoutExerciseRecord(
+        uuid: exerciseId,
+        sessionUuid: id,
+        nameSnapshot: 'Bench press',
+        position: 0,
+      ),
+    );
     return repository.getSession(id)!;
   }
 
-  test('native DB reopens with all acknowledged sets, nulls and units intact', () {
-    final first = start();
-    final nullable = WorkoutSetRecord(
-      uuid: 'set-1',
-      exerciseUuid: 'exercise-1',
-      position: 0,
-      kind: WorkoutSetKind.working,
-      status: WorkoutSetStatus.planned,
-      inputUnit: LoadUnit.lb,
-    );
-    repository.saveSet(
-      sessionUuid: first.uuid,
-      set: nullable,
-      expectedRevision: first.revision,
-    );
-    final revision = repository.getSession('session-1')!.revision;
-    store.close();
-    store = Store(getObjectBoxModel(), directory: directory.path);
-    repository = ObjectBoxWorkoutRepository(store);
+  test(
+    'native DB reopens with all acknowledged sets, nulls and units intact',
+    () {
+      final first = start();
+      final nullable = WorkoutSetRecord(
+        uuid: 'set-1',
+        exerciseUuid: 'exercise-1',
+        position: 0,
+        kind: WorkoutSetKind.working,
+        status: WorkoutSetStatus.planned,
+        inputUnit: LoadUnit.lb,
+      );
+      repository.saveSet(
+        sessionUuid: first.uuid,
+        set: nullable,
+        expectedRevision: first.revision,
+      );
+      final revision = repository.getSession('session-1')!.revision;
+      store.close();
+      store = Store(getObjectBoxModel(), directory: directory.path);
+      repository = ObjectBoxWorkoutRepository(store);
 
-    final restored = repository.getSession('session-1')!;
-    expect(restored.startedAtUtc, DateTime.utc(2026, 10, 24, 9));
-    expect(restored.originalOffsetMinutes, 330);
-    expect(restored.revision, revision);
-    expect(restored.exercises.single.nameSnapshot, 'Bench press');
-    final set = restored.sets.single;
-    expect(set.reps, isNull);
-    expect(set.loadGrams, isNull);
-    expect(set.rpe, isNull);
-    expect(set.completedAtUtc, isNull);
-    expect(set.inputUnit, LoadUnit.lb);
-    expect(set.status, WorkoutSetStatus.planned);
-  });
+      final restored = repository.getSession('session-1')!;
+      expect(restored.startedAtUtc, DateTime.utc(2026, 10, 24, 9));
+      expect(restored.originalOffsetMinutes, 330);
+      expect(restored.revision, revision);
+      expect(restored.exercises.single.nameSnapshot, 'Bench press');
+      final set = restored.sets.single;
+      expect(set.reps, isNull);
+      expect(set.loadGrams, isNull);
+      expect(set.rpe, isNull);
+      expect(set.completedAtUtc, isNull);
+      expect(set.inputUnit, LoadUnit.lb);
+      expect(set.status, WorkoutSetStatus.planned);
+    },
+  );
 
   test('identical save retry is a no-op and stale edit cannot overwrite newer reps', () {
     final active = start();
@@ -150,37 +155,42 @@ void main() {
     expect(repository.getSession(active.uuid)!.revision, active.revision);
   });
 
-  test('foreign exercise, occupied positions and invalid input do not write', () {
-    final first = start();
-    final second = start(id: 'session-2', exerciseId: 'exercise-2');
-    expect(
-      () => repository.saveSet(
-        sessionUuid: first.uuid,
-        set: makeSet(exerciseId: 'exercise-2'),
-        expectedRevision: first.revision,
-      ),
-      throwsStateError,
-    );
-    expect(
-      () => repository.addExercise(const WorkoutExerciseRecord(
-        uuid: 'exercise-3',
-        sessionUuid: 'session-1',
-        nameSnapshot: 'Another press',
-        position: 0,
-      )),
-      throwsStateError,
-    );
-    expect(
-      () => repository.saveSet(
-        sessionUuid: first.uuid,
-        set: makeSet(reps: -1),
-        expectedRevision: first.revision,
-      ),
-      throwsArgumentError,
-    );
-    expect(repository.getSession(first.uuid)!.sets, isEmpty);
-    expect(repository.getSession(second.uuid)!.sets, isEmpty);
-  });
+  test(
+    'foreign exercise, occupied positions and invalid input do not write',
+    () {
+      final first = start();
+      final second = start(id: 'session-2', exerciseId: 'exercise-2');
+      expect(
+        () => repository.saveSet(
+          sessionUuid: first.uuid,
+          set: makeSet(exerciseId: 'exercise-2'),
+          expectedRevision: first.revision,
+        ),
+        throwsStateError,
+      );
+      expect(
+        () => repository.addExercise(
+          const WorkoutExerciseRecord(
+            uuid: 'exercise-3',
+            sessionUuid: 'session-1',
+            nameSnapshot: 'Another press',
+            position: 0,
+          ),
+        ),
+        throwsStateError,
+      );
+      expect(
+        () => repository.saveSet(
+          sessionUuid: first.uuid,
+          set: makeSet(reps: -1),
+          expectedRevision: first.revision,
+        ),
+        throwsArgumentError,
+      );
+      expect(repository.getSession(first.uuid)!.sets, isEmpty);
+      expect(repository.getSession(second.uuid)!.sets, isEmpty);
+    },
+  );
 
   test('position collision is rejected for distinct set UUIDs', () {
     final active = start();
@@ -210,12 +220,14 @@ void main() {
       startedAtUtc: first.startedAtUtc,
       originalOffsetMinutes: first.originalOffsetMinutes,
     );
-    repository.addExercise(const WorkoutExerciseRecord(
-      uuid: 'exercise-1',
-      sessionUuid: 'session-1',
-      nameSnapshot: 'Bench press',
-      position: 0,
-    ));
+    repository.addExercise(
+      const WorkoutExerciseRecord(
+        uuid: 'exercise-1',
+        sessionUuid: 'session-1',
+        nameSnapshot: 'Bench press',
+        position: 0,
+      ),
+    );
     expect(repository.getSession(first.uuid)!.revision, originalRevision);
     final finishedAt = DateTime.utc(2026, 10, 24, 11);
     repository.finishSession(first.uuid, finishedAtUtc: finishedAt);
@@ -241,12 +253,14 @@ void main() {
     sessions.put(item);
     expect(repository.getSession(active.uuid)!.status, WorkoutStatus.unknown);
     expect(
-      () => repository.addExercise(const WorkoutExerciseRecord(
-        uuid: 'extra',
-        sessionUuid: 'session-1',
-        nameSnapshot: 'Row',
-        position: 1,
-      )),
+      () => repository.addExercise(
+        const WorkoutExerciseRecord(
+          uuid: 'extra',
+          sessionUuid: 'session-1',
+          nameSnapshot: 'Row',
+          position: 1,
+        ),
+      ),
       throwsStateError,
     );
     item.status = WorkoutStatus.inProgress.name;
@@ -263,35 +277,40 @@ void main() {
     );
     expect(
       () => repository.finishSession(
-        active.uuid, finishedAtUtc: DateTime.utc(2026, 10, 24, 11)),
+        active.uuid,
+        finishedAtUtc: DateTime.utc(2026, 10, 24, 11),
+      ),
       throwsStateError,
     );
   });
 
-  test('future set status/kind/unit is represented, never crashes a session read', () {
-    final active = start();
-    repository.saveSet(
-      sessionUuid: active.uuid,
-      set: makeSet(),
-      expectedRevision: active.revision,
-    );
-    final box = store.box<WorkoutSetEntity>();
-    final entity = box.getAll().single;
-    entity.kind = 'experimental_kind';
-    entity.status = 'future_status';
-    entity.inputUnit = 'stones';
-    box.put(entity);
-    final reloaded = repository.getSession(active.uuid)!;
-    expect(reloaded.sets.single.kind, WorkoutSetKind.unknown);
-    expect(reloaded.sets.single.status, WorkoutSetStatus.unknown);
-    expect(reloaded.sets.single.inputUnit, LoadUnit.unknown);
-    expect(
-      () => repository.saveSet(
+  test(
+    'future set status/kind/unit is represented, never crashes a session read',
+    () {
+      final active = start();
+      repository.saveSet(
         sessionUuid: active.uuid,
-        set: reloaded.sets.single,
-        expectedRevision: reloaded.revision,
-      ),
-      throwsArgumentError,
-    );
-  });
+        set: makeSet(),
+        expectedRevision: active.revision,
+      );
+      final box = store.box<WorkoutSetEntity>();
+      final entity = box.getAll().single;
+      entity.kind = 'experimental_kind';
+      entity.status = 'future_status';
+      entity.inputUnit = 'stones';
+      box.put(entity);
+      final reloaded = repository.getSession(active.uuid)!;
+      expect(reloaded.sets.single.kind, WorkoutSetKind.unknown);
+      expect(reloaded.sets.single.status, WorkoutSetStatus.unknown);
+      expect(reloaded.sets.single.inputUnit, LoadUnit.unknown);
+      expect(
+        () => repository.saveSet(
+          sessionUuid: active.uuid,
+          set: reloaded.sets.single,
+          expectedRevision: reloaded.revision,
+        ),
+        throwsArgumentError,
+      );
+    },
+  );
 }

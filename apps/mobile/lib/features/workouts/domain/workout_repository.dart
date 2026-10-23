@@ -31,5 +31,6 @@ class WorkoutRevisionConflict implements Exception {
   final int actual;
 
   @override
-  String toString() => 'Workout revision conflict (expected $expected, actual $actual)';
+  String toString() =>
+      'Workout revision conflict (expected $expected, actual $actual)';
 }

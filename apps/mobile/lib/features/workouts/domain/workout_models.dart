@@ -52,7 +52,9 @@ class WorkoutSetRecord {
       throw ArgumentError.value(rpe, 'rpe');
     }
     if (status == WorkoutSetStatus.unknown || kind == WorkoutSetKind.unknown) {
-      throw ArgumentError('Unknown persisted set status/kind cannot be written');
+      throw ArgumentError(
+        'Unknown persisted set status/kind cannot be written',
+      );
     }
     if (status == WorkoutSetStatus.completed &&
         (reps == null || completedAtUtc == null)) {

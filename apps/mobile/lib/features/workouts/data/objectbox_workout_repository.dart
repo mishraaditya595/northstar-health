@@ -188,7 +188,9 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
         throw StateError('Session does not exist or was deleted');
       }
       final previous = _one(
-        _exercises, WorkoutExerciseEntity_.uuid, exercise.uuid,
+        _exercises,
+        WorkoutExerciseEntity_.uuid,
+        exercise.uuid,
       );
       if (previous != null) {
         if (previous.sessionUuid == exercise.sessionUuid &&
@@ -205,12 +207,18 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
           session.status != WorkoutStatus.paused.name) {
         throw StateError('No editable session');
       }
-      if (_matching(_exercises, WorkoutExerciseEntity_.sessionUuid,
-              exercise.sessionUuid).any((e) => e.position == exercise.position)) {
+      if (_matching(
+        _exercises,
+        WorkoutExerciseEntity_.sessionUuid,
+        exercise.sessionUuid,
+      ).any((e) => e.position == exercise.position)) {
         throw StateError('Exercise position is already occupied');
       }
-      final checkpoint = _one(_checkpoints,
-          WorkoutSessionStateEntity_.sessionUuid, exercise.sessionUuid);
+      final checkpoint = _one(
+        _checkpoints,
+        WorkoutSessionStateEntity_.sessionUuid,
+        exercise.sessionUuid,
+      );
       if (checkpoint == null) throw StateError('Missing checkpoint');
       _exercises.put(
         WorkoutExerciseEntity(
@@ -274,8 +282,11 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
       if (session.revision != expectedRevision) {
         throw WorkoutRevisionConflict(expectedRevision, session.revision);
       }
-      if (_matching(_sets, WorkoutSetEntity_.exerciseUuid, set.exerciseUuid)
-          .any((e) => e.position == set.position && e.uuid != set.uuid)) {
+      if (_matching(
+        _sets,
+        WorkoutSetEntity_.exerciseUuid,
+        set.exerciseUuid,
+      ).any((e) => e.position == set.position && e.uuid != set.uuid)) {
         throw StateError('Set position is already occupied');
       }
       _sets.put(
@@ -298,7 +309,9 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
       // If the checkpoint is missing, this late guard throws after writes:
       // ObjectBox must roll back the set AND session revision together.
       final checkpoint = _one(
-        _checkpoints, WorkoutSessionStateEntity_.sessionUuid, sessionUuid,
+        _checkpoints,
+        WorkoutSessionStateEntity_.sessionUuid,
+        sessionUuid,
       );
       if (checkpoint == null) throw StateError('Missing checkpoint');
       checkpoint.selectedExerciseUuid = set.exerciseUuid;
