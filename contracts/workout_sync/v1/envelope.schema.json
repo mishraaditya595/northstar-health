@@ -1,0 +1,283 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NorthStar workout event envelope, v1",
+  "description": "Portable watch-to-phone event (not a cloud workout aggregate).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "workout_id",
+    "session_id",
+    "origin_device_id",
+    "sequence",
+    "type",
+    "occurred_at_utc",
+    "recorded_at_utc",
+    "time_zone",
+    "payload"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "workout_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "session_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "origin_device_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "type": {
+      "enum": [
+        "workout_started",
+        "workout_paused",
+        "workout_resumed",
+        "workout_completed",
+        "workout_abandoned",
+        "set_logged",
+        "set_corrected",
+        "platform_workout_exported"
+      ]
+    },
+    "occurred_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "recorded_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "time_zone": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "set_logged"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/set_logged"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "set_corrected"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/set_corrected"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "workout_started"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "activity_type"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "activity_type": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "enum": [
+              "workout_paused",
+              "workout_resumed",
+              "workout_completed",
+              "workout_abandoned"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "maxProperties": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "platform_workout_exported"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "platform",
+              "external_record_id"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "platform": {
+                "enum": [
+                  "healthkit",
+                  "health_connect"
+                ]
+              },
+              "external_record_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "set_logged": {
+      "type": "object",
+      "required": [
+        "set_id",
+        "exercise_id",
+        "index",
+        "reps",
+        "load",
+        "unit"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "set_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "exercise_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "load": {
+          "type": "number",
+          "minimum": 0
+        },
+        "unit": {
+          "enum": [
+            "kg",
+            "lb"
+          ]
+        }
+      }
+    },
+    "set_corrected": {
+      "type": "object",
+      "required": [
+        "set_id",
+        "supersedes_event_id",
+        "reps",
+        "load",
+        "unit"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "set_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "supersedes_event_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "reps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "load": {
+          "type": "number",
+          "minimum": 0
+        },
+        "unit": {
+          "enum": [
+            "kg",
+            "lb"
+          ]
+        }
+      }
+    }
+  }
+}

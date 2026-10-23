@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "event_id": "99999999-2222-4222-8222-222222222223",
+  "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  "origin_device_id": "watch-installation-a",
+  "sequence": 2,
+  "type": "heart_rate_sample",
+  "occurred_at_utc": "2026-10-23T11:05:00Z",
+  "recorded_at_utc": "2026-10-23T11:05:01Z",
+  "time_zone": "Asia/Kolkata",
+  "payload": {
+    "set_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    "exercise_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    "index": 0,
+    "reps": 8,
+    "load": 60,
+    "unit": "kg"
+  }
+}
