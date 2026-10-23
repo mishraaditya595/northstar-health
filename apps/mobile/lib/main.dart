@@ -10,26 +10,30 @@ Future<void> main() async {
     // Open the durable store before the UI can acknowledge any future writes.
     // Never delete or recreate user data when opening fails.
     final store = await initializeObjectBox();
-    runApp(ProviderScope(
-      overrides: [objectBoxStoreProvider.overrideWithValue(store)],
-      child: const NorthstarApp(),
-    ));
+    runApp(
+      ProviderScope(
+        overrides: [objectBoxStoreProvider.overrideWithValue(store)],
+        child: const NorthstarApp(),
+      ),
+    );
   } catch (_) {
-    runApp(const MaterialApp(
-      home: Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Text(
-                'Could not open your local workout data. Your data has not '
-                'been reset. Restart the app or contact support.',
-                textAlign: TextAlign.center,
+    runApp(
+      const MaterialApp(
+        home: Scaffold(
+          body: SafeArea(
+            child: Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'Could not open your local workout data. Your data has not '
+                  'been reset. Restart the app or contact support.',
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
           ),
         ),
       ),
-    ));
+    );
   }
 }

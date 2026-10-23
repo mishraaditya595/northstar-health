@@ -1,6 +1,8 @@
 /// Immutable domain values: never expose ObjectBox IDs to presentation.
 enum WorkoutStatus { inProgress, paused, completed, discarded }
+
 enum WorkoutSetKind { warmup, working }
+
 enum WorkoutSetStatus { planned, completed, skipped }
 
 class WorkoutSetRecord {
@@ -30,7 +32,9 @@ class WorkoutSetRecord {
 
   void validate() {
     if (uuid.isEmpty || exerciseUuid.isEmpty || position < 0) {
-      throw ArgumentError('Set must have identity, exercise and valid position');
+      throw ArgumentError(
+        'Set must have identity, exercise and valid position',
+      );
     }
     if (reps != null && (reps! < 0 || reps! > 10000)) {
       throw ArgumentError.value(reps, 'reps');
@@ -41,8 +45,8 @@ class WorkoutSetRecord {
     if (inputUnit != 'kg' && inputUnit != 'lb') {
       throw ArgumentError.value(inputUnit, 'inputUnit');
     }
-    if (rpe != null && (!rpe!.isFinite || rpe! < 0 || rpe! > 10 ||
-        (rpe! * 2) % 1 != 0)) {
+    if (rpe != null &&
+        (!rpe!.isFinite || rpe! < 0 || rpe! > 10 || (rpe! * 2) % 1 != 0)) {
       throw ArgumentError.value(rpe, 'rpe');
     }
     if (status == WorkoutSetStatus.completed &&

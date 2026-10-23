@@ -20,11 +20,18 @@ class ExerciseDefinitionEntity {
   int? archivedAtMs;
 
   ExerciseDefinitionEntity({
-    this.id = 0, required this.uuid, required this.name,
-    this.muscleGroup = '', this.equipment = '', this.movementCategory = '',
-    this.inputMode = 'reps_load', this.isBuiltIn = false,
-    this.catalogVersion = 1, required this.createdAtMs,
-    required this.updatedAtMs, this.archivedAtMs,
+    this.id = 0,
+    required this.uuid,
+    required this.name,
+    this.muscleGroup = '',
+    this.equipment = '',
+    this.movementCategory = '',
+    this.inputMode = 'reps_load',
+    this.isBuiltIn = false,
+    this.catalogVersion = 1,
+    required this.createdAtMs,
+    required this.updatedAtMs,
+    this.archivedAtMs,
   });
 }
 
@@ -41,9 +48,13 @@ class WorkoutPlanEntity {
   int? archivedAtMs;
 
   WorkoutPlanEntity({
-    this.id = 0, required this.uuid, required this.name,
-    this.description = '', required this.createdAtMs,
-    required this.updatedAtMs, this.archivedAtMs,
+    this.id = 0,
+    required this.uuid,
+    required this.name,
+    this.description = '',
+    required this.createdAtMs,
+    required this.updatedAtMs,
+    this.archivedAtMs,
   });
 }
 
@@ -64,9 +75,16 @@ class PlanExerciseEntity {
   String notes;
 
   PlanExerciseEntity({
-    this.id = 0, required this.uuid, required this.planUuid,
-    required this.exerciseUuid, required this.position, this.targetSets = 3,
-    this.targetRepsMin, this.targetRepsMax, this.restSeconds, this.notes = '',
+    this.id = 0,
+    required this.uuid,
+    required this.planUuid,
+    required this.exerciseUuid,
+    required this.position,
+    this.targetSets = 3,
+    this.targetRepsMin,
+    this.targetRepsMax,
+    this.restSeconds,
+    this.notes = '',
   });
 }
 
@@ -88,10 +106,17 @@ class WorkoutSessionEntity {
   int? deletedAtMs;
 
   WorkoutSessionEntity({
-    this.id = 0, required this.uuid, required this.name, this.planUuid,
-    this.status = 'inProgress', this.origin = 'northstar_phone',
-    this.revision = 1, required this.startedAtMs, this.completedAtMs,
-    required this.originalOffsetMinutes, required this.updatedAtMs,
+    this.id = 0,
+    required this.uuid,
+    required this.name,
+    this.planUuid,
+    this.status = 'inProgress',
+    this.origin = 'northstar_phone',
+    this.revision = 1,
+    required this.startedAtMs,
+    this.completedAtMs,
+    required this.originalOffsetMinutes,
+    required this.updatedAtMs,
     this.deletedAtMs,
   });
 }
@@ -111,9 +136,14 @@ class WorkoutExerciseEntity {
   int position;
 
   WorkoutExerciseEntity({
-    this.id = 0, required this.uuid, required this.sessionUuid,
-    this.definitionUuid, required this.nameSnapshot, this.muscleSnapshot = '',
-    this.equipmentSnapshot = '', required this.position,
+    this.id = 0,
+    required this.uuid,
+    required this.sessionUuid,
+    this.definitionUuid,
+    required this.nameSnapshot,
+    this.muscleSnapshot = '',
+    this.equipmentSnapshot = '',
+    required this.position,
   });
 }
 
@@ -136,10 +166,18 @@ class WorkoutSetEntity {
   int updatedAtMs;
 
   WorkoutSetEntity({
-    this.id = 0, required this.uuid, required this.exerciseUuid,
-    required this.position, this.kind = 'working', this.status = 'planned',
-    this.reps, this.loadGrams, this.inputUnit = 'kg', this.rpe,
-    this.completedAtMs, required this.updatedAtMs,
+    this.id = 0,
+    required this.uuid,
+    required this.exerciseUuid,
+    required this.position,
+    this.kind = 'working',
+    this.status = 'planned',
+    this.reps,
+    this.loadGrams,
+    this.inputUnit = 'kg',
+    this.rpe,
+    this.completedAtMs,
+    required this.updatedAtMs,
   });
 }
 
@@ -158,9 +196,14 @@ class WorkoutSessionStateEntity {
   int savedAtMs;
 
   WorkoutSessionStateEntity({
-    this.id = 0, required this.sessionUuid, this.selectedExerciseUuid,
-    this.selectedSetUuid, this.restState = 'idle', this.restDeadlineUtcMs,
-    this.restRemainingMsWhenPaused, this.checkpointRevision = 1,
+    this.id = 0,
+    required this.sessionUuid,
+    this.selectedExerciseUuid,
+    this.selectedSetUuid,
+    this.restState = 'idle',
+    this.restDeadlineUtcMs,
+    this.restRemainingMsWhenPaused,
+    this.checkpointRevision = 1,
     required this.savedAtMs,
   });
 }
