@@ -1,18 +1,27 @@
-## Problem and linked task
+## Why / linked issue
 
-## Changes and screenshots (phone/tablet, both themes)
+## Actual behavior, code changes and affected device layouts
 
-## Privacy, health provenance and permissions
+## UI screenshots
+- [ ] Phone (light/dark)
+- [ ] Tablet / split view (light/dark)
 
-## Checks
+## Data flows and privacy
+- [ ] No new collection, export or cloud upload (or provide detailed permission + consent change)
+- [ ] ObjectBox local write and model JSON migration reviewed
+- [ ] Supabase completed-workout-only backup, version/conflict/RLS tested
+- [ ] HealthKit/Health Connect read/write scope and source receipts reviewed
+- [ ] Watch native session + offline ACK/replay reviewed
+- [ ] Firebase SDK auto-collection OFF until separate consent; telemetry payload allowlist tested
+
+## Quality and security
 - [ ] dart format --output=none --set-exit-if-changed lib test
 - [ ] flutter analyze
 - [ ] flutter test
-- [ ] empty/error/offline and accessibility considered
-- [ ] unrun checks explained
+- [ ] Offline/empty/stale/error/denied/account-switch coverage
+- [ ] Real device tests where platform APIs changed
+- [ ] Checks not run and why
 
-## Risks, rollback, reviewer focus and deliberately deferred work
+## Risks / rollback / explicitly deferred work
 
-## Local persistence / smartwatch compatibility (when relevant)
-- [ ] ObjectBox schema/migrations, generated bindings, transactional outbox checked
-- [ ] Real watch workout screen-off, offline sync/reconnect, battery and signing gates addressed
+## Independent review handoff: challenge these files and state transitions

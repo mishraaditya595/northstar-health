@@ -1,40 +1,63 @@
-# ObjectBox — mobile persistence decision and agent contract
+# ObjectBox — durable local workout store
 
-**Decision:** Use the **stable** ObjectBox 5.x Flutter/Dart packages for Northstar's phone/tablet durable offline data; replace all previous Drift/SQLite choices. The current app is still a mock dashboard; installing package dependencies does not mean it stores sessions yet.
+**Decision:** ObjectBox on phones/tablets; accepted in [ADR-0003](adr/0003-data-cloud-health.md). ObjectBox packages and generator are in `pubspec.yaml`, **but no Store/entities are implemented yet**. The app currently shows fictional data. ObjectBox cloud Sync is not used.
 
-## Packages and setup
+## Data classification and lifetime
 
-`objectbox`, `objectbox_flutter_libs`, `objectbox_generator` and `build_runner` are configured in `pubspec.yaml`. Prefer release 5.3.2 (current stable as of 23 October 2026); do not upgrade to ObjectBox 6 pre-release during foundation work. Follow upstream getting-started instructions for native runners. Generator must run after first annotated entities:
+| Entity | Lifetime | Cloud backup? |
+| --- | --- | --- |
+| `WorkoutSession` / `WorkoutExercise` / `WorkoutSet` | Durable until user deletes | **Completed NorthStar workouts** only, as portable snapshots |
+| `WorkoutSessionState` | Durable checkpoint until finished/recovered | No; cross-phone draft restore deferred |
+| `WorkoutPlan` / `PlanExercise` / `ExerciseDefinition` | Durable local, owner-scoped | **Not in MVP**; embed names in backed-up historical logs |
+| `SyncOutbox`, `CloudSyncCursor`, `InboxReceipt` | Until durable ACK and retention policy | Metadata only on device |
+| `HealthExportReceipt` | As long as corresponding workout relevant | Local platform-record references only |
+| `HealthCache` | Expiring, permission-scoped summaries | **Never** |
+| `HealthQueryCheckpoint` | Per-device until invalidated | **Never** |
+
+Don't create an unbounded permanent `HealthObservation` archive from platform measurements. Keep short-lived bounded chart samples only when an authorized view needs them. Health caches and platform checkpoints must be purged on permission revocation and profile changes.
+
+## Entity-model rules
+
+- Every domain session, exercise, set, sync operation and receipt gets a **stable UUID**, distinct from ObjectBox `@Id` internal numeric IDs.
+- Persist UTC event time plus originating timezone/offset for daily-boundary interpretation. Preserve original units for display; use canonical physical units for calculation with conversion tests.
+- Store source/owner, revision, deletion state and explicit app/watch/platform origin. Historical exercise names/types are **snapshots**, not lookups that break when a user renames or deletes an exercise definition.
+- Commit `lib/objectbox-model.json` and generated `lib/objectbox.g.dart` together. **Never reset entity/property UIDs on rename**; independently review schema diffs and old-version fixture upgrade tests.
+- Migrate type changes with versioned properties and explicit data transformation; don't assume automatic conversion or database-file encryption.
+
+## Local-first transaction
+
+```text
+set or session edit
+  -> validate against domain model
+  -> ObjectBox transaction:
+       persist new record revision
+       persist same-domain operation in SyncOutbox (if authorized/associated)
+  -> UI confirms local save
+  -> independent Supabase worker retries by operation UUID
+```
+
+An offline guest can save without creating a cloud operation for a stranger's account. Linking guests to a signed-in account is explicit. A server ACK (not just HTTP request completion) lets the coordinator advance a revision / compact outbox. Watch-origin events first require the phone's own durable receipt before it acknowledges the watch.
+
+## Lifetime, performance and security
+
+Initialize a single mobile `Store` when implemented, inject repositories through Riverpod and shut down cleanly. Offload large imports/aggregation with suitable ObjectBox async/isolate patterns. Profile on low-memory Android, bounded cache sizes and migration of older DB files.
+
+ObjectBox's native file format is not proof of at-rest app-level encryption. Review OS file protection, Android/iOS backup inclusion, credentials in separate platform-secure storage, account scoping, free-text workout notes and restore/delete. Do not copy ObjectiveBox files to Supabase.
+
+## Generator commands (once entities exist)
 
 ```sh
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs
+dart format lib test
 flutter analyze
 flutter test
 ```
 
-Commit **both** generated `lib/objectbox.g.dart` and **`lib/objectbox-model.json`** along with schema changes. The JSON retains stable entity/property identifiers for safe changes; never regenerate it from scratch or overwrite IDs just to resolve conflicts.
+The build must verify generator output and model JSON changes. Never auto-delete a conflicted model UID file to make CI green.
 
-## Entity design (proposed; do not fabricate finished schema)
+## Review/acceptance
 
-- `WorkoutPlan`, `PlanExercise`: stable user-visible plan IDs, intended order and version.
-- `WorkoutSession`, `PerformedSet`: immutable external UUIDs, exercise IDs, load/unit, reps, status, start/end UTC timestamps, source and local status.
-- `HealthObservation`: value/unit, source app/watch, sample identity, UTC interval and last imported time; avoid duplicating existing platform aggregations.
-- `OutboxEvent` and `InboxReceipt`: idempotent watch/phone cross-device commands with protocol version, event ID, per-session sequence, payload, retry/ack and reconciliation.
-- `SyncCursor`, `ImportSource`: bounded incremental ingest; revoked permission state and last successful sync.
+Offline creation, mid-session crash recovery, atomic set + outbox write, schema rename/type migration, duplicate operation replay, account switch with unsynced edits, cache expiry and permission revocation, cloud restore without custom plans, export receipt crash recovery, entry-level device profiling. Separate watch storage must be native/verified; do **not** assume mobile ObjectBox works in FlutterWatch.
 
-ObjectBox internal `@Id` integer is **not** the cross-device event or session identity: always use independent UUID-style IDs on events and workouts. Index lookup fields. Explicitly define relationships, unique constraints, delete semantics and UTC timestamp mapping before adding entities.
-
-## Atomicity, performance and lifecycle
-
-- Initialize one mobile Store when persistent features arrive; inject via Riverpod/repository abstraction; close safely on teardown. Run heavy import/index/update work with appropriate ObjectBox async/isolate APIs.
-- Persist a completed set **and its outbound event in one local transaction** before showing success. Never create an event without a durable set, or mark remote delivery successful before the receiver's durable ACK.
-- Offline queue must resume after process death, tolerate repeats and reconcile divergent changes. Store only necessary health samples and enforce retention/backup/export/deletion.
-- Profile startup, 1,000–100,000-set queries, health imports, and watch reconnection on an entry Android device. Avoid per-frame broad queries.
-- No guarantee the mobile ObjectBox native runtime works on watchOS FlutterWatch; use native watch-side persistence and versioned protocol until separately proven.
-
-## Review gates
-
-Exercise CRUD, process-death resume, atomic set+outbox consistency, duplicate replay, schema ID changes, fresh install/upgrades, restore/export, data deletion, permission revocation and memory/performance. Include a measured migration path for breaking schemas.
-
-Official docs: https://docs.objectbox.io/getting-started and https://pub.dev/packages/objectbox
+References: https://docs.objectbox.io/advanced/data-model-updates and https://docs.objectbox.io/advanced/meta-model-ids-and-uids

@@ -22,6 +22,10 @@ Stock Flutter does not officially target watchOS. `flutter_watchos` package is *
 
 **Do not assume ObjectBox Flutter library can run on watchOS**, particularly the custom engine; use platform-supported native on-watch persistence. iOS app holds its *own* ObjectBox cache.
 
+## Data ownership and backend handoff
+
+The watch owns its **recording session and local pending journal**, not the mobile database or cloud record. The phone is the first Supabase backup coordinator after a durable watch->phone ACK. Apple Watch sessions saved by the watch in HealthKit carry origin and external record references so phone **does not export a duplicate HKWorkout**. Wear OS uses exactly one designated health-platform writer, generally the Android phone. Raw heart-rate streams are not backed up to Supabase; only detailed NorthStar workout sets become authenticated completed-workout backups. Watch local data survives phone disconnect but may be lost on watch reset before acknowledged; show pending sync state. See [ADR-0003](adr/0003-data-cloud-health.md), [SYNC_PROTOCOL](SYNC_PROTOCOL.md), and [CLOUD_SYNC](CLOUD_SYNC.md).
+
 ## Package decisions
 
 - `health`: candidate for **phone** permissions / HealthKit and Health Connect; not a watch workout service.

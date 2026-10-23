@@ -1,9 +1,11 @@
-# ADR-0001: Flutter foundation
+# ADR-0001 — Flutter foundation
 
-Date: 2026-10-23. Status: accepted for scaffold.
+**Date:** 2026-10-23 · **Status:** Accepted, amended by [ADR-0003](0003-data-cloud-health.md) for backend, cloud backup and diagnostics.
 
-Decide Flutter + Material 3 with custom Northstar Performance V2 semantic tokens; Riverpod for state AND DI; go_router for routing; shared_preferences for non-sensitive appearance; ObjectBox 5.x for transactional offline mobile data; native HealthKit/Health Connect through adapter interfaces only when permissions are reviewed; analytics/crash upload off by default pending privacy design.
+NorthStar mobile uses Flutter/Material 3 with NorthStar Performance V2 tokens; Riverpod for state **and** dependency injection; go_router for routes; shared_preferences only for nonsensitive appearance; **ObjectBox** for future durable local workout/session data. Responsive layouts choose navigation based on available width, not tablet device sniffing.
 
-Reject multiple DI frameworks, all-purpose key-value workout persistence, platform sniffing for tablet design, automatic health uploads, and unvalidated readiness scoring. Initial repository contains mocked Flutter UI but not live integrations; native runner and lockfile require Flutter SDK bootstrap. Changes to these commitments require a new ADR and review.
+The initial prototype includes mock fixture screens without live device readings, credentials, health permissions or cloud/network features. First native runner generation, lockfile, full local schema and integration builds are separate implementation tasks.
 
-**Amendment 2026-10-23:** owner chose ObjectBox over Drift/SQLite. The Flutter project lists ObjectBox runtime/generator dependencies; persisted entities/Store lifecycle arrive with offline workout MVP. The separate wearable architecture decision is captured in [ADR-0002](0002-watch-workout-architecture.md). Watch databases are independent from the mobile ObjectBox store; synchronization is via contracts, not shared database files.
+**Superseded decisions:** An earlier foundation revision deferred backend selection and identified Sentry as a candidate. [ADR-0003](0003-data-cloud-health.md) now selects **Supabase Auth/PostgreSQL** for **completed-workout-only backup** and **Firebase Crashlytics/Analytics** as future privacy-gated diagnostics. There is no active SDK, default collection or cloud data pipeline in the foundation. Do not implement the old Sentry plan.
+
+**Related:** [ADR-0002](0002-watch-workout-architecture.md) for smartwatch native workout service / UI experimentation.

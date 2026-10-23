@@ -1,15 +1,32 @@
-# Independent AI code review protocol
+# NorthStar independent AI code review protocol
 
-Reviewer must inspect diff, code paths and tests, not rely on implementation agent's summary. Implementer never self-approves or merges.
+The implementing agent cannot self-approve. Reviewer reads the **actual diff**, ADRs, data flows and test evidence rather than trusting the PR summary. Human approval is required for scope, network, privacy/consent, schema, health permissions and watch-session behavior changes.
 
-**Blocker:** data loss, fabricated metrics, sensitive data disclosure, unsafe permissions, missing transactional writes, incorrect clinical inference.  
-**High:** false successful save, incorrect units/source/timestamp, double imports, unhandled permission revoke, crashes, tablet overflow, inaccessible workout controls.  
-**Medium:** contrast issues, missing theme/empty tests, unnecessary rebuilds, poor local boundaries or undocumented dependencies.
+## Severity rubric
 
-Review every changed feature against: [ ] Android phone [ ] iPhone [ ] Android tablet [ ] iPad/split view [ ] dark/light [ ] keyboard and large text [ ] loading/empty/error/permission denied [ ] offline and restart [ ] unit/source/time integrity [ ] privacy [ ] performance [ ] tests/CI [ ] updated docs/ADRs.
+**Blocker:** unauthorized sensitive-data upload, fabricated health data, workout loss, cross-user RLS bypass, automatic platform health write or duplicate workout, uncommitted local save acknowledged to user/watch, SDK diagnostic upload before consent, database UID reset.
 
-Findings include file/line, reproduction, expected impact, smallest correction and regression test. Explain which tests were **not** run. No blanket approval based only on green static analysis. Real plugin changes require real-device permission and lifecycle checks.
+**High:** double counted platform samples, guest workout attached to wrong account, cloud overwrites unsynced edits, watch logs lost on disconnect, missing health cache purge after revocation, tablet inaccessible/overflows, inadequate migration/restore tests.
 
-**Watch review additions:** independently validate native session ownership, idle/screen-off recording, app termination/relaunch recovery, offline event queue, idempotency, time-zone/clock drift, duplicated sample reconciliation, watch battery budget and package/distribution compatibility. See [WEARABLES.md](WEARABLES.md).
+**Medium:** stale metric labels, deficient large-text layout, missing privacy event-schema tests, wide rebuild/jank, undocumented dependency or improper source metadata.
 
-**ObjectBox review additions:** confirm committed `objectbox-model.json`, code-generation consistency, stable UIDs across renames, safe updates, migration/backups, transactional set+outbox writes, isolates and lifecycle cleanup. See [OBJECTBOX.md](OBJECTBOX.md).
+Every finding: affected file/line, reproducible impact, smallest correction, test coverage and what wasn't validated.
+
+## Mandatory review matrix
+
+- [ ] Phone Android/iOS; tablet/iPad portrait, landscape and split view; dark/light, text scale and keyboard
+- [ ] Offline workout edits; process death; rest timer; ObjectBox local write+outbox atomicity
+- [ ] ObjectBox generated bindings and `objectbox-model.json` UID stability; migration on prior DB
+- [ ] Cloud payload allowlist: **completed logs only**, no health cache/vitals/drafts/plans
+- [ ] Guest->account import consent; logout/account-switch with unsynced data
+- [ ] Supabase RLS SELECT/INSERT/UPDATE/DELETE and any privileged RPC ownership, least-privilege
+- [ ] Concurrent device update/revision rejection; retry identical operation ID; deletion tombstones/cursor ordering
+- [ ] HealthKit/Health Connect source/time/units, per-metric permission, cache expiry/revocation, no double aggregate
+- [ ] Export-only completed app-owned summary; Apple Watch saved HKWorkout skip; ambiguous retry reconciliation
+- [ ] Firebase native collection default off, separate consent and synthetic sensitive-field redaction test
+- [ ] Watch native sensor background session, persistent set events, acknowledgment and interrupted 60–90 min workout on real hardware
+- [ ] Test commands/checks truly run; version pinning, performance on entry-level devices, documented rollback
+
+## Definition of done
+
+Document why and scope; screenshots of phone/tablet layouts in both modes if UI changed; privacy and permission inventory; test and CI results; known gaps. Never mark a mocked flow or architectural contract as production-ready. Wear OS/watchOS proof requires real devices, not just simulator screenshots. Follow [CLOUD_SYNC](CLOUD_SYNC.md), [HEALTH_DATA](HEALTH_DATA.md), [FIREBASE_PRIVACY](FIREBASE_PRIVACY.md) and [SYNC_PROTOCOL](SYNC_PROTOCOL.md).
