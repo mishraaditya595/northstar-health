@@ -36,7 +36,22 @@ jobs:
       - name: Analyze
         working-directory: apps/mobile
         run: flutter analyze
-      - name: Unit and widget tests
+      - name: Install pinned ObjectBox native library (Linux x64)
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --silent --show-error \
+            https://github.com/objectbox/objectbox-c/releases/download/v5.3.2/objectbox-linux-x64.tar.gz \
+            -o /tmp/objectbox-linux-x64.tar.gz
+          echo '6dbb5450c36dd11ee9074f16ecc61e79b45ff43c2082934601f3166b39c8a613  /tmp/objectbox-linux-x64.tar.gz' | sha256sum --check
+          mkdir -p /tmp/objectbox-native
+          tar -xzf /tmp/objectbox-linux-x64.tar.gz -C /tmp/objectbox-native
+          LIB=$(find /tmp/objectbox-native -type f -name libobjectbox.so -print -quit)
+          test -n "$LIB"
+          sudo install -m 755 "$LIB" /usr/local/lib/libobjectbox.so
+          sudo ldconfig
+      - name: Unit, widget and native ObjectBox repository tests
         working-directory: apps/mobile
         run: flutter test
       - name: Android debug APK

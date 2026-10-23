@@ -1,52 +1,79 @@
 # Phase 1 — Offline workout logger implementation
 
-**Status:** PR1 foundation under review; not a functional workout app yet.
+**Status:** PR #5 hardening; storage model only, **no active workout UI**.
 
-This milestone defines the local ObjectBox model and repository contract for
-offline session recording. It intentionally does **not** integrate Supabase,
-HealthKit/Health Connect, Firebase, watches or cloud operations.
+## Durability and retry contract
 
-## Local entities
+- Domain UUIDs differ from ObjectBox internal IDs; generated UIDs are frozen.
+- `WorkoutRepository.saveSet` requires `expectedRevision`. The method
+  compares this with the current session revision **inside the write transaction**.
+  A duplicate identical set is acknowledged without creating a new record,
+  even if the revision advanced. A stale changed retry raises
+  `WorkoutRevisionConflict` and cannot overwrite newer reps, weights or RPE.
+  Callers must reload the aggregate and explicitly resolve the conflict. Never
+  auto-retry conflicts with the latest revision.
+- Each successful set save updates its session revision and recovery checkpoint
+  in the same ObjectBox transaction; if checkpoint lookup fails after set
+  write, ObjectBox rolls back all changes. No UI should show success before
+  the method returns.
+- `createSession`, `addExercise` and `finishSession` accept exact duplicate
+  commands and reject conflicting reuse of UUIDs. Exercise and set ordinal
+  positions are unique **per parent**, enforced in repository transactions.
+  There is no composite unique DB index yet; all writes must use repositories.
+- Missing values remain nullable. Unknown persisted status/kind/unit strings
+  decode to read-only `unknown`, so the session remains readable without
+  treating unknown values as safe to edit.
 
-- `ExerciseDefinitionEntity`, `WorkoutPlanEntity`, `PlanExerciseEntity`:
-  local-only catalog and templates, CRUD deferred to PR2.
-- `WorkoutSessionEntity`, `WorkoutExerciseEntity`, `WorkoutSetEntity`:
-  stable UUIDs, immutable exercise-name snapshots, UTC timestamps and revision.
-- `WorkoutSessionStateEntity`: persisted recovery/timer deadline metadata;
-  actual lifecycle/timer controllers deferred to PR3–4.
+## Outbox scope: deliberately absent in Phase 1
 
-Only internal ObjectBox `id` fields use numeric IDs. Domain identities use
-stable UUIDs; history must not resolve labels from editable plan definitions.
+`AGENTS.md` describes an atomic local-write + `SyncOutbox` transaction
+**when a cloud-associated owner exists and remote backup is enabled**.
+Phase 1 is offline and guest-only with no Supabase Auth, no server, no upload
+agreement, and therefore **creates no outbox records**. This is consistent
+with `docs/OBJECTBOX.md`'s rule against assigning guest data silently.
 
-## Working foundation API
+**Phase 2 association/backfill proposal (not implemented in this PR):**
+1. Require login and **explicit consent** to associate this device's existing
+   completed NorthStar sessions with the signed-in account.
+2. In one ObjectBox transaction, mark the eligible completed session(s) as
+   associated with that owner and enqueue idempotent, versioned portable
+   aggregate snapshots in a durable outbox, with stable operation IDs.
+   Do not enqueue drafts, custom plans, imported health samples or caches.
+3. The worker sends only for the current authenticated owner and only after
+   association; server checks expected revision and durable ACK before dequeue.
+4. If the user logs out/switches accounts, pause queue delivery and preserve
+   unsent local records; do not automatically reassociate them.
+5. Deduplicate backfill after crash/restart by session UUID and intended
+   associated revision. Cloud RLS and conflict tests are required in Phase 2.
 
-`ObjectBoxWorkoutRepository` implements session create/read, add exercise,
-idempotent set save, and finish. Each set save commits a set, session revision,
-and checkpoint in **one ObjectBox write transaction**. Methods return only after
-the local commit; they never fabricate remote backup status.
+## OS backup policy — intentionally local-only (until further decision)
 
-UI features currently remain demo placeholders. The application opens one
-ObjectBox Store before launching the UI. Startup failure is fail-closed:
-**never delete a database to make the app open**.
+Phase 1 excludes the ObjectBox database from Android Auto Backup, Android
+12+ device-to-device extraction and iOS iCloud/iTunes app-data backups:
+- Android manifest opts out with `allowBackup=false` plus explicit pre-12
+  and Android 12+ XML rules excluding app data.
+- iOS sets `isExcludedFromBackup` and the
+  `completeUntilFirstUserAuthentication` data-protection class on the
+  default Documents/objectbox directory before the Flutter Store opens.
+- This prevents unapproved backup flows but **does not encrypt ObjectBox
+  itself**. Device OS-level encryption is a separate protection.
+- **Deleting the app or losing the device can permanently lose all Phase 1
+  workouts and custom plans.** The UI must disclose this before release.
+- Verify on actual Android/iOS devices and investigate OEM backup behavior;
+  do not claim device-only policy is fully validated by static configuration.
+- When Supabase backup ships, revisit OS backup exclusion and UX consent,
+  rather than silently enabling system backups.
 
-## Important remaining gates
+## Tests / release gates
 
-- Independently verify native write rollback and reopen on Android/iOS.
-- Freeze and preserve a prior-version database fixture before shipping schema
-  changes; this initial PR introduces the v1 model and generated UID JSON.
-- Add actual plan catalog, active workout recovery controllers and progress in
-  subsequent Phase 1 PRs.
-- Validate storage protection/backup policies on both mobile platforms.
+CI installs the checksum-verified pinned ObjectBox C library v5.3.2 for Linux,
+then runs true native ObjectBox repository tests in temporary directories.
+Covered: persistence/reopen, null round-trip, exact retry, late conflicting
+retry, rejected cross-session write, invalid status/position, soft-deleted
+guard, idempotent commands, and rollback after partial write.
 
-From `apps/mobile` run:
-```sh
-flutter pub get --enforce-lockfile
-dart run build_runner build --delete-conflicting-outputs
-dart format --output=none --set-exit-if-changed lib test
-flutter analyze
-flutter test
-```
-
-**Never delete `lib/objectbox-model.json`** when the generator requests a UID
-migration. Review generated changes, include both `lib/objectbox.g.dart` and
-`lib/objectbox-model.json` in the same PR, and test old-to-new DB compatibility.
+Still required before approving release: Android/iOS real process-death and
+low-storage smoke tests, OS backup/restore policy inspection, and first
+frozen-UID version upgrade fixture when the model actually changes.
+Schema source of truth: `apps/mobile/lib/objectbox-model.json`;
+never delete/regenerate UIDs to resolve a migration conflict.
