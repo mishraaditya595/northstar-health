@@ -9,6 +9,9 @@ An offline-first Flutter health and strength-training companion for Android, iOS
 - [Health data and privacy](docs/HEALTH_DATA.md)
 - [Agent review protocol](docs/REVIEW_GUIDE.md)
 - [Implementation roadmap](docs/ROADMAP.md)
+- [ObjectBox persistence plan](docs/OBJECTBOX.md)
+- [Apple Watch and Wear OS architecture](docs/WEARABLES.md)
+- [Phone–watch synchronization contract](docs/SYNC_PROTOCOL.md)
 
 ## Repository
 
@@ -45,3 +48,7 @@ python3 -m http.server 4173
 Then open http://localhost:4173. The HTML prototype includes more mocked journeys than this native foundation; no wearable permissions, device readings, authentication, or backups are live.
 
 All sample metrics are fictional. Do not infer medical advice from them.
+
+## Smartwatch direction
+
+Wrist-based workout logging is a planned core capability: start/pause/end sessions, log reps/load, view live heart rate, and sync later when the phone is unreachable. The on-watch UI framework is subject to real-device validation. Watch sensors and workout lifecycle belong to native HealthKit (watchOS) or Health Services (Wear OS), not to a foreground Flutter widget. See [wearables](docs/WEARABLES.md).

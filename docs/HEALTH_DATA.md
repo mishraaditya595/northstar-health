@@ -10,3 +10,7 @@
 - Real data storage needs migration, encryption/key-management threat modeling, retention, export and delete, secure backup, and local/offline behavior before rollout.
 - Health platforms do not guarantee a watch has synced; display the **last source update** and never imply real-time availability without proof.
 - The Flutter demo labels every sample fictional. Actual platform integration is explicitly outside this scaffold.
+
+## Watch measurement provenance
+
+Record device-local measurement time, originating watch platform and stable source/sample ID. A WatchConnectivity/Data Layer message is transport, not proof of persistence in the phone database. Preserve distinct consent boundaries for phone aggregation and watch sensors, and never assume a consumer watch provides medically reliable continuous vital monitoring. See [WEARABLES.md](WEARABLES.md) and [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).

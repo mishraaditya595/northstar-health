@@ -12,3 +12,7 @@
 - [ ] unrun checks explained
 
 ## Risks, rollback, reviewer focus and deliberately deferred work
+
+## Local persistence / smartwatch compatibility (when relevant)
+- [ ] ObjectBox schema/migrations, generated bindings, transactional outbox checked
+- [ ] Real watch workout screen-off, offline sync/reconnect, battery and signing gates addressed
