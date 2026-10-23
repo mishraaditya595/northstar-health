@@ -35,5 +35,5 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.ui:ui")
-    implementation("androidx.wear.compose:compose-material3:1.0.0")
+    implementation("androidx.wear.compose:compose-material3:1.5.0")
 }
