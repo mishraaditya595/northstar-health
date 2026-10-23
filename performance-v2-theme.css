@@ -1,0 +1,83 @@
+/* Northstar Performance V2: distinct light and dark appearances.
+   The high-impact training artwork intentionally keeps a dark backdrop in both themes. */
+.app-shell{position:relative}
+.theme-switch{
+  display:grid;place-items:center;flex:none;width:44px;height:44px;min-width:44px;
+  border-radius:15px;background:var(--surface);color:var(--ink);border:1px solid var(--line);
+  cursor:pointer;transition:background .15s ease,border-color .15s ease;
+}
+.theme-switch:hover{border-color:var(--forest)}
+.theme-switch svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.theme-switch:focus-visible{outline:3px solid #64b3ff;outline-offset:3px}
+.theme-switch-group{display:flex;gap:8px;align-items:center;margin-left:auto}
+.app-topbar.compact{position:relative}
+.app-topbar.compact>.theme-switch{position:absolute;right:45px;top:50%;transform:translateY(-50%)}
+.app-shell.onboarding>.theme-switch{position:absolute;right:20px;top:23px;z-index:15}
+.app-shell.onboarding .brand-mark{padding-right:60px}
+body:not(.dark){
+  --canvas:#f2f5f1;
+  --surface:#ffffff;
+  --surface-soft:#eaf0ea;
+  --surface-warm:#f3f0e6;
+  --ink:#172b22;
+  --muted:#586e62;
+  --muted-2:#607669;
+  --line:#d7e2d8;
+  --forest:#316946;
+  --forest-deep:#152a20;
+  --forest-soft:#e2eedc;
+  --sleep:#6650ab;
+  --sleep-soft:#eee8fb;
+  --amber:#896123;
+  --amber-soft:#fff2db;
+  --danger:#9f3041;
+  --danger-soft:#fce9ec;
+  color-scheme:light;
+}
+body.dark{color-scheme:dark}
+body:not(.dark) .phone-screen,
+body:not(.dark) .app-shell{background:var(--canvas)}
+body:not(.dark) .profile-button{background:#e5eddf;color:#245137;border:1px solid #d2dfd0}
+body:not(.dark) .v2-avatar{background:#e2ede3}
+body:not(.dark) .v2-avatar::after{background:#357c4a}
+body:not(.dark) .v2-hero{background:linear-gradient(142deg,#294c36,#163529 70%,#0e2529);color:#fff}
+body:not(.dark) .v2-hero h2{color:#f7fff3}
+body:not(.dark) .v2-hero p{color:#d1e5d4}
+body:not(.dark) .v2-hero .v2-eyebrow{color:#d7edcf}
+body:not(.dark) .v2-hero .v2-live{color:#d6ff60;background:rgba(214,255,96,.1)}
+body:not(.dark) .v2-hero-foot .primary-button{background:#d6ff60;color:#132419}
+body:not(.dark) .v2-hero .v2-outline-btn{color:#fff}
+body:not(.dark) .v2-snapshot .v2-stat:first-child{background:linear-gradient(145deg,#e4f0df,#dbe9d5);border-color:#c9ddc8}
+body:not(.dark) .v2-snapshot .v2-stat:first-child .v2-eyebrow,
+body:not(.dark) .v2-snapshot .v2-stat:first-child .v2-stat-foot{color:#466852}
+body:not(.dark) .v2-snapshot .v2-stat:first-child .v2-stat-value{color:#244b32}
+body:not(.dark) .v2-snapshot .v2-stat:first-child .v2-stat-icon{color:#326947;background:#cee3ca}
+body:not(.dark) .v2-stat{box-shadow:0 8px 20px rgba(29,55,40,.025)}
+body:not(.dark) .v2-stat.purple{background:#faf8ff}
+body:not(.dark) .v2-week .v2-day.done i{background:#316946;color:#fff}
+body:not(.dark) .v2-week .v2-day.current i{color:#2d5f42;border-color:#2d5f42}
+body:not(.dark) .v2-signal{background:#eee9f8}
+body:not(.dark) .v2-signal p{color:#65567a}
+body:not(.dark) .v2-workout-icon{background:#e4eddf;color:#386b44}
+body:not(.dark) .v2-meter-card .v2-meter-svg path[stroke="var(--surface-soft)"]{stroke:#e0e8e0}
+body:not(.dark) .v2-health-feature{background:linear-gradient(140deg,#2e284a,#202c43);color:#fff}
+body:not(.dark) .v2-health-feature h3{color:#f7f2ff}
+body:not(.dark) .v2-health-feature p{color:#d8ceef}
+body:not(.dark) .v2-health-feature .v2-eyebrow{color:#d1c2ff}
+body:not(.dark) .v2-workout-shell .v2-hero{color:#fff}
+body:not(.dark) .v2-set.done{background:#e6f0e1;border-color:#7bad78}
+body:not(.dark) .v2-set.done button{background:#d2e7ce;color:#2c6142}
+body:not(.dark) .v2-set input{background:#f0f4ef}
+body:not(.dark) .v2-pr .v2-up{color:#346946}
+body:not(.dark) .v2-health-link span:first-child{color:#316946}
+body:not(.dark) .v2-source-dot{background:#36844b}
+body:not(.dark) .bottom-nav{background:rgba(249,252,249,.93);box-shadow:0 10px 32px rgba(38,63,48,.13)}
+body:not(.dark) .nav-item{color:#586d63}
+body:not(.dark) .nav-item.active{background:#e4efdc;color:#2a633f}
+body:not(.dark) .template-card,.app-shell:not(.onboarding) .card{box-shadow:0 6px 16px rgba(34,57,42,.025)}
+body:not(.dark) .onboard-illustration{background:radial-gradient(circle at 50% 40%,rgba(49,105,70,.15),transparent 70%)}
+body:not(.dark) .onboarding .checkin-chip.selected{color:#fff}
+body:not(.dark) .onboarding h1 em{color:#326a44}
+body:not(.dark) .onboarding .eyebrow{color:#316946!important}
+body:not(.dark) .onboarding p{color:#586e62}
+@media(prefers-reduced-motion:reduce){.theme-switch{transition:none}}
