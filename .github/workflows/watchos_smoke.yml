@@ -1,0 +1,31 @@
+name: WatchOS standalone build proof (manual)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/watch_os/**'
+      - '.github/workflows/watchos_smoke.yml'
+
+jobs:
+  watch:
+    runs-on: macos-15
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate watchOS proof project
+        working-directory: apps/watch_os
+        run: xcodegen generate --spec project.yml
+      - name: Build unsigned watchOS Simulator proof target
+        working-directory: apps/watch_os
+        run: |
+          xcodebuild -project NorthStarWatch.xcodeproj -scheme NorthStarWatch \
+            -configuration Debug -sdk watchsimulator \
+            -destination 'generic/platform=watchOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build
+
+# Important: this does NOT validate iPhone Runner embedding, TestFlight packaging,
+# watch permissions, background workout or real-device pairing.

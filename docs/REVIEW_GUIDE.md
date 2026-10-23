@@ -30,3 +30,13 @@ Every finding: affected file/line, reproducible impact, smallest correction, tes
 ## Definition of done
 
 Document why and scope; screenshots of phone/tablet layouts in both modes if UI changed; privacy and permission inventory; test and CI results; known gaps. Never mark a mocked flow or architectural contract as production-ready. Wear OS/watchOS proof requires real devices, not just simulator screenshots. Follow [CLOUD_SYNC](CLOUD_SYNC.md), [HEALTH_DATA](HEALTH_DATA.md), [FIREBASE_PRIVACY](FIREBASE_PRIVACY.md) and [SYNC_PROTOCOL](SYNC_PROTOCOL.md).
+
+## Repository restructuring / build review
+
+- [ ] Flutter code preserved under `apps/mobile`; root has no duplicate Dart package; native platform runners and lockfile tracked
+- [ ] Native mobile runners built from pinned Flutter SDK, tested on actual Android/iOS devices before release
+- [ ] watchOS source under `apps/watch_os/Sources`; generated watch-only Xcode project must **not** be confused with verified embedded iPhone companion target
+- [ ] independent Wear OS Gradle compilation and watch-manifest checks
+- [ ] same versioned event schema + fixtures underpin Dart/Kotlin/Swift adapters when implemented
+- [ ] no new HealthKit/Health Services permissions or signing secrets introduced by scaffolding
+- [ ] CI workflow paths, readme visual links, AGENTS references and release docs updated

@@ -34,45 +34,58 @@ NorthStar is a proposed privacy-conscious, offline-first health and strength-tra
 
 The data policy is narrow: NorthStar **owns detailed workout logs**; HealthKit and Health Connect remain the source for physiology; Supabase receives only authenticated **completed NorthStar workout history** and essential exercise snapshots. No heart-rate/HRV/sleep/SpO₂/steps sensor stream, health-platform cache, imported external workout, or location trail is backed up to Supabase. Plans/templates remain **local-only initially**: a reinstall will restore past finished sessions but not necessarily user-created plans.
 
-## Development repository
+## Production monorepo structure
 
 ```text
-lib/
-  app/                      # routing and adaptive app shell
-  core/design/              # theme and UI components
-  features/                 # Today, Train, Progress, Health demo views
-test/                       # Flutter widget tests
-docs/
-  adr/                      # binding architectural decisions
-  assets/                   # proposed static UI concept art for README
-  OBJECTBOX.md              # local object-store contract
-  CLOUD_SYNC.md             # auth / backup / compare-and-set / conflict contract
-  HEALTH_DATA.md            # platform reads, permissions and deduplicated export
-  SYNC_PROTOCOL.md          # watch -> phone -> cloud durable acknowledgments
-  WEARABLES.md              # native watch workout engines and UI PoC criteria
-  FIREBASE_PRIVACY.md       # default-off telemetry controls and allowlists
-  DESIGN_SYSTEM.md          # visual language from reference prototype
-prototypes/performance-v2/  # preserved original HTML/CSS/JS interactive prototype
-.github/                    # quality checks and PR review template
-AGENTS.md                   # binding AI coding / design / review instructions
+apps/
+  mobile/                      # Flutter app (Android, iPhone, iPad, tablets)
+    android/                   # committed native runner, generated with Flutter SDK
+    ios/                       # committed iOS Runner Xcode project
+    lib/                       # feature-first Dart app, Riverpod/go_router
+    test/                      # Dart unit/widget tests
+    pubspec.yaml               # only production Dart pub package for now
+    pubspec.lock               # resolved mobile dependencies
+  watch_os/                    # separate single-source SwiftUI watchOS app
+    Sources/App/               # native watch entry
+    Sources/Features/Workout/  # non-recording preview
+    project.yml                # XcodeGen compile target; companion embedding pending
+  wear_os/                     # separate native Wear OS app (Kotlin/Compose)
+    app/src/main/              # watch-specific manifest/activity
+    gradlew                    # Gradle wrapper
+contracts/workout_sync/v1/    # language-neutral event schema + tested fixture JSON
+packages/                     # Dart workspace packages when there is real reuse
+supabase/                     # future Auth/RLS/schema migrations; not yet implemented
+experiments/                  # isolated Flutter-on-watch spikes; not in release
+prototypes/performance-v2/     # preserved original HTML/CSS/JS clickable reference
+docs/                         # ADRs, security, design, cloud sync, watch and release
+.github/workflows/            # mobile, Wear and protocol quality gates
+AGENTS.md                     # repository-wide AI coding and review instructions
 ```
 
-Read [AGENTS.md](AGENTS.md) before starting agent-led development. For decisions see [ADR-0001](docs/adr/0001-foundation.md) (mobile foundation), [ADR-0002](docs/adr/0002-watch-workout-architecture.md) (watches), and **[ADR-0003](docs/adr/0003-data-cloud-health.md)** (local/cloud/health/Firebase ownership). Additional guidance: [Architecture](docs/ARCHITECTURE.md), [Roadmap](docs/ROADMAP.md), [Independent code review](docs/REVIEW_GUIDE.md).
+**Not a released health product:** the phone's ObjectBox Store, native Apple Health/Health Connect integrations, Supabase, Firebase and live watch recording are still future feature work. Watch source now has native non-recording starter UI; the Xcode watch target must still be embedded in the iOS Runner and validated for companion signing/distribution before release.
 
-## Flutter setup
+Read [monorepo boundaries](docs/REPOSITORY_LAYOUT.md), [ADR-0004](docs/adr/0004-production-monorepo.md), [watchOS setup](apps/watch_os/README.md), [Wear OS setup](apps/wear_os/README.md), and the [watch sync contract](contracts/workout_sync/v1/README.md). Also see [AGENTS.md](AGENTS.md), [ADR-0003](docs/adr/0003-data-cloud-health.md) and the [independent review checklist](docs/REVIEW_GUIDE.md).
 
-CI uses Flutter **3.47.7 stable** and validates dependency resolution, formatter, static analysis and widget tests. Native `android/`, `ios/` runners and the `pubspec.lock` still need to be generated and committed in a reviewed platform bootstrap PR; CI currently generates transient runners. On a machine with Flutter and required Android SDK / Xcode setup:
+## Codemagic CI/CD (planned)
+
+The repository-root [`codemagic.yaml`](codemagic.yaml) contains **11 manual-only templates** for Flutter Android/iOS, native Wear OS/watchOS and quality checks, including debug, profile, simulator, Ad Hoc and release variants. **They are placeholders, not functioning build or publishing pipelines**; each intentionally fails if manually launched before configuration. Read [Codemagic setup and rollout](docs/CODEMAGIC.md) before activating any builds. Existing GitHub Actions checks remain active until equivalent Codemagic jobs are tested.
+
+## Flutter local setup
+
+CI uses Flutter **3.47.7 stable** and runs from **`apps/mobile`**, not repository root. Native platform runners and `pubspec.lock` belong under `apps/mobile/` and must be committed after generation, audited for package IDs/platform deployment requirements and compiled on devices.
 
 ```sh
-flutter create --platforms=android,ios --project-name=northstar_health --org=dev.northstar .
+cd apps/mobile
 flutter pub get
-dart format lib test
+dart format --output=none --set-exit-if-changed lib test
 flutter analyze
 flutter test
 flutter run
 ```
 
-After introducing ObjectBox annotated entities, use `dart run build_runner build --delete-conflicting-outputs` and commit **both** `lib/objectbox.g.dart` and `lib/objectbox-model.json`. Do not reset model UIDs.
+To build the Wear OS app, follow [apps/wear_os/README.md](apps/wear_os/README.md). To generate and inspect the watchOS target on macOS, follow [apps/watch_os/README.md](apps/watch_os/README.md). Both target official native SDKs; experiment with Flutter watch rendering under `experiments/` separately. Never assume a watch app is distributed simply because source code exists in the monorepo.
+
+ObjectBox code generation must continue in **`apps/mobile`** when first entities exist: `dart run build_runner build --delete-conflicting-outputs`; commit `apps/mobile/lib/objectbox.g.dart` with `apps/mobile/lib/objectbox-model.json`.
 
 ## Explore the current HTML prototype
 

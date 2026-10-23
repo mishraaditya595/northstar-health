@@ -66,4 +66,10 @@ Use `LayoutBuilder` and available content width (compact under ~600dp -> bottom 
 
 ## Implementation truth
 
-PR #2 includes a Flutter **demo**, themed fixture screens and scaffold only. ObjectBox store schema, native runners, Supabase, HealthKit, Health Connect, Firebase and watch companions require dedicated reviewed implementation and device testing.
+The initial merged foundation includes a Flutter **demo**, themed fixture screens and scaffold only. ObjectBox store schema, native runners, Supabase, HealthKit, Health Connect, Firebase and watch companions require dedicated reviewed implementation and device testing.
+
+## Repository layout (ADR-0004)
+
+Primary Flutter app path: `apps/mobile/` (`lib/`, `test/`, committed `android/` / `ios/` native runners and lockfile). Wear OS independent Android app: `apps/wear_os/`. Apple watch Swift source: `apps/watch_os/Sources/` with an XcodeGen watchOS project; the final watch companion embedding into `apps/mobile/ios` is a **pending target-integration task**, not a completed release artifact.
+
+Cross-language event schema: `contracts/workout_sync/v1/`. Mobile backend package/code ownership is unchanged. Read [REPOSITORY_LAYOUT.md](REPOSITORY_LAYOUT.md) and [ADR-0004](adr/0004-production-monorepo.md).

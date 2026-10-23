@@ -1,0 +1,212 @@
+# NorthStar Health - Codemagic CI/CD workflow skeletons
+# https://docs.codemagic.io/yaml-basic-configuration/yaml-getting-started/
+#
+# IMPORTANT: Templates ONLY. No automatic triggers, no signing, no publishing.
+# Every placeholder deliberately exits 1 so a manual invocation cannot be
+# mistaken for a successful build/release. Enable a workflow ONLY after replacing
+# its placeholder with tested commands, secrets and artifact paths.
+#
+# The file MUST remain at the repository root. Application paths follow ADR-0004.
+# mac_mini_m2 is used as a common starter; linux_x2 requires billing-enabled access.
+# Do not enable Store / TestFlight publishing before approvals, signing and target setup.
+#
+# Placeholder variable groups to create later in Codemagic UI, NOT below as active keys:
+#   android_signing, play_store, ios_signing, app_store_connect, staging, production
+# Never commit keystores, .p8 API keys, provisioning profiles or Firebase/Supabase secrets.
+#
+# TODO per release workflow:
+#   1. implement validation, build and test commands
+#   2. configure environment groups, signing and final app IDs
+#   3. add artifact paths and controlled publishing rules
+#   4. enable only the desired branch/PR/tag triggers
+#
+workflows:
+  quality-checks:
+    name: "TEMPLATE - Quality checks"
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    working_directory: .
+    # No triggering block: manual-only; do NOT add push/PR triggers yet.
+    # TODO command example (commented-out; verify before enabling):
+    #   python3 -m unittest discover -s tool -p 'test_*.py'; cd apps/mobile && flutter analyze && flutter test
+    scripts:
+      - name: "Not configured - do not treat as a build"
+        script: |
+          echo "TEMPLATE ONLY: Run protocol checks and Flutter tests (once enabled)."
+          echo "No artifact has been built or published. See docs/CODEMAGIC.md."
+          exit 1
+
+  mobile-android-debug:
+    name: "TEMPLATE - Mobile Android - Debug APK"
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    working_directory: apps/mobile
+    environment:
+      flutter: "3.47.7"
+    # No triggering block: manual-only; do NOT add push/PR triggers yet.
+    # TODO command example (commented-out; verify before enabling):
+    #   flutter pub get --enforce-lockfile && flutter build apk --debug
+    # artifacts: [apps/mobile/build/app/outputs/flutter-apk/*.apk]
+    scripts:
+      - name: "Not configured - do not treat as a build"
+        script: |
+          echo "TEMPLATE ONLY: Unsigned/debug mobile Android APK."
+          echo "No artifact has been built or published. See docs/CODEMAGIC.md."
+          exit 1
+
+  mobile-android-profile:
+    name: "TEMPLATE - Mobile Android - Profile APK"
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    working_directory: apps/mobile
+    environment:
+      flutter: "3.47.7"
+    # No triggering block: manual-only; do NOT add push/PR triggers yet.
+    # TODO command example (commented-out; verify before enabling):
+    #   flutter pub get --enforce-lockfile && flutter build apk --profile
+    scripts:
+      - name: "Not configured - do not treat as a build"
+        script: |
+          echo "TEMPLATE ONLY: Profile build for performance testing."
+          echo "No artifact has been built or published. See docs/CODEMAGIC.md."
+          exit 1
+
+  mobile-android-release:
+    name: "TEMPLATE - Mobile Android - Release AAB"
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    working_directory: apps/mobile
+    environment:
+      flutter: "3.47.7"
+    # No triggering block: manual-only; do NOT add push/PR triggers yet.
+    # TODO command example (commented-out; verify before enabling):
+    #   flutter pub get --enforce-lockfile && flutter build appbundle --release
+    # artifacts: [apps/mobile/build/app/outputs/bundle/release/*.aab]
+    scripts:
+      - name: "Not configured - do not treat as a build"
+        script: |
+          echo "TEMPLATE ONLY: Release AAB. Configure signing and Play credentials separately."
+          echo "No artifact has been built or published. See docs/CODEMAGIC.md."
+          exit 1
+
+  mobile-ios-simulator:
+    name: "TEMPLATE - Mobile iOS - Simulator Debug"
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    working_directory: apps/mobile
+    environment:
+      flutter: "3.47.7"
+      xcode: latest
+    # No triggering block: manual-only; do NOT add push/PR triggers yet.
+    # TODO command example (commented-out; verify before enabling):
+    #   flutter pub get --enforce-lockfile && flutter build ios --simulator --debug
+    scripts:
+      - name: "Not configured - do not treat as a build"
+        script: |
+          echo "TEMPLATE ONLY: Unsigned iPhone/iPad simulator build."
+          echo "No artifact has been built or published. See docs/CODEMAGIC.md."
+          exit 1
+
+  mobile-ios-adhoc:
+    name: "TEMPLATE - Mobile iOS - Ad Hoc IPA"
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    working_directory: apps/mobile
+    environment:
+      flutter: "3.47.7"
+      xcode: latest
+    # No triggering block: manual-only; do NOT add push/PR triggers yet.
+    # TODO command example (commented-out; verify before enabling):
+    #   flutter build ipa --release --export-options-plist=<APPROVED_ADHOC_OPTIONS_PLIST>
+    scripts:
+      - name: "Not configured - do not treat as a build"
+        script: |
+          echo "TEMPLATE ONLY: Internal signed IPA; requires approved bundle ID and ad hoc profiles."
+          echo "No artifact has been built or published. See docs/CODEMAGIC.md."
+          exit 1
+
+  mobile-ios-testflight:
+    name: "TEMPLATE - Mobile iOS - App Store / TestFlight IPA"
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    working_directory: apps/mobile
+    environment:
+      flutter: "3.47.7"
+      xcode: latest
+    # No triggering block: manual-only; do NOT add push/PR triggers yet.
+    # TODO command example (commented-out; verify before enabling):
+    #   flutter build ipa --release --export-options-plist=<APPROVED_APPSTORE_OPTIONS_PLIST>
+    # artifacts: [apps/mobile/build/ios/ipa/*.ipa]
+    scripts:
+      - name: "Not configured - do not treat as a build"
+        script: |
+          echo "TEMPLATE ONLY: Requires App Store Connect credentials, signing and controlled publishing."
+          echo "No artifact has been built or published. See docs/CODEMAGIC.md."
+          exit 1
+
+  wear-os-debug:
+    name: "TEMPLATE - Wear OS - Debug APK"
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    working_directory: apps/wear_os
+    # No triggering block: manual-only; do NOT add push/PR triggers yet.
+    # TODO command example (commented-out; verify before enabling):
+    #   ./gradlew :app:assembleDebug --no-daemon
+    scripts:
+      - name: "Not configured - do not treat as a build"
+        script: |
+          echo "TEMPLATE ONLY: Independent Kotlin/Compose Wear OS debug application."
+          echo "No artifact has been built or published. See docs/CODEMAGIC.md."
+          exit 1
+
+  wear-os-release:
+    name: "TEMPLATE - Wear OS - Release AAB"
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    working_directory: apps/wear_os
+    # No triggering block: manual-only; do NOT add push/PR triggers yet.
+    # TODO command example (commented-out; verify before enabling):
+    #   ./gradlew :app:bundleRelease --no-daemon
+    # artifacts: [apps/wear_os/app/build/outputs/bundle/release/*.aab]
+    scripts:
+      - name: "Not configured - do not treat as a build"
+        script: |
+          echo "TEMPLATE ONLY: Release Wear OS bundle; configure signing and Play Console separately."
+          echo "No artifact has been built or published. See docs/CODEMAGIC.md."
+          exit 1
+
+  watchos-simulator:
+    name: "TEMPLATE - watchOS - Simulator Proof Build"
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    working_directory: apps/watch_os
+    environment:
+      xcode: latest
+    # No triggering block: manual-only; do NOT add push/PR triggers yet.
+    # TODO command example (commented-out; verify before enabling):
+    #   xcodegen generate --spec project.yml && xcodebuild -project NorthStarWatch.xcodeproj -scheme NorthStarWatch -sdk watchsimulator CODE_SIGNING_ALLOWED=NO build
+    scripts:
+      - name: "Not configured - do not treat as a build"
+        script: |
+          echo "TEMPLATE ONLY: Standalone SwiftUI compile proof, not the packaged iPhone companion."
+          echo "No artifact has been built or published. See docs/CODEMAGIC.md."
+          exit 1
+
+  watchos-companion-release:
+    name: "TEMPLATE - watchOS - iPhone Companion Release"
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    working_directory: apps/mobile
+    environment:
+      flutter: "3.47.7"
+      xcode: latest
+    # No triggering block: manual-only; do NOT add push/PR triggers yet.
+    # TODO command example (commented-out; verify before enabling):
+    #   <CONFIGURE_REAL_EMBEDDED_WATCHOS_RUNNER_SCHEME_THEN_ARCHIVE>
+    scripts:
+      - name: "Not configured - do not treat as a build"
+        script: |
+          echo "TEMPLATE ONLY: BLOCKED until SwiftUI watch target is embedded into iOS Runner, signed and verified."
+          echo "No artifact has been built or published. See docs/CODEMAGIC.md."
+          exit 1
+
