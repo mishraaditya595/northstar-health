@@ -11,7 +11,25 @@ abstract interface class WorkoutRepository {
   WorkoutSessionRecord? getSession(String uuid);
   void addExercise(WorkoutExerciseRecord exercise);
 
+  /// The caller's observed revision is mandatory for changing a set.
+  /// An identical retry returns without a write, even if revision advanced.
+  /// A changed stale command throws [WorkoutRevisionConflict].
+
   /// Set + session revision + recovery checkpoint commit atomically.
-  void saveSet({required String sessionUuid, required WorkoutSetRecord set});
+  void saveSet({
+    required String sessionUuid,
+    required WorkoutSetRecord set,
+    required int expectedRevision,
+  });
   void finishSession(String uuid, {required DateTime finishedAtUtc});
+}
+
+/// Caller must reload the latest session and re-apply its intended change.
+class WorkoutRevisionConflict implements Exception {
+  const WorkoutRevisionConflict(this.expected, this.actual);
+  final int expected;
+  final int actual;
+
+  @override
+  String toString() => 'Workout revision conflict (expected $expected, actual $actual)';
 }

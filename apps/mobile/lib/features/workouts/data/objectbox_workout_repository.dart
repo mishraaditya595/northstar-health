@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/storage/objectbox_store_provider.dart';
+import '../../../core/units/load_units.dart';
 import '../../../objectbox.g.dart';
 import '../domain/workout_models.dart';
 import '../domain/workout_repository.dart';
+import '../domain/workout_status_codec.dart';
 import 'workout_entities.dart';
 
 final workoutRepositoryProvider = Provider<WorkoutRepository>(
@@ -64,8 +66,18 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
     }
     final nowMs = DateTime.now().toUtc().millisecondsSinceEpoch;
     _store.runInTransaction(TxMode.write, () {
-      if (_one(_sessions, WorkoutSessionEntity_.uuid, uuid) != null) {
-        throw StateError('Session already exists');
+      final existing = _one(_sessions, WorkoutSessionEntity_.uuid, uuid);
+      if (existing != null) {
+        if (existing.deletedAtMs != null ||
+            existing.name != name.trim() ||
+            existing.planUuid != planUuid ||
+            (startedAtUtc != null &&
+                existing.startedAtMs != at.millisecondsSinceEpoch) ||
+            (originalOffsetMinutes != null &&
+                existing.originalOffsetMinutes != offset)) {
+          throw StateError('Conflicting session UUID');
+        }
+        return; // Duplicate create command is idempotent.
       }
       _sessions.put(
         WorkoutSessionEntity(
@@ -120,11 +132,11 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
               uuid: entry.uuid,
               exerciseUuid: entry.exerciseUuid,
               position: entry.position,
-              kind: WorkoutSetKind.values.byName(entry.kind),
-              status: WorkoutSetStatus.values.byName(entry.status),
+              kind: workoutSetKindFromStorage(entry.kind),
+              status: workoutSetStatusFromStorage(entry.status),
               reps: entry.reps,
               loadGrams: entry.loadGrams,
-              inputUnit: entry.inputUnit,
+              inputUnit: loadUnitFromStorage(entry.inputUnit),
               rpe: entry.rpe,
               completedAtUtc: entry.completedAtMs == null
                   ? null
@@ -139,7 +151,7 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
       return WorkoutSessionRecord(
         uuid: s.uuid,
         name: s.name,
-        status: WorkoutStatus.values.byName(s.status),
+        status: workoutStatusFromStorage(s.status),
         startedAtUtc: DateTime.fromMillisecondsSinceEpoch(
           s.startedAtMs,
           isUtc: true,
@@ -172,14 +184,34 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
         WorkoutSessionEntity_.uuid,
         exercise.sessionUuid,
       );
-      if (session == null ||
-          (session.status != 'inProgress' && session.status != 'paused')) {
+      if (session == null || session.deletedAtMs != null) {
+        throw StateError('Session does not exist or was deleted');
+      }
+      final previous = _one(
+        _exercises, WorkoutExerciseEntity_.uuid, exercise.uuid,
+      );
+      if (previous != null) {
+        if (previous.sessionUuid == exercise.sessionUuid &&
+            previous.nameSnapshot == exercise.nameSnapshot.trim() &&
+            previous.definitionUuid == exercise.definitionUuid &&
+            previous.position == exercise.position &&
+            previous.muscleSnapshot == exercise.muscleSnapshot &&
+            previous.equipmentSnapshot == exercise.equipmentSnapshot) {
+          return; // Exact retransmission.
+        }
+        throw StateError('Conflicting exercise UUID');
+      }
+      if (session.status != WorkoutStatus.inProgress.name &&
+          session.status != WorkoutStatus.paused.name) {
         throw StateError('No editable session');
       }
-      if (_one(_exercises, WorkoutExerciseEntity_.uuid, exercise.uuid) !=
-          null) {
-        throw StateError('Exercise UUID already exists');
+      if (_matching(_exercises, WorkoutExerciseEntity_.sessionUuid,
+              exercise.sessionUuid).any((e) => e.position == exercise.position)) {
+        throw StateError('Exercise position is already occupied');
       }
+      final checkpoint = _one(_checkpoints,
+          WorkoutSessionStateEntity_.sessionUuid, exercise.sessionUuid);
+      if (checkpoint == null) throw StateError('Missing checkpoint');
       _exercises.put(
         WorkoutExerciseEntity(
           uuid: exercise.uuid,
@@ -192,17 +224,24 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
         ),
       );
       _touch(session);
+      checkpoint.checkpointRevision = session.revision;
+      checkpoint.savedAtMs = DateTime.now().toUtc().millisecondsSinceEpoch;
+      _checkpoints.put(checkpoint);
     });
   }
 
   @override
-  void saveSet({required String sessionUuid, required WorkoutSetRecord set}) {
+  void saveSet({
+    required String sessionUuid,
+    required WorkoutSetRecord set,
+    required int expectedRevision,
+  }) {
+    if (expectedRevision < 1) throw ArgumentError.value(expectedRevision);
     set.validate();
     _store.runInTransaction(TxMode.write, () {
       final session = _one(_sessions, WorkoutSessionEntity_.uuid, sessionUuid);
-      if (session == null ||
-          (session.status != 'inProgress' && session.status != 'paused')) {
-        throw StateError('No editable session');
+      if (session == null || session.deletedAtMs != null) {
+        throw StateError('Session does not exist or was deleted');
       }
       final exercise = _one(
         _exercises,
@@ -227,7 +266,22 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
           prior.rpe == set.rpe &&
           prior.completedAtMs ==
               set.completedAtUtc?.toUtc().millisecondsSinceEpoch;
-      if (same) return; // Idempotent retry.
+      if (same) return; // Exact retry after a committed save.
+      if (session.status != WorkoutStatus.inProgress.name &&
+          session.status != WorkoutStatus.paused.name) {
+        throw StateError('No editable session');
+      }
+      if (session.revision != expectedRevision) {
+        throw WorkoutRevisionConflict(expectedRevision, session.revision);
+      }
+      if (_matching(_sets, WorkoutSetEntity_.exerciseUuid, set.exerciseUuid)
+          .any((e) => e.position == set.position && e.uuid != set.uuid)) {
+        throw StateError('Set position is already occupied');
+      }
+      final checkpoint = _one(
+        _checkpoints, WorkoutSessionStateEntity_.sessionUuid, sessionUuid,
+      );
+      if (checkpoint == null) throw StateError('Missing checkpoint');
       _sets.put(
         WorkoutSetEntity(
           id: prior?.id ?? 0,
@@ -238,19 +292,13 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
           status: set.status.name,
           reps: set.reps,
           loadGrams: set.loadGrams,
-          inputUnit: set.inputUnit,
+          inputUnit: set.inputUnit.name,
           rpe: set.rpe,
           completedAtMs: set.completedAtUtc?.toUtc().millisecondsSinceEpoch,
           updatedAtMs: DateTime.now().toUtc().millisecondsSinceEpoch,
         ),
       );
       _touch(session);
-      final checkpoint = _one(
-        _checkpoints,
-        WorkoutSessionStateEntity_.sessionUuid,
-        sessionUuid,
-      );
-      if (checkpoint == null) throw StateError('Missing checkpoint');
       checkpoint.selectedExerciseUuid = set.exerciseUuid;
       checkpoint.selectedSetUuid = set.uuid;
       checkpoint.checkpointRevision = session.revision;
@@ -263,11 +311,18 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
   void finishSession(String uuid, {required DateTime finishedAtUtc}) {
     _store.runInTransaction(TxMode.write, () {
       final session = _one(_sessions, WorkoutSessionEntity_.uuid, uuid);
-      if (session == null ||
-          (session.status != 'inProgress' && session.status != 'paused')) {
-        throw StateError('Session is not active');
+      if (session == null || session.deletedAtMs != null) {
+        throw StateError('Session does not exist or was deleted');
       }
       final endMs = finishedAtUtc.toUtc().millisecondsSinceEpoch;
+      if (session.status == WorkoutStatus.completed.name &&
+          session.completedAtMs == endMs) {
+        return; // Exact repeated finish acknowledged without modifying revision.
+      }
+      if (session.status != WorkoutStatus.inProgress.name &&
+          session.status != WorkoutStatus.paused.name) {
+        throw StateError('Session is not active');
+      }
       if (endMs < session.startedAtMs) throw ArgumentError('End before start');
       final checkpoint = _one(
         _checkpoints,

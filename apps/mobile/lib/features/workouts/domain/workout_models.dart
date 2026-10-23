@@ -1,9 +1,11 @@
+import '../../../core/units/load_units.dart';
+
 /// Immutable domain values: never expose ObjectBox IDs to presentation.
-enum WorkoutStatus { inProgress, paused, completed, discarded }
+enum WorkoutStatus { inProgress, paused, completed, discarded, unknown }
 
-enum WorkoutSetKind { warmup, working }
+enum WorkoutSetKind { warmup, working, unknown }
 
-enum WorkoutSetStatus { planned, completed, skipped }
+enum WorkoutSetStatus { planned, completed, skipped, unknown }
 
 class WorkoutSetRecord {
   const WorkoutSetRecord({
@@ -14,7 +16,7 @@ class WorkoutSetRecord {
     required this.status,
     this.reps,
     this.loadGrams,
-    this.inputUnit = 'kg',
+    this.inputUnit = LoadUnit.kg,
     this.rpe,
     this.completedAtUtc,
   });
@@ -26,7 +28,7 @@ class WorkoutSetRecord {
   final WorkoutSetStatus status;
   final int? reps;
   final int? loadGrams;
-  final String inputUnit;
+  final LoadUnit inputUnit;
   final double? rpe;
   final DateTime? completedAtUtc;
 
@@ -42,12 +44,15 @@ class WorkoutSetRecord {
     if (loadGrams != null && (loadGrams! < 0 || loadGrams! > 100000000)) {
       throw ArgumentError.value(loadGrams, 'loadGrams');
     }
-    if (inputUnit != 'kg' && inputUnit != 'lb') {
+    if (inputUnit == LoadUnit.unknown) {
       throw ArgumentError.value(inputUnit, 'inputUnit');
     }
     if (rpe != null &&
         (!rpe!.isFinite || rpe! < 0 || rpe! > 10 || (rpe! * 2) % 1 != 0)) {
       throw ArgumentError.value(rpe, 'rpe');
+    }
+    if (status == WorkoutSetStatus.unknown || kind == WorkoutSetKind.unknown) {
+      throw ArgumentError('Unknown persisted set status/kind cannot be written');
     }
     if (status == WorkoutSetStatus.completed &&
         (reps == null || completedAtUtc == null)) {
