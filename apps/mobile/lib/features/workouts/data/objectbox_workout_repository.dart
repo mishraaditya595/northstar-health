@@ -1,6 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:objectbox/objectbox.dart';
-
 import '../../../core/storage/objectbox_store_provider.dart';
 import '../../../objectbox.g.dart';
 import '../domain/workout_models.dart';
