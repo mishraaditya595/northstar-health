@@ -1,0 +1,19 @@
+name: Repository and protocol contracts
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install 'jsonschema==4.23.0'
+      - name: Validate README assets monorepo paths and protocol
+        run: python3 -m unittest discover -s tool -p 'test_*.py'
