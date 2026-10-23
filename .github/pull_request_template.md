@@ -25,3 +25,10 @@
 ## Risks / rollback / explicitly deferred work
 
 ## Independent review handoff: challenge these files and state transitions
+
+## Monorepo / native packaging (when affected)
+- [ ] `apps/mobile` Flutter lockfile/runners correct; no duplicate root package
+- [ ] `apps/wear_os` Gradle build, watch manifest, source ownership checked
+- [ ] `apps/watch_os` native SwiftUI sources and **actual** iPhone companion embedding status disclosed
+- [ ] `contracts/workout_sync/v1` versioned fixtures validated
+- [ ] No CI write permission or credentials in normal build workflows

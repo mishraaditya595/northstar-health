@@ -22,6 +22,18 @@ class LayoutTest(unittest.TestCase):
             with self.subTest(entry=entry):
                 self.assertTrue((ROOT / entry).is_file(), entry)
 
+    def test_versioned_native_runners_and_dependency_locks(self):
+        required = [
+            "apps/mobile/android/app/build.gradle.kts",
+            "apps/mobile/ios/Runner.xcodeproj/project.pbxproj",
+            "apps/mobile/pubspec.lock",
+            "apps/wear_os/gradlew",
+            "apps/wear_os/gradle/wrapper/gradle-wrapper.jar",
+        ]
+        for entry in required:
+            with self.subTest(entry=entry):
+                self.assertTrue((ROOT / entry).is_file(), entry)
+
     def test_flutter_not_at_repo_root(self):
         for forbidden in ("pubspec.yaml", "lib/main.dart", "test/app_test.dart"):
             self.assertFalse((ROOT / forbidden).exists(), forbidden)

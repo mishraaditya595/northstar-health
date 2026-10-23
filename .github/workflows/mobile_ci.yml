@@ -1,20 +1,18 @@
-name: Mobile and Wear bootstrap quality
+name: Mobile and Wear quality
 on:
   pull_request:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   mobile:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    permissions:
-      contents: write  # temporary, guarded PR-branch-only native runner bootstrap
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          persist-credentials: true
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.47.7'
@@ -24,35 +22,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.11.1'
-      - name: Generate native projects and official wrapper (one-time internal PR)
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'chore/production-monorepo-foundation'
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ ! -f apps/mobile/android/app/build.gradle.kts ] || [ ! -f apps/mobile/ios/Runner.xcodeproj/project.pbxproj ]; then
-            (cd apps/mobile && flutter create --platforms=android,ios --project-name=northstar_health --org=dev.northstar .)
-            rm -f apps/mobile/test/widget_test.dart
-          fi
-          if [ ! -f apps/wear_os/gradle/wrapper/gradle-wrapper.jar ]; then
-            gradle -p apps/wear_os wrapper --gradle-version 8.11.1 --distribution-type bin
-          fi
-          (cd apps/mobile && flutter pub get)
-          git add apps/mobile/android apps/mobile/ios apps/mobile/.metadata apps/mobile/pubspec.lock
-          git add apps/wear_os/gradle/wrapper apps/wear_os/gradlew apps/wear_os/gradlew.bat
-          if ! git diff --cached --quiet; then
-            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'chore: commit tool-generated mobile runners and Gradle wrapper'
-            git push origin "HEAD:${{ github.head_ref }}"
-          fi
-      - name: Require committed native platform runners
+      - name: Validate committed project runners
         run: |
           test -f apps/mobile/android/app/build.gradle.kts
           test -f apps/mobile/ios/Runner.xcodeproj/project.pbxproj
           test -f apps/mobile/pubspec.lock
-          test -f apps/wear_os/gradle/wrapper/gradle-wrapper.jar
-      - name: Flutter dependencies
+      - name: Resolve from committed lockfile
         working-directory: apps/mobile
         run: flutter pub get --enforce-lockfile
       - name: Format
@@ -67,6 +42,17 @@ jobs:
       - name: Android debug APK
         working-directory: apps/mobile
         run: flutter build apk --debug --no-pub
-      - name: Wear OS Gradle build
+
+  wear_os:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build native Wear OS debug APK
         working-directory: apps/wear_os
         run: ./gradlew :app:assembleDebug --no-daemon
