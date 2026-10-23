@@ -33,36 +33,30 @@ class NorthstarTheme {
         ? NorthstarPalette.darkSurface
         : NorthstarPalette.lightSurface;
     final ink = dark ? NorthstarPalette.darkInk : NorthstarPalette.lightInk;
-    final accent = dark
-        ? NorthstarPalette.lime
-        : NorthstarPalette.lightPrimary;
+    final accent = dark ? NorthstarPalette.lime : NorthstarPalette.lightPrimary;
     final muted = dark
         ? NorthstarPalette.darkMuted
         : NorthstarPalette.lightMuted;
     final border = dark
         ? NorthstarPalette.darkBorder
         : NorthstarPalette.lightBorder;
-    final scheme = ColorScheme.fromSeed(
-      seedColor: accent,
-      brightness: brightness,
-      surface: surface,
-    ).copyWith(
-      primary: accent,
-      onPrimary: dark
-          ? NorthstarPalette.darkCanvas
-          : Colors.white,
-      onSurface: ink,
-      outline: border,
-    );
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: accent,
+          brightness: brightness,
+          surface: surface,
+        ).copyWith(
+          primary: accent,
+          onPrimary: dark ? NorthstarPalette.darkCanvas : Colors.white,
+          onSurface: ink,
+          outline: border,
+        );
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       scaffoldBackgroundColor: canvas,
       colorScheme: scheme,
-      textTheme: const TextTheme().apply(
-        bodyColor: ink,
-        displayColor: ink,
-      ),
+      textTheme: const TextTheme().apply(bodyColor: ink, displayColor: ink),
       cardTheme: CardThemeData(
         color: surface,
         elevation: 0,
@@ -99,17 +93,13 @@ class NorthstarColors extends ThemeExtension<NorthstarColors> {
   final Color border;
 
   @override
-  NorthstarColors copyWith({Color? muted, Color? border}) =>
-      NorthstarColors(
-        muted: muted ?? this.muted,
-        border: border ?? this.border,
-      );
+  NorthstarColors copyWith({Color? muted, Color? border}) => NorthstarColors(
+    muted: muted ?? this.muted,
+    border: border ?? this.border,
+  );
 
   @override
-  NorthstarColors lerp(
-    ThemeExtension<NorthstarColors>? other,
-    double t,
-  ) {
+  NorthstarColors lerp(ThemeExtension<NorthstarColors>? other, double t) {
     if (other is! NorthstarColors) return this;
     return NorthstarColors(
       muted: Color.lerp(muted, other.muted, t) ?? muted,

@@ -25,11 +25,7 @@ jobs:
             if [ "$generated_test" = true ]; then rm -f test/widget_test.dart; fi
           fi
       - run: flutter pub get
-      - name: Format and print necessary patch (temporary CI diagnostic)
-        run: |
-          dart format lib test
-          git diff -- lib test
+      - name: Verify committed Dart formatting
+        run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test
-      - name: Require committed Dart formatting
-        run: git diff --exit-code -- lib test

@@ -38,10 +38,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/today',
     routes: [
       ShellRoute(
-        builder: (context, state, child) => AdaptiveShell(
-          location: state.uri.path,
-          child: child,
-        ),
+        builder: (context, state, child) =>
+            AdaptiveShell(location: state.uri.path, child: child),
         routes: [
           GoRoute(path: '/today', builder: (_, _) => const TodayPage()),
           GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
@@ -73,11 +71,7 @@ class NorthstarApp extends ConsumerWidget {
 }
 
 class AdaptiveShell extends ConsumerWidget {
-  const AdaptiveShell({
-    required this.location,
-    required this.child,
-    super.key,
-  });
+  const AdaptiveShell({required this.location, required this.child, super.key});
 
   final String location;
   final Widget child;
@@ -120,11 +114,13 @@ class AdaptiveShell extends ConsumerWidget {
                   onDestinationSelected: select,
                   labelType: NavigationRailLabelType.all,
                   destinations: _destinations
-                      .map((destination) => NavigationRailDestination(
-                            icon: destination.icon,
-                            selectedIcon: destination.selectedIcon,
-                            label: Text(destination.label),
-                          ))
+                      .map(
+                        (destination) => NavigationRailDestination(
+                          icon: destination.icon,
+                          selectedIcon: destination.selectedIcon,
+                          label: Text(destination.label),
+                        ),
+                      )
                       .toList(),
                 ),
                 const VerticalDivider(width: 1),
