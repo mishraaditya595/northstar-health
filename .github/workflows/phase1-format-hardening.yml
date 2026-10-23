@@ -1,0 +1,39 @@
+name: Phase 1 hardening formatter evidence
+on:
+  push:
+    branches: [feat/phase1-objectbox-foundation]
+permissions:
+  contents: read
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - name: Format sources
+        working-directory: apps/mobile
+        run: |
+          flutter pub get --enforce-lockfile
+          dart format lib test
+      - name: Emit only changed formatted files for commit
+        working-directory: apps/mobile
+        run: |
+          for file in \
+            lib/core/units/load_units.dart \
+            lib/features/workouts/data/objectbox_workout_repository.dart \
+            lib/features/workouts/domain/workout_models.dart \
+            lib/features/workouts/domain/workout_repository.dart \
+            lib/features/workouts/domain/workout_status_codec.dart \
+            lib/main.dart \
+            test/workouts/objectbox_workout_repository_test.dart \
+            test/workouts/workout_status_codec_test.dart; do
+            echo "BEGIN_FORMATTED_FILE:$file"
+            base64 -w0 "$file"
+            echo
+            echo "END_FORMATTED_FILE:$file"
+          done
