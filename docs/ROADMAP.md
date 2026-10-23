@@ -1,6 +1,10 @@
 # NorthStar implementation roadmap
 
-**Foundation (PR #2):** Flutter demo screens, Performance V2 reference, adaptive light/dark design, Riverpod, routing, agent rules, ObjectBox package configuration, ADRs and CI. This is not a production health application.
+**Initial foundation (merged PR #2):** Flutter demo screens, Performance V2 reference, adaptive light/dark design, Riverpod, routing, agent rules, ObjectBox package configuration, ADRs and CI. This is not a production health application.
+
+## Production structure/bootstrap (next PR)
+
+Move Flutter to `apps/mobile/` and commit reviewed native Android and iOS runners/lockfile; create independent native `apps/watch_os` and `apps/wear_os` non-recording target scaffolds with build pipelines; define portable `contracts/workout_sync/v1` and test fixtures. **Native watchOS companion embedding and physical device sign/release verification remain separate release gates.** This is not yet a workout tracker.
 
 ## Phase 1 — Reliable offline workout logger
 

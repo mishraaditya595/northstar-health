@@ -1,0 +1,8 @@
+# Request independent code review for high-risk boundaries.
+# Replace placeholder ownership with real GitHub users/teams before enabling required reviews.
+# Path rules are an inventory, not auto-requested reviewers without assigned owners.
+# /apps/mobile/
+# /apps/watch_os/
+# /apps/wear_os/
+# /contracts/
+# /supabase/

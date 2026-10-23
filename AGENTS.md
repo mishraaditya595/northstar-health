@@ -9,7 +9,7 @@ Applies to **all AI coding, design, test and review agents**. Read `README.md`, 
 3. Keep Dart feature-first: UI renders Riverpod state, go_router handles routes, repositories and mappers isolate platform APIs/ObjectBox/Supabase DTOs/Firebase. No network/storage SDK use directly in widgets.
 4. Use `prototypes/performance-v2/` and `docs/DESIGN_SYSTEM.md` as visual authority. Support light/dark, phone and tablet split screen, text scaling, accessibility, safe areas, reduced motion and low-end Android.
 5. Test loading, empty, stale, denied, failure/retry, offline, process death, duplicate and account separation. Use fictional or fully synthetic test health data, never real user exports in Git.
-6. Run `dart format --output=none --set-exit-if-changed lib test`, `flutter analyze`, `flutter test`; include runtime and actual device tests for native/persistence/watch integration. Record all unrun checks and risks.
+6. From `apps/mobile/`, run `dart format --output=none --set-exit-if-changed lib test`, `flutter analyze`, `flutter test`; include runtime and actual device tests for native/persistence/watch integration. Record all unrun checks and risks.
 
 ## Data ownership hard rules
 
@@ -25,8 +25,17 @@ Applies to **all AI coding, design, test and review agents**. Read `README.md`, 
 - Watch logs its own set and event durably, phone records set+inbox receipt atomically, phone ACKs, then independently attempts Supabase backup. ACK from phone != cloud backup.
 - WatchOS: native HealthKit workout engine, watch-origin `HKWorkout` saved once and never duplicated by phone. Wear OS: native Health Services session, one chosen platform export writer. UI toolkit is under device-test evaluation.
 - Permission revocation invalidates cached health reads. Platform health data can **never** flow into cloud workout backups or Firebase telemetry.
-- Respect ObjectBox stable model UIDs; commit generated code and `lib/objectbox-model.json`; test migrations with old databases.
+- Respect ObjectBox stable model UIDs; commit generated code and `apps/mobile/lib/objectbox-model.json`; test migrations with old databases.
 
 ## Review completion checklist
 
 **Why / changed behavior / data ownership / privacy / offline+sync state / UI light+dark+tablet evidence / tests actually run / failure and rollback / deferred functionality**. A reviewer challenges serialization contracts, migration, RLS and replays separately. Changes to policies, provider choices, backup scope or watch ownership need a numbered ADR.
+
+## Monorepo source ownership (ADR-0004)
+
+- `apps/mobile/` is the **Flutter project root**; Flutter CLI, pub, formatting and tests run there. Root has no `pubspec.yaml` and **no monorepo-wide Dart workspace** until a second production Dart package exists.
+- `apps/watch_os/` owns SwiftUI watch implementation sources and XcodeGen proof target. iPhone Runner integration/embedded companion archive is **not complete**; do not label the watch as a shipped target or duplicate watch Swift sources in `apps/mobile/ios`.
+- `apps/wear_os/` owns independent Kotlin/Compose watch app and Gradle build. Native foreground workout service is not present yet. Neither watch UI may fake a saved session.
+- `contracts/workout_sync/v1/` defines portable wire messages with fixtures for eventual Swift, Kotlin and Dart adapters; no direct Dart models shared into Swift/Kotlin.
+- `supabase/` remains backend schema/tests only after reviewed implementations; `packages/` and `experiments/` remain isolation boundaries. Keep original web prototype files intact.
+- Read any nested `AGENTS.md` when working inside an app, and update layout/build docs when paths change.

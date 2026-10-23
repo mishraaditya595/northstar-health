@@ -25,3 +25,16 @@ ios/Flutter/flutter_export_environment.sh
 *.sqlite
 *.db
 *.log
+
+# Monorepo native build products and local configuration
+**/.gradle/
+**/local.properties
+**/key.properties
+**/Pods/
+**/DerivedData/
+**/.build/
+**/*.xcuserstate
+**/xcuserdata/
+apps/mobile/ios/Flutter/Generated.xcconfig
+apps/mobile/ios/Flutter/flutter_export_environment.sh
+apps/watch_os/NorthStarWatch.xcodeproj/
