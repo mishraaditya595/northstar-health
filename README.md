@@ -1,30 +1,47 @@
-# Northstar Health prototype
+# Northstar Health
 
-This is a dependency-free, clickable prototype for the Northstar Health product brief. It is intentionally a prototype rather than a working health app: device permissions, health sync, authentication, timers, backups and file exports are represented with prepared states only.
+An offline-first Flutter health and strength-training companion for Android, iOS, iPad and Android tablets. **Status: foundation/demo, not a live health integration.**
 
-## Run locally
+## Start here
+- [Agent instructions](AGENTS.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Design system](docs/DESIGN_SYSTEM.md)
+- [Health data and privacy](docs/HEALTH_DATA.md)
+- [Agent review protocol](docs/REVIEW_GUIDE.md)
+- [Implementation roadmap](docs/ROADMAP.md)
 
-From the project root:
+## Repository
 
-```bash
-python3 -m http.server 4173
+```
+lib/
+  app/                       # app shell and adaptive routing
+  core/design/               # theme and design tokens
+  features/                  # today, train, progress, health
+test/                        # widget tests
+docs/                        # decisions, instructions and product constraints
+prototypes/performance-v2/   # preserved original, runnable HTML/CSS/JS
+.github/                     # PR template and CI
 ```
 
-Open [http://localhost:4173](http://localhost:4173).
+## Flutter setup
+Requires Flutter SDK 3.47.7 and Dart 3.13. On macOS install Xcode/CocoaPods and Android SDK for native builds. **Platform folders and pubspec.lock are not generated yet** (Flutter SDK unavailable in authoring environment). Once on your machine:
 
-## Prototype journeys
+```sh
+flutter create --platforms=android,ios --project-name=northstar_health --org=dev.northstar .
+flutter pub get
+dart format lib test
+flutter analyze
+flutter test
+flutter run
+```
 
-- **Today → Active Workout:** Start a Full Body A session, complete squat sets, open the rest timer, minimise, resume, finish and save.
-- **Train → Templates:** Browse the reviewed template collection and open a routine preview.
-- **Progress:** Open the exercise trend and weekly review.
-- **Health:** Inspect sleep, steps, resting heart rate, weight and connection/source states.
-- **Onboarding:** Use the playground rail’s “Run onboarding” action to walk through goals, schedule and the simulated Apple Health handoff.
-- **Settings & privacy:** Explore export, backup, restore, imported-data removal and destructive confirmation states.
-- **Theme:** Toggle the light/dark treatment from the playground rail.
+Review bundle identifiers, minimum deployment versions, privacy entitlements and platform settings before committing generated `android/`, `ios/` and `pubspec.lock`. CI bootstraps transient runners.
 
-## Product boundaries represented in the demo
+## Original prototype
+```sh
+cd prototypes/performance-v2
+python3 -m http.server 4173
+```
+Then open http://localhost:4173. The HTML prototype includes more mocked journeys than this native foundation; no wearable permissions, device readings, authentication, or backups are live.
 
-- Fictional Alex data is fixed to Friday, 23 October 2026.
-- Health metrics show a source and date, and missing records are not rendered as zeroes.
-- There is no readiness score, medical advice, AI coach, account, social layer or live wearable connection.
-- The prototype is responsive: the desktop view includes a playground rail, while narrow screens focus on the mobile frame.
+All sample metrics are fictional. Do not infer medical advice from them.
