@@ -5,6 +5,10 @@ import 'package:northstar_health/app/northstar_app.dart';
 
 void main() {
   testWidgets('Today shows fictional metrics and four tabs', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(const ProviderScope(child: NorthstarApp()));
     await tester.pumpAndSettle();
 
