@@ -25,6 +25,8 @@ jobs:
             if [ "$generated_test" = true ]; then rm -f test/widget_test.dart; fi
           fi
       - run: flutter pub get
+      - name: Validate README prototype assets
+        run: python3 -m unittest discover -s tool -p 'test_*.py'
       - name: Verify committed Dart formatting
         run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
