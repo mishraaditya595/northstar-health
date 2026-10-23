@@ -1,6 +1,10 @@
 name: WatchOS standalone build proof (manual)
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/watch_os/**'
+      - '.github/workflows/watchos_smoke.yml'
 
 jobs:
   watch:
