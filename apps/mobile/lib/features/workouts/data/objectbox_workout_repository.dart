@@ -262,7 +262,7 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
           prior.status == set.status.name &&
           prior.reps == set.reps &&
           prior.loadGrams == set.loadGrams &&
-          prior.inputUnit == set.inputUnit &&
+          prior.inputUnit == set.inputUnit.name &&
           prior.rpe == set.rpe &&
           prior.completedAtMs ==
               set.completedAtUtc?.toUtc().millisecondsSinceEpoch;
@@ -278,10 +278,6 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
           .any((e) => e.position == set.position && e.uuid != set.uuid)) {
         throw StateError('Set position is already occupied');
       }
-      final checkpoint = _one(
-        _checkpoints, WorkoutSessionStateEntity_.sessionUuid, sessionUuid,
-      );
-      if (checkpoint == null) throw StateError('Missing checkpoint');
       _sets.put(
         WorkoutSetEntity(
           id: prior?.id ?? 0,
@@ -299,6 +295,12 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
         ),
       );
       _touch(session);
+      // If the checkpoint is missing, this late guard throws after writes:
+      // ObjectBox must roll back the set AND session revision together.
+      final checkpoint = _one(
+        _checkpoints, WorkoutSessionStateEntity_.sessionUuid, sessionUuid,
+      );
+      if (checkpoint == null) throw StateError('Missing checkpoint');
       checkpoint.selectedExerciseUuid = set.exerciseUuid;
       checkpoint.selectedSetUuid = set.uuid;
       checkpoint.checkpointRevision = session.revision;
