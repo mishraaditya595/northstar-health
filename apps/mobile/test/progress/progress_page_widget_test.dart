@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -461,7 +462,7 @@ void main() {
     expect(fake.calls, 2);
   });
 
-  testWidgets('error and retry show loading and recover without false data', (
+  testWidgets('initial loading, error and retry recover without false data', (
     tester,
   ) async {
     final fake = _FlakyHistoryRepository();
@@ -477,6 +478,11 @@ void main() {
         ),
       ),
     );
+    // A pending first read must show a loading indicator, not an empty
+    // history or invented numbers.
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.text('Nothing logged yet'), findsNothing);
+    fake.initialRead.completeError(StateError('synthetic read failure'));
     await tester.pumpAndSettle();
     expect(
       find.textContaining('Could not load completed workouts'),
@@ -502,15 +508,16 @@ class _ImmediateHistoryRepository implements WorkoutHistoryRepository {
 }
 
 class _FlakyHistoryRepository implements WorkoutHistoryRepository {
+  final initialRead = Completer<WorkoutHistorySnapshot>();
   int calls = 0;
   @override
   WorkoutHistorySnapshot readCompleted() =>
       const WorkoutHistorySnapshot(sessions: []);
   @override
-  Future<WorkoutHistorySnapshot> readCompletedAsync() async {
+  Future<WorkoutHistorySnapshot> readCompletedAsync() {
     calls++;
-    if (calls == 1) throw StateError('synthetic read failure');
-    return readCompleted();
+    if (calls == 1) return initialRead.future;
+    return Future.value(readCompleted());
   }
 }
 
