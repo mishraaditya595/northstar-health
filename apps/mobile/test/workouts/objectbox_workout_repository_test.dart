@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -217,7 +219,7 @@ void main() {
     expect(repository.getSession(active.uuid)!.sets, hasLength(1));
   });
 
-  test('create/exercise/finish exact repeated commands are idempotent', () {
+  test('create/exercise repeats are idempotent, stale finish is rejected', () {
     final first = start();
     final originalRevision = first.revision;
     repository.createSession(
@@ -238,7 +240,14 @@ void main() {
     final finishedAt = DateTime.utc(2026, 10, 24, 11);
     repository.finishSession(first.uuid, expectedRevision: originalRevision, finishedAtUtc: finishedAt);
     final completeRev = repository.getSession(first.uuid)!.revision;
-    repository.finishSession(first.uuid, finishedAtUtc: finishedAt);
+    expect(
+      () => repository.finishSession(
+        first.uuid,
+        expectedRevision: originalRevision,
+        finishedAtUtc: finishedAt,
+      ),
+      throwsA(isA<WorkoutRevisionConflict>()),
+    );
     expect(repository.getSession(first.uuid)!.revision, completeRev);
     expect(repository.getSession(first.uuid)!.status, WorkoutStatus.completed);
     expect(

@@ -29,20 +29,29 @@ workouts without internet, login, HealthKit, Health Connect or Firebase.
   entire transaction, leaving no partial session.
 - **One unfinished workout** (in-progress or paused) per local Store:
   enforced inside the start transaction, including the legacy create path.
-  Unknown status values block starting another workout; never silently
-  assume a future status means completed.
+  Both use a common ObjectBox query filtering terminal statuses rather than
+  `getAll()` (no new status index yet). Unknown status values block starting
+  another workout; never silently assume a future status means completed.
 - **Retries:** exact start UUID/time/source/offset replay returns the existing
   saved session, without duplicating sets or reopening completed sessions.
   Conflicting UUID reuse throws.
 - **Recovery:** after a fresh process starts, look up the one unfinished
   session and its checkpoint. Missing checkpoint, unknown status or multiple
-  active sessions fails closed. Individual set changes already persist their
-  checkpoint and revision atomically in the existing repository.
+  active sessions fails closed. The checkpoint revision must equal the
+  session revision, otherwise recovery/transition throws without mutation.
+  Individual set changes already persist their checkpoint and revision
+  atomically in the existing repository.
 - **State changes:** `inProgress → paused → inProgress`, or either active
   state to `completed`/`discarded`. Require `expectedRevision`; updates
-  to session, checkpoint revision or checkpoint deletion are atomic. An exact
-  repeated acknowledged transition with immediately previous revision is
-  idempotent; late/conflicting transitions fail.
+  to session, checkpoint revision or checkpoint deletion are atomic.
+  Pause/resume **never infer an acknowledged retry from the destination
+  status**: even if the requested state already matches, stale revisions
+  throw `WorkoutRevisionConflict` and the UI must reload. Finish and
+  discard retain their narrowly checked exact-replay behavior.
+- The old `WorkoutRepository.finishSession` is deprecated; it now requires
+  `expectedRevision`, validates the matching checkpoint in the write
+  transaction and rejects stale calls. The production lifecycle API is
+  `LiveWorkoutEngine.finishWorkout`.
 - **Finish** stores its provided UTC completion timestamp and removes the
   active checkpoint. **Discard** leaves an audit-only discarded session and
   removes the checkpoint. Later history views must show **completed only**.
@@ -55,10 +64,12 @@ creates disposable Store directories and verifies:
 1. Atomic plan materialization, snapshots, exact start replay and null planned sets.
 2. Single active workout, including legacy creation and paused state.
 3. Close/reopen of native Store with committed reps/load/RPE, revision and selected-set checkpoint.
-4. Pause/resume, optimistic stale command rejection and idempotency.
+4. Pause/resume, including edits wrongly mistaken for retries, and
+   optimistic stale command rejection.
 5. Finish/discard, state integrity and allowing a subsequent workout.
 6. Plan rename/archive preserving historical session snapshots.
-7. Unique generated child-ID collision aborting all writes.
+7. Unique generated child-ID collision throws `UniqueViolationException`
+   and aborts all writes.
 8. Bad or missing plan, invalid quick start, missing checkpoint, unknown
    future status and conflicting session UUID are all fail-closed.
 
