@@ -12,7 +12,9 @@ than replacing architecture decisions.
 - [Live workout engine](phase-1/live-workout-engine.md) — atomic
   quick/plan start, recovery and lifecycle commands (PR 3).
 - [Active workout logger and rest timer](phase-1/active-workout-logger.md)
-  — workout UI, atomic set/rest saves and resumable sessions (PR 4).
+  — workout UI, atomic set/rest saves and resumable sessions (PR #10).
+- [Workout history and progress](phase-1/workout-history-progress.md)
+  — locally completed sessions, factual loaded volume, trends and details (PR #11).
 
 The data-policy source of truth remains [ObjectBox](../OBJECTBOX.md) and
 [ADR-0003](../adr/0003-data-cloud-health.md).

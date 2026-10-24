@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../core/design/northstar_theme.dart';
 import '../features/health/health_page.dart';
 import '../features/progress/progress_page.dart';
+import '../features/progress/workout_history_detail_page.dart';
 import '../features/today/today_page.dart';
 import '../features/train/train_page.dart';
 import '../features/train/exercise_catalog_page.dart';
@@ -64,6 +65,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                 PlanEditorPage(planUuid: state.pathParameters['id']),
           ),
           GoRoute(path: '/progress', builder: (_, _) => const ProgressPage()),
+          GoRoute(
+            path: '/progress/workouts/:id',
+            builder: (_, state) => WorkoutHistoryDetailPage(
+              sessionUuid: state.pathParameters['id']!,
+            ),
+          ),
           GoRoute(path: '/health', builder: (_, _) => const HealthPage()),
         ],
       ),
@@ -99,10 +106,12 @@ class AdaptiveShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final index =
-        (location.startsWith('/train/') ? 1 : _routes.indexOf(location)).clamp(
-          0,
-          3,
-        );
+        (location.startsWith('/train/')
+                ? 1
+                : location.startsWith('/progress/')
+                ? 2
+                : _routes.indexOf(location))
+            .clamp(0, 3);
     return LayoutBuilder(
       builder: (context, constraints) {
         final expanded = constraints.maxWidth >= 600;

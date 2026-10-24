@@ -11,8 +11,10 @@ Move Flutter to `apps/mobile/` and commit reviewed native Android and iOS runner
 Implementation reports and PR scopes live under
 [docs/implementation/](implementation/README.md). The foundation and
 exercise/plan catalog and local session lifecycle engine (no UI) are implemented;
-the active logging UI and rest-timer implementation are now under review;
-history/progress and real-device persistence QA remain outstanding.
+the active logging UI and rest timer have been merged in PR #10;
+completed workout history/progress is under review in PR #11. Physical-device
+persistence QA, backups, iOS build verification and accessibility remain
+outstanding.
 
 ObjectBox schema and generated model committed; domain models and repository boundary; plan/exercise editor, custom exercise catalog, live sets/reps/weight/RPE, rest timer, progress and session checkpoints; atomic durable write; model-migration and process-death tests. App usable with no account, internet or health permission.
 

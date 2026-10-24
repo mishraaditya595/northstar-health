@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/units/load_units.dart';
 import '../workouts/domain/live_workout_engine.dart';
 import '../workouts/domain/workout_models.dart';
+import '../progress/workout_history_state.dart';
 import '../workouts/domain/workout_repository.dart';
 import 'active_workout_state.dart';
 import 'rest_timer_card.dart';
@@ -35,6 +36,9 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
     try {
       action(ref.read(workoutActionsProvider));
       ref.invalidate(activeWorkoutProvider);
+      if (leaveOnSuccess) {
+        ref.invalidate(completedWorkoutHistoryProvider);
+      }
       if (leaveOnSuccess && mounted) {
         context.go('/train');
       }
