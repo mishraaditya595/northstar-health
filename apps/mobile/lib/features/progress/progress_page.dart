@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/units/load_units.dart';
 
-import '../workouts/domain/workout_models.dart';
 import 'domain/workout_history_models.dart';
 import 'workout_history_state.dart';
 
@@ -315,7 +314,7 @@ String _mass(int grams, LoadUnit unit) {
   for (var decimals = 1; decimals <= precision; decimals++) {
     final display = value.toStringAsFixed(decimals);
     if (LoadUnits.toGrams(double.parse(display), unit) == grams) {
-      return '${display} ${unit == LoadUnit.lb ? 'lb' : 'kg'}';
+      return '$display ${unit == LoadUnit.lb ? 'lb' : 'kg'}';
     }
   }
   return '${value.toStringAsFixed(precision)} ${unit == LoadUnit.lb ? 'lb' : 'kg'}';
