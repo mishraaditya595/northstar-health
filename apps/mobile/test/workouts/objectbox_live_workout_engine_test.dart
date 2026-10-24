@@ -771,4 +771,57 @@ void main() {
       throwsStateError,
     );
   });
+
+  test('rejected set write leaves active rest timer and checkpoint unchanged', () {
+    final session = startQuick();
+    sessions.addExercise(const WorkoutExerciseRecord(
+      uuid: 'exercise-1',
+      sessionUuid: 'quick-1',
+      nameSnapshot: 'Press',
+      position: 0,
+    ));
+    final active = sessions.getSession(session.uuid)!;
+    final idle = engine.readCheckpoint(session.uuid)!;
+    final timer = engine.startRestTimer(
+      session.uuid,
+      expectedRevision: active.revision,
+      expectedCheckpointSavedAtMs: idle.savedAtMs,
+      seconds: 120,
+    );
+    expect(() => sessions.saveSet(
+      sessionUuid: session.uuid,
+      expectedRevision: active.revision,
+      set: const WorkoutSetRecord(
+        uuid: 'rejected-set',
+        exerciseUuid: 'exercise-1',
+        position: 0,
+        kind: WorkoutSetKind.working,
+        status: WorkoutSetStatus.planned,
+        reps: -1,
+      ),
+      restSeconds: 60,
+    ), throwsArgumentError);
+    final after = engine.readCheckpoint(session.uuid)!;
+    expect(after.restState, timer.restState);
+    expect(after.restDeadlineUtcMs, timer.restDeadlineUtcMs);
+    expect(after.savedAtMs, timer.savedAtMs);
+    expect(after.checkpointRevision, timer.checkpointRevision);
+    expect(sessions.getSession(session.uuid)!.revision, active.revision);
+    expect(sessions.getSession(session.uuid)!.sets, isEmpty);
+  });
+
+  test('unknown rest timer state blocks recovery and timer writes', () {
+    final session = startQuick();
+    final box = store.box<WorkoutSessionStateEntity>();
+    final row = box.getAll().single;
+    row.restState = 'unknown_future_rest';
+    box.put(row);
+    expect(() => engine.readCheckpoint(session.uuid), throwsStateError);
+    expect(() => engine.recoverActiveWorkout(), throwsStateError);
+    expect(() => engine.pauseWorkout(
+      session.uuid, expectedRevision: session.revision,
+    ), throwsStateError);
+    expect(sessions.getSession(session.uuid)!.status,
+      WorkoutStatus.inProgress);
+  });
 }
