@@ -1,4 +1,11 @@
 import 'package:flutter/material.dart';
+
+import '../../core/design/dialogs.dart';
+import '../../core/design/inputs.dart';
+import '../../core/design/section.dart';
+import '../../core/design/northstar_theme.dart';
+import '../../core/design/page_header.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,6 +14,7 @@ import '../workouts/domain/live_workout_engine.dart';
 import '../workouts/domain/workout_models.dart';
 import '../progress/workout_history_state.dart';
 import '../workouts/domain/workout_repository.dart';
+import 'previous_sets.dart';
 import 'active_workout_state.dart';
 import 'rest_timer_card.dart';
 import 'train_library_state.dart';
@@ -22,19 +30,22 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
   bool _busy = false;
   String? _error;
 
-  Future<void> _perform(
+  /// Runs one local write. Returns true once it committed.
+  Future<bool> _perform(
     void Function(WorkoutActions actions) action, {
     bool leaveOnSuccess = false,
   }) async {
     if (_busy) {
-      return;
+      return false;
     }
+    var committed = false;
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
       action(ref.read(workoutActionsProvider));
+      committed = true;
       ref.invalidate(activeWorkoutProvider);
       if (leaveOnSuccess) {
         ref.invalidate(completedWorkoutHistoryProvider);
@@ -78,37 +89,45 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
         setState(() => _busy = false);
       }
     }
+    return committed;
   }
 
   Future<void> _confirmEnd(WorkoutSessionRecord workout, bool discard) async {
-    final yes = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(discard ? 'Discard workout?' : 'Finish workout?'),
-        content: Text(
-          discard
-              ? 'This session will not appear in your completed history.'
-              : 'Only recorded sets count toward workout history.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Keep training'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(discard ? 'Discard workout' : 'Finish workout'),
-          ),
-        ],
-      ),
+    final yes = await showNsConfirm(
+      context,
+      title: discard ? 'Discard workout?' : 'Finish workout?',
+      message: discard
+          ? 'This session will not appear in your completed history.'
+          : 'Only recorded sets count toward workout history.',
+      cancelLabel: 'Keep training',
+      confirmLabel: discard ? 'Discard workout' : 'Finish workout',
     );
-    if (yes != true || !mounted) {
+    if (!yes || !mounted) {
       return;
     }
     await _perform(
       (a) => discard ? a.discard(workout) : a.finish(workout),
       leaveOnSuccess: true,
     );
+  }
+
+  Future<bool> _removeSet(
+    WorkoutSessionRecord workout,
+    WorkoutSetRecord set,
+  ) async {
+    if (set.status == WorkoutSetStatus.completed) {
+      final yes = await showNsConfirm(
+        context,
+        title: 'Remove this set?',
+        message: 'This recorded set will be deleted from the workout.',
+        cancelLabel: 'Keep set',
+        confirmLabel: 'Remove set',
+      );
+      if (!yes || !mounted) {
+        return false;
+      }
+    }
+    return _perform((a) => a.removeSet(workout, set));
   }
 
   Future<void> _chooseExercise(WorkoutSessionRecord workout) async {
@@ -121,53 +140,45 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
           .where((exercise) => exercise.archivedAtMs == null)
           .toList();
       var search = '';
-      final chosen = await showModalBottomSheet<String>(
-        context: context,
-        isScrollControlled: true,
-        showDragHandle: true,
-        builder: (sheetContext) => SafeArea(
-          child: FractionallySizedBox(
-            heightFactor: 0.78,
-            child: StatefulBuilder(
-              builder: (context, updateSheet) {
-                final list = available
-                    .where(
-                      (e) =>
-                          e.name.toLowerCase().contains(search) ||
-                          e.muscleGroup.toLowerCase().contains(search),
-                    )
-                    .toList();
-                return Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: TextField(
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search),
-                          labelText: 'Find a movement',
-                          border: OutlineInputBorder(),
-                        ),
-                        onChanged: (value) => updateSheet(
-                          () => search = value.trim().toLowerCase(),
-                        ),
-                      ),
+      final chosen = await showNsSheet<String>(
+        context,
+        builder: (sheetContext) => StatefulBuilder(
+          builder: (context, updateSheet) {
+            final list = available
+                .where(
+                  (e) =>
+                      e.name.toLowerCase().contains(search) ||
+                      e.muscleGroup.toLowerCase().contains(search),
+                )
+                .toList();
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: NsTextField(
+                    prefixIcon: Icons.search,
+                    label: 'Find a movement',
+                    onChanged: (value) =>
+                        updateSheet(() => search = value.trim().toLowerCase()),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    itemCount: list.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (_, index) => NsListCard(
+                      icon: Icons.fitness_center,
+                      title: list[index].name,
+                      subtitle: list[index].muscleGroup,
+                      onTap: () =>
+                          Navigator.pop(sheetContext, list[index].uuid),
                     ),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: list.length,
-                        itemBuilder: (_, index) => ListTile(
-                          title: Text(list[index].name),
-                          subtitle: Text(list[index].muscleGroup),
-                          onTap: () =>
-                              Navigator.pop(sheetContext, list[index].uuid),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       );
       if (chosen == null || !mounted) {
@@ -190,6 +201,7 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
     final active = ref.watch(activeWorkoutProvider);
     return Scaffold(
       appBar: AppBar(
+        leading: const NsBackButton(),
         title: const Text('Workout in progress'),
         actions: [
           IconButton(
@@ -255,20 +267,41 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
           session.sets.where((s) => s.exerciseUuid == exercise.uuid).toList()
             ..sort((a, b) => a.position.compareTo(b.position));
     }
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+    final restActive =
+        checkpoint.restStatus == RestTimerStatus.running ||
+        checkpoint.restStatus == RestTimerStatus.paused;
+    final restTimer = RestTimerCard(
+      key: ValueKey('${session.uuid}-${checkpoint.savedAtMs}'),
+      checkpoint: checkpoint,
+      runningWorkout: !paused,
+      floating: true,
+      onStart: (seconds) =>
+          _perform((a) => a.startRest(session, checkpoint, seconds)),
+      onClear: () => _perform((a) => a.clearRest(session, checkpoint)),
+    );
+    final list = ListView(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        16,
+        16,
+        (restActive ? 104 : 40) + MediaQuery.paddingOf(context).bottom,
+      ),
       children: [
         Text(
           session.name,
-          style: Theme.of(context).textTheme.headlineMedium
-              ?.copyWith(fontWeight: FontWeight.w900),
+          style: Theme.of(context).textTheme.headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -1),
         ),
         const SizedBox(height: 6),
         Text(
           paused
               ? 'PAUSED · SAVED ON DEVICE'
               : 'RECORDING LOCALLY · NO CONNECTION NEEDED',
-          style: Theme.of(context).textTheme.labelMedium,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: Theme.of(context).extension<NorthstarColors>()!.muted,
+            letterSpacing: 1.1,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: 6),
         Text('$completed completed of ${session.sets.length} sets'),
@@ -326,54 +359,20 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
           ],
         ),
         const SizedBox(height: 12),
-        RestTimerCard(
-          key: ValueKey('${session.uuid}-${checkpoint.savedAtMs}'),
-          checkpoint: checkpoint,
-          runningWorkout: !paused,
-          onStart: (seconds) =>
-              _perform((a) => a.startRest(session, checkpoint, seconds)),
-          onClear: () => _perform((a) => a.clearRest(session, checkpoint)),
-        ),
+        // Same slot either way, so set rows keep their unsaved drafts when the
+        // timer starts floating.
+        restActive ? const SizedBox.shrink() : restTimer,
         const SizedBox(height: 16),
         for (final exercise in session.exercises) ...[
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    exercise.nameSnapshot,
-                    style: Theme.of(context).textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.w800),
-                  ),
-                  if (exercise.equipmentSnapshot.isNotEmpty)
-                    Text(exercise.equipmentSnapshot),
-                  const SizedBox(height: 12),
-                  for (final set in byExercise[exercise.uuid]!)
-                    SetEditorTile(
-                      key: ValueKey(set.uuid),
-                      record: set,
-                      enabled: !_busy && !paused,
-                      onSave: (updated, rest) => _perform(
-                        (a) => a.saveSet(session, updated, restSeconds: rest),
-                      ),
-                    ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: _busy || paused
-                          ? null
-                          : () => _perform(
-                              (a) => a.addPlannedSet(session, exercise),
-                            ),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add set'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          _ExerciseCard(
+            key: ValueKey(exercise.uuid),
+            exercise: exercise,
+            sets: byExercise[exercise.uuid]!,
+            enabled: !_busy && !paused,
+            onSave: (updated, rest) =>
+                _perform((a) => a.saveSet(session, updated, restSeconds: rest)),
+            onRemove: (set) => _removeSet(session, set),
+            onAddSet: () => _perform((a) => a.addPlannedSet(session, exercise)),
           ),
           const SizedBox(height: 12),
         ],
@@ -395,20 +394,234 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
         ),
       ],
     );
+    return Stack(
+      children: [
+        list,
+        if (restActive)
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 12 + MediaQuery.paddingOf(context).bottom,
+            child: restTimer,
+          ),
+      ],
+    );
   }
 }
 
+/// One exercise: header, rest choice, a SET / PREVIOUS / load / reps table and
+/// an Add set action.
+class _ExerciseCard extends ConsumerStatefulWidget {
+  const _ExerciseCard({
+    required this.exercise,
+    required this.sets,
+    required this.enabled,
+    required this.onSave,
+    required this.onRemove,
+    required this.onAddSet,
+    super.key,
+  });
+
+  final WorkoutExerciseRecord exercise;
+  final List<WorkoutSetRecord> sets;
+  final bool enabled;
+  final void Function(WorkoutSetRecord set, int? restSeconds) onSave;
+  final Future<bool> Function(WorkoutSetRecord set) onRemove;
+  final VoidCallback onAddSet;
+
+  @override
+  ConsumerState<_ExerciseCard> createState() => _ExerciseCardState();
+}
+
+class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
+  int rest = 90;
+
+  Future<void> _chooseRest() async {
+    final chosen = await showNsSheet<int>(
+      context,
+      heightFactor: 0.5,
+      builder: (sheetContext) => ListView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          const SectionHeading('Rest after a recorded set'),
+          for (final seconds in const [0, 60, 90, 120, 180])
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: NsListCard(
+                icon: seconds == rest
+                    ? Icons.check_circle
+                    : Icons.timer_outlined,
+                title: seconds == 0 ? 'No rest timer' : '$seconds seconds',
+                subtitle: seconds == 0
+                    ? 'Do not start a countdown'
+                    : 'Starts when you record a new set',
+                onTap: () => Navigator.pop(sheetContext, seconds),
+              ),
+            ),
+        ],
+      ),
+    );
+    if (chosen != null && mounted) setState(() => rest = chosen);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final previous = ref.watch(
+      previousSetsProvider(widget.exercise.definitionUuid),
+    );
+    final done = widget.sets
+        .where((e) => e.status == WorkoutSetStatus.completed)
+        .length;
+    final units = widget.sets.map((e) => e.inputUnit).toSet();
+    final loadHeader = units.length > 1
+        ? 'LOAD'
+        : (units.firstOrNull == LoadUnit.lb ? 'LB' : 'KG');
+    var working = 0;
+    final numbers = <String, int>{};
+    for (final set in widget.sets) {
+      if (set.kind != WorkoutSetKind.warmup) working++;
+      numbers[set.uuid] = working == 0 ? 1 : working;
+    }
+    TextStyle? head(BuildContext c) => theme.textTheme.labelSmall?.copyWith(
+      color: muted,
+      letterSpacing: 1,
+      fontWeight: FontWeight.w800,
+    );
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.exercise.nameSnapshot,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.8,
+                    ),
+                  ),
+                ),
+                NsTag('$done/${widget.sets.length}'),
+              ],
+            ),
+            if (widget.exercise.equipmentSnapshot.isNotEmpty)
+              Text(
+                widget.exercise.equipmentSnapshot,
+                style: TextStyle(color: muted),
+              ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              children: [
+                NsChip(
+                  label: rest == 0 ? 'Rest: off' : 'Rest: ${rest}s',
+                  selected: false,
+                  onSelected: (_) => widget.enabled ? _chooseRest() : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (widget.sets.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: SetEditorTile.badgeWidth,
+                      child: Center(child: Text('SET', style: head(context))),
+                    ),
+                    const SizedBox(width: SetEditorTile.gap),
+                    Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text('PREVIOUS', style: head(context)),
+                      ),
+                    ),
+                    const SizedBox(width: SetEditorTile.gap),
+                    SizedBox(
+                      width: SetEditorTile.loadWidth,
+                      child: Center(
+                        child: Text(loadHeader, style: head(context)),
+                      ),
+                    ),
+                    const SizedBox(width: SetEditorTile.gap),
+                    SizedBox(
+                      width: SetEditorTile.repsWidth,
+                      child: Center(child: Text('REPS', style: head(context))),
+                    ),
+                    const SizedBox(width: SetEditorTile.gap),
+                    SizedBox(
+                      width: SetEditorTile.checkWidth,
+                      child: Icon(Icons.check, size: 16, color: muted),
+                    ),
+                  ],
+                ),
+              ),
+            for (var index = 0; index < widget.sets.length; index++)
+              SetEditorTile(
+                key: ValueKey(widget.sets[index].uuid),
+                record: widget.sets[index],
+                number: numbers[widget.sets[index].uuid]!,
+                previous: index < previous.length ? previous[index] : null,
+                enabled: widget.enabled,
+                restSeconds: rest,
+                onSave: widget.onSave,
+                onRemove: () => widget.onRemove(widget.sets[index]),
+              ),
+            const SizedBox(height: 10),
+            FilledButton.tonalIcon(
+              onPressed: widget.enabled ? widget.onAddSet : null,
+              icon: const Icon(Icons.add),
+              label: const Text('Add set'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One set as a table row: badge (tap for options), previous (tap to reuse),
+/// load, reps and a check that records it.
 class SetEditorTile extends StatefulWidget {
   const SetEditorTile({
     required this.record,
     required this.enabled,
     required this.onSave,
+    this.onRemove,
+    this.number,
+    this.previous,
+    this.restSeconds = 90,
     super.key,
   });
+
+  static const badgeWidth = 44.0;
+  static const loadWidth = 80.0;
+  static const repsWidth = 68.0;
+  static const checkWidth = 48.0;
+  static const gap = 8.0;
 
   final WorkoutSetRecord record;
   final bool enabled;
   final void Function(WorkoutSetRecord set, int? restSeconds) onSave;
+
+  /// Deletes the set (asking first when needed); true once it is gone. Null
+  /// hides the remove action and disables swiping.
+  final Future<bool> Function()? onRemove;
+
+  /// Working-set number shown on the badge; defaults to position + 1.
+  final int? number;
+
+  /// Same-position set from the last completed session of this exercise.
+  final WorkoutSetRecord? previous;
+
+  /// Countdown started when a not-yet-recorded set is recorded. 0 = none.
+  final int restSeconds;
 
   @override
   State<SetEditorTile> createState() => _SetEditorTileState();
@@ -420,7 +633,6 @@ class _SetEditorTileState extends State<SetEditorTile> {
   late final TextEditingController rpe;
   late LoadUnit unit;
   late WorkoutSetKind kind;
-  int rest = 90;
   String? error;
 
   @override
@@ -441,13 +653,22 @@ class _SetEditorTileState extends State<SetEditorTile> {
     super.didUpdateWidget(oldWidget);
     final before = oldWidget.record;
     final after = widget.record;
-    if (before.reps == after.reps &&
+    final sameValues =
+        before.reps == after.reps &&
         before.loadGrams == after.loadGrams &&
         before.rpe == after.rpe &&
-        before.kind == after.kind &&
         before.status == after.status &&
         before.inputUnit == after.inputUnit &&
-        before.completedAtUtc == after.completedAtUtc) {
+        before.completedAtUtc == after.completedAtUtc;
+    if (sameValues && before.kind == after.kind) {
+      return;
+    }
+    if (sameValues) {
+      // Only the set type was committed (_changeKind): follow it, but keep
+      // whatever the user has typed and not yet saved.
+      kind = after.kind == WorkoutSetKind.unknown
+          ? WorkoutSetKind.working
+          : after.kind;
       return;
     }
     unit = after.inputUnit == LoadUnit.unknown ? LoadUnit.kg : after.inputUnit;
@@ -524,163 +745,322 @@ class _SetEditorTileState extends State<SetEditorTile> {
       updated.validate();
       widget.onSave(
         updated,
-        s.status == WorkoutSetStatus.planned && rest > 0 ? rest : null,
+        s.status == WorkoutSetStatus.planned && widget.restSeconds > 0
+            ? widget.restSeconds
+            : null,
       );
     } catch (_) {
       setState(() => error = 'Check that the values are in the valid range.');
     }
   }
 
+  String _previousText(WorkoutSetRecord p) {
+    final count = p.reps?.toString() ?? '?';
+    if (p.loadGrams == null) return '$count reps';
+    final u = p.inputUnit == LoadUnit.lb ? 'lb' : 'kg';
+    var load = _savedWeightText(p.loadGrams, p.inputUnit);
+    if (load.endsWith('.0')) load = load.substring(0, load.length - 2);
+    return '$load$u × $count';
+  }
+
+  void _usePrevious(WorkoutSetRecord p) {
+    setState(() {
+      unit = p.inputUnit == LoadUnit.unknown ? LoadUnit.kg : p.inputUnit;
+      reps.text = p.reps?.toString() ?? '';
+      weight.text = _savedWeightText(p.loadGrams, unit);
+      error = null;
+    });
+  }
+
+  /// Warm-up vs working changes the badge and every later working-set number,
+  /// so it is saved at once; typed-but-unsaved reps and load stay drafts.
+  void _changeKind(WorkoutSetKind next) {
+    if (next == kind) return;
+    final s = widget.record;
+    setState(() => kind = next);
+    widget.onSave(
+      WorkoutSetRecord(
+        uuid: s.uuid,
+        exerciseUuid: s.exerciseUuid,
+        position: s.position,
+        kind: next,
+        status: s.status,
+        reps: s.reps,
+        loadGrams: s.loadGrams,
+        inputUnit: s.inputUnit,
+        rpe: s.rpe,
+        completedAtUtc: s.completedAtUtc,
+      ),
+      null,
+    );
+  }
+
+  Future<void> _options() async {
+    final s = widget.record;
+    await showNsSheet<void>(
+      context,
+      heightFactor: 0.7,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, refresh) => Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                children: [
+                  SectionHeading('Set ${s.position + 1} options'),
+                  NsDropdown<WorkoutSetKind>(
+                    value: kind,
+                    label: 'Set type',
+                    onChanged: (value) {
+                      _changeKind(value);
+                      refresh(() {});
+                    },
+                    options: const [
+                      NsOption(WorkoutSetKind.working, 'Working'),
+                      NsOption(WorkoutSetKind.warmup, 'Warm-up'),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  NsDropdown<LoadUnit>(
+                    value: unit,
+                    label: 'Load unit',
+                    onChanged: (next) {
+                      if (next == unit) return;
+                      final entered = double.tryParse(weight.text.trim());
+                      if (entered != null && entered >= 0 && entered.isFinite) {
+                        final grams = LoadUnits.toGrams(entered, unit);
+                        weight.text = _savedWeightText(grams, next);
+                      }
+                      setState(() => unit = next);
+                      refresh(() {});
+                    },
+                    options: const [
+                      NsOption(LoadUnit.kg, 'Kilograms (kg)'),
+                      NsOption(LoadUnit.lb, 'Pounds (lb)'),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  NsTextField(
+                    key: ValueKey('rpe-${s.uuid}'),
+                    controller: rpe,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    label: 'Effort (RPE, optional)',
+                  ),
+                  const SizedBox(height: 16),
+                  if (s.status == WorkoutSetStatus.planned)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: NsListCard(
+                        icon: Icons.skip_next_outlined,
+                        title: 'Skip set',
+                        subtitle: 'Leave it out of this workout\'s totals',
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          widget.onSave(skippedSet(s), null);
+                        },
+                      ),
+                    ),
+                  if (widget.onRemove != null)
+                    NsListCard(
+                      icon: Icons.delete_outline,
+                      title: 'Remove set',
+                      subtitle: 'Delete this set from the workout',
+                      onTap: () {
+                        Navigator.pop(sheetContext);
+                        widget.onRemove!();
+                      },
+                    ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: FilledButton(
+                onPressed: () => Navigator.pop(sheetContext),
+                child: const Text('Done'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = widget.record;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final done = s.status == WorkoutSetStatus.completed;
+    final skipped = s.status == WorkoutSetStatus.skipped;
+    final warm = kind == WorkoutSetKind.warmup;
+    final number = widget.number ?? s.position + 1;
+    final badgeColor = warm
+        ? const Color(0xFFE5A92B)
+        : theme.colorScheme.onSurface;
+    final previous = widget.previous;
+    final hintStyle = TextStyle(
+      color: theme.colorScheme.onSurfaceVariant.withValues(alpha: .6),
+    );
+    final row = Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      decoration: BoxDecoration(
+        color: done
+            ? (dark
+                  ? NorthstarPalette.forestSoftDark
+                  : NorthstarPalette.forestSoftLight)
+            : null,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'SET ${s.position + 1} · ${s.status.name.toUpperCase()}',
-            style: Theme.of(context).textTheme.labelLarge,
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          Row(
             children: [
               SizedBox(
-                width: 82,
-                child: TextField(
-                  key: ValueKey('reps-${s.uuid}'),
-                  controller: reps,
-                  enabled: widget.enabled,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Reps',
-                    border: OutlineInputBorder(),
+                width: SetEditorTile.badgeWidth,
+                child: Tooltip(
+                  message: 'Set ${s.position + 1} options',
+                  child: Material(
+                    color: theme.colorScheme.onSurface.withValues(alpha: .08),
+                    borderRadius: BorderRadius.circular(14),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: widget.enabled ? _options : null,
+                      child: SizedBox(
+                        height: 48,
+                        child: Center(
+                          child: Text(
+                            warm ? 'W' : '$number',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: skipped
+                                  ? theme.colorScheme.onSurfaceVariant
+                                  : badgeColor,
+                              decoration: skipped
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
+              const SizedBox(width: SetEditorTile.gap),
+              Expanded(
+                child: previous == null
+                    ? Center(
+                        child: Text(
+                          skipped ? 'Skipped' : '—',
+                          style: hintStyle,
+                        ),
+                      )
+                    : Tooltip(
+                        message: 'Use previous ${_previousText(previous)}',
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: widget.enabled
+                              ? () => _usePrevious(previous)
+                              : null,
+                          child: SizedBox(
+                            height: 48,
+                            child: Center(
+                              child: Text(
+                                _previousText(previous),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+              ),
+              const SizedBox(width: SetEditorTile.gap),
               SizedBox(
-                width: 108,
-                child: TextField(
+                width: SetEditorTile.loadWidth,
+                child: NsTextField(
                   key: ValueKey('weight-${s.uuid}'),
                   controller: weight,
+                  dense: true,
+                  textAlign: TextAlign.center,
                   enabled: widget.enabled,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  decoration: const InputDecoration(
-                    labelText: 'Weight',
-                    border: OutlineInputBorder(),
-                  ),
+                  hint: previous?.loadGrams == null
+                      ? null
+                      : _savedWeightText(previous!.loadGrams, unit),
                 ),
               ),
-              DropdownButton<LoadUnit>(
-                value: unit,
-                onChanged: widget.enabled
-                    ? (next) {
-                        if (next == null || next == unit) {
-                          return;
-                        }
-                        final entered = double.tryParse(weight.text.trim());
-                        if (entered != null &&
-                            entered >= 0 &&
-                            entered.isFinite) {
-                          final grams = LoadUnits.toGrams(entered, unit);
-                          weight.text = _savedWeightText(grams, next);
-                        }
-                        setState(() => unit = next);
-                      }
-                    : null,
-                items: const [
-                  DropdownMenuItem(value: LoadUnit.kg, child: Text('kg')),
-                  DropdownMenuItem(value: LoadUnit.lb, child: Text('lb')),
-                ],
-              ),
+              const SizedBox(width: SetEditorTile.gap),
               SizedBox(
-                width: 82,
-                child: TextField(
-                  key: ValueKey('rpe-${s.uuid}'),
-                  controller: rpe,
+                width: SetEditorTile.repsWidth,
+                child: NsTextField(
+                  key: ValueKey('reps-${s.uuid}'),
+                  controller: reps,
+                  dense: true,
+                  textAlign: TextAlign.center,
                   enabled: widget.enabled,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'RPE',
-                    border: OutlineInputBorder(),
-                  ),
+                  keyboardType: TextInputType.number,
+                  hint: previous?.reps?.toString(),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              DropdownButton<WorkoutSetKind>(
-                value: kind,
-                onChanged: widget.enabled
-                    ? (value) {
-                        if (value != null) {
-                          setState(() => kind = value);
-                        }
-                      }
-                    : null,
-                items: const [
-                  DropdownMenuItem(
-                    value: WorkoutSetKind.working,
-                    child: Text('Working'),
-                  ),
-                  DropdownMenuItem(
-                    value: WorkoutSetKind.warmup,
-                    child: Text('Warm-up'),
-                  ),
-                ],
-              ),
-              DropdownButton<int>(
-                value: rest,
-                onChanged: widget.enabled
-                    ? (v) {
-                        if (v != null) {
-                          setState(() => rest = v);
-                        }
-                      }
-                    : null,
-                items: const [
-                  DropdownMenuItem(value: 0, child: Text('No rest')),
-                  DropdownMenuItem(value: 60, child: Text('Rest 60s')),
-                  DropdownMenuItem(value: 90, child: Text('Rest 90s')),
-                  DropdownMenuItem(value: 120, child: Text('Rest 120s')),
-                ],
-              ),
-              FilledButton(
-                onPressed: widget.enabled ? _record : null,
-                child: Text(
-                  s.status == WorkoutSetStatus.completed
-                      ? 'Update set'
-                      : 'Save set',
+              const SizedBox(width: SetEditorTile.gap),
+              SizedBox(
+                width: SetEditorTile.checkWidth,
+                child: NsCheckButton(
+                  checked: done,
+                  tooltip: done
+                      ? 'Update set ${s.position + 1}'
+                      : 'Save set ${s.position + 1}',
+                  onPressed: widget.enabled ? _record : null,
                 ),
-              ),
-              TextButton(
-                onPressed:
-                    !widget.enabled || s.status != WorkoutSetStatus.planned
-                    ? null
-                    : () => widget.onSave(skippedSet(s), null),
-                child: const Text('Skip'),
               ),
             ],
           ),
           if (error != null)
-            Text(
-              error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+              child: Text(
+                error!,
+                style: TextStyle(color: theme.colorScheme.error),
+              ),
             ),
         ],
       ),
+    );
+    final remove = widget.onRemove;
+    if (remove == null || !widget.enabled) return row;
+    return Dismissible(
+      key: ValueKey('swipe-${s.uuid}'),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.only(right: 20),
+        alignment: Alignment.centerRight,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.error,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Icon(Icons.delete_outline, color: theme.colorScheme.onError),
+      ),
+      // The delete happens here. Answering false keeps Dismissible out of the
+      // removal: the page re-renders without the row when the commit succeeds,
+      // and a failed commit simply snaps the row back.
+      confirmDismiss: (_) async {
+        await remove();
+        return false;
+      },
+      child: row,
     );
   }
 }

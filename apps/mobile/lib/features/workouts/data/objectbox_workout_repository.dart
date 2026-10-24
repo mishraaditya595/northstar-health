@@ -384,6 +384,66 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
     });
   }
 
+  @override
+  void removeSet({
+    required String sessionUuid,
+    required String setUuid,
+    required int expectedRevision,
+  }) {
+    if (expectedRevision < 1) throw ArgumentError.value(expectedRevision);
+    _store.runInTransaction(TxMode.write, () {
+      final session = _one(_sessions, WorkoutSessionEntity_.uuid, sessionUuid);
+      if (session == null || session.deletedAtMs != null) {
+        throw StateError('Session does not exist or was deleted');
+      }
+      final prior = _one(_sets, WorkoutSetEntity_.uuid, setUuid);
+      if (prior == null) return; // Exact retry after a committed removal.
+      final exercise = _one(
+        _exercises,
+        WorkoutExerciseEntity_.uuid,
+        prior.exerciseUuid,
+      );
+      if (exercise == null || exercise.sessionUuid != sessionUuid) {
+        throw StateError('Set does not belong to session');
+      }
+      if (session.status != WorkoutStatus.inProgress.name &&
+          session.status != WorkoutStatus.paused.name) {
+        throw StateError('No editable session');
+      }
+      if (session.revision != expectedRevision) {
+        throw WorkoutRevisionConflict(expectedRevision, session.revision);
+      }
+      _sets.remove(prior.id);
+      final siblings = _matching(
+        _sets,
+        WorkoutSetEntity_.exerciseUuid,
+        prior.exerciseUuid,
+      )..sort((a, b) => a.position.compareTo(b.position));
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      for (var i = 0; i < siblings.length; i++) {
+        if (siblings[i].position == i) continue;
+        siblings[i].position = i;
+        siblings[i].updatedAtMs = now;
+        _sets.put(siblings[i]);
+      }
+      _touch(session);
+      final checkpoint = _one(
+        _checkpoints,
+        WorkoutSessionStateEntity_.sessionUuid,
+        sessionUuid,
+      );
+      if (checkpoint == null) throw StateError('Missing checkpoint');
+      if (checkpoint.selectedSetUuid == setUuid) {
+        checkpoint.selectedSetUuid = null;
+      }
+      checkpoint.checkpointRevision = session.revision;
+      checkpoint.savedAtMs = now > checkpoint.savedAtMs
+          ? now
+          : checkpoint.savedAtMs + 1;
+      _checkpoints.put(checkpoint);
+    });
+  }
+
   void _touch(WorkoutSessionEntity session) {
     session.revision += 1;
     session.updatedAtMs = DateTime.now().toUtc().millisecondsSinceEpoch;

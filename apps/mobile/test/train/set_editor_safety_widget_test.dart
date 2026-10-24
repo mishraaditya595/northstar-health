@@ -81,14 +81,24 @@ void main() {
     await tester.pump();
     expect(
       tester
-          .widget<TextField>(find.byKey(const ValueKey('reps-set-a')))
+          .widget<TextField>(
+            find.descendant(
+              of: find.byKey(const ValueKey('reps-set-a')),
+              matching: find.byType(TextField),
+            ),
+          )
           .controller!
           .text,
       '9',
     );
     expect(
       tester
-          .widget<TextField>(find.byKey(const ValueKey('weight-set-a')))
+          .widget<TextField>(
+            find.descendant(
+              of: find.byKey(const ValueKey('weight-set-a')),
+              matching: find.byType(TextField),
+            ),
+          )
           .controller!
           .text,
       '75.75',
@@ -99,18 +109,59 @@ void main() {
     await tester.pump();
     expect(
       tester
-          .widget<TextField>(find.byKey(const ValueKey('reps-set-a')))
+          .widget<TextField>(
+            find.descendant(
+              of: find.byKey(const ValueKey('reps-set-a')),
+              matching: find.byType(TextField),
+            ),
+          )
           .controller!
           .text,
       '8',
     );
     expect(
       tester
-          .widget<TextField>(find.byKey(const ValueKey('weight-set-a')))
+          .widget<TextField>(
+            find.descendant(
+              of: find.byKey(const ValueKey('weight-set-a')),
+              matching: find.byType(TextField),
+            ),
+          )
           .controller!
           .text,
       '101.25',
     );
+  });
+
+  testWidgets('saving only the set type keeps unsaved reps and load', (
+    tester,
+  ) async {
+    await render(tester);
+    await tester.enterText(find.byKey(const ValueKey('reps-set-a')), '9');
+    await tester.enterText(find.byKey(const ValueKey('weight-set-a')), '75.5');
+    // The page re-renders from the saved record after the type is committed.
+    redraw(
+      () => current = const WorkoutSetRecord(
+        uuid: 'set-a',
+        exerciseUuid: 'exercise-a',
+        position: 0,
+        kind: WorkoutSetKind.warmup,
+        status: WorkoutSetStatus.planned,
+      ),
+    );
+    await tester.pump();
+    String text(String key) => tester
+        .widget<TextField>(
+          find.descendant(
+            of: find.byKey(ValueKey('$key-set-a')),
+            matching: find.byType(TextField),
+          ),
+        )
+        .controller!
+        .text;
+    expect(text('reps'), '9');
+    expect(text('weight'), '75.5');
+    expect(find.text('W'), findsOneWidget);
   });
 
   testWidgets('updating saved 101.25 kg does not silently round grams', (
@@ -120,12 +171,17 @@ void main() {
     await render(tester);
     expect(
       tester
-          .widget<TextField>(find.byKey(const ValueKey('weight-set-a')))
+          .widget<TextField>(
+            find.descendant(
+              of: find.byKey(const ValueKey('weight-set-a')),
+              matching: find.byType(TextField),
+            ),
+          )
           .controller!
           .text,
       '101.25',
     );
-    await tester.tap(find.text('Update set'));
+    await tester.tap(find.byTooltip('Update set 1'));
     await tester.pump();
     expect(writes, hasLength(1));
     expect(writes.single.$1.loadGrams, 101250);
@@ -136,14 +192,18 @@ void main() {
   ) async {
     current = completed();
     await render(tester);
-    final skip = tester.widget<TextButton>(
-      find.widgetWithText(TextButton, 'Skip'),
-    );
-    expect(skip.onPressed, isNull);
+    await tester.tap(find.byTooltip('Set 1 options'));
+    await tester.pumpAndSettle();
+    expect(find.text('Skip set'), findsNothing);
     expect(writes, isEmpty);
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
     redraw(() => current = planned);
     await tester.pump();
-    await tester.tap(find.text('Skip'));
+    await tester.tap(find.byTooltip('Set 1 options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Skip set'));
+    await tester.pumpAndSettle();
     expect(writes, hasLength(1));
     expect(writes.single.$1.status, WorkoutSetStatus.skipped);
   });
@@ -153,13 +213,13 @@ void main() {
   ) async {
     current = completed();
     await render(tester);
-    await tester.tap(find.text('Update set'));
+    await tester.tap(find.byTooltip('Update set 1'));
     expect(writes.single.$2, isNull);
     writes.clear();
     redraw(() => current = planned);
     await tester.pump();
     await tester.enterText(find.byKey(const ValueKey('reps-set-a')), '8');
-    await tester.tap(find.text('Save set'));
+    await tester.tap(find.byTooltip('Save set 1'));
     expect(writes, hasLength(1));
     expect(writes.single.$2, 90);
   });
@@ -170,15 +230,191 @@ void main() {
     await render(tester);
     expect(
       tester
-          .widget<TextField>(find.byKey(const ValueKey('weight-set-a')))
+          .widget<TextField>(
+            find.descendant(
+              of: find.byKey(const ValueKey('weight-set-a')),
+              matching: find.byType(TextField),
+            ),
+          )
           .controller!
           .text,
       '225.0',
     );
-    await tester.tap(find.text('Update set'));
+    await tester.tap(find.byTooltip('Update set 1'));
     await tester.pump();
     expect(writes, hasLength(1));
     expect(writes.single.$1.inputUnit, LoadUnit.lb);
     expect(writes.single.$1.loadGrams, 102058);
+  });
+
+  group('set options and remove', () {
+    Future<void> pumpTile(
+      WidgetTester tester, {
+      Future<bool> Function()? onRemove,
+      bool enabled = true,
+      WorkoutSetRecord? previous,
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: SetEditorTile(
+                record: planned,
+                enabled: enabled,
+                previous: previous,
+                onSave: (_, _) {},
+                onRemove: onRemove,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('remove lives in the options sheet and calls back once', (
+      tester,
+    ) async {
+      var removed = 0;
+      await pumpTile(
+        tester,
+        onRemove: () async {
+          removed++;
+          return true;
+        },
+      );
+      await tester.tap(find.byTooltip('Set 1 options'));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(ListView).last, const Offset(0, -400));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Remove set'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove set'));
+      await tester.pumpAndSettle();
+      expect(removed, 1);
+    });
+
+    testWidgets('no remove option without a handler', (tester) async {
+      await pumpTile(tester);
+      await tester.tap(find.byTooltip('Set 1 options'));
+      await tester.pumpAndSettle();
+      expect(find.text('Remove set'), findsNothing);
+    });
+
+    testWidgets('options are unavailable while the workout is paused', (
+      tester,
+    ) async {
+      await pumpTile(tester, onRemove: () async => true, enabled: false);
+      await tester.tap(find.byTooltip('Set 1 options'), warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(find.text('Remove set'), findsNothing);
+    });
+
+    testWidgets('previous values are only copied when tapped', (tester) async {
+      final previous = completed(grams: 60000);
+      await pumpTile(tester, previous: previous);
+      TextField field(String key) => tester.widget<TextField>(
+        find.descendant(
+          of: find.byKey(ValueKey('$key-set-a')),
+          matching: find.byType(TextField),
+        ),
+      );
+      expect(field('reps').controller!.text, isEmpty);
+      expect(field('weight').controller!.text, isEmpty);
+      await tester.tap(find.byTooltip('Use previous 60kg × 8'));
+      await tester.pump();
+      expect(field('reps').controller!.text, '8');
+      expect(field('weight').controller!.text, '60.0');
+    });
+
+    testWidgets('row lays out badge, load, reps and check on one line', (
+      tester,
+    ) async {
+      await pumpTile(tester);
+      final tile = tester.getRect(find.byType(SetEditorTile));
+      final badge = tester.getRect(find.byTooltip('Set 1 options'));
+      final check = tester.getRect(find.byTooltip('Save set 1'));
+      expect(badge.left, lessThan(tile.left + 20));
+      expect(check.right, greaterThan(tile.right - 20));
+      expect((badge.center.dy - check.center.dy).abs(), lessThan(2));
+    });
+
+    testWidgets('swiping the row left removes the set', (tester) async {
+      var removed = 0;
+      await pumpTile(
+        tester,
+        onRemove: () async {
+          removed++;
+          return false; // the page re-renders the list; the row never lingers
+        },
+      );
+      await tester.drag(find.byType(SetEditorTile), const Offset(-500, 0));
+      await tester.pumpAndSettle();
+      expect(removed, 1);
+    });
+
+    testWidgets('a short swipe does nothing', (tester) async {
+      var removed = 0;
+      await pumpTile(
+        tester,
+        onRemove: () async {
+          removed++;
+          return false;
+        },
+      );
+      await tester.drag(find.byType(SetEditorTile), const Offset(-40, 0));
+      await tester.pumpAndSettle();
+      expect(removed, 0);
+    });
+
+    testWidgets('no swipe while paused or without a handler', (tester) async {
+      var removed = 0;
+      await pumpTile(
+        tester,
+        enabled: false,
+        onRemove: () async {
+          removed++;
+          return false;
+        },
+      );
+      await tester.drag(find.byType(SetEditorTile), const Offset(-500, 0));
+      await tester.pumpAndSettle();
+      expect(removed, 0);
+      await pumpTile(tester);
+      await tester.drag(find.byType(SetEditorTile), const Offset(-500, 0));
+      await tester.pumpAndSettle();
+      expect(find.byType(SetEditorTile), findsOneWidget);
+    });
+
+    testWidgets('choosing a set type saves it immediately, not as a draft', (
+      tester,
+    ) async {
+      final writes = <(WorkoutSetRecord, int?)>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: SetEditorTile(
+                record: planned,
+                enabled: true,
+                onSave: (set, rest) => writes.add((set, rest)),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.enterText(find.byType(TextField).last, '9');
+      await tester.tap(find.byTooltip('Set 1 options'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(DropdownButton<WorkoutSetKind>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Warm-up').last);
+      await tester.pumpAndSettle();
+      expect(writes, hasLength(1));
+      expect(writes.single.$1.kind, WorkoutSetKind.warmup);
+      // Only the structural change is written: typed-but-unsaved reps are not.
+      expect(writes.single.$1.status, WorkoutSetStatus.planned);
+      expect(writes.single.$1.reps, isNull);
+      expect(writes.single.$2, isNull);
+    });
   });
 }

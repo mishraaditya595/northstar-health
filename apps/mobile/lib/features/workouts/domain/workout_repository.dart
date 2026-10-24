@@ -26,6 +26,17 @@ abstract interface class WorkoutRepository {
     int? restSeconds,
   });
 
+  /// Deletes one set of an editable session. Remaining sets of the exercise
+  /// are re-numbered, the session revision advances and the recovery
+  /// checkpoint is updated in the same transaction. A set that is already
+  /// gone is an exact retry and returns without a write; a stale revision for
+  /// an existing set throws [WorkoutRevisionConflict].
+  void removeSet({
+    required String sessionUuid,
+    required String setUuid,
+    required int expectedRevision,
+  });
+
   /// Legacy primitive: use LiveWorkoutEngine.finishWorkout in production.
   /// The caller's observed session revision is always required.
   @Deprecated('Use LiveWorkoutEngine.finishWorkout')

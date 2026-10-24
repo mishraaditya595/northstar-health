@@ -12,6 +12,7 @@ class RestTimerCard extends StatefulWidget {
     required this.onStart,
     required this.onClear,
     required this.runningWorkout,
+    this.floating = false,
     this.nowUtc,
     super.key,
   });
@@ -20,6 +21,10 @@ class RestTimerCard extends StatefulWidget {
   final void Function(int seconds) onStart;
   final VoidCallback onClear;
   final bool runningWorkout;
+
+  /// Compact pill for overlaying a scrolling page while a rest is active.
+  /// An idle timer still shows the full start choices.
+  final bool floating;
 
   /// Injected only for deterministic countdown tests.
   final DateTime Function()? nowUtc;
@@ -115,6 +120,55 @@ class _RestTimerCardState extends State<RestTimerCard>
     final minutes = seconds ~/ 60;
     final restSeconds = seconds % 60;
     final complete = active && seconds == 0;
+    if (widget.floating && (active || paused)) {
+      final theme = Theme.of(context);
+      return Material(
+        key: const ValueKey('floating-rest-timer'),
+        elevation: 8,
+        shadowColor: Colors.black54,
+        color: theme.colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(color: theme.colorScheme.outline),
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 10, 8, 10),
+          child: Row(
+            children: [
+              Icon(Icons.timer_outlined, color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              Text(
+                '$minutes:${restSeconds.toString().padLeft(2, '0')}',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  complete
+                      ? 'REST COMPLETE'
+                      : paused
+                      ? 'REST PAUSED'
+                      : 'RESTING',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    letterSpacing: 1.1,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Clear rest',
+                onPressed: widget.onClear,
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
