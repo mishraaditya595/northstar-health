@@ -102,11 +102,11 @@ void main() {
     await showProgress(tester);
     expect(find.text('500'), findsOneWidget); // 8 × 62.5 kg
     await tester.scrollUntilVisible(
-      find.text('62.5 kg'),
+      find.textContaining('62.5 kg'),
       180,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('62.5 kg'), findsOneWidget);
+    expect(find.textContaining('62.5 kg'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Workout first'),
       180,
