@@ -22,7 +22,8 @@ No backup, watch tracking, Firebase or write/export permissions.
   rolling UTC finish-time boundary; calendar day labels use the captured
   original timezone offset rather than the phone's present timezone.
   The clock uses an `autoDispose` provider to resample each Progress visit;
-  history remains separately cached without a second ObjectBox read.
+  resuming the app also invalidates the clock if the tab stayed mounted during
+  days in the background. History stays cached without a second ObjectBox read.
 - Summary shows actual completed-workout count, performed *working*-set
   count and **loaded volume (kg/lb × reps)**. Volume sums integer
   `reps × loadGrams` only for completed working sets with a recorded load.
@@ -69,7 +70,8 @@ No backup, watch tracking, Firebase or write/export permissions.
 - Progress widget tests check empty screen, true recorded volume/trend,
   navigating a completed session into read-only detail, exclusion of
   unfinished sessions, dark theme and wide layout, cross-midnight dates,
-  round-trip visit clock expiry and consistent lb trend/volume display.
+  round-trip visit clock expiry, background-resume clock expiry and
+  consistent lb trend/volume display.
 - Still required before release: physical-device iOS/Android persistence
   and process death, backup exclusions, low-end device performance profiling,
   accessibility at 2× scaling, screen-reader labels, low-end tablets,
