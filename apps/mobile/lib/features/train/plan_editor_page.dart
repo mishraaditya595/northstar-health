@@ -288,8 +288,9 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
   }
 
   void _save() {
-    if (saving || pageError == 'This plan was archived or is unavailable.')
+    if (saving || pageError == 'This plan was archived or is unavailable.') {
       return;
+    }
     setState(() {
       saving = true;
       pageError = null;
@@ -360,7 +361,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
   @override
   Widget build(BuildContext context) {
     final definitions =
-        ref.watch(trainLibraryProvider).valueOrNull?.exercises ??
+        ref.watch(trainLibraryProvider).asData?.value.exercises ??
         ref
             .read(workoutLibraryRepositoryProvider)
             .listExercises(includeArchived: true);
