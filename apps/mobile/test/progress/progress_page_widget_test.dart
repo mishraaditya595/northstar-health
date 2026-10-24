@@ -240,9 +240,13 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('8 reps'), findsOneWidget);
-    final today = DateTime.now().toUtc().subtract(
+    final at = DateTime.now().toUtc().subtract(
         const Duration(hours: 1, minutes: 55));
-    expect(find.text('${today.day}/${today.month}'), findsOneWidget);
+    final local = at.add(const Duration(minutes: 330));
+    expect(find.text(
+      '${local.day.toString().padLeft(2, '0')}/'
+      '${local.month.toString().padLeft(2, '0')}',
+    ), findsOneWidget);
     await tester.tap(find.widgetWithText(ChoiceChip, 'lb'));
     await tester.pumpAndSettle();
     expect(find.textContaining('lb'), findsWidgets);
