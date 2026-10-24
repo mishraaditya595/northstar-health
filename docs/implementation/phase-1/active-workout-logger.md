@@ -25,7 +25,9 @@
   persisted**, not a UI tick counter. Pausing freezes remaining time;
   resuming recreates the deadline. Updating a completed set does not restart
   its rest countdown. Backgrounding/reopening the app does not reset
-  countdown duration.
+  countdown duration. Replacing the persisted deadline during an ongoing
+  countdown updates the display and ticker without referencing an expired
+  previous deadline.
 - Workouts and timer checkpoints are **ObjectBox-local**. No account,
   internet, HealthKit/Health Connect, Firebase collection, watch recording or
   cloud backup is introduced. Prescribed plan targets are not inferred
@@ -79,3 +81,8 @@
   native app background/permission behavior is tested on real devices.
 - Edits typed but not explicitly saved are not durable; after an optimistic
   conflict, the user must reload and deliberately re-enter/reconcile edits.
+- A corrupted/unsupported persisted rest state fails closed at checkpoint
+  recovery. The workout remains in ObjectBox but the screen cannot be used
+  until a future supervised repair or recovery UI is implemented. Phase 1
+  intentionally does **not** offer automatic repair, reset or discard through
+  that error state; this requires a separate scoped, audited recovery plan.

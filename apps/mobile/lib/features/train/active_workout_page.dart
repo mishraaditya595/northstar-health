@@ -458,9 +458,19 @@ class _SetEditorTileState extends State<SetEditorTile> {
 
   static String _savedWeightText(int? grams, LoadUnit unit) {
     if (grams == null) return '';
-    // Three decimals in kg, five in lb: both round-trip stored integer grams.
-    final precision = unit == LoadUnit.kg ? 3 : 5;
-    var output = LoadUnits.fromGrams(grams, unit).toStringAsFixed(precision);
+    // Display the shortest readable value that re-encodes to the exact
+    // persisted integer grams. For example, 102058 g becomes 225 lb,
+    // not 224.99938 lb. Higher precision is used only when necessary.
+    final load = LoadUnits.fromGrams(grams, unit);
+    final limit = unit == LoadUnit.kg ? 3 : 5;
+    var output = load.toStringAsFixed(limit);
+    for (var digits = 1; digits <= limit; digits++) {
+      final candidate = load.toStringAsFixed(digits);
+      if (LoadUnits.toGrams(double.parse(candidate), unit) == grams) {
+        output = candidate;
+        break;
+      }
+    }
     while (output.contains('.') && output.endsWith('0')) {
       output = output.substring(0, output.length - 1);
     }

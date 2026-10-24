@@ -12,6 +12,7 @@ class RestTimerCard extends StatefulWidget {
     required this.onStart,
     required this.onClear,
     required this.runningWorkout,
+    this.nowUtc,
     super.key,
   });
 
@@ -20,6 +21,9 @@ class RestTimerCard extends StatefulWidget {
   final VoidCallback onClear;
   final bool runningWorkout;
 
+  /// Injected only for deterministic countdown tests.
+  final DateTime Function()? nowUtc;
+
   @override
   State<RestTimerCard> createState() => _RestTimerCardState();
 }
@@ -27,20 +31,23 @@ class RestTimerCard extends StatefulWidget {
 class _RestTimerCardState extends State<RestTimerCard>
     with WidgetsBindingObserver {
   Timer? _ticker;
-  DateTime _now = DateTime.now().toUtc();
+  late DateTime _now;
+
+  DateTime _clock() => widget.nowUtc?.call() ?? DateTime.now().toUtc();
   bool _foreground = true;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _now = _clock();
     _syncTicker();
   }
 
   @override
   void didUpdateWidget(covariant RestTimerCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _now = DateTime.now().toUtc();
+    _now = _clock();
     _syncTicker();
   }
 
@@ -58,8 +65,12 @@ class _RestTimerCardState extends State<RestTimerCard>
     }
     _ticker ??= Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      setState(() => _now = DateTime.now().toUtc());
-      if (_now.millisecondsSinceEpoch >= deadline) {
+      setState(() => _now = _clock());
+      // The checkpoint can be replaced while this periodic timer is active.
+      // Never retain the deadline captured when the ticker was started.
+      final currentDeadline = widget.checkpoint.restDeadlineUtcMs;
+      if (currentDeadline == null ||
+          _now.millisecondsSinceEpoch >= currentDeadline) {
         _ticker?.cancel();
         _ticker = null;
       }
@@ -70,7 +81,7 @@ class _RestTimerCardState extends State<RestTimerCard>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _foreground = state == AppLifecycleState.resumed;
     if (_foreground) {
-      setState(() => _now = DateTime.now().toUtc());
+      setState(() => _now = _clock());
     }
     _syncTicker();
   }
