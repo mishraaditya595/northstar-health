@@ -159,12 +159,16 @@ void main() {
     'foreign exercise, occupied positions and invalid input do not write',
     () {
       final first = start();
+      // With the single-active invariant, finish A before starting B.
+      repository.finishSession(
+        first.uuid, finishedAtUtc: DateTime.utc(2026, 10, 24, 10),
+      );
       final second = start(id: 'session-2', exerciseId: 'exercise-2');
       expect(
         () => repository.saveSet(
-          sessionUuid: first.uuid,
-          set: makeSet(exerciseId: 'exercise-2'),
-          expectedRevision: first.revision,
+          sessionUuid: second.uuid,
+          set: makeSet(exerciseId: 'exercise-1'),
+          expectedRevision: second.revision,
         ),
         throwsStateError,
       );
@@ -172,7 +176,7 @@ void main() {
         () => repository.addExercise(
           const WorkoutExerciseRecord(
             uuid: 'exercise-3',
-            sessionUuid: 'session-1',
+            sessionUuid: 'session-2',
             nameSnapshot: 'Another press',
             position: 0,
           ),
@@ -181,9 +185,9 @@ void main() {
       );
       expect(
         () => repository.saveSet(
-          sessionUuid: first.uuid,
-          set: makeSet(reps: -1),
-          expectedRevision: first.revision,
+          sessionUuid: second.uuid,
+          set: makeSet(reps: -1, exerciseId: 'exercise-2'),
+          expectedRevision: second.revision,
         ),
         throwsArgumentError,
       );
