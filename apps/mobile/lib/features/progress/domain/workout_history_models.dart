@@ -168,7 +168,7 @@ WorkoutHistorySummary calculateWorkoutHistory(
       // int arithmetic: no floating-point rounding and no estimated 1RM.
       volume += set.loadGrams! * set.reps!;
       final exercise = exercises[set.exerciseUuid];
-      if (exercise == null || set.loadGrams! <= 0) continue;
+      if (exercise == null) continue;
       final identified = exercise.definitionUuid;
       final sig = signature(exercise);
       final matches = definitionsBySignature[sig];
@@ -196,7 +196,10 @@ WorkoutHistorySummary calculateWorkoutHistory(
           .add(
             ExerciseStrengthPoint(
               sessionUuid: session.uuid,
-              performedAtUtc: sample.completedAtUtc ?? session.completedAtUtc!,
+              // Trend points represent a completed workout. The chosen set
+              // supplies load/reps, but the date must match the history row
+              // even when that set was logged before midnight.
+              performedAtUtc: session.completedAtUtc!,
               grams: sample.loadGrams!,
               reps: sample.reps!,
               inputUnit: sample.inputUnit,
