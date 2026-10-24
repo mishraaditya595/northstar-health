@@ -56,6 +56,16 @@ Don't create an unbounded permanent `HealthObservation` archive from platform me
 - Persist UTC event time plus originating timezone/offset for daily-boundary interpretation. Preserve original units for display; use canonical physical units for calculation with conversion tests.
 - Store source/owner, revision, deletion state and explicit app/watch/platform origin. Historical exercise names/types are **snapshots**, not lookups that break when a user renames or deletes an exercise definition.
 - Commit `lib/objectbox-model.json` and generated `lib/objectbox.g.dart` together. **Never reset entity/property UIDs on rename**; independently review schema diffs and old-version fixture upgrade tests.
+- **PR #11 index-upgrade regression:** the frozen, pre-index generated model in
+  `apps/mobile/test/progress/fixtures/objectbox_pre_status_index.g.dart`
+  is preserved from the merged pre-PR11 model. The native test
+  `apps/mobile/test/progress/objectbox_workout_history_repository_test.dart`
+  creates a database with that model, closes it, then reopens it under the
+  current indexed status model. It asserts that historical session, exercise,
+  set and status-query data remain intact. Do not regenerate this fixture.
+  Only index UID 11 was added; all existing entity/property/index UIDs are
+  unchanged. CI must keep this upgrade test, not replace it with JSON-only
+  comparisons or a clean-database restart test.
 - Migrate type changes with versioned properties and explicit data transformation; don't assume automatic conversion or database-file encryption.
 
 ## Local-first transaction
