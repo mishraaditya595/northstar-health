@@ -94,7 +94,8 @@ void main() {
     );
 
     await tester.scrollUntilVisible(
-      find.text('Pause'), -240,
+      find.text('Pause'),
+      -240,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
@@ -150,8 +151,8 @@ void main() {
       await showApp(tester);
       expect(find.text('Resume: Quick workout'), findsOneWidget);
       await tester.ensureVisible(find.text('Resume: Quick workout'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Resume: Quick workout'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Resume: Quick workout'));
       await tester.pumpAndSettle();
       expect(find.text('Workout in progress'), findsOneWidget);
       expect(

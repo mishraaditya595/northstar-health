@@ -130,7 +130,9 @@ void main() {
       ProviderScope(
         overrides: [
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
-          activeWorkoutProvider.overrideWith((ref) => const AsyncData<ActiveWorkoutView?>(null)),
+          activeWorkoutProvider.overrideWith(
+            (ref) => const AsyncData<ActiveWorkoutView?>(null),
+          ),
         ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
@@ -208,7 +210,9 @@ void main() {
       ProviderScope(
         overrides: [
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
-          activeWorkoutProvider.overrideWith((ref) => const AsyncData<ActiveWorkoutView?>(null)),
+          activeWorkoutProvider.overrideWith(
+            (ref) => const AsyncData<ActiveWorkoutView?>(null),
+          ),
         ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
@@ -256,7 +260,9 @@ void main() {
         ProviderScope(
           overrides: [
             workoutLibraryRepositoryProvider.overrideWithValue(fake),
-            activeWorkoutProvider.overrideWith((ref) => const AsyncData<ActiveWorkoutView?>(null)),
+            activeWorkoutProvider.overrideWith(
+              (ref) => const AsyncData<ActiveWorkoutView?>(null),
+            ),
           ],
           child: MaterialApp.router(
             theme: NorthstarTheme.build(Brightness.dark),
@@ -322,7 +328,9 @@ void main() {
       ProviderScope(
         overrides: [
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
-          activeWorkoutProvider.overrideWith((ref) => const AsyncData<ActiveWorkoutView?>(null)),
+          activeWorkoutProvider.overrideWith(
+            (ref) => const AsyncData<ActiveWorkoutView?>(null),
+          ),
         ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
@@ -373,7 +381,9 @@ void main() {
       ProviderScope(
         overrides: [
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
-          activeWorkoutProvider.overrideWith((ref) => const AsyncData<ActiveWorkoutView?>(null)),
+          activeWorkoutProvider.overrideWith(
+            (ref) => const AsyncData<ActiveWorkoutView?>(null),
+          ),
         ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
@@ -422,7 +432,9 @@ void main() {
       ProviderScope(
         overrides: [
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
-          activeWorkoutProvider.overrideWith((ref) => const AsyncData<ActiveWorkoutView?>(null)),
+          activeWorkoutProvider.overrideWith(
+            (ref) => const AsyncData<ActiveWorkoutView?>(null),
+          ),
         ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
@@ -469,7 +481,9 @@ void main() {
       ProviderScope(
         overrides: [
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
-          activeWorkoutProvider.overrideWith((ref) => const AsyncData<ActiveWorkoutView?>(null)),
+          activeWorkoutProvider.overrideWith(
+            (ref) => const AsyncData<ActiveWorkoutView?>(null),
+          ),
         ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
@@ -516,7 +530,9 @@ void main() {
       ProviderScope(
         overrides: [
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
-          activeWorkoutProvider.overrideWith((ref) => const AsyncData<ActiveWorkoutView?>(null)),
+          activeWorkoutProvider.overrideWith(
+            (ref) => const AsyncData<ActiveWorkoutView?>(null),
+          ),
         ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
@@ -568,7 +584,9 @@ void main() {
       ProviderScope(
         overrides: [
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
-          activeWorkoutProvider.overrideWith((ref) => const AsyncData<ActiveWorkoutView?>(null)),
+          activeWorkoutProvider.overrideWith(
+            (ref) => const AsyncData<ActiveWorkoutView?>(null),
+          ),
         ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
@@ -613,7 +631,9 @@ void main() {
       ProviderScope(
         overrides: [
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
-          activeWorkoutProvider.overrideWith((ref) => const AsyncData<ActiveWorkoutView?>(null)),
+          activeWorkoutProvider.overrideWith(
+            (ref) => const AsyncData<ActiveWorkoutView?>(null),
+          ),
         ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
