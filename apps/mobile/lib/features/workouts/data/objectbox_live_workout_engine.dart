@@ -221,8 +221,89 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
               checkpointRevision: saved.checkpointRevision,
               selectedExerciseUuid: saved.selectedExerciseUuid,
               selectedSetUuid: saved.selectedSetUuid,
+              restState: saved.restState,
+              restDeadlineUtcMs: saved.restDeadlineUtcMs,
+              restRemainingMsWhenPaused: saved.restRemainingMsWhenPaused,
+              savedAtMs: saved.savedAtMs,
             );
     });
+  }
+
+  @override
+  WorkoutRecoveryCheckpoint startRestTimer(
+    String sessionUuid, {
+    required int expectedRevision,
+    required int expectedCheckpointSavedAtMs,
+    required int seconds,
+  }) {
+    if (seconds < 1 || seconds > 1800) {
+      throw ArgumentError.value(seconds, 'seconds');
+    }
+    _store.runInTransaction(TxMode.write, () {
+      final state = _editableTimerState(
+        sessionUuid, expectedRevision, expectedCheckpointSavedAtMs,
+      );
+      final checkpoint = state.$2;
+      if (state.$1.status != WorkoutStatus.inProgress.name) {
+        throw StateError('Rest timer requires a running workout');
+      }
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      checkpoint.restState = 'running';
+      checkpoint.restDeadlineUtcMs = now + seconds * 1000;
+      checkpoint.restRemainingMsWhenPaused = null;
+      _touchTimerCheckpoint(checkpoint, now);
+    });
+    return readCheckpoint(sessionUuid)!;
+  }
+
+  @override
+  WorkoutRecoveryCheckpoint clearRestTimer(
+    String sessionUuid, {
+    required int expectedRevision,
+    required int expectedCheckpointSavedAtMs,
+  }) {
+    _store.runInTransaction(TxMode.write, () {
+      final state = _editableTimerState(
+        sessionUuid, expectedRevision, expectedCheckpointSavedAtMs,
+      );
+      final checkpoint = state.$2;
+      checkpoint.restState = 'idle';
+      checkpoint.restDeadlineUtcMs = null;
+      checkpoint.restRemainingMsWhenPaused = null;
+      _touchTimerCheckpoint(
+        checkpoint, DateTime.now().toUtc().millisecondsSinceEpoch,
+      );
+    });
+    return readCheckpoint(sessionUuid)!;
+  }
+
+  (WorkoutSessionEntity, WorkoutSessionStateEntity) _editableTimerState(
+    String uuid,
+    int revision,
+    int checkpointSavedAtMs,
+  ) {
+    final session = _one(_sessions, WorkoutSessionEntity_.uuid, uuid);
+    if (session == null || session.deletedAtMs != null) {
+      throw StateError('Workout is missing or deleted');
+    }
+    if (session.revision != revision) {
+      throw WorkoutRevisionConflict(revision, session.revision);
+    }
+    if (session.status != WorkoutStatus.inProgress.name &&
+        session.status != WorkoutStatus.paused.name) {
+      throw StateError('Workout is not active');
+    }
+    final checkpoint = _requireCheckpoint(uuid, revision);
+    if (checkpoint.savedAtMs != checkpointSavedAtMs) {
+      throw StateError('Rest timer changed. Reload current workout.');
+    }
+    return (session, checkpoint);
+  }
+
+  void _touchTimerCheckpoint(WorkoutSessionStateEntity checkpoint, int now) {
+    checkpoint.savedAtMs =
+        now > checkpoint.savedAtMs ? now : checkpoint.savedAtMs + 1;
+    _checkpoints.put(checkpoint);
   }
 
   @override
@@ -266,6 +347,21 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
         throw StateError('Illegal workout transition');
       }
       final checkpoint = _requireCheckpoint(uuid, session.revision);
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      if (to == WorkoutStatus.paused &&
+          checkpoint.restState == 'running' &&
+          checkpoint.restDeadlineUtcMs != null) {
+        final left = checkpoint.restDeadlineUtcMs! - now;
+        checkpoint.restState = 'paused';
+        checkpoint.restDeadlineUtcMs = null;
+        checkpoint.restRemainingMsWhenPaused = left > 0 ? left : 0;
+      } else if (to == WorkoutStatus.inProgress &&
+          checkpoint.restState == 'paused') {
+        final left = checkpoint.restRemainingMsWhenPaused ?? 0;
+        checkpoint.restState = left > 0 ? 'running' : 'idle';
+        checkpoint.restDeadlineUtcMs = left > 0 ? now + left : null;
+        checkpoint.restRemainingMsWhenPaused = null;
+      }
       session.status = to.name;
       _touch(session);
       _touchCheckpoint(checkpoint, session.revision);
@@ -361,7 +457,9 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
 
   void _touchCheckpoint(WorkoutSessionStateEntity checkpoint, int revision) {
     checkpoint.checkpointRevision = revision;
-    checkpoint.savedAtMs = DateTime.now().toUtc().millisecondsSinceEpoch;
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    checkpoint.savedAtMs =
+        now > checkpoint.savedAtMs ? now : checkpoint.savedAtMs + 1;
     _checkpoints.put(checkpoint);
   }
 }
