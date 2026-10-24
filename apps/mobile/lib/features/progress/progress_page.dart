@@ -51,7 +51,9 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
 
   Widget _content(BuildContext context, WorkoutHistorySnapshot data) {
     final sessions = workoutsInPeriod(
-      data, _period, ref.watch(progressNowProvider),
+      data,
+      _period,
+      ref.watch(progressNowProvider),
     );
     final summary = calculateWorkoutHistory(sessions);
     final trends = summary.exerciseTrends;
@@ -62,9 +64,11 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
             orElse: () => trends.first,
           );
     final theme = Theme.of(context);
-    final displayUnit = _selectedLoadUnit ??
+    final displayUnit =
+        _selectedLoadUnit ??
         (selected != null && selected.points.last.inputUnit == LoadUnit.lb
-            ? LoadUnit.lb : LoadUnit.kg);
+            ? LoadUnit.lb
+            : LoadUnit.kg);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 44),
@@ -143,9 +147,11 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
                 _SummaryCard(
                   'LOADED VOLUME',
                   summary.loadedWorkingSets == 0
-                      ? '—' : _kilogramReps(summary.loadedVolumeGramReps),
+                      ? '—'
+                      : _kilogramReps(summary.loadedVolumeGramReps),
                   summary.loadedWorkingSets == 0
-                      ? 'No loaded sets' : 'kg × reps',
+                      ? 'No loaded sets'
+                      : 'kg × reps',
                   Icons.insights_outlined,
                 ),
               ];
@@ -225,14 +231,18 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Wrap(spacing: 8, children: [
-                      for (final unit in [LoadUnit.kg, LoadUnit.lb])
-                        ChoiceChip(
-                          label: Text(unit == LoadUnit.kg ? 'kg' : 'lb'),
-                          selected: displayUnit == unit,
-                          onSelected: (_) => setState(() => _selectedLoadUnit = unit),
-                        ),
-                    ]),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        for (final unit in [LoadUnit.kg, LoadUnit.lb])
+                          ChoiceChip(
+                            label: Text(unit == LoadUnit.kg ? 'kg' : 'lb'),
+                            selected: displayUnit == unit,
+                            onSelected: (_) =>
+                                setState(() => _selectedLoadUnit = unit),
+                          ),
+                      ],
+                    ),
                     const SizedBox(height: 10),
                     _RecentLoadBars(trend: selected, unit: displayUnit),
                     const SizedBox(height: 8),
@@ -392,15 +402,17 @@ class _RecentLoadBars extends StatelessWidget {
     return Semantics(
       label:
           'Recent best working-set loads for ${trend.name}: '
-          '${points.map((p) =>
-              '${formatWorkoutDay(p.originalLocalDay)}: '
+          '${points.map((p) => '${formatWorkoutDay(p.originalLocalDay)}: '
               '${_mass(p.grams, unit)} for ${p.reps} reps').join('; ')}',
       child: SizedBox(
         height: 192,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final visible = points.length > 4 ? 4 : points.length;
-            final barWidth = (constraints.maxWidth / visible).clamp(78.0, 155.0);
+            final barWidth = (constraints.maxWidth / visible).clamp(
+              78.0,
+              155.0,
+            );
             return SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -412,7 +424,8 @@ class _RecentLoadBars extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 5),
                         child: Tooltip(
-                          message: '${formatWorkoutDay(point.originalLocalDay)} · '
+                          message:
+                              '${formatWorkoutDay(point.originalLocalDay)} · '
                               '${_mass(point.grams, unit)} × ${point.reps} reps',
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.end,
@@ -425,9 +438,12 @@ class _RecentLoadBars extends StatelessWidget {
                               const SizedBox(height: 6),
                               Container(
                                 width: double.infinity,
-                                height: 68 * (max == 0
-                                    ? 0.05
-                                    : point.grams / max).clamp(0.05, 1.0),
+                                height:
+                                    68 *
+                                    (max == 0 ? 0.05 : point.grams / max).clamp(
+                                      0.05,
+                                      1.0,
+                                    ),
                                 decoration: BoxDecoration(
                                   color: Theme.of(context).colorScheme.primary,
                                   borderRadius: const BorderRadius.vertical(

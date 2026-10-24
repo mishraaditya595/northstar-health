@@ -40,9 +40,11 @@ class ObjectBoxWorkoutHistoryRepository implements WorkoutHistoryRepository {
     final result = <WorkoutExerciseEntity>[];
     for (var i = 0; i < uuids.length; i += _batchSize) {
       final end = i + _batchSize < uuids.length ? i + _batchSize : uuids.length;
-      final query = _exercises.query(
-        WorkoutExerciseEntity_.sessionUuid.oneOf(uuids.sublist(i, end)),
-      ).build();
+      final query = _exercises
+          .query(
+            WorkoutExerciseEntity_.sessionUuid.oneOf(uuids.sublist(i, end)),
+          )
+          .build();
       try {
         result.addAll(query.find());
       } finally {
@@ -56,9 +58,9 @@ class ObjectBoxWorkoutHistoryRepository implements WorkoutHistoryRepository {
     final result = <WorkoutSetEntity>[];
     for (var i = 0; i < uuids.length; i += _batchSize) {
       final end = i + _batchSize < uuids.length ? i + _batchSize : uuids.length;
-      final query = _sets.query(
-        WorkoutSetEntity_.exerciseUuid.oneOf(uuids.sublist(i, end)),
-      ).build();
+      final query = _sets
+          .query(WorkoutSetEntity_.exerciseUuid.oneOf(uuids.sublist(i, end)))
+          .build();
       try {
         result.addAll(query.find());
       } finally {
@@ -72,18 +74,21 @@ class ObjectBoxWorkoutHistoryRepository implements WorkoutHistoryRepository {
   WorkoutHistorySnapshot readCompleted() => _store.runInTransaction(
     TxMode.read,
     () {
-      final query = _sessions.query(
-        WorkoutSessionEntity_.status.equals(WorkoutStatus.completed.name) &
-        WorkoutSessionEntity_.origin.equals('northstar_phone') &
-        WorkoutSessionEntity_.deletedAtMs.isNull() &
-        WorkoutSessionEntity_.completedAtMs.notNull(),
-      ).build();
+      final query = _sessions
+          .query(
+            WorkoutSessionEntity_.status.equals(WorkoutStatus.completed.name) &
+                WorkoutSessionEntity_.origin.equals('northstar_phone') &
+                WorkoutSessionEntity_.deletedAtMs.isNull() &
+                WorkoutSessionEntity_.completedAtMs.notNull(),
+          )
+          .build();
       late final List<WorkoutSessionEntity> rows;
       try {
-        rows = query.find()..sort((a, b) {
-          final diff = b.completedAtMs!.compareTo(a.completedAtMs!);
-          return diff != 0 ? diff : a.uuid.compareTo(b.uuid);
-        });
+        rows = query.find()
+          ..sort((a, b) {
+            final diff = b.completedAtMs!.compareTo(a.completedAtMs!);
+            return diff != 0 ? diff : a.uuid.compareTo(b.uuid);
+          });
       } finally {
         query.close();
       }
@@ -94,23 +99,27 @@ class ObjectBoxWorkoutHistoryRepository implements WorkoutHistoryRepository {
       final setsByExercise = <String, List<WorkoutSetRecord>>{};
       final loadedSets = _getSets([for (final e in exercises) e.uuid]);
       for (final set in loadedSets) {
-        setsByExercise.putIfAbsent(set.exerciseUuid, () => []).add(
-          WorkoutSetRecord(
-            uuid: set.uuid,
-            exerciseUuid: set.exerciseUuid,
-            position: set.position,
-            kind: workoutSetKindFromStorage(set.kind),
-            status: workoutSetStatusFromStorage(set.status),
-            reps: set.reps,
-            loadGrams: set.loadGrams,
-            inputUnit: loadUnitFromStorage(set.inputUnit),
-            rpe: set.rpe,
-            completedAtUtc: set.completedAtMs == null
-                ? null
-                : DateTime.fromMillisecondsSinceEpoch(
-                    set.completedAtMs!, isUtc: true),
-          ),
-        );
+        setsByExercise
+            .putIfAbsent(set.exerciseUuid, () => [])
+            .add(
+              WorkoutSetRecord(
+                uuid: set.uuid,
+                exerciseUuid: set.exerciseUuid,
+                position: set.position,
+                kind: workoutSetKindFromStorage(set.kind),
+                status: workoutSetStatusFromStorage(set.status),
+                reps: set.reps,
+                loadGrams: set.loadGrams,
+                inputUnit: loadUnitFromStorage(set.inputUnit),
+                rpe: set.rpe,
+                completedAtUtc: set.completedAtMs == null
+                    ? null
+                    : DateTime.fromMillisecondsSinceEpoch(
+                        set.completedAtMs!,
+                        isUtc: true,
+                      ),
+              ),
+            );
       }
       final exercisesBySession = <String, List<WorkoutExerciseEntity>>{};
       for (final e in exercises) {
@@ -126,15 +135,17 @@ class ObjectBoxWorkoutHistoryRepository implements WorkoutHistoryRepository {
         final workoutExercises = <WorkoutExerciseRecord>[];
         final workoutSets = <WorkoutSetRecord>[];
         for (final e in children) {
-          workoutExercises.add(WorkoutExerciseRecord(
-            uuid: e.uuid,
-            sessionUuid: s.uuid,
-            definitionUuid: e.definitionUuid,
-            nameSnapshot: e.nameSnapshot,
-            muscleSnapshot: e.muscleSnapshot,
-            equipmentSnapshot: e.equipmentSnapshot,
-            position: e.position,
-          ));
+          workoutExercises.add(
+            WorkoutExerciseRecord(
+              uuid: e.uuid,
+              sessionUuid: s.uuid,
+              definitionUuid: e.definitionUuid,
+              nameSnapshot: e.nameSnapshot,
+              muscleSnapshot: e.muscleSnapshot,
+              equipmentSnapshot: e.equipmentSnapshot,
+              position: e.position,
+            ),
+          );
           final childSets = setsByExercise[e.uuid] ?? [];
           childSets.sort((a, b) {
             final position = a.position.compareTo(b.position);
@@ -142,20 +153,26 @@ class ObjectBoxWorkoutHistoryRepository implements WorkoutHistoryRepository {
           });
           workoutSets.addAll(childSets);
         }
-        sessions.add(WorkoutSessionRecord(
-          uuid: s.uuid,
-          name: s.name,
-          status: WorkoutStatus.completed,
-          startedAtUtc: DateTime.fromMillisecondsSinceEpoch(
-            s.startedAtMs, isUtc: true),
-          completedAtUtc: DateTime.fromMillisecondsSinceEpoch(
-            s.completedAtMs!, isUtc: true),
-          originalOffsetMinutes: s.originalOffsetMinutes,
-          revision: s.revision,
-          planUuid: s.planUuid,
-          exercises: List.unmodifiable(workoutExercises),
-          sets: List.unmodifiable(workoutSets),
-        ));
+        sessions.add(
+          WorkoutSessionRecord(
+            uuid: s.uuid,
+            name: s.name,
+            status: WorkoutStatus.completed,
+            startedAtUtc: DateTime.fromMillisecondsSinceEpoch(
+              s.startedAtMs,
+              isUtc: true,
+            ),
+            completedAtUtc: DateTime.fromMillisecondsSinceEpoch(
+              s.completedAtMs!,
+              isUtc: true,
+            ),
+            originalOffsetMinutes: s.originalOffsetMinutes,
+            revision: s.revision,
+            planUuid: s.planUuid,
+            exercises: List.unmodifiable(workoutExercises),
+            sets: List.unmodifiable(workoutSets),
+          ),
+        );
       }
       return WorkoutHistorySnapshot(sessions: List.unmodifiable(sessions));
     },
