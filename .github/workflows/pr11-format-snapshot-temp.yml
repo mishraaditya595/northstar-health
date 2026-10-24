@@ -1,0 +1,35 @@
+name: PR11 temporary pinned formatter snapshot
+on:
+  push:
+    branches: [feat/phase1-workout-history-progress]
+permissions:
+  contents: read
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - name: Format exactly as standard CI
+        working-directory: apps/mobile
+        run: dart format lib test
+      - name: Emit formatted source for deterministic commit
+        working-directory: apps/mobile
+        run: |
+          for file in \
+            lib/features/progress/workout_history_state.dart \
+            lib/features/progress/domain/workout_history_models.dart \
+            lib/features/progress/progress_page.dart \
+            test/progress/objectbox_workout_history_repository_test.dart \
+            test/progress/progress_page_widget_test.dart \
+            test/progress/workout_history_models_test.dart \
+            test/progress/fixtures/objectbox_pre_status_index.g.dart; do
+            printf 'BEGIN_PINNED_FILE:%s\\n' "$file"
+            base64 -w0 "$file"
+            printf '\\nEND_PINNED_FILE:%s\\n' "$file"
+          done
