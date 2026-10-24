@@ -33,6 +33,33 @@ workout_sync_operations
 
 These are **conceptual**, not ready-to-deploy SQL. Enforce maximum payload size, required fields, numeric ranges, supported aggregate versions, ownership and authorized operations. Implement a robust monotonic change feed/cursor whose semantics remain valid with concurrent transactions; ordinary sequence allocation can commit out of order, so do **not** naively advance a cursor beyond uncommitted earlier writes. Specify RLS indexes, operation retention and pagination in the migration PR.
 
+## Required Phase 1 completed-workout backfill on first account association
+
+An offline guest's Phase 1 workouts have **no outbox entries**. Creating a
+sync worker without a backfill would silently omit all workouts logged before
+sign-in. Phase 2 must implement and test this explicitly:
+
+1. After authentication, obtain **specific, revocable user consent** to
+   associate guest-owned *completed NorthStar* workouts with the current
+   account. No automatic assignment on login or account switch.
+2. In a local ObjectBox transaction, enumerate eligible completed sessions,
+   persist owner association, and enqueue **idempotent portable aggregate
+   snapshots** using stable operation IDs derived from the intended account,
+   session UUID and associated revision. Exclude drafts, discarded sessions,
+   raw health data, plans and other users' records.
+3. Make this resumable and duplicate-safe across process death, partial batch
+   completion, reconnect, sign-out and sign-in. Prevent the same completed
+   session from being assigned to a different account without explicit
+   reconciliation. Do not upload until consent and owner-scoped RLS are valid.
+4. Cover this in integration tests: old Phase 1 history survives first sync,
+   repeated backfill creates no duplicate operations, cloud ACK handling is
+   durable, user switches cannot leak data, and existing remote revisions
+   trigger conflict resolution rather than overwrite.
+
+**Acceptance:** every consented, eligible completed workout is either durably
+queued or explicitly presented as a recoverable failure. Guest history
+must never be silently lost from backup eligibility.
+
 ## Atomic write algorithm
 
 1. Workout UI -> domain command -> ObjectBox transaction updates session/sets and stores immutable `SyncOutbox` command with stable `operation_id`, snapshot and `expected_revision`.

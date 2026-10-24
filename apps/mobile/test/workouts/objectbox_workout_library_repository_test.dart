@@ -214,7 +214,7 @@ void main() {
             part('shared-uuid', 'builtin.v1.squat', 1),
           ],
         ),
-        throwsA(anything),
+        throwsA(isA<UniqueViolationException>()),
       );
       expect(library.getPlan('plan-b'), isNull);
       expect(store.box<PlanExerciseEntity>().count(), 1);

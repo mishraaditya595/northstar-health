@@ -6,6 +6,7 @@ import '../../../objectbox.g.dart';
 import '../domain/workout_models.dart';
 import '../domain/workout_repository.dart';
 import '../domain/workout_status_codec.dart';
+import 'unfinished_workout_query.dart';
 import 'workout_entities.dart';
 
 final workoutRepositoryProvider = Provider<WorkoutRepository>(
@@ -78,6 +79,11 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
           throw StateError('Conflicting session UUID');
         }
         return; // Duplicate create command is idempotent.
+      }
+      // All call paths must honor a single unfinished workout. This older
+      // primitive remains for tests; production starts use LiveWorkoutEngine.
+      if (queryUnfinishedWorkoutSessions(_sessions).isNotEmpty) {
+        throw StateError('Finish or discard the existing workout first');
       }
       _sessions.put(
         WorkoutSessionEntity(
@@ -323,28 +329,39 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
   }
 
   @override
-  void finishSession(String uuid, {required DateTime finishedAtUtc}) {
+  void finishSession(
+    String uuid, {
+    required int expectedRevision,
+    required DateTime finishedAtUtc,
+  }) {
+    if (expectedRevision < 1) throw ArgumentError.value(expectedRevision);
     _store.runInTransaction(TxMode.write, () {
       final session = _one(_sessions, WorkoutSessionEntity_.uuid, uuid);
       if (session == null || session.deletedAtMs != null) {
         throw StateError('Session does not exist or was deleted');
       }
-      final endMs = finishedAtUtc.toUtc().millisecondsSinceEpoch;
-      if (session.status == WorkoutStatus.completed.name &&
-          session.completedAtMs == endMs) {
-        return; // Exact repeated finish acknowledged without modifying revision.
+      // This deprecated entry point must never bypass the same
+      // optimistic-concurrency contract enforced by LiveWorkoutEngine.
+      if (session.revision != expectedRevision) {
+        throw WorkoutRevisionConflict(expectedRevision, session.revision);
       }
       if (session.status != WorkoutStatus.inProgress.name &&
           session.status != WorkoutStatus.paused.name) {
         throw StateError('Session is not active');
       }
-      if (endMs < session.startedAtMs) throw ArgumentError('End before start');
+      final endMs = finishedAtUtc.toUtc().millisecondsSinceEpoch;
+      if (endMs < session.startedAtMs) {
+        throw ArgumentError('End before start');
+      }
       final checkpoint = _one(
         _checkpoints,
         WorkoutSessionStateEntity_.sessionUuid,
         uuid,
       );
-      if (checkpoint == null) throw StateError('Missing checkpoint');
+      if (checkpoint == null ||
+          checkpoint.checkpointRevision != session.revision) {
+        throw StateError('Missing or outdated checkpoint');
+      }
       session.status = WorkoutStatus.completed.name;
       session.completedAtMs = endMs;
       _touch(session);

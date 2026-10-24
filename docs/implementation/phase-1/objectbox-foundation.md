@@ -16,8 +16,10 @@
   in the same ObjectBox transaction; if checkpoint lookup fails after set
   write, ObjectBox rolls back all changes. No UI should show success before
   the method returns.
-- `createSession`, `addExercise` and `finishSession` accept exact duplicate
-  commands and reject conflicting reuse of UUIDs. Exercise and set ordinal
+- `createSession` and `addExercise` accept exact duplicate
+  commands and reject conflicting reuse of UUIDs. The deprecated
+  `finishSession` now **requires expectedRevision** and rejects stale
+  commands. Production completion uses `LiveWorkoutEngine.finishWorkout`. Exercise and set ordinal
   positions are unique **per parent**, enforced in repository transactions.
   There is no composite unique DB index yet; all writes must use repositories.
 - Missing values remain nullable. Unknown persisted status/kind/unit strings
