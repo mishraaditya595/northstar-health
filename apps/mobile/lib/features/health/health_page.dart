@@ -47,28 +47,45 @@ class HealthPage extends StatelessWidget {
         ),
         const SizedBox(height: 27),
         const SectionHeading('Today'),
-        const _Stat(
-          'Sleep',
-          '6h 18m',
-          'Night ending 23 Oct · Demo',
-          Icons.bedtime_outlined,
-          sleep: true,
-        ),
-        const SizedBox(height: 10),
-        const _Stat('Steps', '6,420', '23 Oct · Demo', Icons.directions_walk),
-        const SizedBox(height: 10),
-        const _Stat(
-          'Resting heart rate',
-          '58 bpm',
-          '23 Oct · Demo',
-          Icons.favorite_border,
-        ),
-        const SizedBox(height: 10),
-        const _Stat(
-          'Weight',
-          '74.2 kg',
-          'Entered 22 Oct · Demo',
-          Icons.monitor_weight_outlined,
+        LayoutBuilder(
+          builder: (context, box) {
+            final columns = box.maxWidth >= 560 ? 2 : 1;
+            final width = (box.maxWidth - 10 * (columns - 1)) / columns;
+            return Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final stat in const [
+                  _Stat(
+                    'Sleep',
+                    '6h 18m',
+                    'Night ending 23 Oct · Demo',
+                    Icons.bedtime_outlined,
+                    sleep: true,
+                  ),
+                  _Stat(
+                    'Steps',
+                    '6,420',
+                    '23 Oct · Demo',
+                    Icons.directions_walk,
+                  ),
+                  _Stat(
+                    'Resting heart rate',
+                    '58 bpm',
+                    '23 Oct · Demo',
+                    Icons.favorite_border,
+                  ),
+                  _Stat(
+                    'Weight',
+                    '74.2 kg',
+                    'Entered 22 Oct · Demo',
+                    Icons.monitor_weight_outlined,
+                  ),
+                ])
+                  SizedBox(width: width, child: stat),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 27),
         const SectionHeading('Imported activities'),
