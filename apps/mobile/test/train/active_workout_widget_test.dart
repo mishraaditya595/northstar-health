@@ -15,6 +15,17 @@ import 'package:northstar_health/features/workouts/data/workout_entities.dart';
 import 'package:northstar_health/features/workouts/domain/workout_models.dart';
 import 'package:northstar_health/objectbox.g.dart';
 
+/// The options sheet scrolls above its pinned Done button; bring the Remove
+/// action into view the way a user would, then tap it.
+Future<void> tapRemoveInOptionsSheet(WidgetTester tester) async {
+  await tester.drag(find.byType(ListView).last, const Offset(0, -400));
+  await tester.pumpAndSettle();
+  await tester.ensureVisible(find.text('Remove set'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Remove set'));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   late Directory directory;
   late Store store;
@@ -75,9 +86,11 @@ void main() {
     expect(store.box<WorkoutSetEntity>().count(), 2);
 
     // A planned set holds no recorded data, so it goes without a question.
-    await tester.ensureVisible(find.byTooltip('Remove set 2'));
+    await tester.ensureVisible(find.byTooltip('Set 2 options'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Remove set 2'));
+    await tester.tap(find.byTooltip('Set 2 options'));
+    await tester.pumpAndSettle();
+    await tapRemoveInOptionsSheet(tester);
     await tester.pumpAndSettle();
     expect(find.text('Remove this set?'), findsNothing);
     expect(store.box<WorkoutSetEntity>().count(), 1);
@@ -87,23 +100,29 @@ void main() {
       of: find.byType(SetEditorTile),
       matching: find.byType(TextField),
     );
-    await tester.enterText(fields.at(0), '5');
-    await tester.ensureVisible(find.text('Save set'));
+    await tester.enterText(fields.at(1), '5'); // reps (load comes first)
+    await tester.ensureVisible(find.byTooltip('Save set 1'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Save set'));
+    await tester.tap(find.byTooltip('Save set 1'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byTooltip('Remove set 1'));
+    await tester.ensureVisible(find.byTooltip('Set 1 options'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Remove set 1'));
+    await tester.tap(find.byTooltip('Set 1 options'));
+    await tester.pumpAndSettle();
+    await tapRemoveInOptionsSheet(tester);
     await tester.pumpAndSettle();
     expect(find.text('Remove this set?'), findsOneWidget);
     await tester.tap(find.text('Keep set'));
     await tester.pumpAndSettle();
     expect(store.box<WorkoutSetEntity>().count(), 1);
 
-    await tester.tap(find.byTooltip('Remove set 1'));
+    await tester.ensureVisible(find.byTooltip('Set 1 options'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Remove set'));
+    await tester.tap(find.byTooltip('Set 1 options'));
+    await tester.pumpAndSettle();
+    await tapRemoveInOptionsSheet(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Remove set').last);
     await tester.pumpAndSettle();
     expect(store.box<WorkoutSetEntity>().count(), 0);
   });
@@ -132,10 +151,10 @@ void main() {
       of: find.byType(SetEditorTile),
       matching: find.byType(TextField),
     );
-    await tester.enterText(fields.first, '5');
-    await tester.ensureVisible(find.text('Save set').first);
+    await tester.enterText(fields.at(1), '5'); // reps
+    await tester.ensureVisible(find.byTooltip('Save set 1'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Save set').first);
+    await tester.tap(find.byTooltip('Save set 1'));
     await tester.pumpAndSettle();
 
     final timer = find.byKey(const ValueKey('floating-rest-timer'));
@@ -187,18 +206,26 @@ void main() {
       of: find.byType(SetEditorTile),
       matching: find.byType(TextField),
     );
-    await tester.enterText(fields.at(0), '8');
-    await tester.enterText(fields.at(1), '42.5');
-    await tester.enterText(fields.at(2), '8.5');
-    await tester.ensureVisible(find.byType(DropdownButton<WorkoutSetKind>));
+    await tester.enterText(fields.at(0), '42.5'); // load
+    await tester.enterText(fields.at(1), '8'); // reps
+    // Set type and effort live in the set's options sheet.
+    await tester.ensureVisible(find.byTooltip('Set 1 options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Set 1 options'));
     await tester.pumpAndSettle();
     await tester.tap(find.byType(DropdownButton<WorkoutSetKind>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Warm-up').last);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Save set'));
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Effort (RPE, optional)'),
+      '8.5',
+    );
+    await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Save set'));
+    await tester.ensureVisible(find.byTooltip('Save set 1'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Save set 1'));
     await tester.pumpAndSettle();
 
     final sessionUuid = store.box<WorkoutSessionEntity>().getAll().single.uuid;
@@ -300,7 +327,7 @@ void main() {
     await tester.enterText(draftWeight, '75.75');
     await tester.enterText(find.byKey(const ValueKey('reps-set-a')), '8');
     await tester.enterText(find.byKey(const ValueKey('weight-set-a')), '55');
-    await tester.tap(find.text('Save set').first);
+    await tester.tap(find.byTooltip('Save set 1'));
     await tester.pumpAndSettle();
 
     expect(

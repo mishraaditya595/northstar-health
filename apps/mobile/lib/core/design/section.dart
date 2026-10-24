@@ -30,7 +30,7 @@ class SectionHeading extends StatelessWidget {
             Text(
               action!,
               style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.extension<NorthstarColors>()!.muted,
+                color: theme.mutedColor,
               ),
             ),
         ],
@@ -46,7 +46,7 @@ class DemoLabel extends StatelessWidget {
   Widget build(BuildContext context) => Text(
     'FICTIONAL DEMO DATA · 23 OCT 2026',
     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-      color: Theme.of(context).extension<NorthstarColors>()!.muted,
+      color: Theme.of(context).mutedColor,
       letterSpacing: 1.1,
       fontWeight: FontWeight.w700,
     ),

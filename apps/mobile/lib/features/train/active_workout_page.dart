@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/design/dialogs.dart';
 import '../../core/design/inputs.dart';
+import '../../core/design/section.dart';
 import '../../core/design/northstar_theme.dart';
 import '../../core/design/page_header.dart';
 
@@ -13,6 +14,7 @@ import '../workouts/domain/live_workout_engine.dart';
 import '../workouts/domain/workout_models.dart';
 import '../progress/workout_history_state.dart';
 import '../workouts/domain/workout_repository.dart';
+import 'previous_sets.dart';
 import 'active_workout_state.dart';
 import 'rest_timer_card.dart';
 import 'train_library_state.dart';
@@ -358,58 +360,15 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
         restActive ? const SizedBox.shrink() : restTimer,
         const SizedBox(height: 16),
         for (final exercise in session.exercises) ...[
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          exercise.nameSnapshot,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.8,
-                              ),
-                        ),
-                      ),
-                      NsTag(
-                        '${byExercise[exercise.uuid]!.where((e) => e.status == WorkoutSetStatus.completed).length}'
-                        '/${byExercise[exercise.uuid]!.length}',
-                      ),
-                    ],
-                  ),
-                  if (exercise.equipmentSnapshot.isNotEmpty)
-                    Text(exercise.equipmentSnapshot),
-                  const SizedBox(height: 12),
-                  for (final set in byExercise[exercise.uuid]!)
-                    SetEditorTile(
-                      key: ValueKey(set.uuid),
-                      record: set,
-                      enabled: !_busy && !paused,
-                      onSave: (updated, rest) => _perform(
-                        (a) => a.saveSet(session, updated, restSeconds: rest),
-                      ),
-                      onRemove: () => _removeSet(session, set),
-                    ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: _busy || paused
-                          ? null
-                          : () => _perform(
-                              (a) => a.addPlannedSet(session, exercise),
-                            ),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add set'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          _ExerciseCard(
+            key: ValueKey(exercise.uuid),
+            exercise: exercise,
+            sets: byExercise[exercise.uuid]!,
+            enabled: !_busy && !paused,
+            onSave: (updated, rest) =>
+                _perform((a) => a.saveSet(session, updated, restSeconds: rest)),
+            onRemove: (set) => _removeSet(session, set),
+            onAddSet: () => _perform((a) => a.addPlannedSet(session, exercise)),
           ),
           const SizedBox(height: 12),
         ],
@@ -446,14 +405,201 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
   }
 }
 
+/// One exercise: header, rest choice, a SET / PREVIOUS / load / reps table and
+/// an Add set action.
+class _ExerciseCard extends ConsumerStatefulWidget {
+  const _ExerciseCard({
+    required this.exercise,
+    required this.sets,
+    required this.enabled,
+    required this.onSave,
+    required this.onRemove,
+    required this.onAddSet,
+    super.key,
+  });
+
+  final WorkoutExerciseRecord exercise;
+  final List<WorkoutSetRecord> sets;
+  final bool enabled;
+  final void Function(WorkoutSetRecord set, int? restSeconds) onSave;
+  final void Function(WorkoutSetRecord set) onRemove;
+  final VoidCallback onAddSet;
+
+  @override
+  ConsumerState<_ExerciseCard> createState() => _ExerciseCardState();
+}
+
+class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
+  int rest = 90;
+
+  Future<void> _chooseRest() async {
+    final chosen = await showNsSheet<int>(
+      context,
+      heightFactor: 0.5,
+      builder: (sheetContext) => ListView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          const SectionHeading('Rest after a recorded set'),
+          for (final seconds in const [0, 60, 90, 120, 180])
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: NsListCard(
+                icon: seconds == rest
+                    ? Icons.check_circle
+                    : Icons.timer_outlined,
+                title: seconds == 0 ? 'No rest timer' : '$seconds seconds',
+                subtitle: seconds == 0
+                    ? 'Do not start a countdown'
+                    : 'Starts when you record a new set',
+                onTap: () => Navigator.pop(sheetContext, seconds),
+              ),
+            ),
+        ],
+      ),
+    );
+    if (chosen != null && mounted) setState(() => rest = chosen);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final previous = ref.watch(
+      previousSetsProvider(widget.exercise.definitionUuid),
+    );
+    final done = widget.sets
+        .where((e) => e.status == WorkoutSetStatus.completed)
+        .length;
+    final units = widget.sets.map((e) => e.inputUnit).toSet();
+    final loadHeader = units.length > 1
+        ? 'LOAD'
+        : (units.firstOrNull == LoadUnit.lb ? 'LB' : 'KG');
+    var working = 0;
+    final numbers = <String, int>{};
+    for (final set in widget.sets) {
+      if (set.kind != WorkoutSetKind.warmup) working++;
+      numbers[set.uuid] = working == 0 ? 1 : working;
+    }
+    TextStyle? head(BuildContext c) => theme.textTheme.labelSmall?.copyWith(
+      color: muted,
+      letterSpacing: 1,
+      fontWeight: FontWeight.w800,
+    );
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.exercise.nameSnapshot,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.8,
+                    ),
+                  ),
+                ),
+                NsTag('$done/${widget.sets.length}'),
+              ],
+            ),
+            if (widget.exercise.equipmentSnapshot.isNotEmpty)
+              Text(
+                widget.exercise.equipmentSnapshot,
+                style: TextStyle(color: muted),
+              ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              children: [
+                NsChip(
+                  label: rest == 0 ? 'Rest: off' : 'Rest: ${rest}s',
+                  selected: false,
+                  onSelected: (_) => widget.enabled ? _chooseRest() : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (widget.sets.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: SetEditorTile.badgeWidth,
+                      child: Center(child: Text('SET', style: head(context))),
+                    ),
+                    const SizedBox(width: SetEditorTile.gap),
+                    Expanded(
+                      child: Center(
+                        child: Text('PREVIOUS', style: head(context)),
+                      ),
+                    ),
+                    const SizedBox(width: SetEditorTile.gap),
+                    SizedBox(
+                      width: SetEditorTile.loadWidth,
+                      child: Center(
+                        child: Text(loadHeader, style: head(context)),
+                      ),
+                    ),
+                    const SizedBox(width: SetEditorTile.gap),
+                    SizedBox(
+                      width: SetEditorTile.repsWidth,
+                      child: Center(child: Text('REPS', style: head(context))),
+                    ),
+                    const SizedBox(width: SetEditorTile.gap),
+                    SizedBox(
+                      width: SetEditorTile.checkWidth,
+                      child: Icon(Icons.check, size: 16, color: muted),
+                    ),
+                  ],
+                ),
+              ),
+            for (var index = 0; index < widget.sets.length; index++)
+              SetEditorTile(
+                key: ValueKey(widget.sets[index].uuid),
+                record: widget.sets[index],
+                number: numbers[widget.sets[index].uuid]!,
+                previous: index < previous.length ? previous[index] : null,
+                enabled: widget.enabled,
+                restSeconds: rest,
+                onSave: widget.onSave,
+                onRemove: () => widget.onRemove(widget.sets[index]),
+              ),
+            const SizedBox(height: 10),
+            FilledButton.tonalIcon(
+              onPressed: widget.enabled ? widget.onAddSet : null,
+              icon: const Icon(Icons.add),
+              label: const Text('Add set'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One set as a table row: badge (tap for options), previous (tap to reuse),
+/// load, reps and a check that records it.
 class SetEditorTile extends StatefulWidget {
   const SetEditorTile({
     required this.record,
     required this.enabled,
     required this.onSave,
     this.onRemove,
+    this.number,
+    this.previous,
+    this.restSeconds = 90,
     super.key,
   });
+
+  static const badgeWidth = 44.0;
+  static const loadWidth = 80.0;
+  static const repsWidth = 68.0;
+  static const checkWidth = 48.0;
+  static const gap = 8.0;
 
   final WorkoutSetRecord record;
   final bool enabled;
@@ -461,6 +607,15 @@ class SetEditorTile extends StatefulWidget {
 
   /// Null hides the remove action.
   final VoidCallback? onRemove;
+
+  /// Working-set number shown on the badge; defaults to position + 1.
+  final int? number;
+
+  /// Same-position set from the last completed session of this exercise.
+  final WorkoutSetRecord? previous;
+
+  /// Countdown started when a not-yet-recorded set is recorded. 0 = none.
+  final int restSeconds;
 
   @override
   State<SetEditorTile> createState() => _SetEditorTileState();
@@ -472,7 +627,6 @@ class _SetEditorTileState extends State<SetEditorTile> {
   late final TextEditingController rpe;
   late LoadUnit unit;
   late WorkoutSetKind kind;
-  int rest = 90;
   String? error;
 
   @override
@@ -576,11 +730,124 @@ class _SetEditorTileState extends State<SetEditorTile> {
       updated.validate();
       widget.onSave(
         updated,
-        s.status == WorkoutSetStatus.planned && rest > 0 ? rest : null,
+        s.status == WorkoutSetStatus.planned && widget.restSeconds > 0
+            ? widget.restSeconds
+            : null,
       );
     } catch (_) {
       setState(() => error = 'Check that the values are in the valid range.');
     }
+  }
+
+  String _previousText(WorkoutSetRecord p) {
+    final count = p.reps?.toString() ?? '?';
+    if (p.loadGrams == null) return '$count reps';
+    final u = p.inputUnit == LoadUnit.lb ? 'lb' : 'kg';
+    var load = _savedWeightText(p.loadGrams, p.inputUnit);
+    if (load.endsWith('.0')) load = load.substring(0, load.length - 2);
+    return '$load$u × $count';
+  }
+
+  void _usePrevious(WorkoutSetRecord p) {
+    setState(() {
+      unit = p.inputUnit == LoadUnit.unknown ? LoadUnit.kg : p.inputUnit;
+      reps.text = p.reps?.toString() ?? '';
+      weight.text = _savedWeightText(p.loadGrams, unit);
+      error = null;
+    });
+  }
+
+  Future<void> _options() async {
+    final s = widget.record;
+    await showNsSheet<void>(
+      context,
+      heightFactor: 0.7,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, refresh) => Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                children: [
+                  SectionHeading('Set ${s.position + 1} options'),
+                  NsDropdown<WorkoutSetKind>(
+                    value: kind,
+                    label: 'Set type',
+                    onChanged: (value) {
+                      setState(() => kind = value);
+                      refresh(() {});
+                    },
+                    options: const [
+                      NsOption(WorkoutSetKind.working, 'Working'),
+                      NsOption(WorkoutSetKind.warmup, 'Warm-up'),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  NsDropdown<LoadUnit>(
+                    value: unit,
+                    label: 'Load unit',
+                    onChanged: (next) {
+                      if (next == unit) return;
+                      final entered = double.tryParse(weight.text.trim());
+                      if (entered != null && entered >= 0 && entered.isFinite) {
+                        final grams = LoadUnits.toGrams(entered, unit);
+                        weight.text = _savedWeightText(grams, next);
+                      }
+                      setState(() => unit = next);
+                      refresh(() {});
+                    },
+                    options: const [
+                      NsOption(LoadUnit.kg, 'Kilograms (kg)'),
+                      NsOption(LoadUnit.lb, 'Pounds (lb)'),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  NsTextField(
+                    key: ValueKey('rpe-${s.uuid}'),
+                    controller: rpe,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    label: 'Effort (RPE, optional)',
+                  ),
+                  const SizedBox(height: 16),
+                  if (s.status == WorkoutSetStatus.planned)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: NsListCard(
+                        icon: Icons.skip_next_outlined,
+                        title: 'Skip set',
+                        subtitle: 'Leave it out of this workout\'s totals',
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          widget.onSave(skippedSet(s), null);
+                        },
+                      ),
+                    ),
+                  if (widget.onRemove != null)
+                    NsListCard(
+                      icon: Icons.delete_outline,
+                      title: 'Remove set',
+                      subtitle: 'Delete this set from the workout',
+                      onTap: () {
+                        Navigator.pop(sheetContext);
+                        widget.onRemove!();
+                      },
+                    ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: FilledButton(
+                onPressed: () => Navigator.pop(sheetContext),
+                child: const Text('Done'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -589,186 +856,147 @@ class _SetEditorTileState extends State<SetEditorTile> {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
     final done = s.status == WorkoutSetStatus.completed;
+    final skipped = s.status == WorkoutSetStatus.skipped;
+    final warm = kind == WorkoutSetKind.warmup;
+    final number = widget.number ?? s.position + 1;
+    final badgeColor = warm
+        ? const Color(0xFFE5A92B)
+        : theme.colorScheme.onSurface;
+    final previous = widget.previous;
+    final hintStyle = TextStyle(
+      color: theme.colorScheme.onSurfaceVariant.withValues(alpha: .6),
+    );
     return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(vertical: 5),
-      padding: const EdgeInsets.fromLTRB(14, 8, 8, 14),
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       decoration: BoxDecoration(
         color: done
             ? (dark
                   ? NorthstarPalette.forestSoftDark
                   : NorthstarPalette.forestSoftLight)
-            : theme.colorScheme.surface,
-        border: Border.all(color: theme.colorScheme.outline),
+            : null,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text(
-                  'SET ${s.position + 1} · ${s.status.name.toUpperCase()}',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    letterSpacing: 1.1,
-                    fontWeight: FontWeight.w800,
+              SizedBox(
+                width: SetEditorTile.badgeWidth,
+                child: Tooltip(
+                  message: 'Set ${s.position + 1} options',
+                  child: Material(
+                    color: theme.colorScheme.onSurface.withValues(alpha: .08),
+                    borderRadius: BorderRadius.circular(14),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: widget.enabled ? _options : null,
+                      child: SizedBox(
+                        height: 48,
+                        child: Center(
+                          child: Text(
+                            warm ? 'W' : '$number',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: skipped
+                                  ? theme.colorScheme.onSurfaceVariant
+                                  : badgeColor,
+                              decoration: skipped
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-              if (widget.onRemove != null)
-                IconButton(
-                  tooltip: 'Remove set ${s.position + 1}',
-                  onPressed: widget.enabled ? widget.onRemove : null,
-                  icon: const Icon(Icons.delete_outline, size: 20),
+              const SizedBox(width: SetEditorTile.gap),
+              Expanded(
+                child: previous == null
+                    ? Center(
+                        child: Text(
+                          skipped ? 'Skipped' : '—',
+                          style: hintStyle,
+                        ),
+                      )
+                    : Tooltip(
+                        message: 'Use previous ${_previousText(previous)}',
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: widget.enabled
+                              ? () => _usePrevious(previous)
+                              : null,
+                          child: SizedBox(
+                            height: 48,
+                            child: Center(
+                              child: Text(
+                                _previousText(previous),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+              ),
+              const SizedBox(width: SetEditorTile.gap),
+              SizedBox(
+                width: SetEditorTile.loadWidth,
+                child: NsTextField(
+                  key: ValueKey('weight-${s.uuid}'),
+                  controller: weight,
+                  dense: true,
+                  textAlign: TextAlign.center,
+                  enabled: widget.enabled,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  hint: previous?.loadGrams == null
+                      ? null
+                      : _savedWeightText(previous!.loadGrams, unit),
                 ),
+              ),
+              const SizedBox(width: SetEditorTile.gap),
+              SizedBox(
+                width: SetEditorTile.repsWidth,
+                child: NsTextField(
+                  key: ValueKey('reps-${s.uuid}'),
+                  controller: reps,
+                  dense: true,
+                  textAlign: TextAlign.center,
+                  enabled: widget.enabled,
+                  keyboardType: TextInputType.number,
+                  hint: previous?.reps?.toString(),
+                ),
+              ),
+              const SizedBox(width: SetEditorTile.gap),
+              SizedBox(
+                width: SetEditorTile.checkWidth,
+                child: NsCheckButton(
+                  checked: done,
+                  tooltip: done
+                      ? 'Update set ${s.position + 1}'
+                      : 'Save set ${s.position + 1}',
+                  onPressed: widget.enabled ? _record : null,
+                ),
+              ),
             ],
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: NsTextField(
-                        key: ValueKey('reps-${s.uuid}'),
-                        controller: reps,
-                        dense: true,
-                        enabled: widget.enabled,
-                        keyboardType: TextInputType.number,
-                        label: 'Reps',
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 3,
-                      child: NsTextField(
-                        key: ValueKey('weight-${s.uuid}'),
-                        controller: weight,
-                        dense: true,
-                        enabled: widget.enabled,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        label: 'Weight',
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 86,
-                      child: NsDropdown<LoadUnit>(
-                        value: unit,
-                        dense: true,
-                        onChanged: widget.enabled
-                            ? (next) {
-                                if (next == unit) {
-                                  return;
-                                }
-                                final entered = double.tryParse(
-                                  weight.text.trim(),
-                                );
-                                if (entered != null &&
-                                    entered >= 0 &&
-                                    entered.isFinite) {
-                                  final grams = LoadUnits.toGrams(
-                                    entered,
-                                    unit,
-                                  );
-                                  weight.text = _savedWeightText(grams, next);
-                                }
-                                setState(() => unit = next);
-                              }
-                            : null,
-                        options: const [
-                          NsOption(LoadUnit.kg, 'kg'),
-                          NsOption(LoadUnit.lb, 'lb'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: NsTextField(
-                        key: ValueKey('rpe-${s.uuid}'),
-                        controller: rpe,
-                        dense: true,
-                        enabled: widget.enabled,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        label: 'RPE',
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 3,
-                      child: NsDropdown<WorkoutSetKind>(
-                        value: kind,
-                        dense: true,
-                        onChanged: widget.enabled
-                            ? (value) => setState(() => kind = value)
-                            : null,
-                        options: const [
-                          NsOption(WorkoutSetKind.working, 'Working'),
-                          NsOption(WorkoutSetKind.warmup, 'Warm-up'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                NsDropdown<int>(
-                  value: rest,
-                  dense: true,
-                  onChanged: widget.enabled
-                      ? (v) => setState(() => rest = v)
-                      : null,
-                  options: const [
-                    NsOption(0, 'No rest'),
-                    NsOption(60, 'Rest 60s'),
-                    NsOption(90, 'Rest 90s'),
-                    NsOption(120, 'Rest 120s'),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: widget.enabled ? _record : null,
-                        child: Text(done ? 'Update set' : 'Save set'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    TextButton(
-                      onPressed:
-                          !widget.enabled ||
-                              s.status != WorkoutSetStatus.planned
-                          ? null
-                          : () => widget.onSave(skippedSet(s), null),
-                      child: const Text('Skip'),
-                    ),
-                  ],
-                ),
-                if (error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      error!,
-                      style: TextStyle(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+              child: Text(
+                error!,
+                style: TextStyle(color: theme.colorScheme.error),
+              ),
             ),
-          ),
         ],
       ),
     );

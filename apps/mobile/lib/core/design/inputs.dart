@@ -20,10 +20,13 @@ class NsTextField extends StatelessWidget {
     this.inputFormatters,
     this.prefixIcon,
     this.dense = false,
+    this.textAlign = TextAlign.start,
     this.onChanged,
     this.onSubmitted,
     super.key,
   });
+
+  final TextAlign textAlign;
 
   /// Tighter padding for fields sharing a row (e.g. reps / weight / unit).
   final bool dense;
@@ -63,6 +66,7 @@ class NsTextField extends StatelessWidget {
         maxLines: maxLines,
         keyboardType: keyboardType,
         textCapitalization: textCapitalization,
+        textAlign: textAlign,
         inputFormatters: inputFormatters,
         decoration: decoration,
         onChanged: onChanged,
@@ -78,6 +82,7 @@ class NsTextField extends StatelessWidget {
       maxLines: maxLines,
       keyboardType: keyboardType,
       textCapitalization: textCapitalization,
+      textAlign: textAlign,
       inputFormatters: inputFormatters,
       decoration: decoration,
       onChanged: onChanged,
@@ -164,4 +169,58 @@ class NsChip extends StatelessWidget {
     selected: selected,
     onSelected: onSelected,
   );
+}
+
+/// Square check control for logging a row (set done, task done). Filled when
+/// [checked]; always the same size so rows line up.
+class NsCheckButton extends StatelessWidget {
+  const NsCheckButton({
+    required this.checked,
+    required this.onPressed,
+    required this.tooltip,
+    super.key,
+  });
+
+  final bool checked;
+
+  /// Null disables the control.
+  final VoidCallback? onPressed;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        button: true,
+        checked: checked,
+        label: tooltip,
+        excludeSemantics: true,
+        onTap: onPressed,
+        child: Material(
+          color: checked
+              ? scheme.primary
+              : scheme.onSurface.withValues(alpha: .08),
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: onPressed,
+            child: SizedBox(
+              width: 48,
+              height: 48,
+              child: Icon(
+                Icons.check,
+                color: checked
+                    ? scheme.onPrimary
+                    : scheme.onSurface.withValues(
+                        alpha: onPressed == null ? .25 : .55,
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

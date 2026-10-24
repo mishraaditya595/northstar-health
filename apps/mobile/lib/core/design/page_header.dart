@@ -21,7 +21,7 @@ class PageHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
-    final muted = theme.extension<NorthstarColors>()!.muted;
+    final muted = theme.mutedColor;
     return Row(
       children: [
         Expanded(
@@ -138,7 +138,7 @@ class NsListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
-    final muted = theme.extension<NorthstarColors>()!.muted;
+    final muted = theme.mutedColor;
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,

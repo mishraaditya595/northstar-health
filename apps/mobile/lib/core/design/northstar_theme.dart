@@ -214,6 +214,13 @@ class NorthstarTheme {
   }
 }
 
+extension NorthstarThemeData on ThemeData {
+  /// Secondary text colour; falls back to the scheme when the NorthStar theme
+  /// extension is not installed (plain test themes, embedded previews).
+  Color get mutedColor =>
+      extension<NorthstarColors>()?.muted ?? colorScheme.onSurfaceVariant;
+}
+
 @immutable
 class NorthstarColors extends ThemeExtension<NorthstarColors> {
   const NorthstarColors({required this.muted, required this.border});

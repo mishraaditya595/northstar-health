@@ -150,7 +150,7 @@ void main() {
           .text,
       '101.25',
     );
-    await tester.tap(find.text('Update set'));
+    await tester.tap(find.byTooltip('Update set 1'));
     await tester.pump();
     expect(writes, hasLength(1));
     expect(writes.single.$1.loadGrams, 101250);
@@ -161,14 +161,18 @@ void main() {
   ) async {
     current = completed();
     await render(tester);
-    final skip = tester.widget<TextButton>(
-      find.widgetWithText(TextButton, 'Skip'),
-    );
-    expect(skip.onPressed, isNull);
+    await tester.tap(find.byTooltip('Set 1 options'));
+    await tester.pumpAndSettle();
+    expect(find.text('Skip set'), findsNothing);
     expect(writes, isEmpty);
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
     redraw(() => current = planned);
     await tester.pump();
-    await tester.tap(find.text('Skip'));
+    await tester.tap(find.byTooltip('Set 1 options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Skip set'));
+    await tester.pumpAndSettle();
     expect(writes, hasLength(1));
     expect(writes.single.$1.status, WorkoutSetStatus.skipped);
   });
@@ -178,13 +182,13 @@ void main() {
   ) async {
     current = completed();
     await render(tester);
-    await tester.tap(find.text('Update set'));
+    await tester.tap(find.byTooltip('Update set 1'));
     expect(writes.single.$2, isNull);
     writes.clear();
     redraw(() => current = planned);
     await tester.pump();
     await tester.enterText(find.byKey(const ValueKey('reps-set-a')), '8');
-    await tester.tap(find.text('Save set'));
+    await tester.tap(find.byTooltip('Save set 1'));
     expect(writes, hasLength(1));
     expect(writes.single.$2, 90);
   });
@@ -205,18 +209,19 @@ void main() {
           .text,
       '225.0',
     );
-    await tester.tap(find.text('Update set'));
+    await tester.tap(find.byTooltip('Update set 1'));
     await tester.pump();
     expect(writes, hasLength(1));
     expect(writes.single.$1.inputUnit, LoadUnit.lb);
     expect(writes.single.$1.loadGrams, 102058);
   });
 
-  group('remove action', () {
+  group('set options and remove', () {
     Future<void> pumpTile(
       WidgetTester tester, {
       VoidCallback? onRemove,
       bool enabled = true,
+      WorkoutSetRecord? previous,
     }) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -225,6 +230,7 @@ void main() {
               child: SetEditorTile(
                 record: planned,
                 enabled: enabled,
+                previous: previous,
                 onSave: (_, _) {},
                 onRemove: onRemove,
               ),
@@ -234,35 +240,65 @@ void main() {
       );
     }
 
-    testWidgets('tapping remove calls back once', (tester) async {
-      var removed = 0;
-      await pumpTile(tester, onRemove: () => removed++);
-      await tester.tap(find.byTooltip('Remove set 1'));
-      expect(removed, 1);
-    });
-
-    testWidgets('no remove control without a handler', (tester) async {
-      await pumpTile(tester);
-      expect(find.byTooltip('Remove set 1'), findsNothing);
-    });
-
-    testWidgets('remove is disabled while the workout is paused', (
+    testWidgets('remove lives in the options sheet and calls back once', (
       tester,
     ) async {
       var removed = 0;
-      await pumpTile(tester, onRemove: () => removed++, enabled: false);
-      await tester.tap(find.byTooltip('Remove set 1'), warnIfMissed: false);
-      expect(removed, 0);
+      await pumpTile(tester, onRemove: () => removed++);
+      await tester.tap(find.byTooltip('Set 1 options'));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(ListView).last, const Offset(0, -400));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Remove set'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove set'));
+      await tester.pumpAndSettle();
+      expect(removed, 1);
     });
 
-    testWidgets('fields fill the width of the set card', (tester) async {
-      await pumpTile(tester, onRemove: () {});
-      final card = tester.getSize(find.byType(SetEditorTile)).width;
-      final reps = tester.getRect(find.byType(TextField).first);
-      final unit = tester.getRect(find.byType(DropdownButton<LoadUnit>));
-      expect(card, greaterThan(300));
-      expect(unit.right, greaterThan(card - 40));
-      expect(reps.left, lessThan(40));
+    testWidgets('no remove option without a handler', (tester) async {
+      await pumpTile(tester);
+      await tester.tap(find.byTooltip('Set 1 options'));
+      await tester.pumpAndSettle();
+      expect(find.text('Remove set'), findsNothing);
+    });
+
+    testWidgets('options are unavailable while the workout is paused', (
+      tester,
+    ) async {
+      await pumpTile(tester, onRemove: () {}, enabled: false);
+      await tester.tap(find.byTooltip('Set 1 options'), warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(find.text('Remove set'), findsNothing);
+    });
+
+    testWidgets('previous values are only copied when tapped', (tester) async {
+      final previous = completed(grams: 60000);
+      await pumpTile(tester, previous: previous);
+      TextField field(String key) => tester.widget<TextField>(
+        find.descendant(
+          of: find.byKey(ValueKey('$key-set-a')),
+          matching: find.byType(TextField),
+        ),
+      );
+      expect(field('reps').controller!.text, isEmpty);
+      expect(field('weight').controller!.text, isEmpty);
+      await tester.tap(find.byTooltip('Use previous 60kg × 8'));
+      await tester.pump();
+      expect(field('reps').controller!.text, '8');
+      expect(field('weight').controller!.text, '60.0');
+    });
+
+    testWidgets('row lays out badge, load, reps and check on one line', (
+      tester,
+    ) async {
+      await pumpTile(tester);
+      final tile = tester.getRect(find.byType(SetEditorTile));
+      final badge = tester.getRect(find.byTooltip('Set 1 options'));
+      final check = tester.getRect(find.byTooltip('Save set 1'));
+      expect(badge.left, lessThan(tile.left + 20));
+      expect(check.right, greaterThan(tile.right - 20));
+      expect((badge.center.dy - check.center.dy).abs(), lessThan(2));
     });
   });
 }
