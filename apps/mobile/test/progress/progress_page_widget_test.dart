@@ -301,6 +301,32 @@ void main() {
     expect(find.text('Workout finishing'), findsOneWidget);
   });
 
+  testWidgets('history is cached across navigation and refresh is explicit',
+      (tester) async {
+    final fake = _CountingHistoryRepository();
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        objectBoxStoreProvider.overrideWithValue(store),
+        workoutHistoryRepositoryProvider.overrideWithValue(fake),
+      ],
+      child: MaterialApp.router(
+        theme: NorthstarTheme.build(Brightness.light),
+        routerConfig: router,
+      ),
+    ));
+    await settleHistory(tester);
+    expect(fake.calls, 1);
+    expect(find.text('Nothing logged yet'), findsOneWidget);
+    router.go('/train');
+    await tester.pumpAndSettle();
+    router.go('/progress');
+    await settleHistory(tester);
+    expect(fake.calls, 1);
+    await tester.tap(find.byTooltip('Refresh completed workouts'));
+    await settleHistory(tester);
+    expect(fake.calls, 2);
+  });
+
   testWidgets('error and retry show loading and recover without false data',
       (tester) async {
     final fake = _FlakyHistoryRepository();
@@ -332,6 +358,18 @@ class _FlakyHistoryRepository implements WorkoutHistoryRepository {
   Future<WorkoutHistorySnapshot> readCompletedAsync() async {
     calls++;
     if (calls == 1) throw StateError('synthetic read failure');
+    return readCompleted();
+  }
+}
+
+class _CountingHistoryRepository implements WorkoutHistoryRepository {
+  int calls = 0;
+  @override
+  WorkoutHistorySnapshot readCompleted() =>
+      const WorkoutHistorySnapshot(sessions: []);
+  @override
+  Future<WorkoutHistorySnapshot> readCompletedAsync() async {
+    calls++;
     return readCompleted();
   }
 }
