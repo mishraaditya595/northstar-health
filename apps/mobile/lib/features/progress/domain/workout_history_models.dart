@@ -7,6 +7,29 @@ class WorkoutHistorySnapshot {
   final List<WorkoutSessionRecord> sessions;
 }
 
+enum WorkoutHistoryPeriod { last30Days, last90Days, all }
+
+/// A rolling window around an explicitly supplied UTC clock.
+List<WorkoutSessionRecord> workoutsInPeriod(
+  WorkoutHistorySnapshot snapshot, WorkoutHistoryPeriod period, DateTime nowUtc,
+) {
+  final cutoff = switch (period) {
+    WorkoutHistoryPeriod.last30Days =>
+      nowUtc.toUtc().subtract(const Duration(days: 30)),
+    WorkoutHistoryPeriod.last90Days =>
+      nowUtc.toUtc().subtract(const Duration(days: 90)),
+    WorkoutHistoryPeriod.all => null,
+  };
+  return snapshot.sessions.where((s) =>
+      s.status == WorkoutStatus.completed &&
+      s.completedAtUtc != null &&
+      (cutoff == null || !s.completedAtUtc!.isBefore(cutoff))).toList();
+}
+
+String formatWorkoutDay(DateTime day) =>
+  '${day.day.toString().padLeft(2, '0')}/'
+  '${day.month.toString().padLeft(2, '0')}/${day.year}';
+
 class WorkoutHistorySummary {
   const WorkoutHistorySummary({
     required this.completedWorkouts,
@@ -67,7 +90,7 @@ WorkoutHistorySummary calculateWorkoutHistory(
 ) {
   final sessions = source.where(
     (s) => s.status == WorkoutStatus.completed && s.completedAtUtc != null,
-  );
+  ).toList();
   var workouts = 0;
   var workingSets = 0;
   var loadedWorking = 0;
@@ -75,6 +98,26 @@ WorkoutHistorySummary calculateWorkoutHistory(
   var volume = 0;
   final trends = <String, List<ExerciseStrengthPoint>>{};
   final labels = <String, String>{};
+  final labelTimes = <String, DateTime>{};
+
+  // Name snapshots lacking a definition ID join a definition only when
+  // name, equipment AND muscle match a single unambiguous definition.
+  // Different variants (e.g. barbell vs dumbbell) remain distinct.
+  String signature(WorkoutExerciseRecord e) =>
+    '${e.nameSnapshot.trim().toLowerCase()}|'
+    '${e.equipmentSnapshot.trim().toLowerCase()}|'
+    '${e.muscleSnapshot.trim().toLowerCase()}';
+  final definitionsBySignature = <String, Set<String>>{};
+  for (final session in sessions) {
+    for (final exercise in session.exercises) {
+      final id = exercise.definitionUuid;
+      if (id != null && id.isNotEmpty) {
+        definitionsBySignature.putIfAbsent(signature(exercise), () => <String>{})
+            .add('definition:$id');
+      }
+    }
+  }
+
 
   for (final session in sessions) {
     workouts++;
@@ -98,10 +141,18 @@ WorkoutHistorySummary calculateWorkoutHistory(
       volume += set.loadGrams! * set.reps!;
       final exercise = exercises[set.exerciseUuid];
       if (exercise == null || set.loadGrams! <= 0) continue;
-      final key = exercise.definitionUuid == null
-          ? 'snapshot:${exercise.nameSnapshot.trim().toLowerCase()}'
-          : 'definition:${exercise.definitionUuid}';
-      labels[key] = exercise.nameSnapshot;
+      final identified = exercise.definitionUuid;
+      final sig = signature(exercise);
+      final matches = definitionsBySignature[sig];
+      final key = identified != null && identified.isNotEmpty
+          ? 'definition:$identified'
+          : matches != null && matches.length == 1
+            ? matches.single : 'snapshot:$sig';
+      final loggedAt = session.completedAtUtc!;
+      if (labelTimes[key] == null || !loggedAt.isBefore(labelTimes[key]!)) {
+        labelTimes[key] = loggedAt;
+        labels[key] = exercise.nameSnapshot;
+      }
       final previous = bestByExercise[key];
       if (previous == null ||
           set.loadGrams! > previous.loadGrams! ||
