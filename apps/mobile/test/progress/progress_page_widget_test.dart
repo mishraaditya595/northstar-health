@@ -351,7 +351,12 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.textContaining('1 finished'), findsOneWidget);
+      await tester.scrollUntilVisible(
+      find.text('Workout aging'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Workout aging'), findsOneWidget);
       expect(sampled, 1);
       expect(repository.calls, 1);
       router.go('/train');
