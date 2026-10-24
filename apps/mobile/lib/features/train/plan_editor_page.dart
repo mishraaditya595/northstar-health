@@ -60,11 +60,16 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
         false;
   }
 
-  Future<void> _onPopInvoked(bool didPop, Object? result) async {
-    if (didPop || _allowLeave || !mounted) return;
+  Future<void> _requestExit() async {
     if (await _confirmDiscard() && mounted) {
       setState(() => _allowLeave = true);
       context.pop();
+    }
+  }
+
+  Future<void> _onPopInvoked(bool didPop, Object? result) async {
+    if (!didPop && !_allowLeave && mounted) {
+      await _requestExit(); // System back; AppBar back calls _requestExit itself.
     }
   }
 
@@ -473,6 +478,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
       onPopInvokedWithResult: _onPopInvoked,
       child: Scaffold(
         appBar: AppBar(
+          leading: BackButton(onPressed: _requestExit),
           title: Text(
             widget.planUuid == null
                 ? 'New training plan'
