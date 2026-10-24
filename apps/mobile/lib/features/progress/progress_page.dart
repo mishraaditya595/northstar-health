@@ -51,7 +51,8 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
         child: history.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (_, _) => ListView(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20)
+                .copyWith(bottom: 20 + MediaQuery.paddingOf(context).bottom),
             children: [
               const Text(
                 'Could not load completed workouts. '
@@ -93,7 +94,12 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
             : LoadUnit.kg);
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 44),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        24,
+        20,
+        44 + MediaQuery.paddingOf(context).bottom,
+      ),
       children: [
         Row(
           children: [

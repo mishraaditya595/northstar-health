@@ -13,7 +13,12 @@ class TodayPage extends ConsumerWidget {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        24,
+        20,
+        32 + MediaQuery.paddingOf(context).bottom,
+      ),
       children: [
         Row(
           children: [

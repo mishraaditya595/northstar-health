@@ -11,6 +11,7 @@ import '../features/train/train_page.dart';
 import '../features/train/exercise_catalog_page.dart';
 import '../features/train/plan_editor_page.dart';
 import '../features/train/active_workout_page.dart';
+import 'floating_nav_bar.dart';
 import 'theme_controller.dart';
 
 final _routes = <String>['/today', '/train', '/progress', '/health'];
@@ -134,6 +135,8 @@ class AdaptiveShell extends ConsumerWidget {
         void select(int value) => context.go(_routes[value]);
 
         final body = SafeArea(
+          // Compact: the floating nav overlays content; pages pad past it.
+          bottom: expanded,
           child: Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
@@ -145,10 +148,11 @@ class AdaptiveShell extends ConsumerWidget {
 
         if (!expanded) {
           return Scaffold(
+            extendBody: true,
             body: body,
-            bottomNavigationBar: NavigationBar(
+            bottomNavigationBar: FloatingNavBar(
               selectedIndex: index,
-              onDestinationSelected: select,
+              onSelected: select,
               destinations: _destinations,
             ),
           );

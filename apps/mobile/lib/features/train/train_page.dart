@@ -89,7 +89,12 @@ class TrainPage extends ConsumerWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 900),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            22,
+            20,
+            28 + MediaQuery.paddingOf(context).bottom,
+          ),
           children: [
             Text(
               'TRAIN',

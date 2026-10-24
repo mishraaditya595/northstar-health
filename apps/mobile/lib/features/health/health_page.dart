@@ -7,7 +7,8 @@ class HealthPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(20),
+    padding: EdgeInsets.all(20)
+        .copyWith(bottom: 20 + MediaQuery.paddingOf(context).bottom),
     children: [
       const DemoLabel(),
       const SizedBox(height: 8),

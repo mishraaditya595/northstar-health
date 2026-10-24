@@ -63,7 +63,12 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
         .toList();
     final theme = Theme.of(context);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 42),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        22,
+        20,
+        42 + MediaQuery.paddingOf(context).bottom,
+      ),
       children: [
         Text(
           session.name,

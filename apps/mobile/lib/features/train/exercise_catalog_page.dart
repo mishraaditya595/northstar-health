@@ -147,16 +147,24 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
     final muted = Theme.of(context).extension<NorthstarColors>()!.muted;
     return Scaffold(
       appBar: AppBar(title: const Text('Exercise library')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _edit(null),
-        icon: const Icon(Icons.add),
-        label: const Text('Custom exercise'),
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
+        child: FloatingActionButton.extended(
+          onPressed: () => _edit(null),
+          icon: const Icon(Icons.add),
+          label: const Text('Custom exercise'),
+        ),
       ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 900),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              16,
+              20,
+              100 + MediaQuery.paddingOf(context).bottom,
+            ),
             children: [
               Text(
                 'FIND YOUR MOVEMENT',

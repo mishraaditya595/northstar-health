@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:northstar_health/app/floating_nav_bar.dart';
 import 'package:northstar_health/app/northstar_app.dart';
 
 void main() {
@@ -14,7 +15,7 @@ void main() {
 
     expect(find.text('SHOW UP.\nGET STRONG.'), findsOneWidget);
     expect(find.textContaining('FICTIONAL DEMO DATA'), findsOneWidget);
-    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(FloatingNavBar), findsOneWidget);
     expect(find.text('Train'), findsOneWidget);
   });
 
@@ -28,7 +29,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(NavigationRail), findsOneWidget);
-    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byType(FloatingNavBar), findsNothing);
   });
 
   testWidgets('Switching tabs leaves no outgoing page mounted', (tester) async {

@@ -256,7 +256,12 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
             ..sort((a, b) => a.position.compareTo(b.position));
     }
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        16,
+        16,
+        40 + MediaQuery.paddingOf(context).bottom,
+      ),
       children: [
         Text(
           session.name,

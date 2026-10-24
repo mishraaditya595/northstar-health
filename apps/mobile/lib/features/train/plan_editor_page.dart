@@ -512,7 +512,12 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 860),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 40),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                18,
+                20,
+                40 + MediaQuery.paddingOf(context).bottom,
+              ),
               children: [
                 Text(
                   'PLAN THE WORK',
