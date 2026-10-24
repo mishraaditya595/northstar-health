@@ -19,8 +19,12 @@ class TrainPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(trainLibraryProvider);
     final colors = Theme.of(context).extension<NorthstarColors>()!;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 900),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
       children: [
         Text(
           'TRAIN',
@@ -101,6 +105,8 @@ class TrainPage extends ConsumerWidget {
           ),
         ),
       ],
+    ),
+      ),
     );
   }
 
