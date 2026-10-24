@@ -100,10 +100,19 @@ void main() {
       (tester) async {
     writeWorkout('first');
     await showProgress(tester);
-    expect(find.text('Workout first'), findsOneWidget);
-    expect(find.text('62.5 kg'), findsOneWidget);
     expect(find.text('500'), findsOneWidget); // 8 × 62.5 kg
-    await tester.ensureVisible(find.text('Workout first'));
+    await tester.scrollUntilVisible(
+      find.text('62.5 kg'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('62.5 kg'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Workout first'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Workout first'));
     await tester.pumpAndSettle();
     expect(find.text('Workout details'), findsOneWidget);
