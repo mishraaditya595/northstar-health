@@ -61,6 +61,17 @@ void main() {
     await tester.tap(find.text('Start workout'));
     await tester.pumpAndSettle();
     expect(find.text('Workout in progress'), findsOneWidget);
+    // A pushed route must provide a real back stack; navigating back does
+    // not finish or discard the current offline workout.
+    expect(router.canPop(), isTrue);
+    router.pop();
+    await tester.pumpAndSettle();
+    expect(find.text('TRAIN'), findsOneWidget);
+    await tester.ensureVisible(find.text('Resume: Quick workout'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Resume: Quick workout'));
+    await tester.pumpAndSettle();
+    expect(find.text('Workout in progress'), findsOneWidget);
 
     await tester.tap(find.text('Add exercise'));
     await tester.pumpAndSettle();
