@@ -37,6 +37,7 @@ class WorkoutHistorySummary {
     required this.loadedVolumeGramReps,
     required this.loadedWorkingSets,
     required this.unloadedWorkingSets,
+    required this.zeroLoadWorkingSets,
     required this.exerciseTrends,
   });
 
@@ -48,6 +49,7 @@ class WorkoutHistorySummary {
   final int loadedVolumeGramReps;
   final int loadedWorkingSets;
   final int unloadedWorkingSets;
+  final int zeroLoadWorkingSets;
   final List<ExerciseStrengthTrend> exerciseTrends;
 }
 
@@ -95,6 +97,7 @@ WorkoutHistorySummary calculateWorkoutHistory(
   var workingSets = 0;
   var loadedWorking = 0;
   var unloadedWorking = 0;
+  var zeroLoadWorking = 0;
   var volume = 0;
   final trends = <String, List<ExerciseStrengthPoint>>{};
   final labels = <String, String>{};
@@ -134,6 +137,10 @@ WorkoutHistorySummary calculateWorkoutHistory(
       workingSets++;
       if (set.loadGrams == null) {
         unloadedWorking++;
+        continue;
+      }
+      if (set.loadGrams! == 0) {
+        zeroLoadWorking++;
         continue;
       }
       loadedWorking++;
@@ -192,6 +199,7 @@ WorkoutHistorySummary calculateWorkoutHistory(
     completedWorkingSets: workingSets,
     loadedWorkingSets: loadedWorking,
     unloadedWorkingSets: unloadedWorking,
+    zeroLoadWorkingSets: zeroLoadWorking,
     loadedVolumeGramReps: volume,
     exerciseTrends: List.unmodifiable(result),
   );

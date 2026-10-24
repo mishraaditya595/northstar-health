@@ -172,6 +172,12 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
               'weight and are excluded from loaded volume.',
               style: theme.textTheme.bodySmall,
             ),
+          if (summary.zeroLoadWorkingSets > 0)
+            Text(
+              '${summary.zeroLoadWorkingSets} working sets recorded with '
+              '0 kg are excluded from loaded volume and strength trends.',
+              style: theme.textTheme.bodySmall,
+            ),
           const SizedBox(height: 28),
           Text(
             'STRENGTH TREND',
