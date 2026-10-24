@@ -324,45 +324,47 @@ void main() {
     expect(find.text('Workout older'), findsOneWidget);
   });
 
-  testWidgets('later Progress visit samples a fresh clock without re-reading history',
-      (tester) async {
-    var clock = DateTime.utc(2026, 10, 24, 12);
-    var sampled = 0;
-    final repository = _CountingLoadedHistoryRepository(store);
-    writeWorkout(
-      'aging',
-      startedAtUtc: clock.subtract(const Duration(days: 29)),
-    );
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          objectBoxStoreProvider.overrideWithValue(store),
-          workoutHistoryRepositoryProvider.overrideWithValue(repository),
-          progressNowProvider.overrideWith((ref) {
-            sampled++;
-            return clock;
-          }),
-        ],
-        child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
-          routerConfig: router,
+  testWidgets(
+    'later Progress visit samples a fresh clock without re-reading history',
+    (tester) async {
+      var clock = DateTime.utc(2026, 10, 24, 12);
+      var sampled = 0;
+      final repository = _CountingLoadedHistoryRepository(store);
+      writeWorkout(
+        'aging',
+        startedAtUtc: clock.subtract(const Duration(days: 29)),
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            objectBoxStoreProvider.overrideWithValue(store),
+            workoutHistoryRepositoryProvider.overrideWithValue(repository),
+            progressNowProvider.overrideWith((ref) {
+              sampled++;
+              return clock;
+            }),
+          ],
+          child: MaterialApp.router(
+            theme: NorthstarTheme.build(Brightness.light),
+            routerConfig: router,
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.textContaining('1 finished'), findsOneWidget);
-    expect(sampled, 1);
-    expect(repository.calls, 1);
-    router.go('/train');
-    await tester.pumpAndSettle();
-    clock = clock.add(const Duration(days: 3));
-    router.go('/progress');
-    await tester.pumpAndSettle();
-    expect(find.text('No sessions in this period'), findsOneWidget);
-    expect(sampled, 2);
-    // History remains cached while the autoDisposed clock is resampled.
-    expect(repository.calls, 1);
-  });
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('1 finished'), findsOneWidget);
+      expect(sampled, 1);
+      expect(repository.calls, 1);
+      router.go('/train');
+      await tester.pumpAndSettle();
+      clock = clock.add(const Duration(days: 3));
+      router.go('/progress');
+      await tester.pumpAndSettle();
+      expect(find.text('No sessions in this period'), findsOneWidget);
+      expect(sampled, 2);
+      // History remains cached while the autoDisposed clock is resampled.
+      expect(repository.calls, 1);
+    },
+  );
 
   testWidgets('finish through ActiveWorkoutPage refreshes cached Progress', (
     tester,
@@ -483,7 +485,7 @@ class _CountingHistoryRepository implements WorkoutHistoryRepository {
 
 class _CountingLoadedHistoryRepository implements WorkoutHistoryRepository {
   _CountingLoadedHistoryRepository(Store store)
-      : _native = ObjectBoxWorkoutHistoryRepository(store);
+    : _native = ObjectBoxWorkoutHistoryRepository(store);
   final ObjectBoxWorkoutHistoryRepository _native;
   int calls = 0;
 
