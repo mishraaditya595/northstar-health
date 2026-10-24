@@ -29,7 +29,10 @@ WorkoutSessionRecord workout({
   required WorkoutStatus status,
   required List<WorkoutSetRecord> sets,
   String name = 'Training',
-  String definition = 'builtin.v1.bench-press',
+  String? definition = 'builtin.v1.bench-press',
+  String exerciseName = 'Bench press',
+  String equipment = 'Barbell',
+  DateTime? completedAt,
 }) => WorkoutSessionRecord(
   uuid: id,
   name: name,
@@ -205,4 +208,88 @@ void main() {
       expect(originalLocalDay(s), DateTime.utc(2026, 10, 24));
     },
   );
+
+  test('zero load is not a loaded lift or a best-lift claim', () {
+    final summary = calculateWorkoutHistory([
+      workout(id: 'zero', status: WorkoutStatus.completed, sets: [
+        set(id: 'zero-load', exercise: 'exercise-zero',
+          status: WorkoutSetStatus.completed, kind: WorkoutSetKind.working,
+          reps: 10, grams: 0),
+      ]),
+    ]);
+    expect(summary.completedWorkingSets, 1);
+    expect(summary.zeroLoadWorkingSets, 1);
+    expect(summary.loadedWorkingSets, 0);
+    expect(summary.exerciseTrends, isEmpty);
+  });
+
+  test('renamed known exercises use most recent saved name', () {
+    final old = workout(id: 'old', status: WorkoutStatus.completed,
+      exerciseName: 'Old label', completedAt: DateTime.utc(2026, 8, 1),
+      sets: [set(id: 'a', exercise: 'exercise-old',
+        status: WorkoutSetStatus.completed, kind: WorkoutSetKind.working,
+        reps: 4, grams: 50000)]);
+    final newer = workout(id: 'new', status: WorkoutStatus.completed,
+      exerciseName: 'Renamed label', completedAt: DateTime.utc(2026, 10, 1),
+      sets: [set(id: 'b', exercise: 'exercise-new',
+        status: WorkoutSetStatus.completed, kind: WorkoutSetKind.working,
+        reps: 4, grams: 65000)]);
+    final result = calculateWorkoutHistory([newer, old]);
+    expect(result.exerciseTrends, hasLength(1));
+    expect(result.exerciseTrends.single.name, 'Renamed label');
+  });
+
+  test('legacy snapshot merges only with unambiguous matching definition',
+      () {
+    final recognized = workout(id: 'known', status: WorkoutStatus.completed,
+      sets: [set(id: 'k', exercise: 'exercise-known',
+        status: WorkoutSetStatus.completed, kind: WorkoutSetKind.working,
+        reps: 5, grams: 40000)]);
+    final legacy = workout(id: 'legacy', status: WorkoutStatus.completed,
+      definition: null,
+      sets: [set(id: 'l', exercise: 'exercise-legacy',
+        status: WorkoutSetStatus.completed, kind: WorkoutSetKind.working,
+        reps: 6, grams: 45000)]);
+    final dumbbell = workout(id: 'dumbbell', status: WorkoutStatus.completed,
+      definition: null, equipment: 'Dumbbell',
+      sets: [set(id: 'd', exercise: 'exercise-dumbbell',
+        status: WorkoutSetStatus.completed, kind: WorkoutSetKind.working,
+        reps: 8, grams: 30000)]);
+    final result = calculateWorkoutHistory([legacy, dumbbell, recognized]);
+    expect(result.exerciseTrends, hasLength(2));
+    expect(result.exerciseTrends.map((e) => e.points.length).toList()..sort(),
+      [1, 2]);
+  });
+
+  test('working set count ignores malformed records with missing reps', () {
+    final session = workout(id: 'incomplete',
+      status: WorkoutStatus.completed,
+      sets: [set(id: 'missing-reps', exercise: 'exercise-incomplete',
+        status: WorkoutSetStatus.completed, kind: WorkoutSetKind.working,
+        grams: 25000)]);
+    expect(countWorkingSets(session), 0);
+    expect(calculateWorkoutHistory([session]).completedWorkingSets, 0);
+  });
+
+  test('rolling 30 and 90 day periods include exact cutoff UTC', () {
+    final now = DateTime.utc(2026, 10, 24, 12);
+    final sessions = [
+      workout(id: 'edge', status: WorkoutStatus.completed,
+        completedAt: now.subtract(const Duration(days: 30)),
+        sets: []),
+      workout(id: 'older', status: WorkoutStatus.completed,
+        completedAt: now.subtract(const Duration(days: 31)),
+        sets: []),
+      workout(id: 'outside', status: WorkoutStatus.completed,
+        completedAt: now.subtract(const Duration(days: 91)),
+        sets: []),
+    ];
+    final history = WorkoutHistorySnapshot(sessions: sessions);
+    expect(workoutsInPeriod(history, WorkoutHistoryPeriod.last30Days, now)
+      .map((s) => s.uuid), ['edge']);
+    expect(workoutsInPeriod(history, WorkoutHistoryPeriod.last90Days, now)
+      .map((s) => s.uuid), ['edge', 'older']);
+    expect(workoutsInPeriod(history, WorkoutHistoryPeriod.all, now), hasLength(3));
+  });
+
 }
