@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'fixtures/objectbox_pre_status_index.g.dart' as legacy;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:northstar_health/features/progress/data/objectbox_workout_history_repository.dart';
 import 'package:northstar_health/features/progress/domain/workout_history_models.dart';
@@ -75,6 +77,100 @@ void main() {
       engine.discardWorkout(id, expectedRevision: updated.revision);
     }
   }
+
+  test('pre-index database upgrades and indexed history query keeps all data', () {
+    // Unlike a model-only JSON assertion this creates an actual database with
+    // the pre-PR11 generated bindings, closes it, then opens it with the new
+    // indexed model. The fixture must remain frozen when models regenerate.
+    final oldDir = Directory.systemTemp.createTempSync('northstar-v1-upgrade-');
+    final begun = DateTime.utc(2026, 9, 1, 23, 40).millisecondsSinceEpoch;
+    final finished = DateTime.utc(2026, 9, 2, 0, 15).millisecondsSinceEpoch;
+    try {
+      final before = Store(
+        legacy.getObjectBoxModel(),
+        directory: oldDir.path,
+      );
+      try {
+        before.box<WorkoutSessionEntity>().put(
+          WorkoutSessionEntity(
+            uuid: 'legacy-session',
+            name: 'Pre-index completed workout',
+            status: WorkoutStatus.completed.name,
+            startedAtMs: begun,
+            completedAtMs: finished,
+            originalOffsetMinutes: 330,
+            updatedAtMs: finished,
+          ),
+        );
+        before.box<WorkoutSessionEntity>().put(
+          WorkoutSessionEntity(
+            uuid: 'legacy-active',
+            name: 'Not completed',
+            status: WorkoutStatus.inProgress.name,
+            startedAtMs: begun,
+            originalOffsetMinutes: 330,
+            updatedAtMs: begun,
+          ),
+        );
+        before.box<WorkoutExerciseEntity>().put(
+          WorkoutExerciseEntity(
+            uuid: 'legacy-exercise',
+            sessionUuid: 'legacy-session',
+            definitionUuid: 'builtin.v1.bench-press',
+            nameSnapshot: 'Old bench snapshot',
+            equipmentSnapshot: 'Barbell',
+            position: 0,
+          ),
+        );
+        before.box<WorkoutSetEntity>().put(
+          WorkoutSetEntity(
+            uuid: 'legacy-set',
+            exerciseUuid: 'legacy-exercise',
+            position: 0,
+            kind: WorkoutSetKind.working.name,
+            status: WorkoutSetStatus.completed.name,
+            reps: 7,
+            loadGrams: 75000,
+            inputUnit: 'kg',
+            completedAtMs: begun + 60000,
+            updatedAtMs: begun + 60000,
+          ),
+        );
+      } finally {
+        before.close();
+      }
+
+      final after = Store(getObjectBoxModel(), directory: oldDir.path);
+      try {
+        final migrated = ObjectBoxWorkoutHistoryRepository(after)
+            .readCompleted().sessions;
+        expect(migrated.map((s) => s.uuid), ['legacy-session']);
+        final workout = migrated.single;
+        expect(workout.name, 'Pre-index completed workout');
+        expect(workout.completedAtUtc,
+            DateTime.fromMillisecondsSinceEpoch(finished, isUtc: true));
+        expect(workout.originalOffsetMinutes, 330);
+        expect(workout.exercises.single.nameSnapshot, 'Old bench snapshot');
+        expect(workout.sets.single.reps, 7);
+        expect(workout.sets.single.loadGrams, 75000);
+        expect(calculateWorkoutHistory(migrated).loadedVolumeGramReps, 525000);
+        // A query using the newly indexed status must also exclude old
+        // in-progress rows after the upgrade.
+        final query = after.box<WorkoutSessionEntity>()
+            .query(WorkoutSessionEntity_.status.equals('completed')).build();
+        try {
+          expect(query.find().map((e) => e.uuid), ['legacy-session']);
+        } finally {
+          query.close();
+        }
+        expect(after.box<WorkoutSessionEntity>().getAll(), hasLength(2));
+      } finally {
+        after.close();
+      }
+    } finally {
+      oldDir.deleteSync(recursive: true);
+    }
+  });
 
   test('completed native sessions survive Store restart with actual sets', () {
     create('s1', DateTime.utc(2026, 10, 23, 8));
