@@ -10,4 +10,6 @@ final completedWorkoutHistoryProvider = FutureProvider<WorkoutHistorySnapshot>(
 );
 
 /// Injectable clock: period boundaries do not depend on widget rebuild time.
-final progressNowProvider = Provider<DateTime>((ref) => DateTime.now().toUtc());
+final progressNowProvider = Provider.autoDispose<DateTime>(
+  (ref) => DateTime.now().toUtc(),
+);
