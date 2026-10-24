@@ -139,68 +139,82 @@ void main() {
     expect(history.readCompleted().sessions, isEmpty);
   });
 
-  test('worker-isolate history reads see committed sets and preserve ordering',
-      () async {
-    create('a', DateTime.utc(2026, 10, 20, 8));
-    create('b', DateTime.utc(2026, 10, 21, 8));
-    final result = await history.readCompletedAsync();
-    expect(result.sessions.map((s) => s.uuid), ['b', 'a']);
-    expect(calculateWorkoutHistory(result.sessions).loadedVolumeGramReps,
-        1000000);
-  });
+  test(
+    'worker-isolate history reads see committed sets and preserve ordering',
+    () async {
+      create('a', DateTime.utc(2026, 10, 20, 8));
+      create('b', DateTime.utc(2026, 10, 21, 8));
+      final result = await history.readCompletedAsync();
+      expect(result.sessions.map((s) => s.uuid), ['b', 'a']);
+      expect(
+        calculateWorkoutHistory(result.sessions).loadedVolumeGramReps,
+        1000000,
+      );
+    },
+  );
 
-  test('profile 300 finished sessions with 1200 performed sets on worker',
-      () async {
-    // Bulk native fixture runs in one transaction to keep the benchmark
-    // about history reads rather than synthetic per-row write overhead.
-    final sessions = store.box<WorkoutSessionEntity>();
-    final exercises = store.box<WorkoutExerciseEntity>();
-    final sets = store.box<WorkoutSetEntity>();
-    final base = DateTime.utc(2025, 1, 1).millisecondsSinceEpoch;
-    store.runInTransaction(TxMode.write, () {
-      for (var i = 0; i < 300; i++) {
-        final id = 'bulk-$i';
-        sessions.put(WorkoutSessionEntity(
-          uuid: id, name: 'Bulk workout $i',
-          startedAtMs: base + i * 86400000,
-          completedAtMs: base + i * 86400000 + 3600000,
-          originalOffsetMinutes: 330,
-          updatedAtMs: base + i * 86400000 + 3600000,
-          status: WorkoutStatus.completed.name,
-        ));
-        exercises.put(WorkoutExerciseEntity(
-          uuid: 'bulk-ex-$i',
-          sessionUuid: id,
-          definitionUuid: 'bench',
-          nameSnapshot: 'Bench press',
-          position: 0,
-        ));
-        for (var j = 0; j < 4; j++) {
-          sets.put(WorkoutSetEntity(
-            uuid: 'bulk-set-$i-$j',
-            exerciseUuid: 'bulk-ex-$i',
-            position: j,
-            kind: WorkoutSetKind.working.name,
-            status: WorkoutSetStatus.completed.name,
-            reps: 8,
-            loadGrams: 50000 + j * 1000,
-            completedAtMs: base + i * 86400000 + j * 60000,
-            updatedAtMs: base + i * 86400000,
-          ));
+  test(
+    'profile 300 finished sessions with 1200 performed sets on worker',
+    () async {
+      // Bulk native fixture runs in one transaction to keep the benchmark
+      // about history reads rather than synthetic per-row write overhead.
+      final sessions = store.box<WorkoutSessionEntity>();
+      final exercises = store.box<WorkoutExerciseEntity>();
+      final sets = store.box<WorkoutSetEntity>();
+      final base = DateTime.utc(2025, 1, 1).millisecondsSinceEpoch;
+      store.runInTransaction(TxMode.write, () {
+        for (var i = 0; i < 300; i++) {
+          final id = 'bulk-$i';
+          sessions.put(
+            WorkoutSessionEntity(
+              uuid: id,
+              name: 'Bulk workout $i',
+              startedAtMs: base + i * 86400000,
+              completedAtMs: base + i * 86400000 + 3600000,
+              originalOffsetMinutes: 330,
+              updatedAtMs: base + i * 86400000 + 3600000,
+              status: WorkoutStatus.completed.name,
+            ),
+          );
+          exercises.put(
+            WorkoutExerciseEntity(
+              uuid: 'bulk-ex-$i',
+              sessionUuid: id,
+              definitionUuid: 'bench',
+              nameSnapshot: 'Bench press',
+              position: 0,
+            ),
+          );
+          for (var j = 0; j < 4; j++) {
+            sets.put(
+              WorkoutSetEntity(
+                uuid: 'bulk-set-$i-$j',
+                exerciseUuid: 'bulk-ex-$i',
+                position: j,
+                kind: WorkoutSetKind.working.name,
+                status: WorkoutSetStatus.completed.name,
+                reps: 8,
+                loadGrams: 50000 + j * 1000,
+                completedAtMs: base + i * 86400000 + j * 60000,
+                updatedAtMs: base + i * 86400000,
+              ),
+            );
+          }
         }
-      }
-    });
-    final watch = Stopwatch()..start();
-    final result = await history.readCompletedAsync();
-    watch.stop();
-    // CI log records an actual, machine-specific observation; no arbitrary
-    // device SLA claimed from a hosted Linux benchmark.
-    // ignore: avoid_print
-    print('HISTORY_PROFILE completed=300 sets=1200 '
-      'worker_read_ms=${watch.elapsedMilliseconds}');
-    expect(result.sessions, hasLength(300));
-    expect(result.sessions.first.uuid, 'bulk-299');
-    expect(calculateWorkoutHistory(result.sessions).loadedWorkingSets, 1200);
-  });
-
+      });
+      final watch = Stopwatch()..start();
+      final result = await history.readCompletedAsync();
+      watch.stop();
+      // CI log records an actual, machine-specific observation; no arbitrary
+      // device SLA claimed from a hosted Linux benchmark.
+      // ignore: avoid_print
+      print(
+        'HISTORY_PROFILE completed=300 sets=1200 '
+        'worker_read_ms=${watch.elapsedMilliseconds}',
+      );
+      expect(result.sessions, hasLength(300));
+      expect(result.sessions.first.uuid, 'bulk-299');
+      expect(calculateWorkoutHistory(result.sessions).loadedWorkingSets, 1200);
+    },
+  );
 }

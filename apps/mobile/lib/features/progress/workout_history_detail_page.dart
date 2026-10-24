@@ -151,13 +151,15 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
 
   String _friendlyFinish(DateTime finished, int offsetMinutes) {
     final local = finished.toUtc().add(Duration(minutes: offsetMinutes));
-    final time = '${local.hour.toString().padLeft(2, '0')}:'
-      '${local.minute.toString().padLeft(2, '0')}';
+    final time =
+        '${local.hour.toString().padLeft(2, '0')}:'
+        '${local.minute.toString().padLeft(2, '0')}';
     final hours = offsetMinutes.abs() ~/ 60;
     final minutes = offsetMinutes.abs() % 60;
-    final offset = '${offsetMinutes >= 0 ? '+' : '-'}'
-      '${hours.toString().padLeft(2, '0')}:'
-      '${minutes.toString().padLeft(2, '0')}';
+    final offset =
+        '${offsetMinutes >= 0 ? '+' : '-'}'
+        '${hours.toString().padLeft(2, '0')}:'
+        '${minutes.toString().padLeft(2, '0')}';
     return 'Finished at $time (UTC$offset)';
   }
 
