@@ -561,7 +561,9 @@ class _SetEditorTileState extends State<SetEditorTile> {
               DropdownButton<WorkoutSetKind>(
                 value: kind,
                 onChanged: widget.enabled ? (value) {
-                  if (value != null) setState(() => kind = value);
+                  if (value != null) {
+                    setState(() => kind = value);
+                  }
                 } : null,
                 items: const [
                   DropdownMenuItem(
