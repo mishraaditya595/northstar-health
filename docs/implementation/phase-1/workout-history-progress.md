@@ -1,0 +1,68 @@
+# Phase 1 — Completed workout history and progress (PR #11)
+
+**Base:** latest `main` after merged PR #10 at
+`e2c3ddcb895367f3272c00531f581e624600ed77`.
+**Scope:** offline, read-only, factual **NorthStar workout history**.
+No ObjectBox schema/UID change, external health measurements, backup, watch
+tracking, Firebase analytics or write/export permissions.
+
+## Data owner and behavior
+
+- Phone ObjectBox is the source of truth. A read-only repository queries
+  `status == completed` and filters soft-deleted records and missing finish
+  timestamps. Discarded, paused, in-progress and unknown future statuses
+  never appear in a completed session list.
+- Sessions are sorted by **finish time descending**, with a deterministic
+  UUID tie break. Their original exercise name/equipment snapshots,
+  performed reps, load units, RPE, set kind and status are displayed in a
+  read-only detail screen. Edits to plans cannot rewrite past sessions.
+- History and metrics show 30-day, 90-day or all-time windows. Ranges use a
+  rolling UTC finish-time boundary; calendar day labels use the captured
+  original timezone offset rather than the phone's present timezone.
+- Summary shows actual completed-workout count, performed *working*-set
+  count and **loaded volume (kg × reps)**. Volume sums integer
+  `reps × loadGrams` only for completed working sets with a recorded load.
+  Unloaded working sets are counted separately, never converted to zero
+  kilograms. Skipped/planned/warm-up/unsupported sets do not inflate volume.
+- Exercise trend is maximum **logged working-set load per finished workout**,
+  not an estimated 1RM, rate of strength gain or caloric metric. The trend
+  is scoped to a stable exercise definition UUID where present; for older
+  snapshots without a definition, the normalized historical name is used
+  as a limited fallback. Each point has a date, load and performed reps.
+- Empty/error cases never render fictitious training numbers. Refresh uses
+  an explicit Riverpod invalidation and entering the screen re-reads the
+  local Store. Completing or discarding a workout invalidates the history
+  provider so stale UI does not persist.
+
+## Tests / QA
+
+- Pure Dart model tests cover completed-only filtering, planned/warm-up/
+  skipped/unloaded exclusion, integer gram arithmetic, per-workout best load,
+  stable grouping and stored timezone offsets.
+- Real native ObjectBox tests close/reopen the Store, verify history
+  persistence, descending order, and exclusion of unfinished/discarded,
+  soft-deleted and unknown statuses.
+- Progress widget tests check empty screen, true recorded volume/trend,
+  navigating a completed session into read-only detail, exclusion of
+  unfinished sessions, dark theme and wide layout.
+- Still required before release: physical-device iOS/Android persistence
+  and process death, backup exclusions, large-database performance profiling,
+  accessibility at 2× scaling, screen-reader labels, low-end tablets,
+  complete CI/Codemagic deployment and manual UX review.
+
+## Known tradeoffs
+
+- Initial projection walks completed sessions using the existing repository.
+  It **does not** introduce a new index, denormalized summary entity or
+  incremental stats cache; profile long workout histories before shipping.
+- Training volume is deliberately partial if weights are omitted. No
+  bodyweight-to-load inference, no personal-record prediction and no
+  HealthKit/Health Connect metrics are produced.
+- Snapshots from older sessions lacking definition UUIDs can group by
+  normalized name; distinct movements with identical historical names may
+  collide. This is a read-only presentation fallback, not record mutation.
+- Historical records have no account-level backup until Phase 2 consented
+  backfill, and should be clearly presented as **local only**.
+- Today health metric demo tiles remain prototype-only until Phase 3
+  permission-based platform reads; they are not workout history.
+- PR #11 is review-only; **no autonomous merge**.
