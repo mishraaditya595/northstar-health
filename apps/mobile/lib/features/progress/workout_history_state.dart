@@ -3,15 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'data/objectbox_workout_history_repository.dart';
 import 'domain/workout_history_models.dart';
 
-/// Explicit refresh on navigation / after workout completion.
-/// No demo values, cloud state, or HealthKit values feed these projections.
-final completedWorkoutHistoryProvider =
-    Provider.autoDispose<AsyncValue<WorkoutHistorySnapshot>>((ref) {
-      try {
-        return AsyncData<WorkoutHistorySnapshot>(
-          ref.watch(workoutHistoryRepositoryProvider).readCompleted(),
-        );
-      } catch (error, trace) {
-        return AsyncError<WorkoutHistorySnapshot>(error, trace);
-      }
-    });
+/// Retained across tabs. Invalidated after a finish/discard or user refresh.
+/// ObjectBox executes this read transaction in its own background isolate.
+final completedWorkoutHistoryProvider = FutureProvider<WorkoutHistorySnapshot>(
+  (ref) => ref.watch(workoutHistoryRepositoryProvider).readCompletedAsync(),
+);
+
+/// Injectable clock: period boundaries do not depend on widget rebuild time.
+final progressNowProvider = Provider<DateTime>((ref) => DateTime.now().toUtc());

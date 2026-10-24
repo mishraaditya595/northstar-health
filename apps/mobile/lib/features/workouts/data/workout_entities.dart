@@ -96,6 +96,7 @@ class WorkoutSessionEntity {
   String uuid;
   String name;
   String? planUuid;
+  @Index()
   String status;
   String origin;
   int revision;

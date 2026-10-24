@@ -1,3 +1,4 @@
+import '../../../core/units/load_units.dart';
 import '../../workouts/domain/workout_models.dart';
 
 /// Only explicit, locally committed COMPLETED NorthStar workouts are history.
@@ -33,12 +34,14 @@ class ExerciseStrengthPoint {
     required this.performedAtUtc,
     required this.grams,
     required this.reps,
+    required this.inputUnit,
   });
 
   final String sessionUuid;
   final DateTime performedAtUtc;
   final int grams;
   final int reps;
+  final LoadUnit inputUnit;
 }
 
 class ExerciseStrengthTrend {
@@ -94,7 +97,7 @@ WorkoutHistorySummary calculateWorkoutHistory(
       // int arithmetic: no floating-point rounding and no estimated 1RM.
       volume += set.loadGrams! * set.reps!;
       final exercise = exercises[set.exerciseUuid];
-      if (exercise == null) continue;
+      if (exercise == null || set.loadGrams! <= 0) continue;
       final key = exercise.definitionUuid == null
           ? 'snapshot:${exercise.nameSnapshot.trim().toLowerCase()}'
           : 'definition:${exercise.definitionUuid}';
@@ -116,6 +119,7 @@ WorkoutHistorySummary calculateWorkoutHistory(
               performedAtUtc: sample.completedAtUtc ?? session.completedAtUtc!,
               grams: sample.loadGrams!,
               reps: sample.reps!,
+              inputUnit: sample.inputUnit,
             ),
           );
     }
@@ -156,6 +160,6 @@ int countWorkingSets(WorkoutSessionRecord session) => session.sets
     .where(
       (s) =>
           s.kind == WorkoutSetKind.working &&
-          s.status == WorkoutSetStatus.completed,
+          s.status == WorkoutSetStatus.completed && s.reps != null,
     )
     .length;

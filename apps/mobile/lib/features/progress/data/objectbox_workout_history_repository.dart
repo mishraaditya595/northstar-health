@@ -9,6 +9,7 @@ import '../domain/workout_history_models.dart';
 
 abstract interface class WorkoutHistoryRepository {
   WorkoutHistorySnapshot readCompleted();
+  Future<WorkoutHistorySnapshot> readCompletedAsync();
 }
 
 final workoutHistoryRepositoryProvider = Provider<WorkoutHistoryRepository>(
@@ -28,25 +29,26 @@ class ObjectBoxWorkoutHistoryRepository implements WorkoutHistoryRepository {
   final ObjectBoxWorkoutRepository _workouts;
 
   @override
+  Future<WorkoutHistorySnapshot> readCompletedAsync() =>
+      _store.runInTransactionAsync(TxMode.read, readHistoryOnWorker, 0);
+
+  @override
   WorkoutHistorySnapshot readCompleted() {
     // Consistent across aggregate reads: a concurrent finish cannot leak a
     // half-completed session. Each aggregate is reused from the repository.
     return _store.runInTransaction(TxMode.read, () {
       final query = _sessions
           .query(
-            WorkoutSessionEntity_.status.equals(WorkoutStatus.completed.name),
+            WorkoutSessionEntity_.status.equals(WorkoutStatus.completed.name) &
+            WorkoutSessionEntity_.origin.equals('northstar_phone') &
+            WorkoutSessionEntity_.deletedAtMs.isNull() &
+            WorkoutSessionEntity_.completedAtMs.notNull(),
           )
           .build();
       try {
         final rows =
             query
                 .find()
-                .where(
-                  (s) =>
-                      s.deletedAtMs == null &&
-                      s.completedAtMs != null &&
-                      s.origin == 'northstar_phone',
-                )
                 .toList()
               ..sort((a, b) {
                 final descending = b.completedAtMs!.compareTo(a.completedAtMs!);
@@ -68,3 +70,7 @@ class ObjectBoxWorkoutHistoryRepository implements WorkoutHistoryRepository {
     });
   }
 }
+
+/// Top-level worker isolate callback: no widget or Riverpod objects sent.
+WorkoutHistorySnapshot readHistoryOnWorker(Store store, int _) =>
+    ObjectBoxWorkoutHistoryRepository(store).readCompleted();
