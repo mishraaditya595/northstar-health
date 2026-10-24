@@ -371,6 +371,43 @@ void main() {
     },
   );
 
+  testWidgets('returning from background updates 30-day boundary in place',
+      (tester) async {
+    var clock = DateTime.utc(2026, 10, 24, 12);
+    var sampled = 0;
+    final repository = _CountingLoadedHistoryRepository(store);
+    writeWorkout(
+      'background',
+      startedAtUtc: clock.subtract(const Duration(days: 29)),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          objectBoxStoreProvider.overrideWithValue(store),
+          workoutHistoryRepositoryProvider.overrideWithValue(repository),
+          progressNowProvider.overrideWith((ref) {
+            sampled++;
+            return clock;
+          }),
+        ],
+        child: MaterialApp.router(
+          theme: NorthstarTheme.build(Brightness.light),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('No sessions in this period'), findsNothing);
+    expect(sampled, 1);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    clock = clock.add(const Duration(days: 3));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(find.text('No sessions in this period'), findsOneWidget);
+    expect(sampled, 2);
+    expect(repository.calls, 1);
+  });
+
   testWidgets('finish through ActiveWorkoutPage refreshes cached Progress', (
     tester,
   ) async {
