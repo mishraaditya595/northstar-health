@@ -2,8 +2,10 @@
 
 **Decision:** ObjectBox on phones/tablets; accepted in [ADR-0003](adr/0003-data-cloud-health.md). The native Store, seven initial entities and repository boundary were introduced
 in PR #5. PR #7 added the exercise catalog and transactional plan builder.
-**Today/Progress still show fictional demo data** and the live workout logger
-is not implemented. ObjectBox cloud Sync is not used.
+The offline quick/plan-start and recovery engine is tracked in
+[Phase 1 live workout engine](implementation/phase-1/live-workout-engine.md).
+**Today/Progress still show fictional demo data**; no live workout UI is
+implemented yet. ObjectBox cloud Sync is not used.
 
 ## Data classification and lifetime
 
@@ -25,6 +27,10 @@ Don't create an unbounded permanent `HealthObservation` archive from platform me
   (`apps/mobile/lib/features/workouts/data/objectbox_workout_repository.dart`):
   session creation, atomic set/save+checkpoint commits, exact retry and
   optimistic session revision guard.
+- `ObjectBoxLiveWorkoutEngine`
+  (`apps/mobile/lib/features/workouts/data/objectbox_live_workout_engine.dart`):
+  one unfinished session; atomic plan-to-session materialization, recovery,
+  checkpoint-aware optimistic lifecycle commands and no-ghost rollback.
 - `ObjectBoxWorkoutLibraryRepository`
   (`apps/mobile/lib/features/workouts/data/objectbox_workout_library_repository.dart`):
   18 built-in definitions, custom exercise editing/soft archive, atomic plan
