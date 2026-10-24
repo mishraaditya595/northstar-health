@@ -140,23 +140,23 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
                 onPressed: () => ref.invalidate(activeWorkoutProvider),
                 icon: const Icon(Icons.refresh), label: const Text('Retry')),
             ]),
-          data: (workout) => workout == null
+          data: (current) => current == null
               ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
                   const Text('No unfinished workout'),
                   TextButton(onPressed: () => context.go('/train'),
                     child: const Text('Return to Train')),
                 ]))
-              : _workoutBody(workout),
+              : _workoutBody(current.session, current.checkpoint),
         ),
       )),
     );
   }
 
-  Widget _workoutBody(WorkoutSessionRecord session) {
+  Widget _workoutBody(
+    WorkoutSessionRecord session, WorkoutRecoveryCheckpoint checkpoint) {
     final paused = session.status == WorkoutStatus.paused;
     final completed = session.sets
         .where((e) => e.status == WorkoutSetStatus.completed).length;
-    final checkpoint = ref.read(workoutActionsProvider).checkpoint(session.uuid);
     final byExercise = <String, List<WorkoutSetRecord>>{};
     for (final exercise in session.exercises) {
       byExercise[exercise.uuid] = session.sets

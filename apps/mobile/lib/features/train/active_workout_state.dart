@@ -13,9 +13,22 @@ import '../workouts/domain/workout_repository.dart';
 
 /// Reload on foreground/re-entry and after each acknowledged local commit.
 /// No polling or network; the database is always the durable source.
-final activeWorkoutProvider = FutureProvider<WorkoutSessionRecord?>(
-  (ref) async => ref.watch(liveWorkoutEngineProvider).recoverActiveWorkout(),
-);
+class ActiveWorkoutView {
+  const ActiveWorkoutView(this.session, this.checkpoint);
+  final WorkoutSessionRecord session;
+  final WorkoutRecoveryCheckpoint checkpoint;
+}
+
+final activeWorkoutProvider = FutureProvider<ActiveWorkoutView?>((ref) async {
+  final engine = ref.watch(liveWorkoutEngineProvider);
+  final session = engine.recoverActiveWorkout();
+  if (session == null) return null;
+  final checkpoint = engine.readCheckpoint(session.uuid);
+  if (checkpoint == null || checkpoint.checkpointRevision != session.revision) {
+    throw StateError('Recovery checkpoint is missing or outdated');
+  }
+  return ActiveWorkoutView(session, checkpoint);
+});
 
 abstract interface class WorkoutActions {
   WorkoutSessionRecord startQuick(String name);

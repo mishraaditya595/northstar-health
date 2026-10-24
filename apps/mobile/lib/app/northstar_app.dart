@@ -9,6 +9,7 @@ import '../features/today/today_page.dart';
 import '../features/train/train_page.dart';
 import '../features/train/exercise_catalog_page.dart';
 import '../features/train/plan_editor_page.dart';
+import '../features/train/active_workout_page.dart';
 import 'theme_controller.dart';
 
 final _routes = <String>['/today', '/train', '/progress', '/health'];
@@ -45,6 +46,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: '/today', builder: (_, _) => const TodayPage()),
           GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+          GoRoute(
+            path: '/train/workout',
+            builder: (_, _) => const ActiveWorkoutPage(),
+          ),
           GoRoute(
             path: '/train/exercises',
             builder: (_, _) => const ExerciseCatalogPage(),
