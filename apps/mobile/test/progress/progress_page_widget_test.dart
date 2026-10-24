@@ -252,10 +252,8 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('8 reps'), findsOneWidget);
-    final at = DateTime.now().toUtc().subtract(
-      const Duration(hours: 1, minutes: 55),
-    );
-    final local = at.add(const Duration(minutes: 330));
+    final session = ObjectBoxWorkoutRepository(store).getSession('trend')!;
+    final local = session.completedAtUtc!.add(const Duration(minutes: 330));
     expect(
       find.text(
         '${local.day.toString().padLeft(2, '0')}/'
@@ -265,7 +263,16 @@ void main() {
     );
     await tester.tap(find.widgetWithText(ChoiceChip, 'lb'));
     await tester.pumpAndSettle();
+    expect(find.textContaining('Best logged load · 137.79 lb'), findsOneWidget);
     expect(find.textContaining('lb'), findsWidgets);
+    await tester.scrollUntilVisible(
+      find.text('LOADED VOLUME'),
+      -200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('lb × reps'), findsOneWidget);
+    expect(find.text('1102.31'), findsOneWidget);
+    expect(find.text('kg × reps'), findsNothing);
   });
 
   testWidgets('period filter honors injected UTC clock and boundary', (
@@ -315,6 +322,46 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Workout older'), findsOneWidget);
+  });
+
+  testWidgets('later Progress visit samples a fresh clock without re-reading history',
+      (tester) async {
+    var clock = DateTime.utc(2026, 10, 24, 12);
+    var sampled = 0;
+    final repository = _CountingLoadedHistoryRepository(store);
+    writeWorkout(
+      'aging',
+      startedAtUtc: clock.subtract(const Duration(days: 29)),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          objectBoxStoreProvider.overrideWithValue(store),
+          workoutHistoryRepositoryProvider.overrideWithValue(repository),
+          progressNowProvider.overrideWith((ref) {
+            sampled++;
+            return clock;
+          }),
+        ],
+        child: MaterialApp.router(
+          theme: NorthstarTheme.build(Brightness.light),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('1 finished'), findsOneWidget);
+    expect(sampled, 1);
+    expect(repository.calls, 1);
+    router.go('/train');
+    await tester.pumpAndSettle();
+    clock = clock.add(const Duration(days: 3));
+    router.go('/progress');
+    await tester.pumpAndSettle();
+    expect(find.text('No sessions in this period'), findsOneWidget);
+    expect(sampled, 2);
+    // History remains cached while the autoDisposed clock is resampled.
+    expect(repository.calls, 1);
   });
 
   testWidgets('finish through ActiveWorkoutPage refreshes cached Progress', (
@@ -427,6 +474,21 @@ class _CountingHistoryRepository implements WorkoutHistoryRepository {
   @override
   WorkoutHistorySnapshot readCompleted() =>
       const WorkoutHistorySnapshot(sessions: []);
+  @override
+  Future<WorkoutHistorySnapshot> readCompletedAsync() async {
+    calls++;
+    return readCompleted();
+  }
+}
+
+class _CountingLoadedHistoryRepository implements WorkoutHistoryRepository {
+  _CountingLoadedHistoryRepository(Store store)
+      : _native = ObjectBoxWorkoutHistoryRepository(store);
+  final ObjectBoxWorkoutHistoryRepository _native;
+  int calls = 0;
+
+  @override
+  WorkoutHistorySnapshot readCompleted() => _native.readCompleted();
   @override
   Future<WorkoutHistorySnapshot> readCompletedAsync() async {
     calls++;
