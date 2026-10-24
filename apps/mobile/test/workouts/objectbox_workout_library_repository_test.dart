@@ -250,7 +250,10 @@ void main() {
             .name,
         'My home cable row',
       );
-      library.archivePlan('plan-a');
+      library.archivePlan(
+        'plan-a',
+        expectedUpdatedAtMs: library.getPlan('plan-a')!.updatedAtMs,
+      );
       expect(library.listPlans(), isEmpty);
       expect(library.getPlan('plan-a'), isNull);
       expect(store.box<PlanExerciseEntity>().count(), 1);
