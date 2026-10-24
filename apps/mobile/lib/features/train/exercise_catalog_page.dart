@@ -211,11 +211,12 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
                                 )),
                       )
                       .toList();
-                  if (visible.isEmpty)
+                  if (visible.isEmpty) {
                     return const Padding(
                       padding: EdgeInsets.all(20),
                       child: Text('No matching exercises.'),
                     );
+                  }
                   return Column(
                     children: [
                       for (final exercise in visible)
@@ -249,8 +250,9 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
                                         'Exercise actions for ${exercise.name}',
                                     onSelected: (action) {
                                       if (action == 'edit') _edit(exercise);
-                                      if (action == 'archive')
+                                      if (action == 'archive') {
                                         _archive(exercise);
+                                      }
                                     },
                                     itemBuilder: (_) => const [
                                       PopupMenuItem(
