@@ -393,57 +393,67 @@ class _RecentLoadBars extends StatelessWidget {
       label:
           'Recent best working-set loads for ${trend.name}: '
           '${points.map((p) =>
-              '${formatWorkoutDay(p.performedAtUtc)}: '
+              '${formatWorkoutDay(p.originalLocalDay)}: '
               '${_mass(p.grams, unit)} for ${p.reps} reps').join('; ')}',
       child: SizedBox(
-        height: 180,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            for (final point in points)
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                  child: Tooltip(
-                    message: '${formatWorkoutDay(point.performedAtUtc)} · '
-                        '${_mass(point.grams, unit)} × ${point.reps} reps',
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Text(
-                          _mass(point.grams, unit),
-                          maxLines: 1,
-                          style: Theme.of(context).textTheme.labelSmall,
-                        ),
-                        const SizedBox(height: 6),
-                        Container(
-                          width: double.infinity,
-                          height:
-                              68 *
-                              (max == 0 ? 0.05 : point.grams / max).clamp(
-                                0.05,
-                                1.0,
+        height: 192,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final visible = points.length > 4 ? 4 : points.length;
+            final barWidth = (constraints.maxWidth / visible).clamp(78.0, 155.0);
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  for (final point in points)
+                    SizedBox(
+                      width: barWidth,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        child: Tooltip(
+                          message: '${formatWorkoutDay(point.originalLocalDay)} · '
+                              '${_mass(point.grams, unit)} × ${point.reps} reps',
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text(
+                                _mass(point.grams, unit),
+                                maxLines: 1,
+                                style: Theme.of(context).textTheme.labelSmall,
                               ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary,
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(5),
-                            ),
+                              const SizedBox(height: 6),
+                              Container(
+                                width: double.infinity,
+                                height: 68 * (max == 0
+                                    ? 0.05
+                                    : point.grams / max).clamp(0.05, 1.0),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(5),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${point.originalLocalDay.day.toString().padLeft(2, '0')}/'
+                                '${point.originalLocalDay.month.toString().padLeft(2, '0')}',
+                                style: Theme.of(context).textTheme.labelSmall,
+                              ),
+                              Text(
+                                '${point.reps} reps',
+                                style: Theme.of(context).textTheme.labelSmall,
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${point.performedAtUtc.day}/${point.performedAtUtc.month}',
-                          style: Theme.of(context).textTheme.labelSmall,
-                        ),
-                        Text('${point.reps} reps',
-                          style: Theme.of(context).textTheme.labelSmall),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
+                ],
               ),
-          ],
+            );
+          },
         ),
       ),
     );
