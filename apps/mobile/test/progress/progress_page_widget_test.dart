@@ -22,12 +22,10 @@ void main() {
     directory = Directory.systemTemp.createTempSync('northstar-progress-ui-');
     store = Store(getObjectBoxModel(), directory: directory.path);
     router = GoRouter(initialLocation: '/progress', routes: [
-      GoRoute(path: '/progress', builder: (_, _) => const ProgressPage()),
+      GoRoute(path: '/progress', builder: (_, _) => const Scaffold(body: ProgressPage())),
       GoRoute(path: '/progress/workouts/:id',
-        builder: (_, state) => Scaffold(
-          body: WorkoutHistoryDetailPage(
-            sessionUuid: state.pathParameters['id']!,
-          ),
+        builder: (_, state) => WorkoutHistoryDetailPage(
+          sessionUuid: state.pathParameters['id']!,
         ),
       ),
     ]);
