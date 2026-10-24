@@ -31,6 +31,28 @@ Spacing uses 4px rhythm (8, 12, 16, 20, 24, 32), page gutters 16–24, cards 20�
 - `.bottom-nav`: Today / Train / Progress / Health on compact; rail on tablets
 - `.theme-switch`: accessible appearance choice in both modes
 
+## Shared Flutter components
+All of these live in `apps/mobile/lib/core/design/`. Look comes from `NorthstarTheme` (input, dialog, sheet, chip, snackbar, menu and button themes), so use the widget and do not restyle it per screen. **Do not invent new components in a feature**: extend the kit in its own PR, then use it. `test/design_kit_guard_test.dart` fails on raw Material controls in `lib/features`.
+
+| Need | Use | File |
+|---|---|---|
+| Text input (forms, dialogs, search) | `NsTextField` | `inputs.dart` |
+| Single choice select | `NsDropdown<T>` + `NsOption` | `inputs.dart` |
+| Selectable pill / filter / unit toggle | `NsChip` | `inputs.dart` |
+| Form dialog | `showNsDialog` + `NsDialog` | `dialogs.dart` |
+| Yes/no question (dismiss = no) | `showNsConfirm` | `dialogs.dart` |
+| Picker sheet | `showNsSheet` | `dialogs.dart` |
+| Short message | `showNsMessage` | `dialogs.dart` |
+| Tab/page title, theme switch, avatar | `PageHeader` | `page_header.dart` |
+| Sub-page back control | `NsBackButton` (in `AppBar`) | `page_header.dart` |
+| Row with glyph, title, subtitle | `NsListCard` | `page_header.dart` |
+| Status pill | `NsTag` | `page_header.dart` |
+| Tinted note or hint | `InsightCard` | `page_header.dart` |
+| Section title with right label | `SectionHeading` | `section.dart` |
+| Floating bottom nav | `FloatingNavBar` | `app/floating_nav_bar.dart` |
+
+Primary actions are `FilledButton`, secondary `OutlinedButton`, tertiary `TextButton` (all themed). Dispose dialog `TextEditingController`s with `disposeAfterDialog` (`core/ui/`).
+
 ## Layout and acceptance
 320–599: single-column, nav bottom, 2-column metric cards only if text fits. 600–839: side rail and constrained content. 840+: side rail, up to ~1120dp dashboard and optional secondary panel. Don't stretch content just because tablet width is available. Test 320, 390, 700, 1024, 1366 logical widths in light/dark, landscape, split screen and 200% text scale.
 

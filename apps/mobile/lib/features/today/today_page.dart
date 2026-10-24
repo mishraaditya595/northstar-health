@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/design/dialogs.dart';
 import '../../core/design/northstar_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
@@ -16,9 +17,7 @@ class TodayPage extends ConsumerStatefulWidget {
 class _TodayPageState extends ConsumerState<TodayPage> {
   String? energy;
 
-  void _later() => ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(const SnackBar(content: Text('Available in a later phase.')));
+  void _later() => showNsMessage(context, 'Available in a later phase.');
 
   @override
   Widget build(BuildContext context) {

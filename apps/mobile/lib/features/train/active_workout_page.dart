@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/design/dialogs.dart';
+import '../../core/design/inputs.dart';
 import '../../core/design/northstar_theme.dart';
 import '../../core/design/page_header.dart';
 
@@ -85,34 +87,41 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
   }
 
   Future<void> _confirmEnd(WorkoutSessionRecord workout, bool discard) async {
-    final yes = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(discard ? 'Discard workout?' : 'Finish workout?'),
-        content: Text(
-          discard
-              ? 'This session will not appear in your completed history.'
-              : 'Only recorded sets count toward workout history.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Keep training'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(discard ? 'Discard workout' : 'Finish workout'),
-          ),
-        ],
-      ),
+    final yes = await showNsConfirm(
+      context,
+      title: discard ? 'Discard workout?' : 'Finish workout?',
+      message: discard
+          ? 'This session will not appear in your completed history.'
+          : 'Only recorded sets count toward workout history.',
+      cancelLabel: 'Keep training',
+      confirmLabel: discard ? 'Discard workout' : 'Finish workout',
     );
-    if (yes != true || !mounted) {
+    if (!yes || !mounted) {
       return;
     }
     await _perform(
       (a) => discard ? a.discard(workout) : a.finish(workout),
       leaveOnSuccess: true,
     );
+  }
+
+  Future<void> _removeSet(
+    WorkoutSessionRecord workout,
+    WorkoutSetRecord set,
+  ) async {
+    if (set.status == WorkoutSetStatus.completed) {
+      final yes = await showNsConfirm(
+        context,
+        title: 'Remove this set?',
+        message: 'This recorded set will be deleted from the workout.',
+        cancelLabel: 'Keep set',
+        confirmLabel: 'Remove set',
+      );
+      if (!yes || !mounted) {
+        return;
+      }
+    }
+    await _perform((a) => a.removeSet(workout, set));
   }
 
   Future<void> _chooseExercise(WorkoutSessionRecord workout) async {
@@ -125,53 +134,45 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
           .where((exercise) => exercise.archivedAtMs == null)
           .toList();
       var search = '';
-      final chosen = await showModalBottomSheet<String>(
-        context: context,
-        isScrollControlled: true,
-        showDragHandle: true,
-        builder: (sheetContext) => SafeArea(
-          child: FractionallySizedBox(
-            heightFactor: 0.78,
-            child: StatefulBuilder(
-              builder: (context, updateSheet) {
-                final list = available
-                    .where(
-                      (e) =>
-                          e.name.toLowerCase().contains(search) ||
-                          e.muscleGroup.toLowerCase().contains(search),
-                    )
-                    .toList();
-                return Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: TextField(
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search),
-                          labelText: 'Find a movement',
-                          border: OutlineInputBorder(),
-                        ),
-                        onChanged: (value) => updateSheet(
-                          () => search = value.trim().toLowerCase(),
-                        ),
-                      ),
+      final chosen = await showNsSheet<String>(
+        context,
+        builder: (sheetContext) => StatefulBuilder(
+          builder: (context, updateSheet) {
+            final list = available
+                .where(
+                  (e) =>
+                      e.name.toLowerCase().contains(search) ||
+                      e.muscleGroup.toLowerCase().contains(search),
+                )
+                .toList();
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: NsTextField(
+                    prefixIcon: Icons.search,
+                    label: 'Find a movement',
+                    onChanged: (value) =>
+                        updateSheet(() => search = value.trim().toLowerCase()),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    itemCount: list.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (_, index) => NsListCard(
+                      icon: Icons.fitness_center,
+                      title: list[index].name,
+                      subtitle: list[index].muscleGroup,
+                      onTap: () =>
+                          Navigator.pop(sheetContext, list[index].uuid),
                     ),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: list.length,
-                        itemBuilder: (_, index) => ListTile(
-                          title: Text(list[index].name),
-                          subtitle: Text(list[index].muscleGroup),
-                          onTap: () =>
-                              Navigator.pop(sheetContext, list[index].uuid),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       );
       if (chosen == null || !mounted) {
@@ -385,6 +386,7 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
                       onSave: (updated, rest) => _perform(
                         (a) => a.saveSet(session, updated, restSeconds: rest),
                       ),
+                      onRemove: () => _removeSet(session, set),
                     ),
                   Align(
                     alignment: Alignment.centerLeft,
@@ -430,12 +432,16 @@ class SetEditorTile extends StatefulWidget {
     required this.record,
     required this.enabled,
     required this.onSave,
+    this.onRemove,
     super.key,
   });
 
   final WorkoutSetRecord record;
   final bool enabled;
   final void Function(WorkoutSetRecord set, int? restSeconds) onSave;
+
+  /// Null hides the remove action.
+  final VoidCallback? onRemove;
 
   @override
   State<SetEditorTile> createState() => _SetEditorTileState();
@@ -565,175 +571,185 @@ class _SetEditorTileState extends State<SetEditorTile> {
     final dark = theme.brightness == Brightness.dark;
     final done = s.status == WorkoutSetStatus.completed;
     return Container(
+      width: double.infinity,
       margin: const EdgeInsets.symmetric(vertical: 5),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(14, 8, 8, 14),
       decoration: BoxDecoration(
         color: done
             ? (dark
                   ? NorthstarPalette.forestSoftDark
                   : NorthstarPalette.forestSoftLight)
-            : (dark ? NorthstarPalette.darkSoft : NorthstarPalette.lightSoft),
+            : theme.colorScheme.surface,
+        border: Border.all(color: theme.colorScheme.outline),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'SET ${s.position + 1} · ${s.status.name.toUpperCase()}',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              letterSpacing: 1.1,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          Row(
             children: [
-              SizedBox(
-                width: 82,
-                child: TextField(
-                  key: ValueKey('reps-${s.uuid}'),
-                  controller: reps,
-                  enabled: widget.enabled,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Reps',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(12)),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 108,
-                child: TextField(
-                  key: ValueKey('weight-${s.uuid}'),
-                  controller: weight,
-                  enabled: widget.enabled,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Weight',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(12)),
-                    ),
-                  ),
-                ),
-              ),
-              DropdownButton<LoadUnit>(
-                value: unit,
-                onChanged: widget.enabled
-                    ? (next) {
-                        if (next == null || next == unit) {
-                          return;
-                        }
-                        final entered = double.tryParse(weight.text.trim());
-                        if (entered != null &&
-                            entered >= 0 &&
-                            entered.isFinite) {
-                          final grams = LoadUnits.toGrams(entered, unit);
-                          weight.text = _savedWeightText(grams, next);
-                        }
-                        setState(() => unit = next);
-                      }
-                    : null,
-                items: const [
-                  DropdownMenuItem(value: LoadUnit.kg, child: Text('kg')),
-                  DropdownMenuItem(value: LoadUnit.lb, child: Text('lb')),
-                ],
-              ),
-              SizedBox(
-                width: 82,
-                child: TextField(
-                  key: ValueKey('rpe-${s.uuid}'),
-                  controller: rpe,
-                  enabled: widget.enabled,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'RPE',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(12)),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              DropdownButton<WorkoutSetKind>(
-                value: kind,
-                onChanged: widget.enabled
-                    ? (value) {
-                        if (value != null) {
-                          setState(() => kind = value);
-                        }
-                      }
-                    : null,
-                items: const [
-                  DropdownMenuItem(
-                    value: WorkoutSetKind.working,
-                    child: Text('Working'),
-                  ),
-                  DropdownMenuItem(
-                    value: WorkoutSetKind.warmup,
-                    child: Text('Warm-up'),
-                  ),
-                ],
-              ),
-              DropdownButton<int>(
-                value: rest,
-                onChanged: widget.enabled
-                    ? (v) {
-                        if (v != null) {
-                          setState(() => rest = v);
-                        }
-                      }
-                    : null,
-                items: const [
-                  DropdownMenuItem(value: 0, child: Text('No rest')),
-                  DropdownMenuItem(value: 60, child: Text('Rest 60s')),
-                  DropdownMenuItem(value: 90, child: Text('Rest 90s')),
-                  DropdownMenuItem(value: 120, child: Text('Rest 120s')),
-                ],
-              ),
-              FilledButton(
-                onPressed: widget.enabled ? _record : null,
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(0, 46),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
+              Expanded(
                 child: Text(
-                  s.status == WorkoutSetStatus.completed
-                      ? 'Update set'
-                      : 'Save set',
+                  'SET ${s.position + 1} · ${s.status.name.toUpperCase()}',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    letterSpacing: 1.1,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-              TextButton(
-                onPressed:
-                    !widget.enabled || s.status != WorkoutSetStatus.planned
-                    ? null
-                    : () => widget.onSave(skippedSet(s), null),
-                child: const Text('Skip'),
-              ),
+              if (widget.onRemove != null)
+                IconButton(
+                  tooltip: 'Remove set ${s.position + 1}',
+                  onPressed: widget.enabled ? widget.onRemove : null,
+                  icon: const Icon(Icons.delete_outline, size: 20),
+                ),
             ],
           ),
-          if (error != null)
-            Text(
-              error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: NsTextField(
+                        key: ValueKey('reps-${s.uuid}'),
+                        controller: reps,
+                        dense: true,
+                        enabled: widget.enabled,
+                        keyboardType: TextInputType.number,
+                        label: 'Reps',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 3,
+                      child: NsTextField(
+                        key: ValueKey('weight-${s.uuid}'),
+                        controller: weight,
+                        dense: true,
+                        enabled: widget.enabled,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        label: 'Weight',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 86,
+                      child: NsDropdown<LoadUnit>(
+                        value: unit,
+                        dense: true,
+                        onChanged: widget.enabled
+                            ? (next) {
+                                if (next == unit) {
+                                  return;
+                                }
+                                final entered = double.tryParse(
+                                  weight.text.trim(),
+                                );
+                                if (entered != null &&
+                                    entered >= 0 &&
+                                    entered.isFinite) {
+                                  final grams = LoadUnits.toGrams(
+                                    entered,
+                                    unit,
+                                  );
+                                  weight.text = _savedWeightText(grams, next);
+                                }
+                                setState(() => unit = next);
+                              }
+                            : null,
+                        options: const [
+                          NsOption(LoadUnit.kg, 'kg'),
+                          NsOption(LoadUnit.lb, 'lb'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: NsTextField(
+                        key: ValueKey('rpe-${s.uuid}'),
+                        controller: rpe,
+                        dense: true,
+                        enabled: widget.enabled,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        label: 'RPE',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 3,
+                      child: NsDropdown<WorkoutSetKind>(
+                        value: kind,
+                        dense: true,
+                        onChanged: widget.enabled
+                            ? (value) => setState(() => kind = value)
+                            : null,
+                        options: const [
+                          NsOption(WorkoutSetKind.working, 'Working'),
+                          NsOption(WorkoutSetKind.warmup, 'Warm-up'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                NsDropdown<int>(
+                  value: rest,
+                  dense: true,
+                  onChanged: widget.enabled
+                      ? (v) => setState(() => rest = v)
+                      : null,
+                  options: const [
+                    NsOption(0, 'No rest'),
+                    NsOption(60, 'Rest 60s'),
+                    NsOption(90, 'Rest 90s'),
+                    NsOption(120, 'Rest 120s'),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: widget.enabled ? _record : null,
+                        child: Text(done ? 'Update set' : 'Save set'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed:
+                          !widget.enabled ||
+                              s.status != WorkoutSetStatus.planned
+                          ? null
+                          : () => widget.onSave(skippedSet(s), null),
+                      child: const Text('Skip'),
+                    ),
+                  ],
+                ),
+                if (error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      error!,
+                      style: TextStyle(color: theme.colorScheme.error),
+                    ),
+                  ),
+              ],
             ),
+          ),
         ],
       ),
     );

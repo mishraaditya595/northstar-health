@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/design/inputs.dart';
 import '../../core/design/northstar_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
@@ -125,9 +126,9 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
               (WorkoutHistoryPeriod.last90Days, '90 days'),
               (WorkoutHistoryPeriod.all, 'All time'),
             ])
-              ChoiceChip(
+              NsChip(
                 selected: _period == period,
-                label: Text(title),
+                label: title,
                 onSelected: (_) => setState(() => _period = period),
               ),
           ],
@@ -218,20 +219,13 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    DropdownButtonFormField<String>(
+                    NsDropdown<String>(
                       key: ValueKey(selected.key),
-                      initialValue: selected.key,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Exercise',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: [
+                      value: selected.key,
+                      label: 'Exercise',
+                      options: [
                         for (final trend in trends)
-                          DropdownMenuItem(
-                            value: trend.key,
-                            child: Text(trend.name),
-                          ),
+                          NsOption(trend.key, trend.name),
                       ],
                       onChanged: (value) =>
                           setState(() => _selectedExerciseKey = value),
@@ -248,8 +242,8 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
                       spacing: 8,
                       children: [
                         for (final unit in [LoadUnit.kg, LoadUnit.lb])
-                          ChoiceChip(
-                            label: Text(unit == LoadUnit.kg ? 'kg' : 'lb'),
+                          NsChip(
+                            label: unit == LoadUnit.kg ? 'kg' : 'lb',
                             selected: displayUnit == unit,
                             onSelected: (_) =>
                                 setState(() => _selectedLoadUnit = unit),

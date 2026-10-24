@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/design/inputs.dart';
+import '../../core/design/dialogs.dart';
 import '../../core/design/northstar_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
@@ -19,16 +21,16 @@ class TrainPage extends ConsumerWidget {
 
   Future<void> _startQuick(BuildContext context, WidgetRef ref) async {
     var proposed = 'Quick workout';
-    final chosen = await showDialog<String>(
+    final chosen = await showNsDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Start an empty workout'),
-        content: TextFormField(
+      builder: (dialogContext) => NsDialog(
+        title: 'Start an empty workout',
+        content: NsTextField(
           autofocus: true,
           initialValue: proposed,
           onChanged: (value) => proposed = value,
           maxLength: 160,
-          decoration: const InputDecoration(labelText: 'Workout name'),
+          label: 'Workout name',
         ),
         actions: [
           TextButton(
@@ -44,9 +46,7 @@ class TrainPage extends ConsumerWidget {
     );
     if (chosen == null || !context.mounted) return;
     if (chosen.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a workout name first.')),
-      );
+      showNsMessage(context, 'Enter a workout name first.');
       return;
     }
     _start(
@@ -70,12 +70,9 @@ class TrainPage extends ConsumerWidget {
       ref.invalidate(activeWorkoutProvider);
       context.push('/train/workout');
     } catch (_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Could not start this workout. Check the plan and any unfinished workout.',
-          ),
-        ),
+      showNsMessage(
+        context,
+        'Could not start this workout. Check the plan and any unfinished workout.',
       );
       ref.invalidate(activeWorkoutProvider);
     }

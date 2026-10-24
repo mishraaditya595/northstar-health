@@ -54,6 +54,60 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('user removes planned and recorded sets from a workout', (
+    tester,
+  ) async {
+    await showApp(tester);
+    await tester.tap(find.text('Quick workout'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start workout'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add exercise'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Barbell bench press').last);
+    await tester.pumpAndSettle();
+    for (var n = 0; n < 2; n++) {
+      await tester.ensureVisible(find.text('Add set'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Add set'));
+      await tester.pumpAndSettle();
+    }
+    expect(store.box<WorkoutSetEntity>().count(), 2);
+
+    // A planned set holds no recorded data, so it goes without a question.
+    await tester.ensureVisible(find.byTooltip('Remove set 2'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Remove set 2'));
+    await tester.pumpAndSettle();
+    expect(find.text('Remove this set?'), findsNothing);
+    expect(store.box<WorkoutSetEntity>().count(), 1);
+
+    // A recorded set is deleted only after the user confirms.
+    final fields = find.descendant(
+      of: find.byType(SetEditorTile),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(fields.at(0), '5');
+    await tester.ensureVisible(find.text('Save set'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save set'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byTooltip('Remove set 1'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Remove set 1'));
+    await tester.pumpAndSettle();
+    expect(find.text('Remove this set?'), findsOneWidget);
+    await tester.tap(find.text('Keep set'));
+    await tester.pumpAndSettle();
+    expect(store.box<WorkoutSetEntity>().count(), 1);
+
+    await tester.tap(find.byTooltip('Remove set 1'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Remove set'));
+    await tester.pumpAndSettle();
+    expect(store.box<WorkoutSetEntity>().count(), 0);
+  });
+
   testWidgets('quick workout records real sets and finishes locally', (
     tester,
   ) async {
@@ -95,6 +149,8 @@ void main() {
     await tester.enterText(fields.at(0), '8');
     await tester.enterText(fields.at(1), '42.5');
     await tester.enterText(fields.at(2), '8.5');
+    await tester.ensureVisible(find.byType(DropdownButton<WorkoutSetKind>));
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(DropdownButton<WorkoutSetKind>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Warm-up').last);
@@ -189,8 +245,14 @@ void main() {
     router.go('/train/workout');
     await tester.pumpAndSettle();
 
-    final draftReps = find.byKey(const ValueKey('reps-set-b'));
-    final draftWeight = find.byKey(const ValueKey('weight-set-b'));
+    final draftReps = find.descendant(
+      of: find.byKey(const ValueKey('reps-set-b')),
+      matching: find.byType(TextField),
+    );
+    final draftWeight = find.descendant(
+      of: find.byKey(const ValueKey('weight-set-b')),
+      matching: find.byType(TextField),
+    );
     expect(draftReps, findsOneWidget);
     expect(draftWeight, findsOneWidget);
     await tester.enterText(draftReps, '9');

@@ -81,14 +81,24 @@ void main() {
     await tester.pump();
     expect(
       tester
-          .widget<TextField>(find.byKey(const ValueKey('reps-set-a')))
+          .widget<TextField>(
+            find.descendant(
+              of: find.byKey(const ValueKey('reps-set-a')),
+              matching: find.byType(TextField),
+            ),
+          )
           .controller!
           .text,
       '9',
     );
     expect(
       tester
-          .widget<TextField>(find.byKey(const ValueKey('weight-set-a')))
+          .widget<TextField>(
+            find.descendant(
+              of: find.byKey(const ValueKey('weight-set-a')),
+              matching: find.byType(TextField),
+            ),
+          )
           .controller!
           .text,
       '75.75',
@@ -99,14 +109,24 @@ void main() {
     await tester.pump();
     expect(
       tester
-          .widget<TextField>(find.byKey(const ValueKey('reps-set-a')))
+          .widget<TextField>(
+            find.descendant(
+              of: find.byKey(const ValueKey('reps-set-a')),
+              matching: find.byType(TextField),
+            ),
+          )
           .controller!
           .text,
       '8',
     );
     expect(
       tester
-          .widget<TextField>(find.byKey(const ValueKey('weight-set-a')))
+          .widget<TextField>(
+            find.descendant(
+              of: find.byKey(const ValueKey('weight-set-a')),
+              matching: find.byType(TextField),
+            ),
+          )
           .controller!
           .text,
       '101.25',
@@ -120,7 +140,12 @@ void main() {
     await render(tester);
     expect(
       tester
-          .widget<TextField>(find.byKey(const ValueKey('weight-set-a')))
+          .widget<TextField>(
+            find.descendant(
+              of: find.byKey(const ValueKey('weight-set-a')),
+              matching: find.byType(TextField),
+            ),
+          )
           .controller!
           .text,
       '101.25',
@@ -170,7 +195,12 @@ void main() {
     await render(tester);
     expect(
       tester
-          .widget<TextField>(find.byKey(const ValueKey('weight-set-a')))
+          .widget<TextField>(
+            find.descendant(
+              of: find.byKey(const ValueKey('weight-set-a')),
+              matching: find.byType(TextField),
+            ),
+          )
           .controller!
           .text,
       '225.0',
@@ -180,5 +210,59 @@ void main() {
     expect(writes, hasLength(1));
     expect(writes.single.$1.inputUnit, LoadUnit.lb);
     expect(writes.single.$1.loadGrams, 102058);
+  });
+
+  group('remove action', () {
+    Future<void> pumpTile(
+      WidgetTester tester, {
+      VoidCallback? onRemove,
+      bool enabled = true,
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: SetEditorTile(
+                record: planned,
+                enabled: enabled,
+                onSave: (_, _) {},
+                onRemove: onRemove,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('tapping remove calls back once', (tester) async {
+      var removed = 0;
+      await pumpTile(tester, onRemove: () => removed++);
+      await tester.tap(find.byTooltip('Remove set 1'));
+      expect(removed, 1);
+    });
+
+    testWidgets('no remove control without a handler', (tester) async {
+      await pumpTile(tester);
+      expect(find.byTooltip('Remove set 1'), findsNothing);
+    });
+
+    testWidgets('remove is disabled while the workout is paused', (
+      tester,
+    ) async {
+      var removed = 0;
+      await pumpTile(tester, onRemove: () => removed++, enabled: false);
+      await tester.tap(find.byTooltip('Remove set 1'), warnIfMissed: false);
+      expect(removed, 0);
+    });
+
+    testWidgets('fields fill the width of the set card', (tester) async {
+      await pumpTile(tester, onRemove: () {});
+      final card = tester.getSize(find.byType(SetEditorTile)).width;
+      final reps = tester.getRect(find.byType(TextField).first);
+      final unit = tester.getRect(find.byType(DropdownButton<LoadUnit>));
+      expect(card, greaterThan(300));
+      expect(unit.right, greaterThan(card - 40));
+      expect(reps.left, lessThan(40));
+    });
   });
 }
