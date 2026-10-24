@@ -9,5 +9,8 @@ final completedWorkoutHistoryProvider = FutureProvider<WorkoutHistorySnapshot>(
   (ref) => ref.watch(workoutHistoryRepositoryProvider).readCompletedAsync(),
 );
 
-/// Injectable clock: period boundaries do not depend on widget rebuild time.
-final progressNowProvider = Provider<DateTime>((ref) => DateTime.now().toUtc());
+/// Injectable clock sampled once per Progress visit, not cached with the
+/// completed history. Disposes after the last listener leaves the page.
+final progressNowProvider = Provider.autoDispose<DateTime>(
+  (ref) => DateTime.now().toUtc(),
+);
