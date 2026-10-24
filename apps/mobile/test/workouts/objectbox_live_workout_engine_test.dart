@@ -206,10 +206,8 @@ void main() {
       paused.revision,
     );
     expect(
-      () => engine.pauseWorkout(
-        initial.uuid,
-        expectedRevision: initial.revision,
-      ),
+      () =>
+          engine.pauseWorkout(initial.uuid, expectedRevision: initial.revision),
       throwsA(isA<WorkoutRevisionConflict>()),
     );
     expect(
@@ -463,12 +461,14 @@ void main() {
 
   test('a set/edit revision cannot masquerade as a successful resume', () {
     final s = startQuick();
-    sessions.addExercise(const WorkoutExerciseRecord(
-      uuid: 'new-exercise',
-      sessionUuid: 'quick-1',
-      nameSnapshot: 'Squat',
-      position: 0,
-    ));
+    sessions.addExercise(
+      const WorkoutExerciseRecord(
+        uuid: 'new-exercise',
+        sessionUuid: 'quick-1',
+        nameSnapshot: 'Squat',
+        position: 0,
+      ),
+    );
     final edited = sessions.getSession(s.uuid)!;
     expect(edited.revision, s.revision + 1);
     expect(
@@ -482,19 +482,23 @@ void main() {
   test('an edit during pause cannot be acknowledged as a repeated pause', () {
     final started = startQuick();
     final paused = engine.pauseWorkout(
-      started.uuid, expectedRevision: started.revision,
+      started.uuid,
+      expectedRevision: started.revision,
     );
-    sessions.addExercise(const WorkoutExerciseRecord(
-      uuid: 'new-exercise',
-      sessionUuid: 'quick-1',
-      nameSnapshot: 'Squat',
-      position: 0,
-    ));
+    sessions.addExercise(
+      const WorkoutExerciseRecord(
+        uuid: 'new-exercise',
+        sessionUuid: 'quick-1',
+        nameSnapshot: 'Squat',
+        position: 0,
+      ),
+    );
     final edited = sessions.getSession(started.uuid)!;
     expect(edited.status, WorkoutStatus.paused);
     expect(edited.revision, paused.revision + 1);
     expect(
-      () => engine.pauseWorkout(started.uuid, expectedRevision: paused.revision),
+      () =>
+          engine.pauseWorkout(started.uuid, expectedRevision: paused.revision),
       throwsA(isA<WorkoutRevisionConflict>()),
     );
     expect(sessions.getSession(started.uuid)!.revision, edited.revision);
@@ -508,7 +512,8 @@ void main() {
     state.put(row);
     expect(() => engine.recoverActiveWorkout(), throwsStateError);
     expect(
-      () => engine.pauseWorkout(workout.uuid, expectedRevision: workout.revision),
+      () =>
+          engine.pauseWorkout(workout.uuid, expectedRevision: workout.revision),
       throwsStateError,
     );
     expect(sessions.getSession(workout.uuid)!.status, WorkoutStatus.inProgress);
@@ -516,12 +521,16 @@ void main() {
 
   test('empty plan creates a recoverable session with no exercises', () {
     library.savePlan(
-      uuid: 'empty-plan', name: 'My empty plan', description: '',
+      uuid: 'empty-plan',
+      name: 'My empty plan',
+      description: '',
       exercises: const [],
     );
     final s = engine.startWorkout(
-      sessionUuid: 'session-empty', planUuid: 'empty-plan',
-      startedAtUtc: started, originalOffsetMinutes: 330,
+      sessionUuid: 'session-empty',
+      planUuid: 'empty-plan',
+      startedAtUtc: started,
+      originalOffsetMinutes: 330,
     );
     expect(s.exercises, isEmpty);
     expect(s.sets, isEmpty);
@@ -529,45 +538,67 @@ void main() {
     expect(engine.readCheckpoint(s.uuid)!.selectedExerciseUuid, isNull);
   });
 
-  test('renaming and archiving exercise definition leaves session snapshots', () {
-    library.saveCustomExercise(
-      uuid: 'custom-row', name: 'Home cable row',
-      muscleGroup: 'Back', equipment: 'Cable',
-    );
-    library.savePlan(
-      uuid: 'custom-plan', name: 'Upper', description: '',
-      exercises: const [
-        PlanExerciseRecord(uuid: 'custom-item', exerciseUuid: 'custom-row',
-          position: 0, targetSets: 2),
-      ],
-    );
-    final s = engine.startWorkout(
-      sessionUuid: 'session-custom', planUuid: 'custom-plan',
-      startedAtUtc: started, originalOffsetMinutes: 330,
-    );
-    final custom = library.listExercises()
-      .singleWhere((e) => e.uuid == 'custom-row');
-    library.saveCustomExercise(
-      uuid: custom.uuid, name: 'Renamed cable row',
-      muscleGroup: custom.muscleGroup, equipment: custom.equipment,
-      expectedUpdatedAtMs: custom.updatedAtMs,
-    );
-    library.archiveCustomExercise('custom-row');
-    expect(sessions.getSession(s.uuid)!.exercises.single.nameSnapshot,
-        'Home cable row');
-    expect(sessions.getSession(s.uuid)!.sets.length, 2);
-  });
+  test(
+    'renaming and archiving exercise definition leaves session snapshots',
+    () {
+      library.saveCustomExercise(
+        uuid: 'custom-row',
+        name: 'Home cable row',
+        muscleGroup: 'Back',
+        equipment: 'Cable',
+      );
+      library.savePlan(
+        uuid: 'custom-plan',
+        name: 'Upper',
+        description: '',
+        exercises: const [
+          PlanExerciseRecord(
+            uuid: 'custom-item',
+            exerciseUuid: 'custom-row',
+            position: 0,
+            targetSets: 2,
+          ),
+        ],
+      );
+      final s = engine.startWorkout(
+        sessionUuid: 'session-custom',
+        planUuid: 'custom-plan',
+        startedAtUtc: started,
+        originalOffsetMinutes: 330,
+      );
+      final custom = library.listExercises().singleWhere(
+        (e) => e.uuid == 'custom-row',
+      );
+      library.saveCustomExercise(
+        uuid: custom.uuid,
+        name: 'Renamed cable row',
+        muscleGroup: custom.muscleGroup,
+        equipment: custom.equipment,
+        expectedUpdatedAtMs: custom.updatedAtMs,
+      );
+      library.archiveCustomExercise('custom-row');
+      expect(
+        sessions.getSession(s.uuid)!.exercises.single.nameSnapshot,
+        'Home cable row',
+      );
+      expect(sessions.getSession(s.uuid)!.sets.length, 2);
+    },
+  );
 
   test('plan replay with quickName is invalid and cannot mutate session', () {
     makePlan();
     final s = engine.startWorkout(
-      sessionUuid: 'session-a', planUuid: 'plan-a',
-      startedAtUtc: started, originalOffsetMinutes: 330,
+      sessionUuid: 'session-a',
+      planUuid: 'plan-a',
+      startedAtUtc: started,
+      originalOffsetMinutes: 330,
     );
     expect(
       () => engine.startWorkout(
-        sessionUuid: 'session-a', planUuid: 'plan-a',
-        quickName: 'Another name', startedAtUtc: started,
+        sessionUuid: 'session-a',
+        planUuid: 'plan-a',
+        quickName: 'Another name',
+        startedAtUtc: started,
         originalOffsetMinutes: 330,
       ),
       throwsArgumentError,

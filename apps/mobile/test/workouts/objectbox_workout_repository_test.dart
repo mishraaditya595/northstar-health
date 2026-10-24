@@ -238,7 +238,11 @@ void main() {
     );
     expect(repository.getSession(first.uuid)!.revision, originalRevision);
     final finishedAt = DateTime.utc(2026, 10, 24, 11);
-    repository.finishSession(first.uuid, expectedRevision: originalRevision, finishedAtUtc: finishedAt);
+    repository.finishSession(
+      first.uuid,
+      expectedRevision: originalRevision,
+      finishedAtUtc: finishedAt,
+    );
     final completeRev = repository.getSession(first.uuid)!.revision;
     expect(
       () => repository.finishSession(
@@ -270,7 +274,8 @@ void main() {
     final changed = repository.getSession(s.uuid)!;
     expect(
       () => repository.finishSession(
-        s.uuid, expectedRevision: s.revision,
+        s.uuid,
+        expectedRevision: s.revision,
         finishedAtUtc: DateTime.utc(2026, 10, 24, 11),
       ),
       throwsA(isA<WorkoutRevisionConflict>()),

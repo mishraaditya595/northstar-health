@@ -21,6 +21,7 @@ abstract interface class WorkoutRepository {
     required WorkoutSetRecord set,
     required int expectedRevision,
   });
+
   /// Legacy primitive: use LiveWorkoutEngine.finishWorkout in production.
   /// The caller's observed session revision is always required.
   @Deprecated('Use LiveWorkoutEngine.finishWorkout')
