@@ -52,4 +52,50 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('figures are labelled front and back', (tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(home: Scaffold(body: MuscleRecoveryCard())),
+      ),
+    );
+    expect(find.text('FRONT'), findsOneWidget);
+    expect(find.text('BACK'), findsOneWidget);
+  });
+
+  testWidgets('lists the recently trained muscles in plain words', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          muscleRecoveryProvider.overrideWithValue(
+            const MuscleRecovery({
+              Muscle.lowerBack: 1,
+              Muscle.chest: .8,
+              Muscle.abs: .2,
+            }, isSample: false),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: MuscleRecoveryCard())),
+      ),
+    );
+    // Hardest-trained first; lightly worked muscles stay off the list.
+    expect(find.text('Lower back · Chest'), findsOneWidget);
+    expect(find.textContaining('Abs'), findsNothing);
+  });
+
+  testWidgets('says so when nothing was trained recently', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          muscleRecoveryProvider.overrideWithValue(
+            const MuscleRecovery({}, isSample: false),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: MuscleRecoveryCard())),
+      ),
+    );
+    expect(find.text('No muscle group trained recently'), findsOneWidget);
+  });
 }
