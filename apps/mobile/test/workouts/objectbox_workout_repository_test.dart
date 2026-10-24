@@ -162,6 +162,7 @@ void main() {
       // With the single-active invariant, finish A before starting B.
       repository.finishSession(
         first.uuid,
+        expectedRevision: first.revision,
         finishedAtUtc: DateTime.utc(2026, 10, 24, 10),
       );
       final second = start(id: 'session-2', exerciseId: 'exercise-2');
@@ -235,7 +236,7 @@ void main() {
     );
     expect(repository.getSession(first.uuid)!.revision, originalRevision);
     final finishedAt = DateTime.utc(2026, 10, 24, 11);
-    repository.finishSession(first.uuid, finishedAtUtc: finishedAt);
+    repository.finishSession(first.uuid, expectedRevision: originalRevision, finishedAtUtc: finishedAt);
     final completeRev = repository.getSession(first.uuid)!.revision;
     repository.finishSession(first.uuid, finishedAtUtc: finishedAt);
     expect(repository.getSession(first.uuid)!.revision, completeRev);
@@ -248,6 +249,25 @@ void main() {
       ),
       throwsStateError,
     );
+  });
+
+  test('legacy finish rejects a stale revision and preserves active sets', () {
+    final s = start();
+    repository.saveSet(
+      sessionUuid: s.uuid,
+      expectedRevision: s.revision,
+      set: makeSet(),
+    );
+    final changed = repository.getSession(s.uuid)!;
+    expect(
+      () => repository.finishSession(
+        s.uuid, expectedRevision: s.revision,
+        finishedAtUtc: DateTime.utc(2026, 10, 24, 11),
+      ),
+      throwsA(isA<WorkoutRevisionConflict>()),
+    );
+    expect(repository.getSession(s.uuid)!.status, WorkoutStatus.inProgress);
+    expect(repository.getSession(s.uuid)!.revision, changed.revision);
   });
 
   test('soft-deleted and unknown status sessions are read-only', () {
@@ -283,6 +303,7 @@ void main() {
     expect(
       () => repository.finishSession(
         active.uuid,
+        expectedRevision: active.revision,
         finishedAtUtc: DateTime.utc(2026, 10, 24, 11),
       ),
       throwsStateError,
