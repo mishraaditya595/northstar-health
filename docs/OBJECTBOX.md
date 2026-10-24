@@ -1,6 +1,9 @@
 # ObjectBox — durable local workout store
 
-**Decision:** ObjectBox on phones/tablets; accepted in [ADR-0003](adr/0003-data-cloud-health.md). ObjectBox packages and generator are in `pubspec.yaml`, **but no Store/entities are implemented yet**. The app currently shows fictional data. ObjectBox cloud Sync is not used.
+**Decision:** ObjectBox on phones/tablets; accepted in [ADR-0003](adr/0003-data-cloud-health.md). The native Store, seven initial entities and repository boundary were introduced
+in PR #5. PR #7 added the exercise catalog and transactional plan builder.
+**Today/Progress still show fictional demo data** and the live workout logger
+is not implemented. ObjectBox cloud Sync is not used.
 
 ## Data classification and lifetime
 
@@ -15,6 +18,27 @@
 | `HealthQueryCheckpoint` | Per-device until invalidated | **Never** |
 
 Don't create an unbounded permanent `HealthObservation` archive from platform measurements. Keep short-lived bounded chart samples only when an authorized view needs them. Health caches and platform checkpoints must be purged on permission revocation and profile changes.
+
+## Implemented phone repositories
+
+- `ObjectBoxWorkoutRepository`
+  (`apps/mobile/lib/features/workouts/data/objectbox_workout_repository.dart`):
+  session creation, atomic set/save+checkpoint commits, exact retry and
+  optimistic session revision guard.
+- `ObjectBoxWorkoutLibraryRepository`
+  (`apps/mobile/lib/features/workouts/data/objectbox_workout_library_repository.dart`):
+  18 built-in definitions, custom exercise editing/soft archive, atomic plan
+  header + child replacement, plan revision conflict handling.
+- Built-in catalog identities **`builtin.v1.*` must never be renamed or
+  repurposed**. They are permanent identifiers, not UI labels. Future catalog
+  revisions add new IDs or explicitly migrate referents without resetting UIDs.
+- An archived exercise is preserved for plans already referencing the **same
+  row and exercise IDs**. It cannot be newly attached; validation is enforced
+  inside the ObjectBox save transaction, not only in an editor picker.
+- Plan archive requires `expectedUpdatedAtMs`; stale editors must reload,
+  not silently archive a newer plan. Custom templates remain local-only.
+- Implementation notes: [Phase 1](implementation/README.md) and
+  [catalog/plan hardening](implementation/phase-1/plan-editor-hardening.md).
 
 ## Entity-model rules
 
@@ -40,21 +64,32 @@ An offline guest can save without creating a cloud operation for a stranger's ac
 
 ## Lifetime, performance and security
 
-Initialize a single mobile `Store` when implemented, inject repositories through Riverpod and shut down cleanly. Offload large imports/aggregation with suitable ObjectBox async/isolate patterns. Profile on low-memory Android, bounded cache sizes and migration of older DB files.
+A single mobile `Store` is initialized before rendering the app and repositories are injected through Riverpod. Shut down cleanly. Offload large imports/aggregation with suitable ObjectBox async/isolate patterns. Profile on low-memory Android, bounded cache sizes and migration of older DB files.
 
-ObjectBox's native file format is not proof of at-rest app-level encryption. Review OS file protection, Android/iOS backup inclusion, credentials in separate platform-secure storage, account scoping, free-text workout notes and restore/delete. Do not copy ObjectiveBox files to Supabase.
+ObjectBox's native file format is not proof of at-rest app-level encryption. Review OS file protection, Android/iOS backup inclusion, credentials in separate platform-secure storage, account scoping, free-text workout notes and restore/delete. Do not copy ObjectBox database files to Supabase.
 
-## Generator commands (once entities exist)
+## Developer verification
 
 ```sh
-flutter pub get
-dart run build_runner build --delete-conflicting-outputs
-dart format lib test
+flutter pub get --enforce-lockfile
+# Run the generator only after a reviewed entity-model change:
+# dart run build_runner build --delete-conflicting-outputs
+dart format --output=none --set-exit-if-changed lib test
 flutter analyze
 flutter test
 ```
 
 The build must verify generator output and model JSON changes. Never auto-delete a conflicted model UID file to make CI green.
+
+**Native macOS tests:** Dart/Flutter unit tests that open ObjectBox need the
+matching `libobjectbox.dylib` on the host; the Flutter dependency does not
+make it available automatically to standalone host unit-test processes.
+On macOS, from repository root run `bash scripts/test_objectbox_macos.sh`.
+The script downloads the **exact v5.3.2 universal library**, checks SHA-256,
+extracts it into a temporary directory, and runs `flutter test` with
+`DYLD_LIBRARY_PATH` pointing there. Linux CI similarly pins the v5.3.2
+native binary and SHA-256. These are **test-host** setup steps, not runtime
+shipping or app bundle configuration.
 
 ## Review/acceptance
 

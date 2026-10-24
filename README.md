@@ -4,7 +4,10 @@
 
 NorthStar is a proposed privacy-conscious, offline-first health and strength-training app for **Android, iPhone, Android tablets and iPad**, with **Apple Watch and Wear OS** companions planned. Build the Flutter product with a distinct athletic performance aesthetic, not a generic wellness dashboard.
 
-> **Development status — foundation only.** The Flutter code currently provides fictional demo screens, Riverpod-based theme settings, routing, responsive navigation, quality checks and technical design documents. There is **no functioning workout database, cloud backup, wearable app, Firebase collection, or HealthKit/Health Connect connection**. The pictures below are **proposed static UI concepts**, not functioning application screenshots.
+> **Development status — foundation only.** The Flutter code currently provides fictional demo screens, Riverpod-based theme settings, routing, responsive navigation, quality checks and technical design documents. There is **a functioning local ObjectBox workout/plan database foundation** with
+an exercise catalog and plan editor, but **no live workout logger, cloud
+backup, shipping wearable app, Firebase collection, or HealthKit/Health
+Connect connection**. The pictures below are **proposed static UI concepts**, not functioning application screenshots.
 
 ## UI concept previews
 
@@ -25,7 +28,7 @@ NorthStar is a proposed privacy-conscious, offline-first health and strength-tra
 | Mobile platform | Flutter, iOS / iPadOS / Android and tablet layouts | Fixture app scaffolded |
 | State + dependency injection | Riverpod 3 | Theme state scaffolded |
 | Navigation | go_router, bottom tabs / adaptive side rail | Scaffolded |
-| On-device workout data | **ObjectBox** | Packages added; actual entity model pending |
+| On-device workout data | **ObjectBox** | Local model, repositories, exercise catalog and training plan editor implemented; live logging pending |
 | User identity + workout-only backup | **Supabase Auth + PostgreSQL** | Architectural decision; not integrated |
 | Health measurements | **Apple HealthKit and Android Health Connect** | Permissioned read planned; no SDK permissions yet |
 | Workout summary write-back | One app-owned completed workout, opt-in, no duplicates | Planned |
@@ -103,3 +106,6 @@ Workouts must save locally before confirming success. Supabase updates require a
 ## License
 
 No repository license has been selected. A publicly visible repository is not automatically open-source-licensed.
+
+See [Phase 1 implementation notes](docs/implementation/README.md) for the
+repository's current offline feature scope, tests and deferred QA.
