@@ -33,5 +33,7 @@ abstract interface class WorkoutLibraryRepository {
     int? expectedUpdatedAtMs,
   });
 
-  void archivePlan(String uuid);
+  /// Compare the observed plan version in the archive transaction.
+  /// A stale editor must not archive a newly updated plan.
+  void archivePlan(String uuid, {required int expectedUpdatedAtMs});
 }

@@ -239,6 +239,10 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
           (original != null && original.updatedAtMs != expectedUpdatedAtMs)) {
         throw const PlanEditConflict();
       }
+      // Reusing an already-saved row is allowed after its definition is
+      // archived. Adding a fresh row referencing that definition is not.
+      // The check lives inside the same write transaction as the plan save.
+      final prior = original == null ? <PlanExerciseEntity>[] : _planItems(uuid);
       for (final item in exercises) {
         final definition = _byUuid(
           _catalog,
@@ -247,6 +251,12 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
         );
         if (definition == null) {
           throw StateError('Plan refers to an unknown exercise');
+        }
+        if (definition.archivedAtMs != null &&
+            !prior.any((saved) =>
+                saved.uuid == item.uuid &&
+                saved.exerciseUuid == item.exerciseUuid)) {
+          throw StateError('Archived exercise cannot be added to a plan');
         }
       }
       final now = DateTime.now().toUtc().millisecondsSinceEpoch;
@@ -266,7 +276,6 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
       _plans.put(next);
       // All child replacement occurs in the same transaction as the header.
       // An ObjectBox uniqueness error must roll back the header and children.
-      final prior = _planItems(uuid);
       if (prior.isNotEmpty) _items.removeMany(prior.map((e) => e.id).toList());
       for (final item in exercises) {
         _items.put(
@@ -288,10 +297,13 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
   }
 
   @override
-  void archivePlan(String uuid) {
+  void archivePlan(String uuid, {required int expectedUpdatedAtMs}) {
     _store.runInTransaction(TxMode.write, () {
       final plan = _byUuid(_plans, WorkoutPlanEntity_.uuid, uuid);
       if (plan == null) throw StateError('Unknown plan');
+      if (plan.updatedAtMs != expectedUpdatedAtMs) {
+        throw const PlanEditConflict();
+      }
       if (plan.archivedAtMs != null) return;
       plan.archivedAtMs = DateTime.now().toUtc().millisecondsSinceEpoch;
       _plans.put(plan); // Never delete history or referenced exercises.
