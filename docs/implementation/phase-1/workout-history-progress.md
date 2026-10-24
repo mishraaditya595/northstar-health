@@ -3,8 +3,9 @@
 **Base:** latest `main` after merged PR #10 at
 `e2c3ddcb895367f3272c00531f581e624600ed77`.
 **Scope:** offline, read-only, factual **NorthStar workout history**.
-No ObjectBox schema/UID change, external health measurements, backup, watch
-tracking, Firebase analytics or write/export permissions.
+Adds an indexed `WorkoutSession.status` property to the existing ObjectBox
+schema (regenerated model and stable UIDs); no new entity or new health data.
+No backup, watch tracking, Firebase or write/export permissions.
 
 ## Data owner and behavior
 
@@ -23,16 +24,25 @@ tracking, Firebase analytics or write/export permissions.
   count and **loaded volume (kg × reps)**. Volume sums integer
   `reps × loadGrams` only for completed working sets with a recorded load.
   Unloaded working sets are counted separately, never converted to zero
-  kilograms. Skipped/planned/warm-up/unsupported sets do not inflate volume.
+  kilograms. When no positively loaded working set exists the volume card
+  shows a dash and `No loaded sets`. Explicit 0-kg entries are recorded
+  separately and excluded from meaningful loaded strength/volume trends. Skipped/planned/warm-up/unsupported sets do not inflate volume.
 - Exercise trend is maximum **logged working-set load per finished workout**,
   not an estimated 1RM, rate of strength gain or caloric metric. The trend
   is scoped to a stable exercise definition UUID where present; for older
-  snapshots without a definition, the normalized historical name is used
-  as a limited fallback. Each point has a date, load and performed reps.
+  snapshots without a definition, an unambiguous match on name, equipment
+  AND muscle is merged with the known definition. Variants remain separate;
+  ambiguous legacy definitions retain separate keys. The name shown is the
+  most recently completed known session's snapshot. Every visible bar and
+  accessible summary includes date, load and performed reps, in a user-
+  selectable kg/lb unit (defaulting to latest recorded unit).
 - Empty/error cases never render fictitious training numbers. Refresh uses
-  an explicit Riverpod invalidation and entering the screen re-reads the
-  local Store. Completing or discarding a workout invalidates the history
-  provider so stale UI does not persist.
+  a retained `FutureProvider` backed by an ObjectBox background read
+  transaction. Switching tabs reuses the cached snapshot rather than
+  blocking the main thread or re-reading per visit. Completing or discarding
+  a workout or explicit user refresh invalidates the provider. The
+  calculation time is injected via `progressNowProvider` for deterministic
+  rolling 30/90-day filters.
 
 ## Tests / QA
 
@@ -52,9 +62,15 @@ tracking, Firebase analytics or write/export permissions.
 
 ## Known tradeoffs
 
-- Initial projection walks completed sessions using the existing repository.
-  It **does not** introduce a new index, denormalized summary entity or
-  incremental stats cache; profile long workout histories before shipping.
+- Completed sessions are filtered by indexed status and conjunctive
+  nondeleted/completed/origin conditions inside ObjectBox. A background
+  isolate reads the result, cached across tab switches. Per-session/exercise
+  lookups still scale with history size: the 300-session/1,200-set CI
+  benchmark gives an initial hosted-machine observation, not a low-end
+  device guarantee. Profile again on real devices before release.
+- Adding the status index regenerates `objectbox.g.dart` and
+  `objectbox-model.json`; preserve all existing UIDs and validate opening
+  older persisted databases before shipping.
 - Training volume is deliberately partial if weights are omitted. No
   bodyweight-to-load inference, no personal-record prediction and no
   HealthKit/Health Connect metrics are produced.
