@@ -451,8 +451,19 @@ class _SetEditorTileState extends State<SetEditorTile> {
     if (grams == null) return '';
     // Three decimals in kg, five in lb: both round-trip stored integer grams.
     final precision = unit == LoadUnit.kg ? 3 : 5;
-    return LoadUnits.fromGrams(grams, unit)
-        .toStringAsFixed(precision).replaceFirst(RegExp(r'\\.?0+
+    var output = LoadUnits.fromGrams(grams, unit).toStringAsFixed(precision);
+    while (output.contains('.') && output.endsWith('0')) {
+      output = output.substring(0, output.length - 1);
+    }
+    if (output.endsWith('.')) {
+      output = output.substring(0, output.length - 1);
+    }
+    return output;
+  }
+
+  @override
+  void dispose() {
+    reps.dispose();
     weight.dispose();
     rpe.dispose();
     super.dispose();
