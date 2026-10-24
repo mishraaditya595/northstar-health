@@ -57,11 +57,17 @@ class PlanExerciseRecord {
   );
 
   void validate() {
-    if (uuid.isEmpty || exerciseUuid.isEmpty || position < 0 ||
-        targetSets < 1 || targetSets > 30 ||
-        (targetRepsMin != null && (targetRepsMin! < 1 || targetRepsMin! > 1000)) ||
-        (targetRepsMax != null && (targetRepsMax! < 1 || targetRepsMax! > 1000)) ||
-        (targetRepsMin != null && targetRepsMax != null &&
+    if (uuid.isEmpty ||
+        exerciseUuid.isEmpty ||
+        position < 0 ||
+        targetSets < 1 ||
+        targetSets > 30 ||
+        (targetRepsMin != null &&
+            (targetRepsMin! < 1 || targetRepsMin! > 1000)) ||
+        (targetRepsMax != null &&
+            (targetRepsMax! < 1 || targetRepsMax! > 1000)) ||
+        (targetRepsMin != null &&
+            targetRepsMax != null &&
             targetRepsMax! < targetRepsMin!) ||
         (restSeconds != null && (restSeconds! < 0 || restSeconds! > 3600)) ||
         notes.length > 1000) {

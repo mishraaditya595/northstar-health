@@ -7,16 +7,18 @@ import '../domain/workout_library_repository.dart';
 import 'built_in_exercises.dart';
 import 'workout_entities.dart';
 
-final workoutLibraryRepositoryProvider = Provider<WorkoutLibraryRepository>((ref) {
+final workoutLibraryRepositoryProvider = Provider<WorkoutLibraryRepository>((
+  ref,
+) {
   return ObjectBoxWorkoutLibraryRepository(ref.watch(objectBoxStoreProvider));
 });
 
 /// Only uses existing PR1 entities: deliberately no ObjectBox UID/schema change.
 class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
   ObjectBoxWorkoutLibraryRepository(this._store)
-      : _catalog = _store.box<ExerciseDefinitionEntity>(),
-        _plans = _store.box<WorkoutPlanEntity>(),
-        _items = _store.box<PlanExerciseEntity>();
+    : _catalog = _store.box<ExerciseDefinitionEntity>(),
+      _plans = _store.box<WorkoutPlanEntity>(),
+      _items = _store.box<PlanExerciseEntity>();
 
   final Store _store;
   final Box<ExerciseDefinitionEntity> _catalog;
@@ -33,7 +35,9 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
   }
 
   List<PlanExerciseEntity> _planItems(String planUuid) {
-    final query = _items.query(PlanExerciseEntity_.planUuid.equals(planUuid)).build();
+    final query = _items
+        .query(PlanExerciseEntity_.planUuid.equals(planUuid))
+        .build();
     try {
       return query.find();
     } finally {
@@ -47,19 +51,22 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
       final now = DateTime.now().toUtc().millisecondsSinceEpoch;
       for (final item in builtInExercises) {
         final uuid = 'builtin.v1.${item.id}';
-        if (_byUuid(_catalog, ExerciseDefinitionEntity_.uuid, uuid) != null) continue;
-        _catalog.put(ExerciseDefinitionEntity(
-          uuid: uuid,
-          name: item.name,
-          muscleGroup: item.muscle,
-          equipment: item.equipment,
-          movementCategory: item.category,
-          inputMode: item.mode,
-          isBuiltIn: true,
-          catalogVersion: 1,
-          createdAtMs: now,
-          updatedAtMs: now,
-        ));
+        if (_byUuid(_catalog, ExerciseDefinitionEntity_.uuid, uuid) != null)
+          continue;
+        _catalog.put(
+          ExerciseDefinitionEntity(
+            uuid: uuid,
+            name: item.name,
+            muscleGroup: item.muscle,
+            equipment: item.equipment,
+            movementCategory: item.category,
+            inputMode: item.mode,
+            isBuiltIn: true,
+            catalogVersion: 1,
+            createdAtMs: now,
+            updatedAtMs: now,
+          ),
+        );
       }
     });
   }
@@ -80,9 +87,11 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
   List<ExerciseRecord> listExercises({bool includeArchived = false}) {
     final entries = _catalog.getAll()
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    return List.unmodifiable(entries
-        .where((e) => includeArchived || e.archivedAtMs == null)
-        .map(_exercise));
+    return List.unmodifiable(
+      entries
+          .where((e) => includeArchived || e.archivedAtMs == null)
+          .map(_exercise),
+    );
   }
 
   @override
@@ -94,31 +103,45 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
     int? expectedUpdatedAtMs,
   }) {
     final label = name.trim();
-    if (uuid.isEmpty || uuid.startsWith('builtin.') || label.isEmpty ||
-        label.length > 80 || muscleGroup.trim().length > 60 ||
+    if (uuid.isEmpty ||
+        uuid.startsWith('builtin.') ||
+        label.isEmpty ||
+        label.length > 80 ||
+        muscleGroup.trim().length > 60 ||
         equipment.trim().length > 60) {
       throw ArgumentError('Provide a valid custom exercise name');
     }
     return _store.runInTransaction(TxMode.write, () {
       final previous = _byUuid(_catalog, ExerciseDefinitionEntity_.uuid, uuid);
-      if (previous?.isBuiltIn == true || previous?.archivedAtMs != null ||
+      if (previous?.isBuiltIn == true ||
+          previous?.archivedAtMs != null ||
           (previous == null && expectedUpdatedAtMs != null) ||
           (previous != null && previous.updatedAtMs != expectedUpdatedAtMs)) {
         throw StateError('Exercise changed, was removed or is built in');
       }
-      final duplicate = _catalog.getAll().any((e) =>
-        e.archivedAtMs == null && e.uuid != uuid &&
-        e.name.trim().toLowerCase() == label.toLowerCase());
-      if (duplicate) throw StateError('An exercise with this name already exists');
-      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
-      final next = previous ?? ExerciseDefinitionEntity(
-        uuid: uuid, name: label, createdAtMs: now, updatedAtMs: now,
+      final duplicate = _catalog.getAll().any(
+        (e) =>
+            e.archivedAtMs == null &&
+            e.uuid != uuid &&
+            e.name.trim().toLowerCase() == label.toLowerCase(),
       );
+      if (duplicate)
+        throw StateError('An exercise with this name already exists');
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      final next =
+          previous ??
+          ExerciseDefinitionEntity(
+            uuid: uuid,
+            name: label,
+            createdAtMs: now,
+            updatedAtMs: now,
+          );
       next.name = label;
       next.muscleGroup = muscleGroup.trim();
       next.equipment = equipment.trim();
-      next.updatedAtMs = previous == null ? now :
-          (now > previous.updatedAtMs ? now : previous.updatedAtMs + 1);
+      next.updatedAtMs = previous == null
+          ? now
+          : (now > previous.updatedAtMs ? now : previous.updatedAtMs + 1);
       _catalog.put(next);
       return _exercise(next);
     });
@@ -128,7 +151,8 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
   void archiveCustomExercise(String uuid) {
     _store.runInTransaction(TxMode.write, () {
       final e = _byUuid(_catalog, ExerciseDefinitionEntity_.uuid, uuid);
-      if (e == null || e.isBuiltIn) throw StateError('Cannot archive built-in/unknown exercise');
+      if (e == null || e.isBuiltIn)
+        throw StateError('Cannot archive built-in/unknown exercise');
       if (e.archivedAtMs != null) return;
       e.archivedAtMs = DateTime.now().toUtc().millisecondsSinceEpoch;
       _catalog.put(e); // Keep existing plans and workout snapshots readable.
@@ -144,16 +168,20 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
       description: plan.description,
       updatedAtMs: plan.updatedAtMs,
       archivedAtMs: plan.archivedAtMs,
-      exercises: List.unmodifiable(exercises.map((e) => PlanExerciseRecord(
-        uuid: e.uuid,
-        exerciseUuid: e.exerciseUuid,
-        position: e.position,
-        targetSets: e.targetSets,
-        targetRepsMin: e.targetRepsMin,
-        targetRepsMax: e.targetRepsMax,
-        restSeconds: e.restSeconds,
-        notes: e.notes,
-      ))),
+      exercises: List.unmodifiable(
+        exercises.map(
+          (e) => PlanExerciseRecord(
+            uuid: e.uuid,
+            exerciseUuid: e.exerciseUuid,
+            position: e.position,
+            targetSets: e.targetSets,
+            targetRepsMin: e.targetRepsMin,
+            targetRepsMax: e.targetRepsMax,
+            restSeconds: e.restSeconds,
+            notes: e.notes,
+          ),
+        ),
+      ),
     );
   }
 
@@ -184,8 +212,11 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
     int? expectedUpdatedAtMs,
   }) {
     final label = name.trim();
-    if (uuid.isEmpty || label.isEmpty || label.length > 100 ||
-        description.length > 1000 || exercises.length > 100) {
+    if (uuid.isEmpty ||
+        label.isEmpty ||
+        label.length > 100 ||
+        description.length > 1000 ||
+        exercises.length > 100) {
       throw ArgumentError('Invalid plan name or size');
     }
     final ids = <String>{};
@@ -193,7 +224,9 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
       final item = exercises[i];
       item.validate();
       if (item.position != i || !ids.add(item.uuid)) {
-        throw ArgumentError('Plan items require unique UUIDs and contiguous order');
+        throw ArgumentError(
+          'Plan items require unique UUIDs and contiguous order',
+        );
       }
     }
     return _store.runInTransaction(TxMode.write, () {
@@ -205,35 +238,47 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
       }
       for (final item in exercises) {
         final definition = _byUuid(
-          _catalog, ExerciseDefinitionEntity_.uuid, item.exerciseUuid);
+          _catalog,
+          ExerciseDefinitionEntity_.uuid,
+          item.exerciseUuid,
+        );
         if (definition == null) {
           throw StateError('Plan refers to an unknown exercise');
         }
       }
       final now = DateTime.now().toUtc().millisecondsSinceEpoch;
-      final next = original ?? WorkoutPlanEntity(
-        uuid: uuid, name: label, createdAtMs: now, updatedAtMs: now);
+      final next =
+          original ??
+          WorkoutPlanEntity(
+            uuid: uuid,
+            name: label,
+            createdAtMs: now,
+            updatedAtMs: now,
+          );
       next.name = label;
       next.description = description.trim();
-      next.updatedAtMs = original == null ? now :
-          (now > original.updatedAtMs ? now : original.updatedAtMs + 1);
+      next.updatedAtMs = original == null
+          ? now
+          : (now > original.updatedAtMs ? now : original.updatedAtMs + 1);
       _plans.put(next);
       // All child replacement occurs in the same transaction as the header.
       // An ObjectBox uniqueness error must roll back the header and children.
       final prior = _planItems(uuid);
       if (prior.isNotEmpty) _items.removeMany(prior.map((e) => e.id).toList());
       for (final item in exercises) {
-        _items.put(PlanExerciseEntity(
-          uuid: item.uuid,
-          planUuid: uuid,
-          exerciseUuid: item.exerciseUuid,
-          position: item.position,
-          targetSets: item.targetSets,
-          targetRepsMin: item.targetRepsMin,
-          targetRepsMax: item.targetRepsMax,
-          restSeconds: item.restSeconds,
-          notes: item.notes.trim(),
-        ));
+        _items.put(
+          PlanExerciseEntity(
+            uuid: item.uuid,
+            planUuid: uuid,
+            exerciseUuid: item.exerciseUuid,
+            position: item.position,
+            targetSets: item.targetSets,
+            targetRepsMin: item.targetRepsMin,
+            targetRepsMax: item.targetRepsMax,
+            restSeconds: item.restSeconds,
+            notes: item.notes.trim(),
+          ),
+        );
       }
       return _plan(next);
     });

@@ -58,7 +58,9 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
   }
 
   Future<void> _addExercise() async {
-    final definitions = ref.read(workoutLibraryRepositoryProvider).listExercises();
+    final definitions = ref
+        .read(workoutLibraryRepositoryProvider)
+        .listExercises();
     var search = '';
     final selected = await showModalBottomSheet<ExerciseRecord>(
       context: context,
@@ -67,60 +69,85 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
       builder: (sheetContext) => SafeArea(
         child: FractionallySizedBox(
           heightFactor: 0.75,
-          child: StatefulBuilder(builder: (context, setSheetState) {
-            final visible = definitions.where((e) => e.archivedAtMs == null &&
-              (search.isEmpty || e.name.toLowerCase().contains(search) ||
-               e.muscleGroup.toLowerCase().contains(search) ||
-               e.equipment.toLowerCase().contains(search))).toList();
-            return Column(children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('ADD EXERCISE', style: Theme.of(context)
-                      .textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 12),
-                  TextField(
-                    onChanged: (text) => setSheetState(
-                      () => search = text.trim().toLowerCase()),
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.search),
-                      hintText: 'Search exercises',
-                      border: OutlineInputBorder(),
+          child: StatefulBuilder(
+            builder: (context, setSheetState) {
+              final visible = definitions
+                  .where(
+                    (e) =>
+                        e.archivedAtMs == null &&
+                        (search.isEmpty ||
+                            e.name.toLowerCase().contains(search) ||
+                            e.muscleGroup.toLowerCase().contains(search) ||
+                            e.equipment.toLowerCase().contains(search)),
+                  )
+                  .toList();
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ADD EXERCISE',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          onChanged: (text) => setSheetState(
+                            () => search = text.trim().toLowerCase(),
+                          ),
+                          decoration: const InputDecoration(
+                            prefixIcon: Icon(Icons.search),
+                            hintText: 'Search exercises',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ]),
-              ),
-              Expanded(child: visible.isEmpty
-                ? const Center(child: Text('No matching exercises.'))
-                : ListView.builder(
-                    itemCount: visible.length,
-                    itemBuilder: (_, index) {
-                      final e = visible[index];
-                      return ListTile(
-                        title: Text(e.name),
-                        subtitle: Text([e.muscleGroup, e.equipment]
-                            .where((s) => s.isNotEmpty).join(' · ')),
-                        trailing: const Icon(Icons.add_circle_outline),
-                        onTap: () => Navigator.pop(sheetContext, e),
-                      );
-                    },
-                  )),
-            ]);
-          }),
+                  Expanded(
+                    child: visible.isEmpty
+                        ? const Center(child: Text('No matching exercises.'))
+                        : ListView.builder(
+                            itemCount: visible.length,
+                            itemBuilder: (_, index) {
+                              final e = visible[index];
+                              return ListTile(
+                                title: Text(e.name),
+                                subtitle: Text(
+                                  [
+                                    e.muscleGroup,
+                                    e.equipment,
+                                  ].where((s) => s.isNotEmpty).join(' · '),
+                                ),
+                                trailing: const Icon(Icons.add_circle_outline),
+                                onTap: () => Navigator.pop(sheetContext, e),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
     if (selected == null || !mounted) return;
     setState(() {
-      items.add(PlanExerciseRecord(
-        uuid: uuidFactory.newId(),
-        exerciseUuid: selected.uuid,
-        position: items.length,
-        targetSets: 3,
-        targetRepsMin: selected.inputMode == 'duration' ? null : 8,
-        targetRepsMax: selected.inputMode == 'duration' ? null : 12,
-        restSeconds: 90,
-      ));
+      items.add(
+        PlanExerciseRecord(
+          uuid: uuidFactory.newId(),
+          exerciseUuid: selected.uuid,
+          position: items.length,
+          targetSets: 3,
+          targetRepsMin: selected.inputMode == 'duration' ? null : 8,
+          targetRepsMax: selected.inputMode == 'duration' ? null : 12,
+          restSeconds: 90,
+        ),
+      );
       pageError = null;
     });
   }
@@ -128,8 +155,12 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
   Future<void> _editTargets(int index) async {
     final old = items[index];
     final sets = TextEditingController(text: old.targetSets.toString());
-    final min = TextEditingController(text: old.targetRepsMin?.toString() ?? '');
-    final max = TextEditingController(text: old.targetRepsMax?.toString() ?? '');
+    final min = TextEditingController(
+      text: old.targetRepsMin?.toString() ?? '',
+    );
+    final max = TextEditingController(
+      text: old.targetRepsMax?.toString() ?? '',
+    );
     final rest = TextEditingController(text: old.restSeconds?.toString() ?? '');
     final note = TextEditingController(text: old.notes);
     String? error;
@@ -144,25 +175,61 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
             content: SizedBox(
               width: 420,
               child: SingleChildScrollView(
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  TextField(controller: sets, keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Sets (1–30)')),
-                  TextField(controller: min, keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Minimum reps (optional)')),
-                  TextField(controller: max, keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Maximum reps (optional)')),
-                  TextField(controller: rest, keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Rest seconds (optional)')),
-                  TextField(controller: note, maxLength: 1000, maxLines: 3,
-                    decoration: const InputDecoration(labelText: 'Coaching notes (local only)')),
-                  if (error != null) Text(error!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                ]),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: sets,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Sets (1–30)',
+                      ),
+                    ),
+                    TextField(
+                      controller: min,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Minimum reps (optional)',
+                      ),
+                    ),
+                    TextField(
+                      controller: max,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Maximum reps (optional)',
+                      ),
+                    ),
+                    TextField(
+                      controller: rest,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Rest seconds (optional)',
+                      ),
+                    ),
+                    TextField(
+                      controller: note,
+                      maxLength: 1000,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Coaching notes (local only)',
+                      ),
+                    ),
+                    if (error != null)
+                      Text(
+                        error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel')),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
               FilledButton(
                 onPressed: () {
                   final candidate = PlanExerciseRecord(
@@ -180,7 +247,9 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
                     setState(() => items[index] = candidate);
                     Navigator.pop(dialogContext);
                   } catch (_) {
-                    updateDialog(() => error = 'Check your sets, rep range and rest time.');
+                    updateDialog(
+                      () => error = 'Check your sets, rep range and rest time.',
+                    );
                   }
                 },
                 child: const Text('Apply'),
@@ -219,28 +288,39 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
   }
 
   void _save() {
-    if (saving || pageError == 'This plan was archived or is unavailable.') return;
+    if (saving || pageError == 'This plan was archived or is unavailable.')
+      return;
     setState(() {
       saving = true;
       pageError = null;
     });
     try {
-      ref.read(workoutLibraryRepositoryProvider).savePlan(
-        uuid: planUuid,
-        name: name.text,
-        description: description.text,
-        exercises: List.unmodifiable(items),
-        expectedUpdatedAtMs: expectedUpdatedAtMs,
-      );
+      ref
+          .read(workoutLibraryRepositoryProvider)
+          .savePlan(
+            uuid: planUuid,
+            name: name.text,
+            description: description.text,
+            exercises: List.unmodifiable(items),
+            expectedUpdatedAtMs: expectedUpdatedAtMs,
+          );
       ref.invalidate(trainLibraryProvider);
       if (mounted) context.pop();
     } on PlanEditConflict {
-      setState(() => pageError = 'This plan was updated elsewhere. '
-        'Leave this editor and reopen the latest version before changing it.');
+      setState(
+        () => pageError =
+            'This plan was updated elsewhere. '
+            'Leave this editor and reopen the latest version before changing it.',
+      );
     } on ArgumentError {
-      setState(() => pageError = 'Enter a plan name and valid exercise targets.');
+      setState(
+        () => pageError = 'Enter a plan name and valid exercise targets.',
+      );
     } catch (_) {
-      setState(() => pageError = 'Could not save your plan. Nothing was partially saved.');
+      setState(
+        () => pageError =
+            'Could not save your plan. Nothing was partially saved.',
+      );
     } finally {
       if (mounted) setState(() => saving = false);
     }
@@ -251,13 +331,19 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Archive this plan?'),
-        content: const Text('It will leave your plan list. '
-            'Previously recorded workouts will not be removed.'),
+        content: const Text(
+          'It will leave your plan list. '
+          'Previously recorded workouts will not be removed.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Archive')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Archive'),
+          ),
         ],
       ),
     );
@@ -273,13 +359,18 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    final definitions = ref.watch(trainLibraryProvider).valueOrNull?.exercises ??
-        ref.read(workoutLibraryRepositoryProvider).listExercises(includeArchived: true);
+    final definitions =
+        ref.watch(trainLibraryProvider).valueOrNull?.exercises ??
+        ref
+            .read(workoutLibraryRepositoryProvider)
+            .listExercises(includeArchived: true);
     final byId = {for (final d in definitions) d.uuid: d};
     final muted = Theme.of(context).extension<NorthstarColors>()!.muted;
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.planUuid == null ? 'New training plan' : 'Edit training plan'),
+        title: Text(
+          widget.planUuid == null ? 'New training plan' : 'Edit training plan',
+        ),
         actions: [
           if (widget.planUuid != null)
             IconButton(
@@ -295,11 +386,16 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 40),
             children: [
-              Text('PLAN THE WORK', style: Theme.of(context)
-                .textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
+              Text(
+                'PLAN THE WORK',
+                style: Theme.of(context).textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: 8),
-              Text('Saved on this device. You can edit it anytime.',
-                style: TextStyle(color: muted)),
+              Text(
+                'Saved on this device. You can edit it anytime.',
+                style: TextStyle(color: muted),
+              ),
               const SizedBox(height: 20),
               TextField(
                 controller: name,
@@ -322,69 +418,115 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
                 ),
               ),
               const SizedBox(height: 18),
-              Row(children: [
-                Expanded(child: Text('EXERCISES', style: Theme.of(context)
-                  .textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900))),
-                OutlinedButton.icon(
-                  onPressed: _addExercise,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add'),
-                ),
-              ]),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'EXERCISES',
+                      style: Theme.of(context).textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _addExercise,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add'),
+                  ),
+                ],
+              ),
               const SizedBox(height: 10),
               if (items.isEmpty)
-                const Card(child: Padding(
-                  padding: EdgeInsets.all(22),
-                  child: Text('No exercises yet. Add a movement from your local catalog.'),
-                )),
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(22),
+                    child: Text(
+                      'No exercises yet. Add a movement from your local catalog.',
+                    ),
+                  ),
+                ),
               for (var i = 0; i < items.length; i++)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: Card(child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(byId[items[i].exerciseUuid]?.name ?? 'Archived exercise',
-                        style: Theme.of(context).textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 4),
-                      Text('${items[i].targetSets} sets'
-                          '${items[i].targetRepsMin == null ? '' : ' · ${items[i].targetRepsMin}–${items[i].targetRepsMax ?? items[i].targetRepsMin} reps'}'
-                          '${items[i].restSeconds == null ? '' : ' · ${items[i].restSeconds}s rest'}',
-                        style: TextStyle(color: muted)),
-                      const SizedBox(height: 8),
-                      Wrap(spacing: 4, crossAxisAlignment: WrapCrossAlignment.center,
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          IconButton(
-                            tooltip: 'Move ${byId[items[i].exerciseUuid]?.name ?? 'exercise'} up',
-                            onPressed: i == 0 ? null : () => _move(i, i - 1),
-                            icon: const Icon(Icons.arrow_upward)),
-                          IconButton(
-                            tooltip: 'Move ${byId[items[i].exerciseUuid]?.name ?? 'exercise'} down',
-                            onPressed: i == items.length - 1 ? null : () => _move(i, i + 1),
-                            icon: const Icon(Icons.arrow_downward)),
-                          TextButton.icon(
-                            onPressed: () => _editTargets(i),
-                            icon: const Icon(Icons.tune),
-                            label: const Text('Targets')),
-                          TextButton.icon(
-                            onPressed: () => _remove(i),
-                            icon: const Icon(Icons.close),
-                            label: const Text('Remove')),
-                        ]),
-                    ]),
-                  )),
+                          Text(
+                            byId[items[i].exerciseUuid]?.name ??
+                                'Archived exercise',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${items[i].targetSets} sets'
+                            '${items[i].targetRepsMin == null ? '' : ' · ${items[i].targetRepsMin}–${items[i].targetRepsMax ?? items[i].targetRepsMin} reps'}'
+                            '${items[i].restSeconds == null ? '' : ' · ${items[i].restSeconds}s rest'}',
+                            style: TextStyle(color: muted),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              IconButton(
+                                tooltip:
+                                    'Move ${byId[items[i].exerciseUuid]?.name ?? 'exercise'} up',
+                                onPressed: i == 0
+                                    ? null
+                                    : () => _move(i, i - 1),
+                                icon: const Icon(Icons.arrow_upward),
+                              ),
+                              IconButton(
+                                tooltip:
+                                    'Move ${byId[items[i].exerciseUuid]?.name ?? 'exercise'} down',
+                                onPressed: i == items.length - 1
+                                    ? null
+                                    : () => _move(i, i + 1),
+                                icon: const Icon(Icons.arrow_downward),
+                              ),
+                              TextButton.icon(
+                                onPressed: () => _editTargets(i),
+                                icon: const Icon(Icons.tune),
+                                label: const Text('Targets'),
+                              ),
+                              TextButton.icon(
+                                onPressed: () => _remove(i),
+                                icon: const Icon(Icons.close),
+                                label: const Text('Remove'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               const SizedBox(height: 12),
-              if (pageError != null) Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Text(pageError!, style: TextStyle(
-                  color: Theme.of(context).colorScheme.error))),
+              if (pageError != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text(
+                    pageError!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
               FilledButton.icon(
-                onPressed: saving || pageError == 'This plan was archived or is unavailable.'
-                    ? null : _save,
+                onPressed:
+                    saving ||
+                        pageError == 'This plan was archived or is unavailable.'
+                    ? null
+                    : _save,
                 icon: saving
-                    ? const SizedBox(height: 18, width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Icon(Icons.save_outlined),
                 label: const Text('Save plan offline'),
               ),
