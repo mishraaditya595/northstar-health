@@ -560,16 +560,22 @@ class _SetEditorTileState extends State<SetEditorTile> {
             children: [
               DropdownButton<WorkoutSetKind>(
                 value: kind,
-                onChanged: widget.enabled ? (value) {
-                  if (value != null) {
-                    setState(() => kind = value);
-                  }
-                } : null,
+                onChanged: widget.enabled
+                    ? (value) {
+                        if (value != null) {
+                          setState(() => kind = value);
+                        }
+                      }
+                    : null,
                 items: const [
                   DropdownMenuItem(
-                    value: WorkoutSetKind.working, child: Text('Working')),
+                    value: WorkoutSetKind.working,
+                    child: Text('Working'),
+                  ),
                   DropdownMenuItem(
-                    value: WorkoutSetKind.warmup, child: Text('Warm-up')),
+                    value: WorkoutSetKind.warmup,
+                    child: Text('Warm-up'),
+                  ),
                 ],
               ),
               DropdownButton<int>(

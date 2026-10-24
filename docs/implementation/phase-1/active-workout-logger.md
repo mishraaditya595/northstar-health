@@ -10,7 +10,8 @@
   process death and reopening ObjectBox. Only one unfinished workout is allowed.
 - Active workout: show historical exercise snapshots and ordered sets, add
   exercises from the local catalog and add sets, record or edit reps,
-  optional load, kg/lb display unit and optional RPE; skip planned sets.
+  optional load, kg/lb display unit, warm-up/working set kind and optional
+  RPE; skip planned sets.
   Display completed set count and durable local-save status.
 - Pause/resume/finish/discard call `LiveWorkoutEngine` with the observed
   session revision. Destructive completion/discard requires user confirmation.
