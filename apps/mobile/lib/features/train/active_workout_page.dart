@@ -363,8 +363,15 @@ class _SetEditorTileState extends State<SetEditorTile> {
                 border: OutlineInputBorder()))),
             DropdownButton<LoadUnit>(
               value: unit,
-              onChanged: widget.enabled ? (v) {
-                if (v != null) setState(() => unit = v);
+              onChanged: widget.enabled ? (next) {
+                if (next == null || next == unit) return;
+                final entered = double.tryParse(weight.text.trim());
+                if (entered != null && entered >= 0 && entered.isFinite) {
+                  final grams = LoadUnits.toGrams(entered, unit);
+                  weight.text = LoadUnits.fromGrams(grams, next)
+                      .toStringAsFixed(next == LoadUnit.kg ? 2 : 1);
+                }
+                setState(() => unit = next);
               } : null,
               items: const [
                 DropdownMenuItem(value: LoadUnit.kg, child: Text('kg')),
