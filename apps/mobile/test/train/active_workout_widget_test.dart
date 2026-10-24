@@ -76,6 +76,10 @@ void main() {
     await tester.enterText(fields.at(0), '8');
     await tester.enterText(fields.at(1), '42.5');
     await tester.enterText(fields.at(2), '8.5');
+    await tester.tap(find.byType(DropdownButton<WorkoutSetKind>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Warm-up').last);
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Save set'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Save set'));
@@ -86,6 +90,7 @@ void main() {
     final recorded = repository.getSession(sessionUuid)!;
     expect(recorded.sets.single.status, WorkoutSetStatus.completed);
     expect(recorded.sets.single.reps, 8);
+    expect(recorded.sets.single.kind, WorkoutSetKind.warmup);
     expect(recorded.sets.single.loadGrams, 42500);
     expect(recorded.sets.single.rpe, 8.5);
     expect(

@@ -402,6 +402,7 @@ class _SetEditorTileState extends State<SetEditorTile> {
   late final TextEditingController weight;
   late final TextEditingController rpe;
   late LoadUnit unit;
+  late WorkoutSetKind kind;
   int rest = 90;
   String? error;
 
@@ -410,6 +411,7 @@ class _SetEditorTileState extends State<SetEditorTile> {
     super.initState();
     final s = widget.record;
     unit = s.inputUnit == LoadUnit.unknown ? LoadUnit.kg : s.inputUnit;
+    kind = s.kind == WorkoutSetKind.unknown ? WorkoutSetKind.working : s.kind;
     reps = TextEditingController(text: s.reps?.toString() ?? '');
     weight = TextEditingController(
       text: s.loadGrams == null
@@ -448,7 +450,7 @@ class _SetEditorTileState extends State<SetEditorTile> {
         uuid: s.uuid,
         exerciseUuid: s.exerciseUuid,
         position: s.position,
-        kind: s.kind,
+        kind: kind,
         status: WorkoutSetStatus.completed,
         reps: count,
         loadGrams: load == null ? null : LoadUnits.toGrams(load, unit),
@@ -556,6 +558,18 @@ class _SetEditorTileState extends State<SetEditorTile> {
             spacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
+              DropdownButton<WorkoutSetKind>(
+                value: kind,
+                onChanged: widget.enabled ? (value) {
+                  if (value != null) setState(() => kind = value);
+                } : null,
+                items: const [
+                  DropdownMenuItem(
+                    value: WorkoutSetKind.working, child: Text('Working')),
+                  DropdownMenuItem(
+                    value: WorkoutSetKind.warmup, child: Text('Warm-up')),
+                ],
+              ),
               DropdownButton<int>(
                 value: rest,
                 onChanged: widget.enabled
