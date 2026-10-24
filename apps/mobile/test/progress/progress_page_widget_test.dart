@@ -107,20 +107,7 @@ void main() {
     }
   }
 
-  Future<void> showProgress(WidgetTester tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [objectBoxStoreProvider.overrideWithValue(store)],
-        child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
-          routerConfig: router,
-        ),
-      ),
-    );
-    await _settleHistory(tester);
-  }
-
-  Future<void> _settleHistory(WidgetTester tester) async {
+  Future<void> settleHistory(WidgetTester tester) async {
     await tester.pump();
     final container = ProviderScope.containerOf(
       tester.element(find.byType(ProgressPage)),
@@ -134,6 +121,20 @@ void main() {
     });
     await tester.pumpAndSettle();
   }
+
+  Future<void> showProgress(WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [objectBoxStoreProvider.overrideWithValue(store)],
+        child: MaterialApp.router(
+          theme: NorthstarTheme.build(Brightness.light),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await settleHistory(tester);
+  }
+
 
   testWidgets('empty history is honest and contains no fictional best set', (
     tester,
@@ -197,7 +198,7 @@ void main() {
         ),
       ),
     );
-    await _settleHistory(tester);
+    await settleHistory(tester);
     expect(find.text('Workout wide'), findsOneWidget);
     expect(find.text('1'), findsWidgets);
     expect(find.byType(ChoiceChip), findsAtLeastNWidgets(3));
@@ -264,7 +265,7 @@ void main() {
         routerConfig: router,
       ),
     ));
-    await _settleHistory(tester);
+    await settleHistory(tester);
     await tester.scrollUntilVisible(find.text('Workout recent'), 200,
       scrollable: find.byType(Scrollable).first);
     expect(find.text('Workout older'), findsNothing);
@@ -290,7 +291,7 @@ void main() {
     await tester.tap(find.text('Finish workout'));
     await tester.pumpAndSettle();
     router.go('/progress');
-    await _settleHistory(tester);
+    await settleHistory(tester);
     await tester.scrollUntilVisible(find.text('Workout finishing'), 200,
       scrollable: find.byType(Scrollable).first);
     expect(find.text('Workout finishing'), findsOneWidget);
@@ -309,7 +310,7 @@ void main() {
         routerConfig: router,
       ),
     ));
-    await _settleHistory(tester);
+    await settleHistory(tester);
     expect(find.textContaining('Could not load completed workouts'), findsOneWidget);
     await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
