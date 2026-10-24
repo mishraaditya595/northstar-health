@@ -128,7 +128,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,
@@ -198,7 +198,7 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,
@@ -243,7 +243,7 @@ void main() {
       addTearDown(router.dispose);
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+          overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
           child: MaterialApp.router(
             theme: NorthstarTheme.build(Brightness.dark),
             routerConfig: router,
@@ -306,7 +306,7 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,
@@ -354,7 +354,7 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,
@@ -395,7 +395,7 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,
@@ -439,7 +439,7 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,
@@ -483,7 +483,7 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,
@@ -528,7 +528,7 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,
@@ -570,7 +570,7 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,

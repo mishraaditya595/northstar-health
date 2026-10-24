@@ -24,12 +24,16 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
   Future<void> _perform(void Function(WorkoutActions actions) action, {
     bool leaveOnSuccess = false,
   }) async {
-    if (_busy) return;
+    if (_busy) {
+      return;
+    }
     setState(() { _busy = true; _error = null; });
     try {
       action(ref.read(workoutActionsProvider));
       ref.invalidate(activeWorkoutProvider);
-      if (leaveOnSuccess && mounted) context.go('/train');
+      if (leaveOnSuccess && mounted) {
+        context.go('/train');
+      }
     } on WorkoutRevisionConflict {
       if (mounted) {
         setState(() => _error =
@@ -42,7 +46,9 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
             'The local write did not complete. Review the values and retry.');
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -62,7 +68,9 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
         ],
       ),
     );
-    if (yes != true || !mounted) return;
+    if (yes != true || !mounted) {
+      return;
+    }
     await _perform((a) => discard ? a.discard(workout) : a.finish(workout),
         leaveOnSuccess: true);
   }
@@ -70,7 +78,9 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
   Future<void> _chooseExercise(WorkoutSessionRecord workout) async {
     try {
       final snapshot = await ref.read(trainLibraryProvider.future);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       final available = snapshot.exercises
           .where((exercise) => exercise.archivedAtMs == null).toList();
       var search = '';
@@ -109,12 +119,16 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
           ),
         ),
       );
-      if (chosen == null || !mounted) return;
+      if (chosen == null || !mounted) {
+        return;
+      }
       final selected = available.singleWhere((e) => e.uuid == chosen);
       await _perform((a) => a.addExercise(workout, selected));
     } catch (_) {
-      if (mounted) setState(() => _error =
-          'Exercise library is unavailable. Retry when it is ready.');
+      if (mounted) {
+        setState(() => _error =
+            'Exercise library is unavailable. Retry when it is ready.');
+      }
     }
   }
 
@@ -210,7 +224,7 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
           ),
         ]),
         const SizedBox(height: 12),
-        if (checkpoint != null) RestTimerCard(
+        RestTimerCard(
           key: ValueKey('${session.uuid}-${checkpoint.savedAtMs}'),
           checkpoint: checkpoint,
           runningWorkout: !paused,
@@ -364,7 +378,9 @@ class _SetEditorTileState extends State<SetEditorTile> {
             DropdownButton<LoadUnit>(
               value: unit,
               onChanged: widget.enabled ? (next) {
-                if (next == null || next == unit) return;
+                if (next == null || next == unit) {
+                  return;
+                }
                 final entered = double.tryParse(weight.text.trim());
                 if (entered != null && entered >= 0 && entered.isFinite) {
                   final grams = LoadUnits.toGrams(entered, unit);
@@ -391,7 +407,9 @@ class _SetEditorTileState extends State<SetEditorTile> {
             DropdownButton<int>(
               value: rest,
               onChanged: widget.enabled ? (v) {
-                if (v != null) setState(() => rest = v);
+                if (v != null) {
+                  setState(() => rest = v);
+                }
               } : null,
               items: const [
                 DropdownMenuItem(value: 0, child: Text('No rest')),
