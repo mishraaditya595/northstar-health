@@ -18,6 +18,16 @@ import 'package:northstar_health/features/workouts/data/objectbox_workout_reposi
 import 'package:northstar_health/features/workouts/domain/workout_models.dart';
 import 'package:northstar_health/objectbox.g.dart';
 
+/// Progress now stacks overview, calendar and body map above the history, so
+/// lower sections need a tall viewport to be built, as they are when scrolled.
+void tallView(WidgetTester tester, {double? width}) {
+  final view = tester.view;
+  view.devicePixelRatio = 1;
+  view.physicalSize = Size(width ?? 900, 4200);
+  addTearDown(view.resetPhysicalSize);
+  addTearDown(view.resetDevicePixelRatio);
+}
+
 void main() {
   late Directory directory;
   late Store store;
@@ -132,9 +142,94 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<void> showProgressAt(WidgetTester tester, DateTime nowUtc) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          objectBoxStoreProvider.overrideWithValue(store),
+          workoutHistoryRepositoryProvider.overrideWithValue(
+            _ImmediateHistoryRepository(store),
+          ),
+          progressNowProvider.overrideWithValue(nowUtc),
+        ],
+        child: MaterialApp.router(
+          theme: NorthstarTheme.build(Brightness.light),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('overview, consistency, body map and summary show real history', (
+    tester,
+  ) async {
+    tallView(tester);
+    // Thursday 22 Oct 2026 10:00 UTC; the clock says Saturday 24 Oct.
+    writeWorkout('wk', startedAtUtc: DateTime.utc(2026, 10, 22, 10));
+    await showProgressAt(tester, DateTime.utc(2026, 10, 24, 12));
+
+    expect(find.text('Volume'), findsWidgets);
+    expect(find.text('Workout time'), findsOneWidget);
+    expect(find.text('30m'), findsWidgets); // this week's workout time
+    expect(find.text('October 2026'), findsOneWidget);
+    expect(find.bySemanticsLabel('22 October, trained'), findsOneWidget);
+    expect(find.bySemanticsLabel('24 October, today'), findsOneWidget);
+    expect(find.text('Total sessions'), findsOneWidget);
+    expect(find.text('Week streak'), findsOneWidget);
+    expect(find.text('Muscle Recovery'), findsOneWidget);
+    expect(find.text('Sample data'), findsOneWidget);
+    expect(find.text('Training summary'), findsOneWidget);
+    expect(find.text('Workout wk'), findsOneWidget);
+    expect(find.text('00:30:00'), findsOneWidget);
+    expect(find.text('View details'), findsOneWidget);
+  });
+
+  testWidgets('View details opens the session with its exercises', (
+    tester,
+  ) async {
+    tallView(tester);
+    writeWorkout('wk', startedAtUtc: DateTime.utc(2026, 10, 22, 10));
+    await showProgressAt(tester, DateTime.utc(2026, 10, 24, 12));
+    await tester.ensureVisible(find.text('View details'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('View details'));
+    await tester.pumpAndSettle();
+    expect(find.text('Workout details'), findsOneWidget);
+    expect(find.text('started at 15:30'), findsOneWidget); // 10:00Z at +05:30
+    expect(find.text('30m'), findsOneWidget);
+    expect(find.text('1 exercise'), findsOneWidget);
+    expect(find.text('Bench press'), findsOneWidget);
+    expect(find.textContaining('8 reps'), findsOneWidget);
+  });
+
+  testWidgets('the month arrows browse history and stop at this month', (
+    tester,
+  ) async {
+    tallView(tester);
+    writeWorkout('old', startedAtUtc: DateTime.utc(2026, 9, 10, 10));
+    await showProgressAt(tester, DateTime.utc(2026, 10, 24, 12));
+    IconButton next() => tester.widget<IconButton>(
+      find.widgetWithIcon(IconButton, Icons.chevron_right).first,
+    );
+    expect(next().onPressed, isNull);
+    expect(find.bySemanticsLabel('10 September, trained'), findsNothing);
+
+    await tester.tap(find.byTooltip('Previous month'));
+    await tester.pumpAndSettle();
+    expect(find.text('September 2026'), findsOneWidget);
+    expect(find.bySemanticsLabel('10 September, trained'), findsOneWidget);
+    expect(next().onPressed, isNotNull);
+
+    await tester.tap(find.byTooltip('Next month'));
+    await tester.pumpAndSettle();
+    expect(find.text('October 2026'), findsOneWidget);
+  });
+
   testWidgets('empty history is honest and contains no fictional best set', (
     tester,
   ) async {
+    tallView(tester);
     await showProgress(tester);
     expect(find.text('Nothing logged yet'), findsOneWidget);
     expect(find.textContaining('Squat · demo'), findsNothing);
@@ -144,6 +239,7 @@ void main() {
   testWidgets('one completed session supplies real progress and detail', (
     tester,
   ) async {
+    tallView(tester);
     writeWorkout('first');
     await showProgress(tester);
     expect(find.text('500'), findsOneWidget); // 8 × 62.5 kg
@@ -169,6 +265,7 @@ void main() {
   testWidgets('paused workout is excluded even when a set was completed', (
     tester,
   ) async {
+    tallView(tester);
     writeWorkout('unfinished', finish: false, pause: true);
     expect(
       ObjectBoxWorkoutRepository(store).getSession('unfinished')!.status,
@@ -180,8 +277,8 @@ void main() {
   });
 
   testWidgets('history handles tablet width and dark theme', (tester) async {
-    tester.view.physicalSize = const Size(1200, 900);
-    tester.view.devicePixelRatio = 1;
+    tallView(tester);
+    tallView(tester, width: 1200);
     addTearDown(() {
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
@@ -217,18 +314,22 @@ void main() {
   testWidgets(
     'completed unloaded session shows missing volume instead of zero',
     (tester) async {
+      tallView(tester);
       writeWorkout('unloaded', loadGrams: null);
       await showProgress(tester);
       expect(find.text('No loaded sets'), findsOneWidget);
-      expect(find.text('—'), findsOneWidget);
+      // Missing volume shows as a dash wherever it appears, never as zero.
+      expect(find.text('—'), findsWidgets);
       expect(find.text('No loaded working sets yet'), findsOneWidget);
       expect(find.text('0'), findsNothing);
+      expect(find.textContaining('0 kg'), findsNothing);
     },
   );
 
   testWidgets('completed zero-load session has no best-weight claim', (
     tester,
   ) async {
+    tallView(tester);
     writeWorkout('zero', loadGrams: 0);
     await showProgress(tester);
     expect(find.text('No loaded sets'), findsOneWidget);
@@ -239,8 +340,7 @@ void main() {
   testWidgets('date and reps are visible on trend, with an lb toggle', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1024, 1200);
-    tester.view.devicePixelRatio = 1;
+    tallView(tester, width: 1024);
     addTearDown(() {
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
@@ -279,6 +379,7 @@ void main() {
   testWidgets('period filter honors injected UTC clock and boundary', (
     tester,
   ) async {
+    tallView(tester);
     final anchor = DateTime.utc(2026, 10, 24, 12);
     writeWorkout(
       'recent',
@@ -328,6 +429,7 @@ void main() {
   testWidgets(
     'later Progress visit samples a fresh clock without re-reading history',
     (tester) async {
+      tallView(tester);
       var clock = DateTime.utc(2026, 10, 24, 12);
       var sampled = 0;
       final repository = _CountingLoadedHistoryRepository(store);
@@ -375,6 +477,7 @@ void main() {
   testWidgets('returning from background updates 30-day boundary in place', (
     tester,
   ) async {
+    tallView(tester);
     var clock = DateTime.utc(2026, 10, 24, 12);
     var sampled = 0;
     final repository = _CountingLoadedHistoryRepository(store);
@@ -413,6 +516,7 @@ void main() {
   testWidgets('finish through ActiveWorkoutPage refreshes cached Progress', (
     tester,
   ) async {
+    tallView(tester);
     writeWorkout('finishing', finish: false);
     await showProgress(tester);
     expect(find.text('Nothing logged yet'), findsOneWidget);
@@ -436,6 +540,7 @@ void main() {
   testWidgets('history is cached across navigation and refresh is explicit', (
     tester,
   ) async {
+    tallView(tester);
     final fake = _CountingHistoryRepository();
     await tester.pumpWidget(
       ProviderScope(
@@ -465,6 +570,7 @@ void main() {
   testWidgets('initial loading, error and retry recover without false data', (
     tester,
   ) async {
+    tallView(tester);
     final fake = _FlakyHistoryRepository();
     await tester.pumpWidget(
       ProviderScope(
