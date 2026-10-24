@@ -127,6 +127,57 @@ void main() {
     expect(store.box<WorkoutSetEntity>().count(), 0);
   });
 
+  testWidgets('swiping a set away deletes it, asking first when recorded', (
+    tester,
+  ) async {
+    await showApp(tester);
+    await tester.tap(find.text('Quick workout'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start workout'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add exercise'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Barbell bench press').last);
+    await tester.pumpAndSettle();
+    for (var n = 0; n < 2; n++) {
+      await tester.ensureVisible(find.text('Add set'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Add set'));
+      await tester.pumpAndSettle();
+    }
+    expect(store.box<WorkoutSetEntity>().count(), 2);
+
+    // Planned set: gone with no question.
+    await tester.drag(find.byType(SetEditorTile).last, const Offset(-500, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Remove this set?'), findsNothing);
+    expect(store.box<WorkoutSetEntity>().count(), 1);
+
+    // Recorded set: asks, and Keep set leaves it in place.
+    final fields = find.descendant(
+      of: find.byType(SetEditorTile),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(fields.at(1), '5');
+    await tester.ensureVisible(find.byTooltip('Save set 1'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Save set 1'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(SetEditorTile).first, const Offset(-500, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Remove this set?'), findsOneWidget);
+    await tester.tap(find.text('Keep set'));
+    await tester.pumpAndSettle();
+    expect(store.box<WorkoutSetEntity>().count(), 1);
+    expect(find.byType(SetEditorTile), findsOneWidget);
+
+    await tester.drag(find.byType(SetEditorTile).first, const Offset(-500, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Remove set').last);
+    await tester.pumpAndSettle();
+    expect(store.box<WorkoutSetEntity>().count(), 0);
+  });
+
   testWidgets('running rest timer stays on screen while the page scrolls', (
     tester,
   ) async {

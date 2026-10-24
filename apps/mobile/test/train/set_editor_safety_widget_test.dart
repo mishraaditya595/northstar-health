@@ -219,7 +219,7 @@ void main() {
   group('set options and remove', () {
     Future<void> pumpTile(
       WidgetTester tester, {
-      VoidCallback? onRemove,
+      Future<bool> Function()? onRemove,
       bool enabled = true,
       WorkoutSetRecord? previous,
     }) async {
@@ -244,7 +244,13 @@ void main() {
       tester,
     ) async {
       var removed = 0;
-      await pumpTile(tester, onRemove: () => removed++);
+      await pumpTile(
+        tester,
+        onRemove: () async {
+          removed++;
+          return true;
+        },
+      );
       await tester.tap(find.byTooltip('Set 1 options'));
       await tester.pumpAndSettle();
       await tester.drag(find.byType(ListView).last, const Offset(0, -400));
@@ -266,7 +272,7 @@ void main() {
     testWidgets('options are unavailable while the workout is paused', (
       tester,
     ) async {
-      await pumpTile(tester, onRemove: () {}, enabled: false);
+      await pumpTile(tester, onRemove: () async => true, enabled: false);
       await tester.tap(find.byTooltip('Set 1 options'), warnIfMissed: false);
       await tester.pumpAndSettle();
       expect(find.text('Remove set'), findsNothing);
@@ -299,6 +305,53 @@ void main() {
       expect(badge.left, lessThan(tile.left + 20));
       expect(check.right, greaterThan(tile.right - 20));
       expect((badge.center.dy - check.center.dy).abs(), lessThan(2));
+    });
+
+    testWidgets('swiping the row left removes the set', (tester) async {
+      var removed = 0;
+      await pumpTile(
+        tester,
+        onRemove: () async {
+          removed++;
+          return false; // the page re-renders the list; the row never lingers
+        },
+      );
+      await tester.drag(find.byType(SetEditorTile), const Offset(-500, 0));
+      await tester.pumpAndSettle();
+      expect(removed, 1);
+    });
+
+    testWidgets('a short swipe does nothing', (tester) async {
+      var removed = 0;
+      await pumpTile(
+        tester,
+        onRemove: () async {
+          removed++;
+          return false;
+        },
+      );
+      await tester.drag(find.byType(SetEditorTile), const Offset(-40, 0));
+      await tester.pumpAndSettle();
+      expect(removed, 0);
+    });
+
+    testWidgets('no swipe while paused or without a handler', (tester) async {
+      var removed = 0;
+      await pumpTile(
+        tester,
+        enabled: false,
+        onRemove: () async {
+          removed++;
+          return false;
+        },
+      );
+      await tester.drag(find.byType(SetEditorTile), const Offset(-500, 0));
+      await tester.pumpAndSettle();
+      expect(removed, 0);
+      await pumpTile(tester);
+      await tester.drag(find.byType(SetEditorTile), const Offset(-500, 0));
+      await tester.pumpAndSettle();
+      expect(find.byType(SetEditorTile), findsOneWidget);
     });
   });
 }

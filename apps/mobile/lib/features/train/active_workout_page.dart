@@ -30,19 +30,22 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
   bool _busy = false;
   String? _error;
 
-  Future<void> _perform(
+  /// Runs one local write. Returns true once it committed.
+  Future<bool> _perform(
     void Function(WorkoutActions actions) action, {
     bool leaveOnSuccess = false,
   }) async {
     if (_busy) {
-      return;
+      return false;
     }
+    var committed = false;
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
       action(ref.read(workoutActionsProvider));
+      committed = true;
       ref.invalidate(activeWorkoutProvider);
       if (leaveOnSuccess) {
         ref.invalidate(completedWorkoutHistoryProvider);
@@ -86,6 +89,7 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
         setState(() => _busy = false);
       }
     }
+    return committed;
   }
 
   Future<void> _confirmEnd(WorkoutSessionRecord workout, bool discard) async {
@@ -107,7 +111,7 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
     );
   }
 
-  Future<void> _removeSet(
+  Future<bool> _removeSet(
     WorkoutSessionRecord workout,
     WorkoutSetRecord set,
   ) async {
@@ -120,10 +124,10 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
         confirmLabel: 'Remove set',
       );
       if (!yes || !mounted) {
-        return;
+        return false;
       }
     }
-    await _perform((a) => a.removeSet(workout, set));
+    return _perform((a) => a.removeSet(workout, set));
   }
 
   Future<void> _chooseExercise(WorkoutSessionRecord workout) async {
@@ -422,7 +426,7 @@ class _ExerciseCard extends ConsumerStatefulWidget {
   final List<WorkoutSetRecord> sets;
   final bool enabled;
   final void Function(WorkoutSetRecord set, int? restSeconds) onSave;
-  final void Function(WorkoutSetRecord set) onRemove;
+  final Future<bool> Function(WorkoutSetRecord set) onRemove;
   final VoidCallback onAddSet;
 
   @override
@@ -605,8 +609,9 @@ class SetEditorTile extends StatefulWidget {
   final bool enabled;
   final void Function(WorkoutSetRecord set, int? restSeconds) onSave;
 
-  /// Null hides the remove action.
-  final VoidCallback? onRemove;
+  /// Deletes the set (asking first when needed); true once it is gone. Null
+  /// hides the remove action and disables swiping.
+  final Future<bool> Function()? onRemove;
 
   /// Working-set number shown on the badge; defaults to position + 1.
   final int? number;
@@ -866,7 +871,7 @@ class _SetEditorTileState extends State<SetEditorTile> {
     final hintStyle = TextStyle(
       color: theme.colorScheme.onSurfaceVariant.withValues(alpha: .6),
     );
-    return Container(
+    final row = Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       decoration: BoxDecoration(
@@ -999,6 +1004,30 @@ class _SetEditorTileState extends State<SetEditorTile> {
             ),
         ],
       ),
+    );
+    final remove = widget.onRemove;
+    if (remove == null || !widget.enabled) return row;
+    return Dismissible(
+      key: ValueKey('swipe-${s.uuid}'),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.only(right: 20),
+        alignment: Alignment.centerRight,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.error,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Icon(Icons.delete_outline, color: theme.colorScheme.onError),
+      ),
+      // The delete happens here. Answering false keeps Dismissible out of the
+      // removal: the page re-renders without the row when the commit succeeds,
+      // and a failed commit simply snaps the row back.
+      confirmDismiss: (_) async {
+        await remove();
+        return false;
+      },
+      child: row,
     );
   }
 }
