@@ -28,7 +28,8 @@ jobs:
             lib/features/workouts/domain/live_workout_engine.dart \
             lib/features/workouts/data/objectbox_live_workout_engine.dart \
             lib/features/workouts/data/objectbox_workout_repository.dart \
-            test/workouts/objectbox_live_workout_engine_test.dart; do
+            test/workouts/objectbox_live_workout_engine_test.dart \
+            test/workouts/objectbox_workout_repository_test.dart; do
             echo "BEGIN_FORMATTED_FILE:$file"
             base64 -w0 "$file"
             echo
