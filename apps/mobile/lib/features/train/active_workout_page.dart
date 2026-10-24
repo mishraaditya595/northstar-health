@@ -471,10 +471,10 @@ class _SetEditorTileState extends State<SetEditorTile> {
         break;
       }
     }
-    while (output.contains('.') && output.endsWith('0')) {
-      output = output.substring(0, output.length - 1);
-    }
-    if (output.endsWith('.')) {
+    // Keep at least one decimal place for familiar loads like 225.0 lb.
+    while (output.contains('.') &&
+        output.endsWith('0') &&
+        output.split('.').last.length > 1) {
       output = output.substring(0, output.length - 1);
     }
     return output;
