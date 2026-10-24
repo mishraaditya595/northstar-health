@@ -12,7 +12,10 @@ const planned = WorkoutSetRecord(
   status: WorkoutSetStatus.planned,
 );
 
-WorkoutSetRecord completed({int grams = 101250}) => WorkoutSetRecord(
+WorkoutSetRecord completed({
+  int grams = 101250,
+  LoadUnit inputUnit = LoadUnit.kg,
+}) => WorkoutSetRecord(
   uuid: 'set-a',
   exerciseUuid: 'exercise-a',
   position: 0,
@@ -20,7 +23,7 @@ WorkoutSetRecord completed({int grams = 101250}) => WorkoutSetRecord(
   status: WorkoutSetStatus.completed,
   reps: 8,
   loadGrams: grams,
-  inputUnit: LoadUnit.kg,
+  inputUnit: inputUnit,
   rpe: 8,
   completedAtUtc: DateTime.utc(2026, 10, 24, 8),
 );
@@ -160,4 +163,21 @@ void main() {
     expect(writes, hasLength(1));
     expect(writes.single.$2, 90);
   });
+  testWidgets('225 lb displays cleanly and round-trips the saved grams',
+      (tester) async {
+    current = completed(grams: 102058, inputUnit: LoadUnit.lb);
+    await render(tester);
+    expect(
+      tester.widget<TextField>(
+        find.byKey(const ValueKey('weight-set-a')),
+      ).controller!.text,
+      '225.0',
+    );
+    await tester.tap(find.text('Update set'));
+    await tester.pump();
+    expect(writes, hasLength(1));
+    expect(writes.single.$1.inputUnit, LoadUnit.lb);
+    expect(writes.single.$1.loadGrams, 102058);
+  });
+
 }
