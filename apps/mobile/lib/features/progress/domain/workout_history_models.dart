@@ -1,0 +1,153 @@
+import '../../workouts/domain/workout_models.dart';
+
+/// Only explicit, locally committed COMPLETED NorthStar workouts are history.
+class WorkoutHistorySnapshot {
+  const WorkoutHistorySnapshot({required this.sessions});
+  final List<WorkoutSessionRecord> sessions;
+}
+
+class WorkoutHistorySummary {
+  const WorkoutHistorySummary({
+    required this.completedWorkouts,
+    required this.completedWorkingSets,
+    required this.loadedVolumeGramReps,
+    required this.loadedWorkingSets,
+    required this.unloadedWorkingSets,
+    required this.exerciseTrends,
+  });
+
+  final int completedWorkouts;
+  final int completedWorkingSets;
+
+  /// Sum of reps * grams for loaded working sets. NOT calories or total
+  /// volume when bodyweight/unloaded sets are present.
+  final int loadedVolumeGramReps;
+  final int loadedWorkingSets;
+  final int unloadedWorkingSets;
+  final List<ExerciseStrengthTrend> exerciseTrends;
+}
+
+class ExerciseStrengthPoint {
+  const ExerciseStrengthPoint({
+    required this.sessionUuid,
+    required this.performedAtUtc,
+    required this.grams,
+    required this.reps,
+  });
+
+  final String sessionUuid;
+  final DateTime performedAtUtc;
+  final int grams;
+  final int reps;
+}
+
+class ExerciseStrengthTrend {
+  const ExerciseStrengthTrend({
+    required this.key,
+    required this.name,
+    required this.points,
+  });
+  final String key;
+  final String name;
+  final List<ExerciseStrengthPoint> points;
+
+  int get bestLoadGrams => points.map((p) => p.grams)
+      .fold<int>(0, (best, grams) => grams > best ? grams : best);
+}
+
+/// Pure summaries: use only performed working sets from finished sessions.
+/// Warm-ups, skipped/planned, unknown status/kind and incomplete values never
+/// become strength or volume numbers. No 1RM/calorie claims.
+WorkoutHistorySummary calculateWorkoutHistory(
+  Iterable<WorkoutSessionRecord> source,
+) {
+  final sessions = source.where((s) =>
+      s.status == WorkoutStatus.completed && s.completedAtUtc != null);
+  var workouts = 0;
+  var workingSets = 0;
+  var loadedWorking = 0;
+  var unloadedWorking = 0;
+  var volume = 0;
+  final trends = <String, List<ExerciseStrengthPoint>>{};
+  final labels = <String, String>{};
+
+  for (final session in sessions) {
+    workouts++;
+    final exercises = {
+      for (final exercise in session.exercises) exercise.uuid: exercise,
+    };
+    final bestByExercise = <String, WorkoutSetRecord>{};
+    for (final set in session.sets) {
+      if (set.status != WorkoutSetStatus.completed ||
+          set.kind != WorkoutSetKind.working ||
+          set.reps == null) {
+        continue;
+      }
+      workingSets++;
+      if (set.loadGrams == null) {
+        unloadedWorking++;
+        continue;
+      }
+      loadedWorking++;
+      // int arithmetic: no floating-point rounding and no estimated 1RM.
+      volume += set.loadGrams! * set.reps!;
+      final exercise = exercises[set.exerciseUuid];
+      if (exercise == null) continue;
+      final key = exercise.definitionUuid == null
+          ? 'snapshot:${exercise.nameSnapshot.trim().toLowerCase()}'
+          : 'definition:${exercise.definitionUuid}';
+      labels[key] = exercise.nameSnapshot;
+      final previous = bestByExercise[key];
+      if (previous == null ||
+          set.loadGrams! > previous.loadGrams! ||
+          (set.loadGrams == previous.loadGrams && set.reps! > previous.reps!)) {
+        bestByExercise[key] = set;
+      }
+    }
+    for (final entry in bestByExercise.entries) {
+      final sample = entry.value;
+      trends.putIfAbsent(entry.key, () => []).add(
+        ExerciseStrengthPoint(
+          sessionUuid: session.uuid,
+          performedAtUtc: sample.completedAtUtc ?? session.completedAtUtc!,
+          grams: sample.loadGrams!,
+          reps: sample.reps!,
+        ),
+      );
+    }
+  }
+  final result = [
+    for (final entry in trends.entries)
+      ExerciseStrengthTrend(
+        key: entry.key,
+        name: labels[entry.key]!,
+        points: entry.value..sort((a, b) {
+          final time = a.performedAtUtc.compareTo(b.performedAtUtc);
+          return time != 0 ? time : a.sessionUuid.compareTo(b.sessionUuid);
+        }),
+      ),
+  ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+  return WorkoutHistorySummary(
+    completedWorkouts: workouts,
+    completedWorkingSets: workingSets,
+    loadedWorkingSets: loadedWorking,
+    unloadedWorkingSets: unloadedWorking,
+    loadedVolumeGramReps: volume,
+    exerciseTrends: List.unmodifiable(result),
+  );
+}
+
+/// Human-readable gym-log date under the offset captured when the session
+/// began, without assuming the phone's CURRENT timezone or its DST rules.
+DateTime originalLocalDay(WorkoutSessionRecord workout) {
+  final instant = workout.completedAtUtc ?? workout.startedAtUtc;
+  final shifted = instant.toUtc().add(
+    Duration(minutes: workout.originalOffsetMinutes),
+  );
+  return DateTime.utc(shifted.year, shifted.month, shifted.day);
+}
+
+int countWorkingSets(WorkoutSessionRecord session) => session.sets.where(
+  (s) => s.kind == WorkoutSetKind.working &&
+      s.status == WorkoutSetStatus.completed,
+).length;
