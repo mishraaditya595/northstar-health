@@ -34,8 +34,10 @@ No backup, watch tracking, Firebase or write/export permissions.
   AND muscle is merged with the known definition. Variants remain separate;
   ambiguous legacy definitions retain separate keys. The name shown is the
   most recently completed known session's snapshot. Every visible bar and
-  accessible summary includes date, load and performed reps, in a user-
-  selectable kg/lb unit (defaulting to latest recorded unit).
+  accessible summary includes original-local date, load and performed reps,
+  in a user-selectable kg/lb unit (defaulting to latest recorded unit).
+  Bars scroll horizontally on narrow displays rather than truncating
+  exercise data.
 - Empty/error cases never render fictitious training numbers. Refresh uses
   a retained `FutureProvider` backed by an ObjectBox background read
   transaction. Switching tabs reuses the cached snapshot rather than
@@ -56,7 +58,7 @@ No backup, watch tracking, Firebase or write/export permissions.
   navigating a completed session into read-only detail, exclusion of
   unfinished sessions, dark theme and wide layout.
 - Still required before release: physical-device iOS/Android persistence
-  and process death, backup exclusions, large-database performance profiling,
+  and process death, backup exclusions, low-end device performance profiling,
   accessibility at 2× scaling, screen-reader labels, low-end tablets,
   complete CI/Codemagic deployment and manual UX review.
 
@@ -64,10 +66,11 @@ No backup, watch tracking, Firebase or write/export permissions.
 
 - Completed sessions are filtered by indexed status and conjunctive
   nondeleted/completed/origin conditions inside ObjectBox. A background
-  isolate reads the result, cached across tab switches. Per-session/exercise
-  lookups still scale with history size: the 300-session/1,200-set CI
-  benchmark gives an initial hosted-machine observation, not a low-end
-  device guarantee. Profile again on real devices before release.
+  isolate reads the result, cached across tab switches. Child exercises and sets are hydrated with indexed `sessionUuid` and
+  `exerciseUuid` queries in bounded batches of 200, avoiding N+1 reads.
+  The 300-session/1,200-set CI benchmark gives an initial hosted-machine
+  observation, not a low-end device guarantee. Profile again on real
+  devices before release.
 - Adding the status index regenerates `objectbox.g.dart` and
   `objectbox-model.json`; preserve all existing UIDs and validate opening
   older persisted databases before shipping.
