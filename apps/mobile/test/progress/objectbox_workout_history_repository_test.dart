@@ -85,6 +85,13 @@ void main() {
     expect(original.map((s) => s.uuid), ['complete']);
     final raw = store.box<WorkoutSessionEntity>();
     final complete = raw.getAll().singleWhere((e) => e.uuid == 'complete');
+    // An imported platform record must not masquerade as a NorthStar log.
+    complete.origin = 'health_connect_import';
+    raw.put(complete);
+    expect(history.readCompleted().sessions, isEmpty);
+    complete.origin = 'northstar_phone';
+    raw.put(complete);
+    expect(history.readCompleted().sessions.map((s) => s.uuid), ['complete']);
     complete.deletedAtMs = DateTime.utc(2026, 10, 24).millisecondsSinceEpoch;
     raw.put(complete);
     expect(history.readCompleted().sessions, isEmpty);
