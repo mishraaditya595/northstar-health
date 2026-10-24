@@ -60,6 +60,7 @@ class ExerciseStrengthPoint {
     required this.grams,
     required this.reps,
     required this.inputUnit,
+    required this.originalOffsetMinutes,
   });
 
   final String sessionUuid;
@@ -67,6 +68,16 @@ class ExerciseStrengthPoint {
   final int grams;
   final int reps;
   final LoadUnit inputUnit;
+  final int originalOffsetMinutes;
+
+  /// Local day reconstructed from the original session offset (not the
+  /// current device timezone), keeping chart labels consistent with history.
+  DateTime get originalLocalDay {
+    final at = performedAtUtc.toUtc().add(
+      Duration(minutes: originalOffsetMinutes),
+    );
+    return DateTime.utc(at.year, at.month, at.day);
+  }
 }
 
 class ExerciseStrengthTrend {
@@ -178,6 +189,7 @@ WorkoutHistorySummary calculateWorkoutHistory(
               grams: sample.loadGrams!,
               reps: sample.reps!,
               inputUnit: sample.inputUnit,
+              originalOffsetMinutes: session.originalOffsetMinutes,
             ),
           );
     }
