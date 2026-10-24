@@ -21,7 +21,14 @@ abstract interface class WorkoutRepository {
     required WorkoutSetRecord set,
     required int expectedRevision,
   });
-  void finishSession(String uuid, {required DateTime finishedAtUtc});
+  /// Legacy primitive: use LiveWorkoutEngine.finishWorkout in production.
+  /// The caller's observed session revision is always required.
+  @Deprecated('Use LiveWorkoutEngine.finishWorkout')
+  void finishSession(
+    String uuid, {
+    required int expectedRevision,
+    required DateTime finishedAtUtc,
+  });
 }
 
 /// Caller must reload the latest session and re-apply its intended change.

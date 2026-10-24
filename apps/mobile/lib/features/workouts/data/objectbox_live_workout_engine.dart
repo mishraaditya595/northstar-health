@@ -7,6 +7,7 @@ import '../domain/live_workout_engine.dart';
 import '../domain/workout_models.dart';
 import '../domain/workout_repository.dart';
 import 'objectbox_workout_repository.dart';
+import 'unfinished_workout_query.dart';
 import 'workout_entities.dart';
 
 final liveWorkoutEngineProvider = Provider<LiveWorkoutEngine>(
@@ -63,13 +64,8 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
     }
   }
 
-  bool _isUnfinished(WorkoutSessionEntity session) =>
-      session.deletedAtMs == null &&
-      session.status != WorkoutStatus.completed.name &&
-      session.status != WorkoutStatus.discarded.name;
-
   WorkoutSessionEntity? _singleUnfinished() {
-    final pending = _sessions.getAll().where(_isUnfinished).toList();
+    final pending = queryUnfinishedWorkoutSessions(_sessions);
     if (pending.length > 1) {
       throw StateError('Multiple unfinished sessions require recovery review');
     }
@@ -204,14 +200,7 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
           active.status != WorkoutStatus.paused.name) {
         throw StateError('Unsupported unfinished workout state');
       }
-      if (_one(
-            _checkpoints,
-            WorkoutSessionStateEntity_.sessionUuid,
-            active.uuid,
-          ) ==
-          null) {
-        throw StateError('Unfinished workout checkpoint is missing');
-      }
+      _requireCheckpoint(active.uuid, active.revision);
       return active.uuid;
     });
     return sessionUuid == null ? null : _reader.getSession(sessionUuid);
@@ -270,17 +259,13 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
       if (session == null || session.deletedAtMs != null) {
         throw StateError('Workout is missing or deleted');
       }
-      if (session.status == to.name &&
-          session.revision == expectedRevision + 1) {
-        return; // Acknowledged retry of the same state transition.
-      }
       if (session.revision != expectedRevision) {
         throw WorkoutRevisionConflict(expectedRevision, session.revision);
       }
       if (session.status != from.name) {
         throw StateError('Illegal workout transition');
       }
-      final checkpoint = _requireCheckpoint(uuid);
+      final checkpoint = _requireCheckpoint(uuid, session.revision);
       session.status = to.name;
       _touch(session);
       _touchCheckpoint(checkpoint, session.revision);
@@ -316,7 +301,7 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
       if (atMs < s.startedAtMs) {
         throw ArgumentError('End precedes start');
       }
-      final checkpoint = _requireCheckpoint(uuid);
+      final checkpoint = _requireCheckpoint(uuid, s.revision);
       s.status = WorkoutStatus.completed.name;
       s.completedAtMs = atMs;
       _touch(s);
@@ -347,7 +332,7 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
           s.status != WorkoutStatus.paused.name) {
         throw StateError('Workout cannot be discarded');
       }
-      final checkpoint = _requireCheckpoint(uuid);
+      final checkpoint = _requireCheckpoint(uuid, s.revision);
       s.status = WorkoutStatus.discarded.name;
       _touch(s);
       _checkpoints.remove(checkpoint.id);
@@ -355,13 +340,16 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
     return _reader.getSession(uuid)!;
   }
 
-  WorkoutSessionStateEntity _requireCheckpoint(String uuid) {
+  WorkoutSessionStateEntity _requireCheckpoint(String uuid, int revision) {
     final checkpoint = _one(
       _checkpoints,
       WorkoutSessionStateEntity_.sessionUuid,
       uuid,
     );
     if (checkpoint == null) throw StateError('Workout checkpoint is missing');
+    if (checkpoint.checkpointRevision != revision) {
+      throw StateError('Workout checkpoint revision does not match session');
+    }
     return checkpoint;
   }
 
