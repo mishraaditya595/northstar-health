@@ -1,0 +1,44 @@
+name: Phase 1 PR2 formatting bootstrap
+on:
+  push:
+    branches: [feat/phase1-exercise-catalog-plan-builder]
+permissions:
+  contents: read
+jobs:
+  formatter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - name: Format changed Dart source
+        working-directory: apps/mobile
+        run: |
+          flutter pub get --enforce-lockfile
+          dart format lib test
+      - name: Print changed formatted source as base64
+        working-directory: apps/mobile
+        run: |
+          for file in \
+            lib/features/workouts/domain/workout_library_models.dart \
+            lib/features/workouts/domain/workout_library_repository.dart \
+            lib/features/workouts/data/built_in_exercises.dart \
+            lib/features/workouts/data/objectbox_workout_library_repository.dart \
+            test/workouts/objectbox_workout_library_repository_test.dart \
+            lib/features/train/train_library_state.dart \
+            lib/features/train/train_page.dart \
+            lib/features/train/exercise_catalog_page.dart \
+            lib/features/train/plan_editor_page.dart \
+            lib/app/northstar_app.dart; do
+            echo "BEGIN_FORMATTED_FILE:$file"
+            base64 -w0 "$file"
+            echo
+            echo "END_FORMATTED_FILE:$file"
+          done
+      - name: Analyze formatted working tree
+        working-directory: apps/mobile
+        run: flutter analyze
