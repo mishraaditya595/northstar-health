@@ -161,7 +161,8 @@ void main() {
       final first = start();
       // With the single-active invariant, finish A before starting B.
       repository.finishSession(
-        first.uuid, finishedAtUtc: DateTime.utc(2026, 10, 24, 10),
+        first.uuid,
+        finishedAtUtc: DateTime.utc(2026, 10, 24, 10),
       );
       final second = start(id: 'session-2', exerciseId: 'exercise-2');
       expect(
