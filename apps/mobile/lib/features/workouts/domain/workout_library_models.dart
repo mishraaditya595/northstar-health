@@ -100,7 +100,6 @@ class WorkoutLibrarySnapshot {
   final List<WorkoutPlanRecord> plans;
 }
 
-/// Concurrent editors must reload instead of overriding a newer saved plan.
 /// New references to archived definitions cannot be saved to a plan.
 class ArchivedExercisePlanConflict implements Exception {
   const ArchivedExercisePlanConflict();
@@ -109,6 +108,7 @@ class ArchivedExercisePlanConflict implements Exception {
   String toString() => 'Archived exercise cannot be newly added to a plan';
 }
 
+/// Concurrent editors must reload instead of overriding a newer saved plan.
 class PlanEditConflict implements Exception {
   const PlanEditConflict();
   @override

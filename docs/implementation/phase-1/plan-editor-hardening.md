@@ -39,7 +39,8 @@ No ObjectBox model/property changes and no cloud, login or health permissions.
   `scripts/test_objectbox_macos.sh` from repo root. The script checks the
   official archive's SHA-256, temporarily copies the dylib into
   `apps/mobile/` (ignored by Git), runs tests, then removes the copy.
-  No `DYLD_LIBRARY_PATH` dependency. This script change needs validation
-  on a real Mac; Linux CI installs pinned native ObjectBox for `flutter test`.
+  No `DYLD_LIBRARY_PATH` dependency. The script was validated on macOS
+  with Flutter 3.47.3. Linux CI continues to use the repository's pinned
+  Flutter 3.47.7 and native ObjectBox setup.
 - Android APK, device reboot/reinstall semantics, light/dark, tablet, 200%
   text scaling, accessibility and iOS build remain independent QA gates.

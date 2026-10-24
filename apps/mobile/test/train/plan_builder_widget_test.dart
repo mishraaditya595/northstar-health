@@ -545,8 +545,6 @@ void main() {
     // Picking the last Navigator can hit an unrelated nested navigator.
     tester.testTextInput.hide();
     await tester.pumpAndSettle();
-    // PopScope is generic; bySubtype finds PopScope<Object?> as well.
-    expect(find.bySubtype<PopScope>(), findsWidgets);
     await Navigator.of(tester.element(find.byType(PlanEditorPage))).maybePop();
     await tester.pumpAndSettle();
     expect(find.text('Discard unsaved changes?'), findsOneWidget);

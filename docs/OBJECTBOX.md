@@ -93,8 +93,9 @@ and the dylib path is listed in `.gitignore`. Do not rely on
 `DYLD_LIBRARY_PATH`: Flutter launched through a protected macOS shell can
 lose that environment variable. Linux CI similarly pins the v5.3.2 native
 binary and SHA-256. These are **test-host** setup steps, not runtime
-shipping or app bundle configuration. The macOS script still requires a
-real macOS validation run before it can be declared verified.
+shipping or app bundle configuration. The script was independently
+validated on macOS using Flutter 3.47.3; Flutter 3.47.7 remains the
+repository's pinned CI version.
 
 ## Review/acceptance
 

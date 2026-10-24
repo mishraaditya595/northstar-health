@@ -45,8 +45,10 @@ if [[ -z "$native" ]]; then
   exit 3
 fi
 
-cp "$native" "$target"
+# Set the cleanup ownership flag *before* copying. Even an interrupted
+# or failed cp may leave a partial dylib, which must not survive the trap.
 installed=true
+cp "$native" "$target"
 cd "$app_dir"
 flutter pub get --enforce-lockfile
 flutter test "$@"
