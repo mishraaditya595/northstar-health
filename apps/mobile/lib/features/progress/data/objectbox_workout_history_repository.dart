@@ -39,7 +39,9 @@ class ObjectBoxWorkoutHistoryRepository implements WorkoutHistoryRepository {
       ).build();
       try {
         final rows = query.find()
-            .where((s) => s.deletedAtMs == null && s.completedAtMs != null)
+            .where((s) => s.deletedAtMs == null &&
+                s.completedAtMs != null &&
+                s.origin == 'northstar_phone')
             .toList()
           ..sort((a, b) {
             final descending = b.completedAtMs!.compareTo(a.completedAtMs!);

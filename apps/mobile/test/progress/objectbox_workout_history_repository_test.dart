@@ -30,7 +30,7 @@ void main() {
 
   void create(String id, DateTime start, {bool finish = true,
       bool discard = false}) {
-    final workout = engine.startWorkout(
+    engine.startWorkout(
       sessionUuid: id, quickName: 'Session $id',
       startedAtUtc: start, originalOffsetMinutes: 330,
     );

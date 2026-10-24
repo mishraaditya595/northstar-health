@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/units/load_units.dart';
 import '../workouts/domain/workout_models.dart';
 import 'domain/workout_history_models.dart';
 import 'workout_history_state.dart';
@@ -230,7 +229,9 @@ String _kg(int grams) {
   while (value.contains('.') && value.endsWith('0')) {
     value = value.substring(0, value.length - 1);
   }
-  if (value.endsWith('.')) value = value.substring(0, value.length - 1);
+  if (value.endsWith('.')) {
+    value = value.substring(0, value.length - 1);
+  }
   return value;
 }
 
@@ -314,7 +315,7 @@ class _RecentLoadBars extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Text('${_kg(point.grams)}',
+                        Text(_kg(point.grams),
                           maxLines: 1,
                           style: Theme.of(context).textTheme.labelSmall),
                         const SizedBox(height: 6),

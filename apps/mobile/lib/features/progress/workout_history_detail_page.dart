@@ -117,9 +117,15 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
   }
 
   String _label(WorkoutSetRecord set) {
-    if (set.status == WorkoutSetStatus.planned) return 'Not recorded';
-    if (set.status == WorkoutSetStatus.skipped) return 'Skipped';
-    if (set.status != WorkoutSetStatus.completed) return 'Unsupported set status';
+    if (set.status == WorkoutSetStatus.planned) {
+      return 'Not recorded';
+    }
+    if (set.status == WorkoutSetStatus.skipped) {
+      return 'Skipped';
+    }
+    if (set.status != WorkoutSetStatus.completed) {
+      return 'Unsupported set status';
+    }
     final load = set.loadGrams == null
         ? 'bodyweight / no logged load'
         : '${_load(set.loadGrams!, set.inputUnit)} '
