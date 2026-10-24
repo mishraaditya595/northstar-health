@@ -26,6 +26,83 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
   int? expectedUpdatedAtMs;
   String? pageError;
   bool saving = false;
+  bool _unavailable = false;
+  bool _dirty = false;
+  bool _allowLeave = false;
+  bool _editConflict = false;
+
+  // onChanged is a text change, unlike a TextEditingController listener
+  // which also fires on caret movement, focus and selection changes.
+  void _markDirty(String _) {
+    if (!_dirty && mounted) setState(() => _dirty = true);
+  }
+
+  Future<bool> _confirmDiscard() async {
+    if (!_dirty) return true;
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Discard unsaved changes?'),
+            content: const Text('Changes to this plan have not been saved.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Keep editing'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Discard changes'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _requestExit() async {
+    if (await _confirmDiscard() && mounted) {
+      setState(() => _allowLeave = true);
+      context.pop();
+    }
+  }
+
+  Future<void> _onPopInvoked(bool didPop, Object? result) async {
+    if (!didPop && !_allowLeave && mounted) {
+      await _requestExit(); // System back; AppBar back calls _requestExit itself.
+    }
+  }
+
+  Future<void> _reloadLatest() async {
+    if (!await _confirmDiscard() || !mounted) return;
+    try {
+      final latest = ref
+          .read(workoutLibraryRepositoryProvider)
+          .getPlan(planUuid);
+      if (!mounted) return;
+      if (latest == null) {
+        setState(() {
+          _unavailable = true;
+          _editConflict = false;
+          pageError = 'This plan was archived or is unavailable.';
+        });
+        return;
+      }
+      name.text = latest.name;
+      description.text = latest.description;
+      setState(() {
+        items
+          ..clear()
+          ..addAll(latest.exercises);
+        expectedUpdatedAtMs = latest.updatedAtMs;
+        _unavailable = false;
+        _dirty = false;
+        _editConflict = false;
+        pageError = null;
+      });
+    } catch (_) {
+      if (mounted) setState(() => pageError = 'Could not reload the plan.');
+    }
+  }
 
   @override
   void initState() {
@@ -33,10 +110,10 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
     planUuid = widget.planUuid ?? uuidFactory.newId();
     try {
       final repository = ref.read(workoutLibraryRepositoryProvider);
-      repository.ensureCatalogSeeded();
       if (widget.planUuid != null) {
         final existing = repository.getPlan(planUuid);
         if (existing == null) {
+          _unavailable = true;
           pageError = 'This plan was archived or is unavailable.';
         } else {
           expectedUpdatedAtMs = existing.updatedAtMs;
@@ -46,6 +123,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
         }
       }
     } catch (_) {
+      _unavailable = true;
       pageError = 'Could not load this plan from local storage.';
     }
   }
@@ -58,9 +136,23 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
   }
 
   Future<void> _addExercise() async {
-    final definitions = ref
-        .read(workoutLibraryRepositoryProvider)
-        .listExercises();
+    if (_unavailable) return;
+    final WorkoutLibrarySnapshot snapshot;
+    try {
+      snapshot = await ref.read(trainLibraryProvider.future);
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => pageError =
+              'Exercise library could not load. Retry adding an exercise.',
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    final definitions = snapshot.exercises
+        .where((e) => e.archivedAtMs == null)
+        .toList();
     var search = '';
     final selected = await showModalBottomSheet<ExerciseRecord>(
       context: context,
@@ -149,6 +241,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
         ),
       );
       pageError = null;
+      _dirty = true;
     });
   }
 
@@ -244,7 +337,10 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
                   );
                   try {
                     candidate.validate();
-                    setState(() => items[index] = candidate);
+                    setState(() {
+                      items[index] = candidate;
+                      _dirty = true;
+                    });
                     Navigator.pop(dialogContext);
                   } catch (_) {
                     updateDialog(
@@ -275,6 +371,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
       for (var i = 0; i < items.length; i++) {
         items[i] = items[i].withPosition(i);
       }
+      _dirty = true;
     });
   }
 
@@ -284,13 +381,12 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
       for (var i = 0; i < items.length; i++) {
         items[i] = items[i].withPosition(i);
       }
+      _dirty = true;
     });
   }
 
   void _save() {
-    if (saving || pageError == 'This plan was archived or is unavailable.') {
-      return;
-    }
+    if (saving || _unavailable || _editConflict) return;
     setState(() {
       saving = true;
       pageError = null;
@@ -306,16 +402,26 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
             expectedUpdatedAtMs: expectedUpdatedAtMs,
           );
       ref.invalidate(trainLibraryProvider);
-      if (mounted) context.pop();
+      if (mounted) {
+        _allowLeave = true;
+        context.pop();
+      }
     } on PlanEditConflict {
-      setState(
-        () => pageError =
-            'This plan was updated elsewhere. '
-            'Leave this editor and reopen the latest version before changing it.',
-      );
+      setState(() {
+        _editConflict = true;
+        pageError =
+            'This plan changed while you were editing. '
+            'Reload the latest version before saving.';
+      });
     } on ArgumentError {
       setState(
         () => pageError = 'Enter a plan name and valid exercise targets.',
+      );
+    } on ArchivedExercisePlanConflict {
+      setState(
+        () => pageError =
+            'An exercise in this plan was archived. '
+            'Remove newly added archived exercises, then try saving again.',
       );
     } catch (_) {
       setState(
@@ -350,9 +456,23 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
     );
     if (yes != true || !mounted) return;
     try {
-      ref.read(workoutLibraryRepositoryProvider).archivePlan(planUuid);
+      final version = expectedUpdatedAtMs;
+      if (version == null) throw StateError('Missing plan version');
+      ref
+          .read(workoutLibraryRepositoryProvider)
+          .archivePlan(planUuid, expectedUpdatedAtMs: version);
       ref.invalidate(trainLibraryProvider);
-      if (mounted) context.pop();
+      if (mounted) {
+        _allowLeave = true;
+        context.pop();
+      }
+    } on PlanEditConflict {
+      if (mounted) {
+        setState(() {
+          _editConflict = true;
+          pageError = 'This plan changed. Reload it before archiving.';
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => pageError = 'Could not archive this plan.');
     }
@@ -360,181 +480,209 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    final definitions =
-        ref.watch(trainLibraryProvider).asData?.value.exercises ??
-        ref
-            .read(workoutLibraryRepositoryProvider)
-            .listExercises(includeArchived: true);
-    final byId = {for (final d in definitions) d.uuid: d};
+    final libraryState = ref.watch(trainLibraryProvider);
+    final definitions = libraryState.asData?.value.exercises;
+    final byId = {
+      for (final d in definitions ?? const <ExerciseRecord>[]) d.uuid: d,
+    };
+    final missingExerciseLabel = definitions == null
+        ? (libraryState.isLoading
+              ? 'Loading exercise…'
+              : 'Exercise details unavailable')
+        : 'Exercise unavailable';
     final muted = Theme.of(context).extension<NorthstarColors>()!.muted;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.planUuid == null ? 'New training plan' : 'Edit training plan',
+    return PopScope(
+      canPop: !_dirty || _allowLeave,
+      onPopInvokedWithResult: _onPopInvoked,
+      child: Scaffold(
+        appBar: AppBar(
+          leading: BackButton(onPressed: _requestExit),
+          title: Text(
+            widget.planUuid == null
+                ? 'New training plan'
+                : 'Edit training plan',
+          ),
+          actions: [
+            if (widget.planUuid != null)
+              IconButton(
+                onPressed: _unavailable ? null : _archive,
+                icon: const Icon(Icons.archive_outlined),
+                tooltip: 'Archive plan',
+              ),
+          ],
         ),
-        actions: [
-          if (widget.planUuid != null)
-            IconButton(
-              onPressed: _archive,
-              icon: const Icon(Icons.archive_outlined),
-              tooltip: 'Archive plan',
-            ),
-        ],
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 860),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 40),
-            children: [
-              Text(
-                'PLAN THE WORK',
-                style: Theme.of(context).textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Saved on this device. You can edit it anytime.',
-                style: TextStyle(color: muted),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: name,
-                maxLength: 100,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
-                  labelText: 'Plan name *',
-                  hintText: 'e.g. Upper Body A',
-                  border: OutlineInputBorder(),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 860),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 40),
+              children: [
+                Text(
+                  'PLAN THE WORK',
+                  style: Theme.of(context).textTheme.headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.w900),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: description,
-                maxLength: 1000,
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Description (optional)',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 8),
+                Text(
+                  'Saved on this device. You can edit it anytime.',
+                  style: TextStyle(color: muted),
                 ),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'EXERCISES',
-                      style: Theme.of(context).textTheme.titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w900),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: name,
+                  onChanged: _markDirty,
+                  maxLength: 100,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Plan name *',
+                    hintText: 'e.g. Upper Body A',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: description,
+                  onChanged: _markDirty,
+                  maxLength: 1000,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Description (optional)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'EXERCISES',
+                        style: Theme.of(context).textTheme.titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
                     ),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: _addExercise,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              if (items.isEmpty)
-                const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(22),
-                    child: Text(
-                      'No exercises yet. Add a movement from your local catalog.',
+                    OutlinedButton.icon(
+                      onPressed: _unavailable ? null : _addExercise,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add'),
                     ),
-                  ),
+                  ],
                 ),
-              for (var i = 0; i < items.length; i++)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Card(
+                const SizedBox(height: 10),
+                if (items.isEmpty)
+                  const Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            byId[items[i].exerciseUuid]?.name ??
-                                'Archived exercise',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w800),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${items[i].targetSets} sets'
-                            '${items[i].targetRepsMin == null ? '' : ' · ${items[i].targetRepsMin}–${items[i].targetRepsMax ?? items[i].targetRepsMin} reps'}'
-                            '${items[i].restSeconds == null ? '' : ' · ${items[i].restSeconds}s rest'}',
-                            style: TextStyle(color: muted),
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 4,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              IconButton(
-                                tooltip:
-                                    'Move ${byId[items[i].exerciseUuid]?.name ?? 'exercise'} up',
-                                onPressed: i == 0
-                                    ? null
-                                    : () => _move(i, i - 1),
-                                icon: const Icon(Icons.arrow_upward),
-                              ),
-                              IconButton(
-                                tooltip:
-                                    'Move ${byId[items[i].exerciseUuid]?.name ?? 'exercise'} down',
-                                onPressed: i == items.length - 1
-                                    ? null
-                                    : () => _move(i, i + 1),
-                                icon: const Icon(Icons.arrow_downward),
-                              ),
-                              TextButton.icon(
-                                onPressed: () => _editTargets(i),
-                                icon: const Icon(Icons.tune),
-                                label: const Text('Targets'),
-                              ),
-                              TextButton.icon(
-                                onPressed: () => _remove(i),
-                                icon: const Icon(Icons.close),
-                                label: const Text('Remove'),
-                              ),
-                            ],
-                          ),
-                        ],
+                      padding: EdgeInsets.all(22),
+                      child: Text(
+                        'No exercises yet. Add a movement from your local catalog.',
                       ),
                     ),
                   ),
-                ),
-              const SizedBox(height: 12),
-              if (pageError != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Text(
-                    pageError!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+                for (var i = 0; i < items.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              byId[items[i].exerciseUuid]?.name ??
+                                  missingExerciseLabel,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${items[i].targetSets} sets'
+                              '${formatPlanRepTarget(items[i])}'
+                              '${items[i].restSeconds == null ? '' : ' · ${items[i].restSeconds}s rest'}',
+                              style: TextStyle(color: muted),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 4,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                IconButton(
+                                  tooltip:
+                                      'Move ${byId[items[i].exerciseUuid]?.name ?? 'exercise'} up',
+                                  onPressed: i == 0
+                                      ? null
+                                      : () => _move(i, i - 1),
+                                  icon: const Icon(Icons.arrow_upward),
+                                ),
+                                IconButton(
+                                  tooltip:
+                                      'Move ${byId[items[i].exerciseUuid]?.name ?? 'exercise'} down',
+                                  onPressed: i == items.length - 1
+                                      ? null
+                                      : () => _move(i, i + 1),
+                                  icon: const Icon(Icons.arrow_downward),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () => _editTargets(i),
+                                  icon: const Icon(Icons.tune),
+                                  label: const Text('Targets'),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () => _remove(i),
+                                  icon: const Icon(Icons.close),
+                                  label: const Text('Remove'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
+                const SizedBox(height: 12),
+                if (pageError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Text(
+                      pageError!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                if (_editConflict && !_unavailable)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: OutlinedButton.icon(
+                      onPressed: _reloadLatest,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Reload latest plan'),
+                    ),
+                  ),
+                FilledButton.icon(
+                  onPressed: saving || _unavailable || _editConflict
+                      ? null
+                      : _save,
+                  icon: saving
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save_outlined),
+                  label: const Text('Save plan offline'),
                 ),
-              FilledButton.icon(
-                onPressed:
-                    saving ||
-                        pageError == 'This plan was archived or is unavailable.'
-                    ? null
-                    : _save,
-                icon: saving
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save_outlined),
-                label: const Text('Save plan offline'),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+/// Human-readable prescription: an upper-only bound must remain visible.
+String formatPlanRepTarget(PlanExerciseRecord item) {
+  if (item.targetRepsMin == null && item.targetRepsMax == null) return '';
+  if (item.targetRepsMin == null) return ' · up to ${item.targetRepsMax} reps';
+  if (item.targetRepsMax == null) return ' · ${item.targetRepsMin} reps';
+  return ' · ${item.targetRepsMin}–${item.targetRepsMax} reps';
 }
