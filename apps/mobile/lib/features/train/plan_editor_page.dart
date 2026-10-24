@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/design/northstar_theme.dart';
 import '../../core/ids/uuid_factory.dart';
+import '../../core/ui/dispose_after_dialog.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
 import '../workouts/domain/workout_library_models.dart';
 import 'train_library_state.dart';
@@ -355,11 +356,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
         ),
       );
     } finally {
-      sets.dispose();
-      min.dispose();
-      max.dispose();
-      rest.dispose();
-      note.dispose();
+      disposeAfterDialog([sets, min, max, rest, note]);
     }
   }
 

@@ -30,4 +30,19 @@ void main() {
     expect(find.byType(NavigationRail), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
   });
+
+  testWidgets('Switching tabs leaves no outgoing page mounted', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const ProviderScope(child: NorthstarApp()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Train'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text('SHOW UP.\nGET STRONG.'), findsNothing);
+  });
 }

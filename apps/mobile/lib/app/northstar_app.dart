@@ -37,6 +37,10 @@ final _destinations = <NavigationDestination>[
   ),
 ];
 
+// Tabs swap in place; default page transitions keep the outgoing tab visible.
+Page<void> _tabPage(GoRouterState state, Widget child) =>
+    NoTransitionPage<void>(key: state.pageKey, child: child);
+
 final routerProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
     initialLocation: '/today',
@@ -45,8 +49,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, child) =>
             AdaptiveShell(location: state.uri.path, child: child),
         routes: [
-          GoRoute(path: '/today', builder: (_, _) => const TodayPage()),
-          GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+          GoRoute(
+            path: '/today',
+            pageBuilder: (_, state) => _tabPage(state, const TodayPage()),
+          ),
+          GoRoute(
+            path: '/train',
+            pageBuilder: (_, state) => _tabPage(state, const TrainPage()),
+          ),
           GoRoute(
             path: '/train/workout',
             builder: (_, _) => const ActiveWorkoutPage(),
@@ -64,14 +74,20 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, state) =>
                 PlanEditorPage(planUuid: state.pathParameters['id']),
           ),
-          GoRoute(path: '/progress', builder: (_, _) => const ProgressPage()),
+          GoRoute(
+            path: '/progress',
+            pageBuilder: (_, state) => _tabPage(state, const ProgressPage()),
+          ),
           GoRoute(
             path: '/progress/workouts/:id',
             builder: (_, state) => WorkoutHistoryDetailPage(
               sessionUuid: state.pathParameters['id']!,
             ),
           ),
-          GoRoute(path: '/health', builder: (_, _) => const HealthPage()),
+          GoRoute(
+            path: '/health',
+            pageBuilder: (_, state) => _tabPage(state, const HealthPage()),
+          ),
         ],
       ),
     ],

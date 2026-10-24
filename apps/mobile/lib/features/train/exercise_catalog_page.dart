@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/design/northstar_theme.dart';
 import '../../core/ids/uuid_factory.dart';
+import '../../core/ui/dispose_after_dialog.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
 import '../workouts/domain/workout_library_models.dart';
 import 'train_library_state.dart';
@@ -100,9 +101,7 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
         ),
       );
     } finally {
-      name.dispose();
-      muscle.dispose();
-      equipment.dispose();
+      disposeAfterDialog([name, muscle, equipment]);
     }
   }
 
