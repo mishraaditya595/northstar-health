@@ -352,11 +352,11 @@ void main() {
       );
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
-      find.text('Workout aging'),
-      180,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('Workout aging'), findsOneWidget);
+        find.text('Workout aging'),
+        180,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Workout aging'), findsOneWidget);
       expect(sampled, 1);
       expect(repository.calls, 1);
       router.go('/train');
@@ -371,8 +371,9 @@ void main() {
     },
   );
 
-  testWidgets('returning from background updates 30-day boundary in place',
-      (tester) async {
+  testWidgets('returning from background updates 30-day boundary in place', (
+    tester,
+  ) async {
     var clock = DateTime.utc(2026, 10, 24, 12);
     var sampled = 0;
     final repository = _CountingLoadedHistoryRepository(store);
