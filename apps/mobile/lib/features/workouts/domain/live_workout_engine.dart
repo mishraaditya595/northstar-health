@@ -60,6 +60,16 @@ abstract interface class LiveWorkoutEngine {
   });
 }
 
+/// Frozen decoding contract; unknown future states are never treated as idle.
+enum RestTimerStatus { idle, running, paused, unknown }
+
+RestTimerStatus restTimerStatusFromStorage(String value) => switch (value) {
+  'idle' => RestTimerStatus.idle,
+  'running' => RestTimerStatus.running,
+  'paused' => RestTimerStatus.paused,
+  _ => RestTimerStatus.unknown,
+};
+
 class WorkoutRecoveryCheckpoint {
   const WorkoutRecoveryCheckpoint({
     required this.sessionUuid,
@@ -73,6 +83,7 @@ class WorkoutRecoveryCheckpoint {
   });
 
   final String restState;
+  RestTimerStatus get restStatus => restTimerStatusFromStorage(restState);
   final int? restDeadlineUtcMs;
   final int? restRemainingMsWhenPaused;
 

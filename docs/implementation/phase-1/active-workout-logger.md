@@ -73,6 +73,8 @@
   workout session snapshots. This PR explicitly uses user-selectable
   seconds rather than silently assuming a plan's targets were followed.
 - No workout notes, supersets, plates, PR calculation or aggregate history UI.
+- Rest display uses a typed, fail-closed status decoder. Idle timers do not run
+  a background one-second ticker. Timer-only state remains in ObjectBox.
 - Timer is a visual countdown; notification/haptic cues are deferred until
   native app background/permission behavior is tested on real devices.
 - Edits typed but not explicitly saved are not durable; after an optimistic

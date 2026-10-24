@@ -214,6 +214,7 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
         WorkoutSessionStateEntity_.sessionUuid,
         sessionUuid,
       );
+      if (saved != null) _verifyRestState(saved);
       return saved == null
           ? null
           : WorkoutRecoveryCheckpoint(
@@ -449,10 +450,31 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
       uuid,
     );
     if (checkpoint == null) throw StateError('Workout checkpoint is missing');
+    _verifyRestState(checkpoint);
     if (checkpoint.checkpointRevision != revision) {
       throw StateError('Workout checkpoint revision does not match session');
     }
     return checkpoint;
+  }
+
+  void _verifyRestState(WorkoutSessionStateEntity checkpoint) {
+    final status = restTimerStatusFromStorage(checkpoint.restState);
+    if (status == RestTimerStatus.unknown) {
+      throw StateError('Unsupported persisted rest timer state');
+    }
+    if (status == RestTimerStatus.running &&
+        checkpoint.restDeadlineUtcMs == null) {
+      throw StateError('Running rest timer has no deadline');
+    }
+    if (status == RestTimerStatus.paused &&
+        checkpoint.restRemainingMsWhenPaused == null) {
+      throw StateError('Paused rest timer has no remaining duration');
+    }
+    if (status == RestTimerStatus.idle &&
+        (checkpoint.restDeadlineUtcMs != null ||
+        checkpoint.restRemainingMsWhenPaused != null)) {
+      throw StateError('Idle rest timer has stale deadline');
+    }
   }
 
   void _touch(WorkoutSessionEntity session) {
