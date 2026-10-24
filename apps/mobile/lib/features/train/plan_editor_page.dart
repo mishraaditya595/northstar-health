@@ -26,6 +26,82 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
   int? expectedUpdatedAtMs;
   String? pageError;
   bool saving = false;
+  bool _unavailable = false;
+  bool _dirty = false;
+  bool _allowLeave = false;
+  bool _ignoreFieldChange = false;
+  bool _editConflict = false;
+
+  void _markDirty() {
+    if (!_ignoreFieldChange && !_dirty && mounted) {
+      setState(() => _dirty = true);
+    }
+  }
+
+  Future<bool> _confirmDiscard() async {
+    if (!_dirty) return true;
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Discard unsaved changes?'),
+            content: const Text('Changes to this plan have not been saved.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Keep editing'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Discard changes'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _onPopInvoked(bool didPop, Object? result) async {
+    if (didPop || _allowLeave || !mounted) return;
+    if (await _confirmDiscard() && mounted) {
+      setState(() => _allowLeave = true);
+      context.pop();
+    }
+  }
+
+  Future<void> _reloadLatest() async {
+    if (!await _confirmDiscard() || !mounted) return;
+    try {
+      final latest = ref.read(workoutLibraryRepositoryProvider).getPlan(planUuid);
+      if (!mounted) return;
+      if (latest == null) {
+        setState(() {
+          _unavailable = true;
+          _editConflict = false;
+          _unavailable = true;
+          pageError = 'This plan was archived or is unavailable.';
+        });
+        return;
+      }
+      _ignoreFieldChange = true;
+      name.text = latest.name;
+      description.text = latest.description;
+      _ignoreFieldChange = false;
+      setState(() {
+        items
+          ..clear()
+          ..addAll(latest.exercises);
+        expectedUpdatedAtMs = latest.updatedAtMs;
+        _unavailable = false;
+        _dirty = false;
+        _editConflict = false;
+        pageError = null;
+      });
+    } catch (_) {
+      _ignoreFieldChange = false;
+      if (mounted) setState(() => pageError = 'Could not reload the plan.');
+    }
+  }
+
 
   @override
   void initState() {
@@ -33,7 +109,6 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
     planUuid = widget.planUuid ?? uuidFactory.newId();
     try {
       final repository = ref.read(workoutLibraryRepositoryProvider);
-      repository.ensureCatalogSeeded();
       if (widget.planUuid != null) {
         final existing = repository.getPlan(planUuid);
         if (existing == null) {
@@ -46,8 +121,11 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
         }
       }
     } catch (_) {
+      _unavailable = true;
       pageError = 'Could not load this plan from local storage.';
     }
+    name.addListener(_markDirty);
+    description.addListener(_markDirty);
   }
 
   @override
@@ -58,9 +136,11 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
   }
 
   Future<void> _addExercise() async {
-    final definitions = ref
-        .read(workoutLibraryRepositoryProvider)
-        .listExercises();
+    final snapshot = await ref.read(trainLibraryProvider.future);
+    if (!mounted) return;
+    final definitions = snapshot.exercises
+        .where((e) => e.archivedAtMs == null)
+        .toList();
     var search = '';
     final selected = await showModalBottomSheet<ExerciseRecord>(
       context: context,
@@ -149,6 +229,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
         ),
       );
       pageError = null;
+      _dirty = true;
     });
   }
 
@@ -244,7 +325,10 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
                   );
                   try {
                     candidate.validate();
-                    setState(() => items[index] = candidate);
+                    setState(() {
+                      items[index] = candidate;
+                      _dirty = true;
+                    });
                     Navigator.pop(dialogContext);
                   } catch (_) {
                     updateDialog(
@@ -275,6 +359,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
       for (var i = 0; i < items.length; i++) {
         items[i] = items[i].withPosition(i);
       }
+      _dirty = true;
     });
   }
 
@@ -284,13 +369,12 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
       for (var i = 0; i < items.length; i++) {
         items[i] = items[i].withPosition(i);
       }
+      _dirty = true;
     });
   }
 
   void _save() {
-    if (saving || pageError == 'This plan was archived or is unavailable.') {
-      return;
-    }
+    if (saving || _unavailable || _editConflict) return;
     setState(() {
       saving = true;
       pageError = null;
@@ -306,13 +390,16 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
             expectedUpdatedAtMs: expectedUpdatedAtMs,
           );
       ref.invalidate(trainLibraryProvider);
-      if (mounted) context.pop();
+      if (mounted) {
+        _allowLeave = true;
+        context.pop();
+      }
     } on PlanEditConflict {
-      setState(
-        () => pageError =
-            'This plan was updated elsewhere. '
-            'Leave this editor and reopen the latest version before changing it.',
-      );
+      setState(() {
+        _editConflict = true;
+        pageError = 'This plan changed while you were editing. '
+            'Reload the latest version before saving.';
+      });
     } on ArgumentError {
       setState(
         () => pageError = 'Enter a plan name and valid exercise targets.',
@@ -350,9 +437,23 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
     );
     if (yes != true || !mounted) return;
     try {
-      ref.read(workoutLibraryRepositoryProvider).archivePlan(planUuid);
+      final version = expectedUpdatedAtMs;
+      if (version == null) throw StateError('Missing plan version');
+      ref.read(workoutLibraryRepositoryProvider).archivePlan(
+        planUuid, expectedUpdatedAtMs: version,
+      );
       ref.invalidate(trainLibraryProvider);
-      if (mounted) context.pop();
+      if (mounted) {
+        _allowLeave = true;
+        context.pop();
+      }
+    } on PlanEditConflict {
+      if (mounted) {
+        setState(() {
+          _editConflict = true;
+          pageError = 'This plan changed. Reload it before archiving.';
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => pageError = 'Could not archive this plan.');
     }
@@ -362,25 +463,26 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
   Widget build(BuildContext context) {
     final definitions =
         ref.watch(trainLibraryProvider).asData?.value.exercises ??
-        ref
-            .read(workoutLibraryRepositoryProvider)
-            .listExercises(includeArchived: true);
+        const <ExerciseRecord>[];
     final byId = {for (final d in definitions) d.uuid: d};
     final muted = Theme.of(context).extension<NorthstarColors>()!.muted;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.planUuid == null ? 'New training plan' : 'Edit training plan',
+    return PopScope(
+      canPop: !_dirty || _allowLeave,
+      onPopInvokedWithResult: _onPopInvoked,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            widget.planUuid == null ? 'New training plan' : 'Edit training plan',
+          ),
+          actions: [
+            if (widget.planUuid != null)
+              IconButton(
+                onPressed: _unavailable ? null : _archive,
+                icon: const Icon(Icons.archive_outlined),
+                tooltip: 'Archive plan',
+              ),
+          ],
         ),
-        actions: [
-          if (widget.planUuid != null)
-            IconButton(
-              onPressed: _archive,
-              icon: const Icon(Icons.archive_outlined),
-              tooltip: 'Archive plan',
-            ),
-        ],
-      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 860),
@@ -463,7 +565,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
                           const SizedBox(height: 4),
                           Text(
                             '${items[i].targetSets} sets'
-                            '${items[i].targetRepsMin == null ? '' : ' · ${items[i].targetRepsMin}–${items[i].targetRepsMax ?? items[i].targetRepsMin} reps'}'
+                            '${formatPlanRepTarget(items[i])}'
                             '${items[i].restSeconds == null ? '' : ' · ${items[i].restSeconds}s rest'}',
                             style: TextStyle(color: muted),
                           ),
@@ -516,10 +618,17 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
                     ),
                   ),
                 ),
+              if (_editConflict && !_unavailable)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: OutlinedButton.icon(
+                    onPressed: _reloadLatest,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Reload latest plan'),
+                  ),
+                ),
               FilledButton.icon(
-                onPressed:
-                    saving ||
-                        pageError == 'This plan was archived or is unavailable.'
+                onPressed: saving || _unavailable || _editConflict
                     ? null
                     : _save,
                 icon: saving
@@ -535,6 +644,15 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
           ),
         ),
       ),
+    ),
     );
   }
+}
+
+/// Human-readable prescription: an upper-only bound must remain visible.
+String formatPlanRepTarget(PlanExerciseRecord item) {
+  if (item.targetRepsMin == null && item.targetRepsMax == null) return '';
+  if (item.targetRepsMin == null) return ' · up to ${item.targetRepsMax} reps';
+  if (item.targetRepsMax == null) return ' · ${item.targetRepsMin} reps';
+  return ' · ${item.targetRepsMin}–${item.targetRepsMax} reps';
 }
