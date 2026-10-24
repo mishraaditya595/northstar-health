@@ -26,7 +26,9 @@ class FakeLibrary implements WorkoutLibraryRepository {
   void ensureCatalogSeeded() {}
 
   @override
-  List<ExerciseRecord> listExercises({bool includeArchived = false}) => [exercise];
+  List<ExerciseRecord> listExercises({bool includeArchived = false}) => [
+    exercise,
+  ];
 
   @override
   ExerciseRecord saveCustomExercise({
@@ -70,24 +72,31 @@ class FakeLibrary implements WorkoutLibraryRepository {
 }
 
 void main() {
-  testWidgets('user creates a local training plan from an empty Train page',
-      (tester) async {
+  testWidgets('user creates a local training plan from an empty Train page', (
+    tester,
+  ) async {
     final fake = FakeLibrary();
-    final router = GoRouter(initialLocation: '/train', routes: [
-      GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
-      GoRoute(path: '/train/plans/new', builder: (_, _) => const PlanEditorPage()),
-    ]);
+    final router = GoRouter(
+      initialLocation: '/train',
+      routes: [
+        GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+        GoRoute(
+          path: '/train/plans/new',
+          builder: (_, _) => const PlanEditorPage(),
+        ),
+      ],
+    );
     addTearDown(router.dispose);
 
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        workoutLibraryRepositoryProvider.overrideWithValue(fake),
-      ],
-      child: MaterialApp.router(
-        theme: NorthstarTheme.build(Brightness.light),
-        routerConfig: router,
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+        child: MaterialApp.router(
+          theme: NorthstarTheme.build(Brightness.light),
+          routerConfig: router,
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     expect(find.text('No plans yet'), findsOneWidget);
 
@@ -107,8 +116,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(fake.planRecords.values.single.name, 'Push day');
-    expect(fake.planRecords.values.single.exercises.single.exerciseUuid,
-        'builtin.v1.bench-press');
+    expect(
+      fake.planRecords.values.single.exercises.single.exerciseUuid,
+      'builtin.v1.bench-press',
+    );
     expect(find.text('Push day'), findsOneWidget);
   });
 }
