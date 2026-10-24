@@ -7,6 +7,8 @@ import '../features/health/health_page.dart';
 import '../features/progress/progress_page.dart';
 import '../features/today/today_page.dart';
 import '../features/train/train_page.dart';
+import '../features/train/exercise_catalog_page.dart';
+import '../features/train/plan_editor_page.dart';
 import 'theme_controller.dart';
 
 final _routes = <String>['/today', '/train', '/progress', '/health'];
@@ -43,6 +45,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: '/today', builder: (_, _) => const TodayPage()),
           GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+          GoRoute(
+            path: '/train/exercises',
+            builder: (_, _) => const ExerciseCatalogPage(),
+          ),
+          GoRoute(
+            path: '/train/plans/new',
+            builder: (_, _) => const PlanEditorPage(),
+          ),
+          GoRoute(
+            path: '/train/plans/:id/edit',
+            builder: (_, state) =>
+                PlanEditorPage(planUuid: state.pathParameters['id']),
+          ),
           GoRoute(path: '/progress', builder: (_, _) => const ProgressPage()),
           GoRoute(path: '/health', builder: (_, _) => const HealthPage()),
         ],
@@ -78,7 +93,9 @@ class AdaptiveShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final index = _routes.indexOf(location).clamp(0, 3);
+    final index = (location.startsWith('/train/')
+            ? 1
+            : _routes.indexOf(location)).clamp(0, 3);
     return LayoutBuilder(
       builder: (context, constraints) {
         final expanded = constraints.maxWidth >= 600;
