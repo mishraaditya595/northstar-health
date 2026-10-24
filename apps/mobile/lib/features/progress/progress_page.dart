@@ -148,10 +148,10 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
                   'LOADED VOLUME',
                   summary.loadedWorkingSets == 0
                       ? '—'
-                      : _kilogramReps(summary.loadedVolumeGramReps),
+                      : _volume(summary.loadedVolumeGramReps, displayUnit),
                   summary.loadedWorkingSets == 0
                       ? 'No loaded sets'
-                      : 'kg × reps',
+                      : '${displayUnit == LoadUnit.lb ? 'lb' : 'kg'} × reps',
                   Icons.insights_outlined,
                 ),
               ];
@@ -305,30 +305,25 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
   }
 }
 
-String _kg(int grams) {
-  var value = (grams / 1000).toStringAsFixed(3);
-  while (value.contains('.') && value.endsWith('0')) {
-    value = value.substring(0, value.length - 1);
-  }
-  if (value.endsWith('.')) {
-    value = value.substring(0, value.length - 1);
-  }
-  return value;
-}
-
-String _kilogramReps(int gramReps) => _kg(gramReps);
-
-String _mass(int grams, LoadUnit unit) {
+/// User-facing values are rounded for readability. Integer grams remain the
+/// canonical source of truth; never round and re-store displayed values.
+String _decimalLoad(int grams, LoadUnit unit) {
   final value = LoadUnits.fromGrams(grams, unit);
-  final precision = unit == LoadUnit.lb ? 5 : 3;
-  for (var decimals = 1; decimals <= precision; decimals++) {
-    final display = value.toStringAsFixed(decimals);
-    if (LoadUnits.toGrams(double.parse(display), unit) == grams) {
-      return '$display ${unit == LoadUnit.lb ? 'lb' : 'kg'}';
-    }
+  final precision = unit == LoadUnit.lb ? 2 : 3;
+  var display = value.toStringAsFixed(precision);
+  while (display.contains('.') && display.endsWith('0')) {
+    display = display.substring(0, display.length - 1);
   }
-  return '${value.toStringAsFixed(precision)} ${unit == LoadUnit.lb ? 'lb' : 'kg'}';
+  if (display.endsWith('.')) {
+    display = display.substring(0, display.length - 1);
+  }
+  return display;
 }
+
+String _volume(int gramReps, LoadUnit unit) => _decimalLoad(gramReps, unit);
+
+String _mass(int grams, LoadUnit unit) =>
+    '${_decimalLoad(grams, unit)} ${unit == LoadUnit.lb ? 'lb' : 'kg'}';
 
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard(this.heading, this.value, this.note, this.icon);
