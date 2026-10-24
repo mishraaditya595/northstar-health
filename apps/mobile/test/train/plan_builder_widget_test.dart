@@ -477,7 +477,7 @@ void main() {
     // actual Android predictive-back gesture remains device QA.
     // Hide the test IME, then target the editor's enclosing Navigator.
     // Picking the last Navigator can hit an unrelated nested navigator.
-    await tester.testTextInput.hide();
+    tester.testTextInput.hide();
     await tester.pumpAndSettle();
     expect(tester.widget<PopScope>(find.byType(PopScope).last).canPop, isFalse);
     await Navigator.of(tester.element(find.byType(PlanEditorPage))).maybePop();
