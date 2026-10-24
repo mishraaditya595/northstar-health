@@ -241,7 +241,9 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
     }
     _store.runInTransaction(TxMode.write, () {
       final state = _editableTimerState(
-        sessionUuid, expectedRevision, expectedCheckpointSavedAtMs,
+        sessionUuid,
+        expectedRevision,
+        expectedCheckpointSavedAtMs,
       );
       final checkpoint = state.$2;
       if (state.$1.status != WorkoutStatus.inProgress.name) {
@@ -264,14 +266,17 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
   }) {
     _store.runInTransaction(TxMode.write, () {
       final state = _editableTimerState(
-        sessionUuid, expectedRevision, expectedCheckpointSavedAtMs,
+        sessionUuid,
+        expectedRevision,
+        expectedCheckpointSavedAtMs,
       );
       final checkpoint = state.$2;
       checkpoint.restState = 'idle';
       checkpoint.restDeadlineUtcMs = null;
       checkpoint.restRemainingMsWhenPaused = null;
       _touchTimerCheckpoint(
-        checkpoint, DateTime.now().toUtc().millisecondsSinceEpoch,
+        checkpoint,
+        DateTime.now().toUtc().millisecondsSinceEpoch,
       );
     });
     return readCheckpoint(sessionUuid)!;
@@ -301,8 +306,9 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
   }
 
   void _touchTimerCheckpoint(WorkoutSessionStateEntity checkpoint, int now) {
-    checkpoint.savedAtMs =
-        now > checkpoint.savedAtMs ? now : checkpoint.savedAtMs + 1;
+    checkpoint.savedAtMs = now > checkpoint.savedAtMs
+        ? now
+        : checkpoint.savedAtMs + 1;
     _checkpoints.put(checkpoint);
   }
 
@@ -458,8 +464,9 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
   void _touchCheckpoint(WorkoutSessionStateEntity checkpoint, int revision) {
     checkpoint.checkpointRevision = revision;
     final now = DateTime.now().toUtc().millisecondsSinceEpoch;
-    checkpoint.savedAtMs =
-        now > checkpoint.savedAtMs ? now : checkpoint.savedAtMs + 1;
+    checkpoint.savedAtMs = now > checkpoint.savedAtMs
+        ? now
+        : checkpoint.savedAtMs + 1;
     _checkpoints.put(checkpoint);
   }
 }

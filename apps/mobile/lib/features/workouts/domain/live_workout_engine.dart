@@ -75,6 +75,7 @@ class WorkoutRecoveryCheckpoint {
   final String restState;
   final int? restDeadlineUtcMs;
   final int? restRemainingMsWhenPaused;
+
   /// Monotonic checkpoint write token for timer-only compare-and-set.
   final int savedAtMs;
   final String sessionUuid;

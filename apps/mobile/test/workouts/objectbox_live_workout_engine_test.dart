@@ -625,22 +625,27 @@ void main() {
 
   test('completed set and 90-second rest deadline commit together', () {
     final s = startQuick();
-    sessions.addExercise(const WorkoutExerciseRecord(
-      uuid: 'exercise-1',
-      sessionUuid: 'quick-1',
-      nameSnapshot: 'Barbell squat',
-      position: 0,
-    ));
+    sessions.addExercise(
+      const WorkoutExerciseRecord(
+        uuid: 'exercise-1',
+        sessionUuid: 'quick-1',
+        nameSnapshot: 'Barbell squat',
+        position: 0,
+      ),
+    );
     final current = sessions.getSession(s.uuid)!;
     final startMs = DateTime.now().toUtc().millisecondsSinceEpoch;
     sessions.saveSet(
       sessionUuid: s.uuid,
       expectedRevision: current.revision,
       set: WorkoutSetRecord(
-        uuid: 'set-1', exerciseUuid: 'exercise-1',
-        position: 0, kind: WorkoutSetKind.working,
+        uuid: 'set-1',
+        exerciseUuid: 'exercise-1',
+        position: 0,
+        kind: WorkoutSetKind.working,
         status: WorkoutSetStatus.completed,
-        reps: 8, loadGrams: 70000,
+        reps: 8,
+        loadGrams: 70000,
         completedAtUtc: DateTime.now().toUtc(),
       ),
       restSeconds: 90,
@@ -654,8 +659,10 @@ void main() {
     store = Store(getObjectBoxModel(), directory: directory.path);
     engine = ObjectBoxLiveWorkoutEngine(store);
     sessions = ObjectBoxWorkoutRepository(store);
-    expect(engine.readCheckpoint(s.uuid)!.restDeadlineUtcMs,
-        state.restDeadlineUtcMs);
+    expect(
+      engine.readCheckpoint(s.uuid)!.restDeadlineUtcMs,
+      state.restDeadlineUtcMs,
+    );
     expect(sessions.getSession(s.uuid)!.sets.single.loadGrams, 70000);
   });
 
@@ -663,8 +670,10 @@ void main() {
     final s = startQuick();
     final original = engine.readCheckpoint(s.uuid)!;
     final running = engine.startRestTimer(
-      s.uuid, expectedRevision: s.revision,
-      expectedCheckpointSavedAtMs: original.savedAtMs, seconds: 120,
+      s.uuid,
+      expectedRevision: s.revision,
+      expectedCheckpointSavedAtMs: original.savedAtMs,
+      seconds: 120,
     );
     expect(running.restState, 'running');
     final paused = engine.pauseWorkout(s.uuid, expectedRevision: s.revision);
@@ -673,7 +682,10 @@ void main() {
     expect(frozen.restDeadlineUtcMs, isNull);
     expect(frozen.restRemainingMsWhenPaused, greaterThan(0));
     expect(frozen.restRemainingMsWhenPaused, lessThanOrEqualTo(120000));
-    final resumed = engine.resumeWorkout(s.uuid, expectedRevision: paused.revision);
+    final resumed = engine.resumeWorkout(
+      s.uuid,
+      expectedRevision: paused.revision,
+    );
     expect(resumed.status, WorkoutStatus.inProgress);
     final restored = engine.readCheckpoint(s.uuid)!;
     expect(restored.restState, 'running');
@@ -682,48 +694,81 @@ void main() {
     expect(restored.checkpointRevision, resumed.revision);
   });
 
-  test('stale timer clear cannot cancel newer timer at same session revision', () {
-    final s = startQuick();
-    final idle = engine.readCheckpoint(s.uuid)!;
-    final first = engine.startRestTimer(s.uuid,
-      expectedRevision: s.revision,
-      expectedCheckpointSavedAtMs: idle.savedAtMs, seconds: 60);
-    final second = engine.startRestTimer(s.uuid,
-      expectedRevision: s.revision,
-      expectedCheckpointSavedAtMs: first.savedAtMs, seconds: 120);
-    expect(second.savedAtMs, greaterThan(first.savedAtMs));
-    expect(
-      () => engine.clearRestTimer(s.uuid,
+  test(
+    'stale timer clear cannot cancel newer timer at same session revision',
+    () {
+      final s = startQuick();
+      final idle = engine.readCheckpoint(s.uuid)!;
+      final first = engine.startRestTimer(
+        s.uuid,
         expectedRevision: s.revision,
-        expectedCheckpointSavedAtMs: first.savedAtMs),
-      throwsStateError,
-    );
-    expect(engine.readCheckpoint(s.uuid)!.restDeadlineUtcMs,
-      second.restDeadlineUtcMs);
-    final cleared = engine.clearRestTimer(s.uuid,
-      expectedRevision: s.revision,
-      expectedCheckpointSavedAtMs: second.savedAtMs);
-    expect(cleared.restState, 'idle');
-    expect(cleared.restDeadlineUtcMs, isNull);
-    expect(cleared.restRemainingMsWhenPaused, isNull);
-  });
+        expectedCheckpointSavedAtMs: idle.savedAtMs,
+        seconds: 60,
+      );
+      final second = engine.startRestTimer(
+        s.uuid,
+        expectedRevision: s.revision,
+        expectedCheckpointSavedAtMs: first.savedAtMs,
+        seconds: 120,
+      );
+      expect(second.savedAtMs, greaterThan(first.savedAtMs));
+      expect(
+        () => engine.clearRestTimer(
+          s.uuid,
+          expectedRevision: s.revision,
+          expectedCheckpointSavedAtMs: first.savedAtMs,
+        ),
+        throwsStateError,
+      );
+      expect(
+        engine.readCheckpoint(s.uuid)!.restDeadlineUtcMs,
+        second.restDeadlineUtcMs,
+      );
+      final cleared = engine.clearRestTimer(
+        s.uuid,
+        expectedRevision: s.revision,
+        expectedCheckpointSavedAtMs: second.savedAtMs,
+      );
+      expect(cleared.restState, 'idle');
+      expect(cleared.restDeadlineUtcMs, isNull);
+      expect(cleared.restRemainingMsWhenPaused, isNull);
+    },
+  );
 
   test('timer-only commands refuse completed sessions and stale revisions', () {
     final s = startQuick();
     final state = engine.readCheckpoint(s.uuid)!;
     final paused = engine.pauseWorkout(s.uuid, expectedRevision: s.revision);
-    expect(() => engine.startRestTimer(s.uuid,
-      expectedRevision: s.revision,
-      expectedCheckpointSavedAtMs: state.savedAtMs, seconds: 60),
-      throwsA(isA<WorkoutRevisionConflict>()));
-    expect(() => engine.startRestTimer(s.uuid,
+    expect(
+      () => engine.startRestTimer(
+        s.uuid,
+        expectedRevision: s.revision,
+        expectedCheckpointSavedAtMs: state.savedAtMs,
+        seconds: 60,
+      ),
+      throwsA(isA<WorkoutRevisionConflict>()),
+    );
+    expect(
+      () => engine.startRestTimer(
+        s.uuid,
+        expectedRevision: paused.revision,
+        expectedCheckpointSavedAtMs: engine.readCheckpoint(s.uuid)!.savedAtMs,
+        seconds: 60,
+      ),
+      throwsStateError,
+    );
+    engine.finishWorkout(
+      s.uuid,
       expectedRevision: paused.revision,
-      expectedCheckpointSavedAtMs: engine.readCheckpoint(s.uuid)!.savedAtMs,
-      seconds: 60), throwsStateError);
-    engine.finishWorkout(s.uuid, expectedRevision: paused.revision,
-      finishedAtUtc: finished);
-    expect(() => engine.clearRestTimer(s.uuid,
-      expectedRevision: paused.revision + 1,
-      expectedCheckpointSavedAtMs: state.savedAtMs), throwsStateError);
+      finishedAtUtc: finished,
+    );
+    expect(
+      () => engine.clearRestTimer(
+        s.uuid,
+        expectedRevision: paused.revision + 1,
+        expectedCheckpointSavedAtMs: state.savedAtMs,
+      ),
+      throwsStateError,
+    );
   });
 }

@@ -34,7 +34,10 @@ abstract interface class WorkoutActions {
   WorkoutSessionRecord startQuick(String name);
   WorkoutSessionRecord startPlan(String planUuid);
   void addExercise(WorkoutSessionRecord session, ExerciseRecord definition);
-  void addPlannedSet(WorkoutSessionRecord session, WorkoutExerciseRecord exercise);
+  void addPlannedSet(
+    WorkoutSessionRecord session,
+    WorkoutExerciseRecord exercise,
+  );
   void saveSet(
     WorkoutSessionRecord session,
     WorkoutSetRecord set, {
@@ -46,24 +49,32 @@ abstract interface class WorkoutActions {
   WorkoutSessionRecord discard(WorkoutSessionRecord session);
   WorkoutRecoveryCheckpoint? checkpoint(String sessionUuid);
   WorkoutRecoveryCheckpoint startRest(
-    WorkoutSessionRecord session, WorkoutRecoveryCheckpoint checkpoint,
+    WorkoutSessionRecord session,
+    WorkoutRecoveryCheckpoint checkpoint,
     int seconds,
   );
   WorkoutRecoveryCheckpoint clearRest(
-    WorkoutSessionRecord session, WorkoutRecoveryCheckpoint checkpoint,
+    WorkoutSessionRecord session,
+    WorkoutRecoveryCheckpoint checkpoint,
   );
 }
 
-final workoutActionsProvider = Provider<WorkoutActions>((ref) =>
-    RepositoryWorkoutActions(
-      ref.watch(liveWorkoutEngineProvider),
-      ref.watch(workoutRepositoryProvider),
-      ref.watch(workoutLibraryRepositoryProvider),
-      SecureUuidFactory(),
-    ));
+final workoutActionsProvider = Provider<WorkoutActions>(
+  (ref) => RepositoryWorkoutActions(
+    ref.watch(liveWorkoutEngineProvider),
+    ref.watch(workoutRepositoryProvider),
+    ref.watch(workoutLibraryRepositoryProvider),
+    SecureUuidFactory(),
+  ),
+);
 
 class RepositoryWorkoutActions implements WorkoutActions {
-  RepositoryWorkoutActions(this.engine, this.repository, this.library, this.ids);
+  RepositoryWorkoutActions(
+    this.engine,
+    this.repository,
+    this.library,
+    this.ids,
+  );
 
   final LiveWorkoutEngine engine;
   final WorkoutRepository repository;
@@ -102,19 +113,24 @@ class RepositoryWorkoutActions implements WorkoutActions {
         session.status != WorkoutStatus.paused) {
       throw StateError('Workout is not editable');
     }
-    repository.addExercise(WorkoutExerciseRecord(
-      uuid: ids.newId(),
-      sessionUuid: session.uuid,
-      definitionUuid: definition.uuid,
-      nameSnapshot: definition.name,
-      muscleSnapshot: definition.muscleGroup,
-      equipmentSnapshot: definition.equipment,
-      position: session.exercises.length,
-    ));
+    repository.addExercise(
+      WorkoutExerciseRecord(
+        uuid: ids.newId(),
+        sessionUuid: session.uuid,
+        definitionUuid: definition.uuid,
+        nameSnapshot: definition.name,
+        muscleSnapshot: definition.muscleGroup,
+        equipmentSnapshot: definition.equipment,
+        position: session.exercises.length,
+      ),
+    );
   }
 
   @override
-  void addPlannedSet(WorkoutSessionRecord session, WorkoutExerciseRecord exercise) {
+  void addPlannedSet(
+    WorkoutSessionRecord session,
+    WorkoutExerciseRecord exercise,
+  ) {
     final matching = session.sets.where((s) => s.exerciseUuid == exercise.uuid);
     repository.saveSet(
       sessionUuid: session.uuid,
@@ -130,8 +146,11 @@ class RepositoryWorkoutActions implements WorkoutActions {
   }
 
   @override
-  void saveSet(WorkoutSessionRecord session, WorkoutSetRecord set,
-      {int? restSeconds}) {
+  void saveSet(
+    WorkoutSessionRecord session,
+    WorkoutSetRecord set, {
+    int? restSeconds,
+  }) {
     if (session.status != WorkoutStatus.inProgress &&
         session.status != WorkoutStatus.paused) {
       throw StateError('Workout is not editable');
@@ -154,8 +173,11 @@ class RepositoryWorkoutActions implements WorkoutActions {
 
   @override
   WorkoutSessionRecord finish(WorkoutSessionRecord session) =>
-      engine.finishWorkout(session.uuid, expectedRevision: session.revision,
-          finishedAtUtc: DateTime.now().toUtc());
+      engine.finishWorkout(
+        session.uuid,
+        expectedRevision: session.revision,
+        finishedAtUtc: DateTime.now().toUtc(),
+      );
 
   @override
   WorkoutSessionRecord discard(WorkoutSessionRecord session) =>
@@ -166,16 +188,26 @@ class RepositoryWorkoutActions implements WorkoutActions {
       engine.readCheckpoint(sessionUuid);
 
   @override
-  WorkoutRecoveryCheckpoint startRest(WorkoutSessionRecord session,
-      WorkoutRecoveryCheckpoint checkpoint, int seconds) =>
-      engine.startRestTimer(session.uuid, expectedRevision: session.revision,
-          expectedCheckpointSavedAtMs: checkpoint.savedAtMs, seconds: seconds);
+  WorkoutRecoveryCheckpoint startRest(
+    WorkoutSessionRecord session,
+    WorkoutRecoveryCheckpoint checkpoint,
+    int seconds,
+  ) => engine.startRestTimer(
+    session.uuid,
+    expectedRevision: session.revision,
+    expectedCheckpointSavedAtMs: checkpoint.savedAtMs,
+    seconds: seconds,
+  );
 
   @override
-  WorkoutRecoveryCheckpoint clearRest(WorkoutSessionRecord session,
-      WorkoutRecoveryCheckpoint checkpoint) =>
-      engine.clearRestTimer(session.uuid, expectedRevision: session.revision,
-          expectedCheckpointSavedAtMs: checkpoint.savedAtMs);
+  WorkoutRecoveryCheckpoint clearRest(
+    WorkoutSessionRecord session,
+    WorkoutRecoveryCheckpoint checkpoint,
+  ) => engine.clearRestTimer(
+    session.uuid,
+    expectedRevision: session.revision,
+    expectedCheckpointSavedAtMs: checkpoint.savedAtMs,
+  );
 }
 
 /// Validation helpers remain independent of widgets for focused tests.

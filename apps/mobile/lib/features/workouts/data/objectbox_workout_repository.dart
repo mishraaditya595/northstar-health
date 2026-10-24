@@ -336,8 +336,9 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
         checkpoint.restDeadlineUtcMs = now + restSeconds * 1000;
         checkpoint.restRemainingMsWhenPaused = null;
       }
-      checkpoint.savedAtMs =
-          now > checkpoint.savedAtMs ? now : checkpoint.savedAtMs + 1;
+      checkpoint.savedAtMs = now > checkpoint.savedAtMs
+          ? now
+          : checkpoint.savedAtMs + 1;
       _checkpoints.put(checkpoint);
     });
   }

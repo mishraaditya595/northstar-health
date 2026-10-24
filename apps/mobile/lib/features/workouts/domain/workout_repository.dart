@@ -20,6 +20,7 @@ abstract interface class WorkoutRepository {
     required String sessionUuid,
     required WorkoutSetRecord set,
     required int expectedRevision,
+
     /// Optional rest deadline, committed atomically with a completed set.
     /// Zero/null means no automatic rest timer.
     int? restSeconds,

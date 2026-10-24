@@ -128,7 +128,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
+        overrides: [
+          workoutLibraryRepositoryProvider.overrideWithValue(fake),
+          activeWorkoutProvider.overrideWith((ref) async => null),
+        ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,
@@ -137,7 +140,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.text('No plans yet'), 180,
+      find.text('No plans yet'),
+      180,
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('No plans yet'), findsOneWidget);
@@ -202,7 +206,10 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
+        overrides: [
+          workoutLibraryRepositoryProvider.overrideWithValue(fake),
+          activeWorkoutProvider.overrideWith((ref) async => null),
+        ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,
@@ -247,7 +254,10 @@ void main() {
       addTearDown(router.dispose);
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
+          overrides: [
+            workoutLibraryRepositoryProvider.overrideWithValue(fake),
+            activeWorkoutProvider.overrideWith((ref) async => null),
+          ],
           child: MaterialApp.router(
             theme: NorthstarTheme.build(Brightness.dark),
             routerConfig: router,
@@ -310,7 +320,10 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
+        overrides: [
+          workoutLibraryRepositoryProvider.overrideWithValue(fake),
+          activeWorkoutProvider.overrideWith((ref) async => null),
+        ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,
@@ -358,7 +371,10 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
+        overrides: [
+          workoutLibraryRepositoryProvider.overrideWithValue(fake),
+          activeWorkoutProvider.overrideWith((ref) async => null),
+        ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,
@@ -380,7 +396,8 @@ void main() {
     await tester.tap(find.text('Discard changes'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.text('No plans yet'), 180,
+      find.text('No plans yet'),
+      180,
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('No plans yet'), findsOneWidget);
@@ -403,7 +420,10 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
+        overrides: [
+          workoutLibraryRepositoryProvider.overrideWithValue(fake),
+          activeWorkoutProvider.overrideWith((ref) async => null),
+        ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,
@@ -447,7 +467,10 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
+        overrides: [
+          workoutLibraryRepositoryProvider.overrideWithValue(fake),
+          activeWorkoutProvider.overrideWith((ref) async => null),
+        ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,
@@ -491,7 +514,10 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
+        overrides: [
+          workoutLibraryRepositoryProvider.overrideWithValue(fake),
+          activeWorkoutProvider.overrideWith((ref) async => null),
+        ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,
@@ -500,7 +526,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.text('Upper A'), 180,
+      find.text('Upper A'),
+      180,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
@@ -539,7 +566,10 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
+        overrides: [
+          workoutLibraryRepositoryProvider.overrideWithValue(fake),
+          activeWorkoutProvider.overrideWith((ref) async => null),
+        ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,
@@ -581,7 +611,10 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake), activeWorkoutProvider.overrideWith((ref) async => null)],
+        overrides: [
+          workoutLibraryRepositoryProvider.overrideWithValue(fake),
+          activeWorkoutProvider.overrideWith((ref) async => null),
+        ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,

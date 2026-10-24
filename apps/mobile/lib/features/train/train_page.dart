@@ -30,25 +30,37 @@ class TrainPage extends ConsumerWidget {
           decoration: const InputDecoration(labelText: 'Workout name'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel')),
-          FilledButton(onPressed: () =>
-              Navigator.pop(dialogContext, proposed.trim()),
-              child: const Text('Start workout')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, proposed.trim()),
+            child: const Text('Start workout'),
+          ),
         ],
       ),
     );
     if (chosen == null || !context.mounted) return;
     if (chosen.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a workout name first.')));
+        const SnackBar(content: Text('Enter a workout name first.')),
+      );
       return;
     }
-    _start(context, ref, () => ref.read(workoutActionsProvider).startQuick(chosen));
+    _start(
+      context,
+      ref,
+      () => ref.read(workoutActionsProvider).startQuick(chosen),
+    );
   }
 
   void _startPlan(BuildContext context, WidgetRef ref, String uuid) {
-    _start(context, ref, () => ref.read(workoutActionsProvider).startPlan(uuid));
+    _start(
+      context,
+      ref,
+      () => ref.read(workoutActionsProvider).startPlan(uuid),
+    );
   }
 
   void _start(BuildContext context, WidgetRef ref, void Function() action) {
@@ -58,8 +70,12 @@ class TrainPage extends ConsumerWidget {
       context.go('/train/workout');
     } catch (_) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(
-          'Could not start. Resume or finish your current workout first.')));
+        const SnackBar(
+          content: Text(
+            'Could not start. Resume or finish your current workout first.',
+          ),
+        ),
+      );
       ref.invalidate(activeWorkoutProvider);
     }
   }
@@ -121,34 +137,50 @@ class TrainPage extends ConsumerWidget {
                 ),
               ),
             ),
-            Consumer(builder: (context, ref, _) {
-              final current = ref.watch(activeWorkoutProvider);
-              return current.when(
-                loading: () => const SizedBox(height: 32,
-                  child: Center(child: CircularProgressIndicator())),
-                error: (_, _) => Card(child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(children: [
-                    const Text('Workout recovery needs attention. '
-                        'No local data has been deleted.'),
-                    TextButton(
-                      onPressed: () => ref.invalidate(activeWorkoutProvider),
-                      child: const Text('Retry recovery')),
-                  ]),
-                )),
-                data: (view) => view == null
-                    ? const SizedBox.shrink()
-                    : Card(child: ListTile(
-                      leading: const Icon(Icons.restore),
-                      title: Text('Resume: ${view.session.name}'),
-                      subtitle: Text(view.session.status.name == 'paused'
-                        ? 'Paused workout saved on this device'
-                        : 'Unfinished workout saved on this device'),
-                      trailing: const Icon(Icons.arrow_forward),
-                      onTap: () => context.go('/train/workout'),
-                    )),
-              );
-            }),
+            Consumer(
+              builder: (context, ref, _) {
+                final current = ref.watch(activeWorkoutProvider);
+                return current.when(
+                  loading: () => const SizedBox(
+                    height: 32,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  error: (_, _) => Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Workout recovery needs attention. '
+                            'No local data has been deleted.',
+                          ),
+                          TextButton(
+                            onPressed: () =>
+                                ref.invalidate(activeWorkoutProvider),
+                            child: const Text('Retry recovery'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  data: (view) => view == null
+                      ? const SizedBox.shrink()
+                      : Card(
+                          child: ListTile(
+                            leading: const Icon(Icons.restore),
+                            title: Text('Resume: ${view.session.name}'),
+                            subtitle: Text(
+                              view.session.status.name == 'paused'
+                                  ? 'Paused workout saved on this device'
+                                  : 'Unfinished workout saved on this device',
+                            ),
+                            trailing: const Icon(Icons.arrow_forward),
+                            onTap: () => context.go('/train/workout'),
+                          ),
+                        ),
+                );
+              },
+            ),
             const SizedBox(height: 26),
             Row(
               children: [
@@ -252,19 +284,22 @@ class TrainPage extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                  IconButton(
-                    tooltip: 'Start ${plan.name}',
-                    icon: const Icon(Icons.play_circle_fill),
-                    onPressed: () => _startPlan(context, ref, plan.uuid),
-                  ),
-                  IconButton(
-                    tooltip: 'Edit ${plan.name}',
-                    icon: const Icon(Icons.edit_outlined),
-                    onPressed: () =>
-                        _open(context, ref, '/train/plans/${plan.uuid}/edit'),
-                  ),
-                ]),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'Start ${plan.name}',
+                      icon: const Icon(Icons.play_circle_fill),
+                      onPressed: () => _startPlan(context, ref, plan.uuid),
+                    ),
+                    IconButton(
+                      tooltip: 'Edit ${plan.name}',
+                      icon: const Icon(Icons.edit_outlined),
+                      onPressed: () =>
+                          _open(context, ref, '/train/plans/${plan.uuid}/edit'),
+                    ),
+                  ],
+                ),
                 onTap: () =>
                     _open(context, ref, '/train/plans/${plan.uuid}/edit'),
               ),

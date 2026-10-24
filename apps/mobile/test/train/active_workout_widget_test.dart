@@ -21,11 +21,16 @@ void main() {
   setUp(() {
     directory = Directory.systemTemp.createTempSync('northstar-workout-ui-');
     store = Store(getObjectBoxModel(), directory: directory.path);
-    router = GoRouter(initialLocation: '/train', routes: [
-      GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
-      GoRoute(path: '/train/workout',
-          builder: (_, _) => const ActiveWorkoutPage()),
-    ]);
+    router = GoRouter(
+      initialLocation: '/train',
+      routes: [
+        GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+        GoRoute(
+          path: '/train/workout',
+          builder: (_, _) => const ActiveWorkoutPage(),
+        ),
+      ],
+    );
   });
 
   tearDown(() {
@@ -35,18 +40,21 @@ void main() {
   });
 
   Future<void> showApp(WidgetTester tester) async {
-    await tester.pumpWidget(ProviderScope(
-      overrides: [objectBoxStoreProvider.overrideWithValue(store)],
-      child: MaterialApp.router(
-        theme: NorthstarTheme.build(Brightness.light),
-        routerConfig: router,
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [objectBoxStoreProvider.overrideWithValue(store)],
+        child: MaterialApp.router(
+          theme: NorthstarTheme.build(Brightness.light),
+          routerConfig: router,
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
   }
 
-  testWidgets('quick workout records real sets and finishes locally',
-      (tester) async {
+  testWidgets('quick workout records real sets and finishes locally', (
+    tester,
+  ) async {
     await showApp(tester);
     await tester.tap(find.text('Quick workout'));
     await tester.pumpAndSettle();
@@ -80,19 +88,26 @@ void main() {
     expect(recorded.sets.single.reps, 8);
     expect(recorded.sets.single.loadGrams, 42500);
     expect(recorded.sets.single.rpe, 8.5);
-    expect(store.box<WorkoutSessionStateEntity>().getAll().single.restState,
-        'running');
+    expect(
+      store.box<WorkoutSessionStateEntity>().getAll().single.restState,
+      'running',
+    );
 
     await tester.ensureVisible(find.text('Pause'));
     await tester.tap(find.text('Pause'));
     await tester.pumpAndSettle();
     expect(repository.getSession(sessionUuid)!.status, WorkoutStatus.paused);
-    expect(store.box<WorkoutSessionStateEntity>().getAll().single.restState,
-        'paused');
+    expect(
+      store.box<WorkoutSessionStateEntity>().getAll().single.restState,
+      'paused',
+    );
 
     await tester.tap(find.text('Resume'));
     await tester.pumpAndSettle();
-    expect(repository.getSession(sessionUuid)!.status, WorkoutStatus.inProgress);
+    expect(
+      repository.getSession(sessionUuid)!.status,
+      WorkoutStatus.inProgress,
+    );
 
     await tester.tap(find.text('Finish'));
     await tester.pumpAndSettle();
@@ -102,32 +117,41 @@ void main() {
     expect(store.box<WorkoutSessionStateEntity>().count(), 0);
   });
 
-  testWidgets('Train offers an unfinished workout after app and Store restart',
-      (tester) async {
-    await showApp(tester);
-    await tester.tap(find.text('Quick workout'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Start workout'));
-    await tester.pumpAndSettle();
-    final id = store.box<WorkoutSessionEntity>().getAll().single.uuid;
+  testWidgets(
+    'Train offers an unfinished workout after app and Store restart',
+    (tester) async {
+      await showApp(tester);
+      await tester.tap(find.text('Quick workout'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Start workout'));
+      await tester.pumpAndSettle();
+      final id = store.box<WorkoutSessionEntity>().getAll().single.uuid;
 
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pumpAndSettle();
-    router.dispose();
-    store.close();
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+      router.dispose();
+      store.close();
 
-    store = Store(getObjectBoxModel(), directory: directory.path);
-    router = GoRouter(initialLocation: '/train', routes: [
-      GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
-      GoRoute(path: '/train/workout',
-          builder: (_, _) => const ActiveWorkoutPage()),
-    ]);
-    await showApp(tester);
-    expect(find.text('Resume: Quick workout'), findsOneWidget);
-    await tester.tap(find.text('Resume: Quick workout'));
-    await tester.pumpAndSettle();
-    expect(find.text('Workout in progress'), findsOneWidget);
-    expect(ObjectBoxWorkoutRepository(store).getSession(id)!.status,
-        WorkoutStatus.inProgress);
-  });
+      store = Store(getObjectBoxModel(), directory: directory.path);
+      router = GoRouter(
+        initialLocation: '/train',
+        routes: [
+          GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+          GoRoute(
+            path: '/train/workout',
+            builder: (_, _) => const ActiveWorkoutPage(),
+          ),
+        ],
+      );
+      await showApp(tester);
+      expect(find.text('Resume: Quick workout'), findsOneWidget);
+      await tester.tap(find.text('Resume: Quick workout'));
+      await tester.pumpAndSettle();
+      expect(find.text('Workout in progress'), findsOneWidget);
+      expect(
+        ObjectBoxWorkoutRepository(store).getSession(id)!.status,
+        WorkoutStatus.inProgress,
+      );
+    },
+  );
 }
