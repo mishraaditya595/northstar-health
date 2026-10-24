@@ -141,11 +141,11 @@ void main() {
     await showProgress(tester);
     expect(find.text('500'), findsOneWidget); // 8 × 62.5 kg
     await tester.scrollUntilVisible(
-      find.textContaining('62.5 kg'),
+      find.textContaining('Best logged load'),
       180,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.textContaining('62.5 kg'), findsOneWidget);
+    expect(find.textContaining('Best logged load · 62.5 kg'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Workout first'),
       180,
@@ -192,10 +192,14 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Workout wide'), findsOneWidget);
     expect(find.text('1'), findsWidgets);
     expect(find.byType(ChoiceChip), findsAtLeastNWidgets(3));
-    expect(find.textContaining('62.5 kg'), findsOneWidget);
+    expect(find.textContaining('Best logged load · 62.5 kg'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Workout wide'), 180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Workout wide'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
