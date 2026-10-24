@@ -242,7 +242,9 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
       // Reusing an already-saved row is allowed after its definition is
       // archived. Adding a fresh row referencing that definition is not.
       // The check lives inside the same write transaction as the plan save.
-      final prior = original == null ? <PlanExerciseEntity>[] : _planItems(uuid);
+      final prior = original == null
+          ? <PlanExerciseEntity>[]
+          : _planItems(uuid);
       for (final item in exercises) {
         final definition = _byUuid(
           _catalog,
@@ -253,9 +255,11 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
           throw StateError('Plan refers to an unknown exercise');
         }
         if (definition.archivedAtMs != null &&
-            !prior.any((saved) =>
-                saved.uuid == item.uuid &&
-                saved.exerciseUuid == item.exerciseUuid)) {
+            !prior.any(
+              (saved) =>
+                  saved.uuid == item.uuid &&
+                  saved.exerciseUuid == item.exerciseUuid,
+            )) {
           throw StateError('Archived exercise cannot be added to a plan');
         }
       }

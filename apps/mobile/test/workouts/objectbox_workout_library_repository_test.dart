@@ -307,16 +307,22 @@ void main() {
   test('archived exercise may be retained but never newly attached', () {
     library.ensureCatalogSeeded();
     library.saveCustomExercise(
-      uuid: 'custom-row', name: 'Cable row custom',
-      muscleGroup: 'Back', equipment: 'Cable',
+      uuid: 'custom-row',
+      name: 'Cable row custom',
+      muscleGroup: 'Back',
+      equipment: 'Cable',
     );
     final existing = library.savePlan(
-      uuid: 'old-plan', name: 'Old', description: '',
+      uuid: 'old-plan',
+      name: 'Old',
+      description: '',
       exercises: [part('original-row', 'custom-row', 0)],
     );
     library.archiveCustomExercise('custom-row');
     final retained = library.savePlan(
-      uuid: 'old-plan', name: 'Retained', description: '',
+      uuid: 'old-plan',
+      name: 'Retained',
+      description: '',
       expectedUpdatedAtMs: existing.updatedAtMs,
       exercises: [part('original-row', 'custom-row', 0)],
     );
@@ -324,7 +330,9 @@ void main() {
 
     expect(
       () => library.savePlan(
-        uuid: 'new-plan', name: 'Bad', description: '',
+        uuid: 'new-plan',
+        name: 'Bad',
+        description: '',
         exercises: [part('new-row', 'custom-row', 0)],
       ),
       throwsStateError,
@@ -332,7 +340,9 @@ void main() {
     expect(library.getPlan('new-plan'), isNull);
     expect(
       () => library.savePlan(
-        uuid: 'old-plan', name: 'Should roll back', description: '',
+        uuid: 'old-plan',
+        name: 'Should roll back',
+        description: '',
         expectedUpdatedAtMs: retained.updatedAtMs,
         exercises: [
           part('original-row', 'custom-row', 0),
@@ -348,18 +358,24 @@ void main() {
   test('removing a plan exercise never removes another plan row', () {
     library.ensureCatalogSeeded();
     final a = library.savePlan(
-      uuid: 'plan-a', name: 'A', description: '',
+      uuid: 'plan-a',
+      name: 'A',
+      description: '',
       exercises: [
         part('a-1', 'builtin.v1.squat', 0),
         part('a-2', 'builtin.v1.bench-press', 1),
       ],
     );
     library.savePlan(
-      uuid: 'plan-b', name: 'B', description: '',
+      uuid: 'plan-b',
+      name: 'B',
+      description: '',
       exercises: [part('b-1', 'builtin.v1.squat', 0)],
     );
     library.savePlan(
-      uuid: 'plan-a', name: 'A', description: '',
+      uuid: 'plan-a',
+      name: 'A',
+      description: '',
       expectedUpdatedAtMs: a.updatedAtMs,
       exercises: [part('a-1', 'builtin.v1.squat', 0)],
     );
@@ -371,17 +387,22 @@ void main() {
   test('stale archive rejects updates and does not hide the edited plan', () {
     library.ensureCatalogSeeded();
     final original = library.savePlan(
-      uuid: 'plan-a', name: 'First', description: '',
+      uuid: 'plan-a',
+      name: 'First',
+      description: '',
       exercises: [part('a-1', 'builtin.v1.squat', 0)],
     );
     final edited = library.savePlan(
-      uuid: 'plan-a', name: 'Updated', description: '',
+      uuid: 'plan-a',
+      name: 'Updated',
+      description: '',
       exercises: [part('a-1', 'builtin.v1.squat', 0)],
       expectedUpdatedAtMs: original.updatedAtMs,
     );
     expect(
       () => library.archivePlan(
-        'plan-a', expectedUpdatedAtMs: original.updatedAtMs,
+        'plan-a',
+        expectedUpdatedAtMs: original.updatedAtMs,
       ),
       throwsA(isA<PlanEditConflict>()),
     );

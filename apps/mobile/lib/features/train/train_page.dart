@@ -25,87 +25,87 @@ class TrainPage extends ConsumerWidget {
         constraints: const BoxConstraints(maxWidth: 900),
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
-      children: [
-        Text(
-          'TRAIN',
-          style: Theme.of(context).textTheme.headlineLarge
-              ?.copyWith(fontWeight: FontWeight.w900, letterSpacing: -1.2),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Own your training. Your plans stay on this device.',
-          style: TextStyle(color: colors.muted),
-        ),
-        const SizedBox(height: 24),
-        Card(
-          clipBehavior: Clip.antiAlias,
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'TRAIN',
+              style: Theme.of(context).textTheme.headlineLarge
+                  ?.copyWith(fontWeight: FontWeight.w900, letterSpacing: -1.2),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Own your training. Your plans stay on this device.',
+              style: TextStyle(color: colors.muted),
+            ),
+            const SizedBox(height: 24),
+            Card(
+              clipBehavior: Clip.antiAlias,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.fitness_center_rounded, size: 32),
+                    const SizedBox(height: 12),
+                    Text(
+                      'BUILD THE WORK.',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Create a repeatable training session. Logging live sets comes next.',
+                      style: TextStyle(color: colors.muted),
+                    ),
+                    const SizedBox(height: 18),
+                    FilledButton.icon(
+                      onPressed: () => _open(context, ref, '/train/plans/new'),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Create training plan'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 26),
+            Row(
               children: [
-                const Icon(Icons.fitness_center_rounded, size: 32),
-                const SizedBox(height: 12),
-                Text(
-                  'BUILD THE WORK.',
-                  style: Theme.of(context).textTheme.headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Create a repeatable training session. Logging live sets comes next.',
-                  style: TextStyle(color: colors.muted),
-                ),
-                const SizedBox(height: 18),
-                FilledButton.icon(
-                  onPressed: () => _open(context, ref, '/train/plans/new'),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Create training plan'),
+                const Expanded(child: SectionHeading('Your plans')),
+                TextButton.icon(
+                  onPressed: () => _open(context, ref, '/train/exercises'),
+                  icon: const Icon(Icons.menu_book_outlined),
+                  label: const Text('Exercise library'),
                 ),
               ],
             ),
-          ),
-        ),
-        const SizedBox(height: 26),
-        Row(
-          children: [
-            const Expanded(child: SectionHeading('Your plans')),
-            TextButton.icon(
-              onPressed: () => _open(context, ref, '/train/exercises'),
-              icon: const Icon(Icons.menu_book_outlined),
-              label: const Text('Exercise library'),
+            state.when(
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (_, _) => Column(
+                children: [
+                  const Text('Could not load your local training plans.'),
+                  TextButton(
+                    onPressed: () => ref.invalidate(trainLibraryProvider),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+              data: (snapshot) => _planList(context, ref, snapshot),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'LOCAL ONLY · NO ACCOUNT REQUIRED',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: colors.muted,
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),
-        state.when(
-          loading: () => const Center(
-            child: Padding(
-              padding: EdgeInsets.all(32),
-              child: CircularProgressIndicator(),
-            ),
-          ),
-          error: (_, _) => Column(
-            children: [
-              const Text('Could not load your local training plans.'),
-              TextButton(
-                onPressed: () => ref.invalidate(trainLibraryProvider),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-          data: (snapshot) => _planList(context, ref, snapshot),
-        ),
-        const SizedBox(height: 20),
-        Text(
-          'LOCAL ONLY · NO ACCOUNT REQUIRED',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: colors.muted,
-            letterSpacing: 1.2,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    ),
       ),
     );
   }
