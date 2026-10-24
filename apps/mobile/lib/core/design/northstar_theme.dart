@@ -19,6 +19,13 @@ class NorthstarPalette {
   static const lightPrimary = Color(0xFF316946);
   static const sleepDark = Color(0xFFC1A9FF);
   static const sleepLight = Color(0xFF6650AB);
+  static const sleepSoftDark = Color(0xFF2D2546);
+  static const sleepSoftLight = Color(0xFFEEE8FB);
+  static const forestSoftDark = Color(0xFF303F26);
+  static const forestSoftLight = Color(0xFFE2EEDC);
+  static const heroDark = Color(0xFF101A14);
+  static const heroLight = Color(0xFF152A20);
+  static const heroBorder = Color(0xFF334C39);
 }
 
 class NorthstarTheme {

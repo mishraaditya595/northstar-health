@@ -17,18 +17,18 @@ import 'theme_controller.dart';
 final _routes = <String>['/today', '/train', '/progress', '/health'];
 final _destinations = <NavigationDestination>[
   const NavigationDestination(
-    icon: Icon(Icons.space_dashboard_outlined),
-    selectedIcon: Icon(Icons.space_dashboard),
+    icon: Icon(Icons.home_outlined),
+    selectedIcon: Icon(Icons.home),
     label: 'Today',
   ),
   const NavigationDestination(
-    icon: Icon(Icons.fitness_center_outlined),
-    selectedIcon: Icon(Icons.fitness_center),
+    icon: Icon(Icons.contrast),
+    selectedIcon: Icon(Icons.contrast),
     label: 'Train',
   ),
   const NavigationDestination(
-    icon: Icon(Icons.insights_outlined),
-    selectedIcon: Icon(Icons.insights),
+    icon: Icon(Icons.north_east),
+    selectedIcon: Icon(Icons.north_east),
     label: 'Progress',
   ),
   const NavigationDestination(

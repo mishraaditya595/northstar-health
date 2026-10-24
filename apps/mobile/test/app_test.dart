@@ -13,7 +13,7 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: NorthstarApp()));
     await tester.pumpAndSettle();
 
-    expect(find.text('SHOW UP.\nGET STRONG.'), findsOneWidget);
+    expect(find.text('Full Body A'), findsOneWidget);
     expect(find.textContaining('FICTIONAL DEMO DATA'), findsOneWidget);
     expect(find.byType(FloatingNavBar), findsOneWidget);
     expect(find.text('Train'), findsOneWidget);
@@ -44,6 +44,6 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.text('SHOW UP.\nGET STRONG.'), findsNothing);
+    expect(find.text('Energy check-in'), findsNothing);
   });
 }

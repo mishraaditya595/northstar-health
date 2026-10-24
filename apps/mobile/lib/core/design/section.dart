@@ -3,19 +3,40 @@ import 'package:flutter/material.dart';
 import 'northstar_theme.dart';
 
 class SectionHeading extends StatelessWidget {
-  const SectionHeading(this.title, {super.key});
+  const SectionHeading(this.title, {this.action, super.key});
 
   final String title;
+  final String? action;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 14),
-    child: Text(
-      title,
-      style: Theme.of(context).textTheme.titleLarge
-          ?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.5),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ),
+          if (action != null)
+            Text(
+              action!,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.extension<NorthstarColors>()!.muted,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class DemoLabel extends StatelessWidget {
