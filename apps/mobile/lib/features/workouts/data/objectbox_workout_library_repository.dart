@@ -260,7 +260,7 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
                   saved.uuid == item.uuid &&
                   saved.exerciseUuid == item.exerciseUuid,
             )) {
-          throw StateError('Archived exercise cannot be added to a plan');
+          throw const ArchivedExercisePlanConflict();
         }
       }
       final now = DateTime.now().toUtc().millisecondsSinceEpoch;

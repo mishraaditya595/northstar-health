@@ -35,8 +35,11 @@ No ObjectBox model/property changes and no cloud, login or health permissions.
   safe removal of another plan's rows and stale archive rejection.
 - Widget tests cover existing plan edits, conflict reload/discard, archive
   behavior and unsaved-exit guard.
-- macOS local tests require the v5.3.2 native ObjectBox dynamic library; use
-  `scripts/test_objectbox_macos.sh` on macOS. CI installs pinned Linux
-  native ObjectBox and executes `flutter test`.
+- macOS local tests require v5.3.2 native ObjectBox: use
+  `scripts/test_objectbox_macos.sh` from repo root. The script checks the
+  official archive's SHA-256, temporarily copies the dylib into
+  `apps/mobile/` (ignored by Git), runs tests, then removes the copy.
+  No `DYLD_LIBRARY_PATH` dependency. This script change needs validation
+  on a real Mac; Linux CI installs pinned native ObjectBox for `flutter test`.
 - Android APK, device reboot/reinstall semantics, light/dark, tablet, 200%
   text scaling, accessibility and iOS build remain independent QA gates.

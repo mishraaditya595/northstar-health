@@ -1,6 +1,6 @@
 # Phase 1 implementation notes
 
-The [roadmap](../../ROADMAP.md) defines project milestones. These pages record
+The [roadmap](../ROADMAP.md) defines project milestones. These pages record
 implemented behavior, data ownership, known QA gaps and review evidence rather
 than replacing architecture decisions.
 

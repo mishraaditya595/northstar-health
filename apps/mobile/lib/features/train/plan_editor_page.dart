@@ -29,13 +29,12 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
   bool _unavailable = false;
   bool _dirty = false;
   bool _allowLeave = false;
-  bool _ignoreFieldChange = false;
   bool _editConflict = false;
 
-  void _markDirty() {
-    if (!_ignoreFieldChange && !_dirty && mounted) {
-      setState(() => _dirty = true);
-    }
+  // onChanged is a text change, unlike a TextEditingController listener
+  // which also fires on caret movement, focus and selection changes.
+  void _markDirty(String _) {
+    if (!_dirty && mounted) setState(() => _dirty = true);
   }
 
   Future<bool> _confirmDiscard() async {
@@ -84,15 +83,12 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
         setState(() {
           _unavailable = true;
           _editConflict = false;
-          _unavailable = true;
           pageError = 'This plan was archived or is unavailable.';
         });
         return;
       }
-      _ignoreFieldChange = true;
       name.text = latest.name;
       description.text = latest.description;
-      _ignoreFieldChange = false;
       setState(() {
         items
           ..clear()
@@ -104,7 +100,6 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
         pageError = null;
       });
     } catch (_) {
-      _ignoreFieldChange = false;
       if (mounted) setState(() => pageError = 'Could not reload the plan.');
     }
   }
@@ -118,6 +113,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
       if (widget.planUuid != null) {
         final existing = repository.getPlan(planUuid);
         if (existing == null) {
+          _unavailable = true;
           pageError = 'This plan was archived or is unavailable.';
         } else {
           expectedUpdatedAtMs = existing.updatedAtMs;
@@ -130,8 +126,6 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
       _unavailable = true;
       pageError = 'Could not load this plan from local storage.';
     }
-    name.addListener(_markDirty);
-    description.addListener(_markDirty);
   }
 
   @override
@@ -142,7 +136,17 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
   }
 
   Future<void> _addExercise() async {
-    final snapshot = await ref.read(trainLibraryProvider.future);
+    if (_unavailable) return;
+    final WorkoutLibrarySnapshot snapshot;
+    try {
+      snapshot = await ref.read(trainLibraryProvider.future);
+    } catch (_) {
+      if (mounted) {
+        setState(() => pageError =
+            'Exercise library could not load. Retry adding an exercise.');
+      }
+      return;
+    }
     if (!mounted) return;
     final definitions = snapshot.exercises
         .where((e) => e.archivedAtMs == null)
@@ -411,6 +415,10 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
       setState(
         () => pageError = 'Enter a plan name and valid exercise targets.',
       );
+    } on ArchivedExercisePlanConflict {
+      setState(() => pageError =
+          'An exercise in this plan was archived. '
+          'Remove newly added archived exercises, then try saving again.');
     } catch (_) {
       setState(
         () => pageError =
@@ -468,10 +476,16 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    final definitions =
-        ref.watch(trainLibraryProvider).asData?.value.exercises ??
-        const <ExerciseRecord>[];
-    final byId = {for (final d in definitions) d.uuid: d};
+    final libraryState = ref.watch(trainLibraryProvider);
+    final definitions = libraryState.asData?.value.exercises;
+    final byId = {
+      for (final d in definitions ?? const <ExerciseRecord>[]) d.uuid: d,
+    };
+    final missingExerciseLabel = definitions == null
+        ? (libraryState.isLoading
+            ? 'Loading exercise…'
+            : 'Exercise details unavailable')
+        : 'Exercise unavailable';
     final muted = Theme.of(context).extension<NorthstarColors>()!.muted;
     return PopScope(
       canPop: !_dirty || _allowLeave,
@@ -512,6 +526,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
                 const SizedBox(height: 20),
                 TextField(
                   controller: name,
+                  onChanged: _markDirty,
                   maxLength: 100,
                   textCapitalization: TextCapitalization.words,
                   decoration: const InputDecoration(
@@ -523,6 +538,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: description,
+                  onChanged: _markDirty,
                   maxLength: 1000,
                   maxLines: 2,
                   decoration: const InputDecoration(
@@ -541,7 +557,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
                       ),
                     ),
                     OutlinedButton.icon(
-                      onPressed: _addExercise,
+                      onPressed: _unavailable ? null : _addExercise,
                       icon: const Icon(Icons.add),
                       label: const Text('Add'),
                     ),
@@ -568,7 +584,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
                           children: [
                             Text(
                               byId[items[i].exerciseUuid]?.name ??
-                                  'Archived exercise',
+                                  missingExerciseLabel,
                               style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(fontWeight: FontWeight.w800),
                             ),

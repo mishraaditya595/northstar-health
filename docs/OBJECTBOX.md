@@ -86,10 +86,15 @@ matching `libobjectbox.dylib` on the host; the Flutter dependency does not
 make it available automatically to standalone host unit-test processes.
 On macOS, from repository root run `bash scripts/test_objectbox_macos.sh`.
 The script downloads the **exact v5.3.2 universal library**, checks SHA-256,
-extracts it into a temporary directory, and runs `flutter test` with
-`DYLD_LIBRARY_PATH` pointing there. Linux CI similarly pins the v5.3.2
-native binary and SHA-256. These are **test-host** setup steps, not runtime
-shipping or app bundle configuration.
+extracts it into a temporary directory, then copies the verified
+`libobjectbox.dylib` into `apps/mobile/` for the test process. The script
+refuses to overwrite a pre-existing file, removes only its own copy on exit,
+and the dylib path is listed in `.gitignore`. Do not rely on
+`DYLD_LIBRARY_PATH`: Flutter launched through a protected macOS shell can
+lose that environment variable. Linux CI similarly pins the v5.3.2 native
+binary and SHA-256. These are **test-host** setup steps, not runtime
+shipping or app bundle configuration. The macOS script still requires a
+real macOS validation run before it can be declared verified.
 
 ## Review/acceptance
 
