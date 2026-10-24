@@ -572,16 +572,32 @@ void main() {
       library.saveCustomExercise(
         uuid: custom.uuid,
         name: 'Renamed cable row',
-        muscleGroup: custom.muscleGroup,
-        equipment: custom.equipment,
+        muscleGroup: 'Upper back',
+        equipment: 'Resistance band',
         expectedUpdatedAtMs: custom.updatedAtMs,
       );
       library.archiveCustomExercise('custom-row');
-      expect(
-        sessions.getSession(s.uuid)!.exercises.single.nameSnapshot,
-        'Home cable row',
-      );
+
+      // Test the snapshot after a real native Store close/reopen, not just
+      // in the current process's in-memory object graph.
+      store.close();
+      store = Store(getObjectBoxModel(), directory: directory.path);
+      sessions = ObjectBoxWorkoutRepository(store);
+      library = ObjectBoxWorkoutLibraryRepository(store);
+      engine = ObjectBoxLiveWorkoutEngine(store);
+
+      final savedExercise = sessions.getSession(s.uuid)!.exercises.single;
+      expect(savedExercise.nameSnapshot, 'Home cable row');
+      expect(savedExercise.muscleSnapshot, 'Back');
+      expect(savedExercise.equipmentSnapshot, 'Cable');
       expect(sessions.getSession(s.uuid)!.sets.length, 2);
+      final renamed = library
+          .listExercises(includeArchived: true)
+          .singleWhere((exercise) => exercise.uuid == 'custom-row');
+      expect(renamed.name, 'Renamed cable row');
+      expect(renamed.muscleGroup, 'Upper back');
+      expect(renamed.equipment, 'Resistance band');
+      expect(renamed.archivedAtMs, isNotNull);
     },
   );
 
