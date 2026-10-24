@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:northstar_health/core/design/northstar_theme.dart';
 import 'package:northstar_health/features/train/plan_editor_page.dart';
 import 'package:northstar_health/features/train/train_page.dart';
+import 'package:northstar_health/features/train/active_workout_state.dart';
 import 'package:northstar_health/features/workouts/data/objectbox_workout_library_repository.dart';
 import 'package:northstar_health/features/workouts/domain/workout_library_models.dart';
 import 'package:northstar_health/features/workouts/domain/workout_library_repository.dart';
