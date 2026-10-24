@@ -142,8 +142,10 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
       snapshot = await ref.read(trainLibraryProvider.future);
     } catch (_) {
       if (mounted) {
-        setState(() => pageError =
-            'Exercise library could not load. Retry adding an exercise.');
+        setState(
+          () => pageError =
+              'Exercise library could not load. Retry adding an exercise.',
+        );
       }
       return;
     }
@@ -416,9 +418,11 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
         () => pageError = 'Enter a plan name and valid exercise targets.',
       );
     } on ArchivedExercisePlanConflict {
-      setState(() => pageError =
-          'An exercise in this plan was archived. '
-          'Remove newly added archived exercises, then try saving again.');
+      setState(
+        () => pageError =
+            'An exercise in this plan was archived. '
+            'Remove newly added archived exercises, then try saving again.',
+      );
     } catch (_) {
       setState(
         () => pageError =
@@ -483,8 +487,8 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
     };
     final missingExerciseLabel = definitions == null
         ? (libraryState.isLoading
-            ? 'Loading exercise…'
-            : 'Exercise details unavailable')
+              ? 'Loading exercise…'
+              : 'Exercise details unavailable')
         : 'Exercise unavailable';
     final muted = Theme.of(context).extension<NorthstarColors>()!.muted;
     return PopScope(

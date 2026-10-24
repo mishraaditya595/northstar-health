@@ -73,8 +73,12 @@ class FakeLibrary implements WorkoutLibraryRepository {
         .toSet();
     for (final item in exercises) {
       if (archivedDefinitions.contains(item.exerciseUuid) &&
-          !(original?.exercises.any((saved) =>
-              saved.uuid == item.uuid && saved.exerciseUuid == item.exerciseUuid) ?? false)) {
+          !(original?.exercises.any(
+                (saved) =>
+                    saved.uuid == item.uuid &&
+                    saved.exerciseUuid == item.exerciseUuid,
+              ) ??
+              false)) {
         throw const ArchivedExercisePlanConflict();
       }
     }
@@ -373,21 +377,35 @@ void main() {
     expect(find.text('No plans yet'), findsOneWidget);
     expect(fake.planRecords, isEmpty);
   });
-  testWidgets('missing edit plan disables save and cannot create ghost', (tester) async {
+  testWidgets('missing edit plan disables save and cannot create ghost', (
+    tester,
+  ) async {
     final fake = FakeLibrary();
-    final router = GoRouter(initialLocation: '/train/plans/ghost/edit', routes: [
-      GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
-      GoRoute(path: '/train/plans/:id/edit',
-        builder: (_, _) => const PlanEditorPage(planUuid: 'ghost')),
-    ]);
+    final router = GoRouter(
+      initialLocation: '/train/plans/ghost/edit',
+      routes: [
+        GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+        GoRoute(
+          path: '/train/plans/:id/edit',
+          builder: (_, _) => const PlanEditorPage(planUuid: 'ghost'),
+        ),
+      ],
+    );
     addTearDown(router.dispose);
-    await tester.pumpWidget(ProviderScope(
-      overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
-      child: MaterialApp.router(theme: NorthstarTheme.build(Brightness.light),
-          routerConfig: router),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+        child: MaterialApp.router(
+          theme: NorthstarTheme.build(Brightness.light),
+          routerConfig: router,
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
-    expect(find.text('This plan was archived or is unavailable.'), findsOneWidget);
+    expect(
+      find.text('This plan was archived or is unavailable.'),
+      findsOneWidget,
+    );
     final save = tester.widget<FilledButton>(
       find.widgetWithText(FilledButton, 'Save plan offline'),
     );
@@ -395,48 +413,82 @@ void main() {
     expect(fake.planRecords, isEmpty);
   });
 
-  testWidgets('archived edit plan cannot be saved or re-created', (tester) async {
+  testWidgets('archived edit plan cannot be saved or re-created', (
+    tester,
+  ) async {
     final fake = FakeLibrary();
     fake.planRecords['old'] = const WorkoutPlanRecord(
-      uuid: 'old', name: 'Old archived plan', description: '',
-      updatedAtMs: 1, archivedAtMs: 2, exercises: [],
+      uuid: 'old',
+      name: 'Old archived plan',
+      description: '',
+      updatedAtMs: 1,
+      archivedAtMs: 2,
+      exercises: [],
     );
-    final router = GoRouter(initialLocation: '/train/plans/old/edit', routes: [
-      GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
-      GoRoute(path: '/train/plans/:id/edit',
-        builder: (_, _) => const PlanEditorPage(planUuid: 'old')),
-    ]);
+    final router = GoRouter(
+      initialLocation: '/train/plans/old/edit',
+      routes: [
+        GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+        GoRoute(
+          path: '/train/plans/:id/edit',
+          builder: (_, _) => const PlanEditorPage(planUuid: 'old'),
+        ),
+      ],
+    );
     addTearDown(router.dispose);
-    await tester.pumpWidget(ProviderScope(
-      overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
-      child: MaterialApp.router(theme: NorthstarTheme.build(Brightness.light),
-          routerConfig: router),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+        child: MaterialApp.router(
+          theme: NorthstarTheme.build(Brightness.light),
+          routerConfig: router,
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
-    expect(tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, 'Save plan offline'),
-    ).onPressed, isNull);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Save plan offline'),
+          )
+          .onPressed,
+      isNull,
+    );
     expect(fake.planRecords['old']!.name, 'Old archived plan');
     expect(fake.archiveCalls, 0);
   });
 
-  testWidgets('moving cursor only does not produce discard dialog', (tester) async {
+  testWidgets('moving cursor only does not produce discard dialog', (
+    tester,
+  ) async {
     final fake = FakeLibrary();
     fake.planRecords['existing'] = const WorkoutPlanRecord(
-      uuid: 'existing', name: 'Upper A', description: '',
-      updatedAtMs: 1, exercises: [],
+      uuid: 'existing',
+      name: 'Upper A',
+      description: '',
+      updatedAtMs: 1,
+      exercises: [],
     );
-    final router = GoRouter(initialLocation: '/train', routes: [
-      GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
-      GoRoute(path: '/train/plans/:id/edit',
-        builder: (_, _) => const PlanEditorPage(planUuid: 'existing')),
-    ]);
+    final router = GoRouter(
+      initialLocation: '/train',
+      routes: [
+        GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+        GoRoute(
+          path: '/train/plans/:id/edit',
+          builder: (_, _) => const PlanEditorPage(planUuid: 'existing'),
+        ),
+      ],
+    );
     addTearDown(router.dispose);
-    await tester.pumpWidget(ProviderScope(
-      overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
-      child: MaterialApp.router(theme: NorthstarTheme.build(Brightness.light),
-          routerConfig: router),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+        child: MaterialApp.router(
+          theme: NorthstarTheme.build(Brightness.light),
+          routerConfig: router,
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Upper A'));
     await tester.pumpAndSettle();
@@ -446,8 +498,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.showKeyboard(find.byType(TextField).first);
     tester.testTextInput.updateEditingValue(
-      const TextEditingValue(text: 'Upper A',
-        selection: TextSelection.collapsed(offset: 2)),
+      const TextEditingValue(
+        text: 'Upper A',
+        selection: TextSelection.collapsed(offset: 2),
+      ),
     );
     await tester.pumpAndSettle();
     await tester.pageBack();
@@ -456,18 +510,30 @@ void main() {
     expect(find.text('Your plans'), findsOneWidget);
   });
 
-  testWidgets('nested navigator back warns before discarding actual edits', (tester) async {
+  testWidgets('nested navigator back warns before discarding actual edits', (
+    tester,
+  ) async {
     final fake = FakeLibrary();
-    final router = GoRouter(initialLocation: '/train', routes: [
-      GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
-      GoRoute(path: '/train/plans/new', builder: (_, _) => const PlanEditorPage()),
-    ]);
+    final router = GoRouter(
+      initialLocation: '/train',
+      routes: [
+        GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+        GoRoute(
+          path: '/train/plans/new',
+          builder: (_, _) => const PlanEditorPage(),
+        ),
+      ],
+    );
     addTearDown(router.dispose);
-    await tester.pumpWidget(ProviderScope(
-      overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
-      child: MaterialApp.router(theme: NorthstarTheme.build(Brightness.light),
-          routerConfig: router),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+        child: MaterialApp.router(
+          theme: NorthstarTheme.build(Brightness.light),
+          routerConfig: router,
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Create training plan'));
     await tester.pumpAndSettle();
@@ -492,16 +558,26 @@ void main() {
 
   testWidgets('archived exercise save error is actionable', (tester) async {
     final fake = FakeLibrary()..rejectArchivedOnSave = true;
-    final router = GoRouter(initialLocation: '/train', routes: [
-      GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
-      GoRoute(path: '/train/plans/new', builder: (_, _) => const PlanEditorPage()),
-    ]);
+    final router = GoRouter(
+      initialLocation: '/train',
+      routes: [
+        GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+        GoRoute(
+          path: '/train/plans/new',
+          builder: (_, _) => const PlanEditorPage(),
+        ),
+      ],
+    );
     addTearDown(router.dispose);
-    await tester.pumpWidget(ProviderScope(
-      overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
-      child: MaterialApp.router(theme: NorthstarTheme.build(Brightness.light),
-          routerConfig: router),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+        child: MaterialApp.router(
+          theme: NorthstarTheme.build(Brightness.light),
+          routerConfig: router,
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Create training plan'));
     await tester.pumpAndSettle();
@@ -518,19 +594,30 @@ void main() {
 
   test('fake repository mirrors archived reference constraint', () {
     final fake = FakeLibrary();
-    fake.extraExercises.add(const ExerciseRecord(
-      uuid: 'custom.archived', name: 'Archived row',
-      muscleGroup: 'Back', equipment: 'Cable',
-      movementCategory: 'Pull', inputMode: 'reps_load',
-      isBuiltIn: false, updatedAtMs: 1, archivedAtMs: 2,
-    ));
+    fake.extraExercises.add(
+      const ExerciseRecord(
+        uuid: 'custom.archived',
+        name: 'Archived row',
+        muscleGroup: 'Back',
+        equipment: 'Cable',
+        movementCategory: 'Pull',
+        inputMode: 'reps_load',
+        isBuiltIn: false,
+        updatedAtMs: 1,
+        archivedAtMs: 2,
+      ),
+    );
     expect(
       () => fake.savePlan(
-        uuid: 'new', name: 'Bad plan', description: '',
+        uuid: 'new',
+        name: 'Bad plan',
+        description: '',
         exercises: [
           const PlanExerciseRecord(
-            uuid: 'row', exerciseUuid: 'custom.archived',
-            position: 0, targetSets: 3,
+            uuid: 'row',
+            exerciseUuid: 'custom.archived',
+            position: 0,
+            targetSets: 3,
           ),
         ],
       ),
@@ -538,5 +625,4 @@ void main() {
     );
     expect(fake.planRecords, isEmpty);
   });
-
 }
