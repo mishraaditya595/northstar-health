@@ -278,3 +278,33 @@ class InsightCard extends StatelessWidget {
     );
   }
 }
+
+/// Prototype `.back-button`: rounded-square back control for sub-page app bars.
+class NsBackButton extends StatelessWidget {
+  const NsBackButton({this.onPressed, super.key});
+
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 16),
+        child: BackButton(
+          onPressed: onPressed,
+          style: IconButton.styleFrom(
+            fixedSize: const Size(44, 44),
+            backgroundColor: scheme.surface,
+            foregroundColor: scheme.onSurface,
+            side: BorderSide(color: scheme.outline),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

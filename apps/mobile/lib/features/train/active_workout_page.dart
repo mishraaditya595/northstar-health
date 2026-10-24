@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+
+import '../../core/design/northstar_theme.dart';
+import '../../core/design/page_header.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -190,6 +194,7 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
     final active = ref.watch(activeWorkoutProvider);
     return Scaffold(
       appBar: AppBar(
+        leading: const NsBackButton(),
         title: const Text('Workout in progress'),
         actions: [
           IconButton(
@@ -265,15 +270,19 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
       children: [
         Text(
           session.name,
-          style: Theme.of(context).textTheme.headlineMedium
-              ?.copyWith(fontWeight: FontWeight.w900),
+          style: Theme.of(context).textTheme.headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -1),
         ),
         const SizedBox(height: 6),
         Text(
           paused
               ? 'PAUSED · SAVED ON DEVICE'
               : 'RECORDING LOCALLY · NO CONNECTION NEEDED',
-          style: Theme.of(context).textTheme.labelMedium,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: Theme.of(context).extension<NorthstarColors>()!.muted,
+            letterSpacing: 1.1,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: 6),
         Text('$completed completed of ${session.sets.length} sets'),

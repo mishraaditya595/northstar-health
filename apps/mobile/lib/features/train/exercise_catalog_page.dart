@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/design/northstar_theme.dart';
+import '../../core/design/page_header.dart';
+import '../../core/design/section.dart';
 import '../../core/ids/uuid_factory.dart';
 import '../../core/ui/dispose_after_dialog.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
@@ -146,7 +148,10 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
     final async = ref.watch(trainLibraryProvider);
     final muted = Theme.of(context).extension<NorthstarColors>()!.muted;
     return Scaffold(
-      appBar: AppBar(title: const Text('Exercise library')),
+      appBar: AppBar(
+        leading: const NsBackButton(),
+        title: const Text('Exercise library'),
+      ),
       floatingActionButton: Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
         child: FloatingActionButton.extended(
@@ -160,18 +165,13 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
           constraints: const BoxConstraints(maxWidth: 900),
           child: ListView(
             padding: EdgeInsets.fromLTRB(
-              20,
               16,
-              20,
+              8,
+              16,
               100 + MediaQuery.paddingOf(context).bottom,
             ),
             children: [
-              Text(
-                'FIND YOUR MOVEMENT',
-                style: Theme.of(context).textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 8),
+              const SectionHeading('Find your movement'),
               Text(
                 'Built-ins are read-only. Your own exercises stay on this device.',
                 style: TextStyle(color: muted),
@@ -227,31 +227,19 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
                   return Column(
                     children: [
                       for (final exercise in visible)
-                        Card(
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 6,
-                            ),
-                            leading: Icon(
-                              exercise.isBuiltIn
-                                  ? Icons.fitness_center
-                                  : Icons.edit_note,
-                            ),
-                            title: Text(
-                              exercise.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            subtitle: Text(
-                              [
-                                exercise.muscleGroup,
-                                exercise.equipment,
-                              ].where((s) => s.isNotEmpty).join(' · '),
-                            ),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: NsListCard(
+                            icon: exercise.isBuiltIn
+                                ? Icons.fitness_center
+                                : Icons.edit_note,
+                            title: exercise.name,
+                            subtitle: [
+                              exercise.muscleGroup,
+                              exercise.equipment,
+                            ].where((s) => s.isNotEmpty).join(' · '),
                             trailing: exercise.isBuiltIn
-                                ? const Text('BUILT-IN')
+                                ? const NsTag('Built-in')
                                 : PopupMenuButton<String>(
                                     tooltip:
                                         'Exercise actions for ${exercise.name}',

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../core/design/page_header.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/units/load_units.dart';
@@ -14,7 +17,10 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(completedWorkoutHistoryProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Workout details')),
+      appBar: AppBar(
+        leading: const NsBackButton(),
+        title: const Text('Workout details'),
+      ),
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
@@ -64,16 +70,22 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
     final theme = Theme.of(context);
     return ListView(
       padding: EdgeInsets.fromLTRB(
-        20,
-        22,
-        20,
+        16,
+        8,
+        16,
         42 + MediaQuery.paddingOf(context).bottom,
       ),
       children: [
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: NsTag('Northstar logger'),
+        ),
+        const SizedBox(height: 10),
         Text(
           session.name,
-          style: theme.textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.w900,
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: -1,
           ),
         ),
         const SizedBox(height: 8),
@@ -145,10 +157,14 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
         ],
-        const Text(
-          'Historical snapshots are read-only. '
-          'Edits to the original exercise catalog or training plan '
-          'cannot rewrite a completed workout.',
+        const InsightCard(
+          icon: Icons.info_outline,
+          text: TextSpan(
+            text:
+                'Historical snapshots are read-only. '
+                'Edits to the original exercise catalog or training plan '
+                'cannot rewrite a completed workout.',
+          ),
         ),
       ],
     );

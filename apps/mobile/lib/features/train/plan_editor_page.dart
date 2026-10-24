@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/design/northstar_theme.dart';
+import '../../core/design/page_header.dart';
 import '../../core/ids/uuid_factory.dart';
 import '../../core/ui/dispose_after_dialog.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
@@ -493,7 +494,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
       onPopInvokedWithResult: _onPopInvoked,
       child: Scaffold(
         appBar: AppBar(
-          leading: BackButton(onPressed: _requestExit),
+          leading: NsBackButton(onPressed: _requestExit),
           title: Text(
             widget.planUuid == null
                 ? 'New training plan'
@@ -513,9 +514,9 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
             constraints: const BoxConstraints(maxWidth: 860),
             child: ListView(
               padding: EdgeInsets.fromLTRB(
-                20,
-                18,
-                20,
+                16,
+                8,
+                16,
                 40 + MediaQuery.paddingOf(context).bottom,
               ),
               children: [

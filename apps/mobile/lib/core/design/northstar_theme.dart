@@ -73,6 +73,21 @@ class NorthstarTheme {
           borderRadius: BorderRadius.circular(22),
         ),
       ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: canvas,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        toolbarHeight: 64,
+        leadingWidth: 68,
+        titleTextStyle: TextStyle(
+          color: ink,
+          fontSize: 21,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.9,
+        ),
+      ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: surface,
         indicatorColor: dark
