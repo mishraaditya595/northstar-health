@@ -81,10 +81,12 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
       }
       // All call paths must honor a single unfinished workout. This older
       // primitive remains for tests; production starts use LiveWorkoutEngine.
-      if (_sessions.getAll().any((s) =>
-          s.deletedAtMs == null &&
-          s.status != WorkoutStatus.completed.name &&
-          s.status != WorkoutStatus.discarded.name)) {
+      if (_sessions.getAll().any(
+        (s) =>
+            s.deletedAtMs == null &&
+            s.status != WorkoutStatus.completed.name &&
+            s.status != WorkoutStatus.discarded.name,
+      )) {
         throw StateError('Finish or discard the existing workout first');
       }
       _sessions.put(

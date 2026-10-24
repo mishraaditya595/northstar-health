@@ -9,8 +9,9 @@ import '../domain/workout_repository.dart';
 import 'objectbox_workout_repository.dart';
 import 'workout_entities.dart';
 
-final liveWorkoutEngineProvider = Provider<LiveWorkoutEngine>((ref) =>
-    ObjectBoxLiveWorkoutEngine(ref.watch(objectBoxStoreProvider)));
+final liveWorkoutEngineProvider = Provider<LiveWorkoutEngine>(
+  (ref) => ObjectBoxLiveWorkoutEngine(ref.watch(objectBoxStoreProvider)),
+);
 
 /// Coordinates the full local workout lifecycle without changing ObjectBox's
 /// committed v1 schema or leaking persistence entities into presentation.
@@ -20,16 +21,16 @@ final liveWorkoutEngineProvider = Provider<LiveWorkoutEngine>((ref) =>
 /// materialization and the session lifecycle.
 class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
   ObjectBoxLiveWorkoutEngine(Store store, {UuidFactory? uuidFactory})
-      : _store = store,
-        _ids = uuidFactory ?? SecureUuidFactory(),
-        _reader = ObjectBoxWorkoutRepository(store),
-        _sessions = store.box<WorkoutSessionEntity>(),
-        _exercises = store.box<WorkoutExerciseEntity>(),
-        _sets = store.box<WorkoutSetEntity>(),
-        _checkpoints = store.box<WorkoutSessionStateEntity>(),
-        _plans = store.box<WorkoutPlanEntity>(),
-        _planExercises = store.box<PlanExerciseEntity>(),
-        _definitions = store.box<ExerciseDefinitionEntity>();
+    : _store = store,
+      _ids = uuidFactory ?? SecureUuidFactory(),
+      _reader = ObjectBoxWorkoutRepository(store),
+      _sessions = store.box<WorkoutSessionEntity>(),
+      _exercises = store.box<WorkoutExerciseEntity>(),
+      _sets = store.box<WorkoutSetEntity>(),
+      _checkpoints = store.box<WorkoutSessionStateEntity>(),
+      _plans = store.box<WorkoutPlanEntity>(),
+      _planExercises = store.box<PlanExerciseEntity>(),
+      _definitions = store.box<ExerciseDefinitionEntity>();
 
   final Store _store;
   final UuidFactory _ids;
@@ -52,7 +53,9 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
   }
 
   List<PlanExerciseEntity> _templateRows(String uuid) {
-    final query = _planExercises.query(PlanExerciseEntity_.planUuid.equals(uuid)).build();
+    final query = _planExercises
+        .query(PlanExerciseEntity_.planUuid.equals(uuid))
+        .build();
     try {
       return query.find()..sort((a, b) => a.position.compareTo(b.position));
     } finally {
@@ -81,9 +84,11 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
     required DateTime startedAtUtc,
     required int originalOffsetMinutes,
   }) {
-    if (sessionUuid.isEmpty || (planUuid == null) == (quickName == null) ||
+    if (sessionUuid.isEmpty ||
+        (planUuid == null) == (quickName == null) ||
         (planUuid != null && planUuid.isEmpty) ||
-        originalOffsetMinutes < -840 || originalOffsetMinutes > 840) {
+        originalOffsetMinutes < -840 ||
+        originalOffsetMinutes > 840) {
       throw ArgumentError('Choose exactly one valid workout source and offset');
     }
     if (quickName != null &&
@@ -110,11 +115,14 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
         throw StateError('Finish or discard the existing workout first');
       }
       final plan = planUuid == null
-          ? null : _one(_plans, WorkoutPlanEntity_.uuid, planUuid);
+          ? null
+          : _one(_plans, WorkoutPlanEntity_.uuid, planUuid);
       if (planUuid != null && (plan == null || plan.archivedAtMs != null)) {
         throw StateError('Source training plan is missing or archived');
       }
-      final children = plan == null ? <PlanExerciseEntity>[] : _templateRows(plan.uuid);
+      final children = plan == null
+          ? <PlanExerciseEntity>[]
+          : _templateRows(plan.uuid);
       final template = <(PlanExerciseEntity, ExerciseDefinitionEntity)>[];
       for (var i = 0; i < children.length; i++) {
         final row = children[i];
@@ -122,7 +130,10 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
           throw StateError('Plan ordering or target sets are invalid');
         }
         final definition = _one(
-          _definitions, ExerciseDefinitionEntity_.uuid, row.exerciseUuid);
+          _definitions,
+          ExerciseDefinitionEntity_.uuid,
+          row.exerciseUuid,
+        );
         if (definition == null) {
           throw StateError('Training plan references a missing exercise');
         }
@@ -134,44 +145,52 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
       if (label.isEmpty || label.length > 160) {
         throw StateError('Invalid workout name');
       }
-      _sessions.put(WorkoutSessionEntity(
-        uuid: sessionUuid,
-        name: label,
-        planUuid: planUuid,
-        startedAtMs: atMs,
-        originalOffsetMinutes: originalOffsetMinutes,
-        updatedAtMs: nowMs,
-      ));
+      _sessions.put(
+        WorkoutSessionEntity(
+          uuid: sessionUuid,
+          name: label,
+          planUuid: planUuid,
+          startedAtMs: atMs,
+          originalOffsetMinutes: originalOffsetMinutes,
+          updatedAtMs: nowMs,
+        ),
+      );
       String? firstExerciseUuid;
       for (final (row, definition) in template) {
         final exerciseUuid = _ids.newId();
         firstExerciseUuid ??= exerciseUuid;
-        _exercises.put(WorkoutExerciseEntity(
-          uuid: exerciseUuid,
-          sessionUuid: sessionUuid,
-          definitionUuid: definition.uuid,
-          nameSnapshot: definition.name,
-          muscleSnapshot: definition.muscleGroup,
-          equipmentSnapshot: definition.equipment,
-          position: row.position,
-        ));
+        _exercises.put(
+          WorkoutExerciseEntity(
+            uuid: exerciseUuid,
+            sessionUuid: sessionUuid,
+            definitionUuid: definition.uuid,
+            nameSnapshot: definition.name,
+            muscleSnapshot: definition.muscleGroup,
+            equipmentSnapshot: definition.equipment,
+            position: row.position,
+          ),
+        );
         for (var position = 0; position < row.targetSets; position++) {
           // Targets are prescriptions, not performed reps/loads. Never
           // populate completed workout metrics with plan guesses.
-          _sets.put(WorkoutSetEntity(
-            uuid: _ids.newId(),
-            exerciseUuid: exerciseUuid,
-            position: position,
-            updatedAtMs: nowMs,
-          ));
+          _sets.put(
+            WorkoutSetEntity(
+              uuid: _ids.newId(),
+              exerciseUuid: exerciseUuid,
+              position: position,
+              updatedAtMs: nowMs,
+            ),
+          );
         }
       }
-      _checkpoints.put(WorkoutSessionStateEntity(
-        sessionUuid: sessionUuid,
-        selectedExerciseUuid: firstExerciseUuid,
-        checkpointRevision: 1,
-        savedAtMs: nowMs,
-      ));
+      _checkpoints.put(
+        WorkoutSessionStateEntity(
+          sessionUuid: sessionUuid,
+          selectedExerciseUuid: firstExerciseUuid,
+          checkpointRevision: 1,
+          savedAtMs: nowMs,
+        ),
+      );
     });
     return _reader.getSession(sessionUuid)!;
   }
@@ -185,8 +204,12 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
           active.status != WorkoutStatus.paused.name) {
         throw StateError('Unsupported unfinished workout state');
       }
-      if (_one(_checkpoints, WorkoutSessionStateEntity_.sessionUuid,
-              active.uuid) == null) {
+      if (_one(
+            _checkpoints,
+            WorkoutSessionStateEntity_.sessionUuid,
+            active.uuid,
+          ) ==
+          null) {
         throw StateError('Unfinished workout checkpoint is missing');
       }
       return active.uuid;
@@ -198,29 +221,45 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
   WorkoutRecoveryCheckpoint? readCheckpoint(String sessionUuid) {
     return _store.runInTransaction(TxMode.read, () {
       final saved = _one(
-        _checkpoints, WorkoutSessionStateEntity_.sessionUuid, sessionUuid);
-      return saved == null ? null : WorkoutRecoveryCheckpoint(
-        sessionUuid: saved.sessionUuid,
-        checkpointRevision: saved.checkpointRevision,
-        selectedExerciseUuid: saved.selectedExerciseUuid,
-        selectedSetUuid: saved.selectedSetUuid,
+        _checkpoints,
+        WorkoutSessionStateEntity_.sessionUuid,
+        sessionUuid,
       );
+      return saved == null
+          ? null
+          : WorkoutRecoveryCheckpoint(
+              sessionUuid: saved.sessionUuid,
+              checkpointRevision: saved.checkpointRevision,
+              selectedExerciseUuid: saved.selectedExerciseUuid,
+              selectedSetUuid: saved.selectedSetUuid,
+            );
     });
   }
 
   @override
-  WorkoutSessionRecord pauseWorkout(String sessionUuid, {
+  WorkoutSessionRecord pauseWorkout(
+    String sessionUuid, {
     required int expectedRevision,
-  }) => _changeStatus(sessionUuid, expectedRevision: expectedRevision,
-      from: WorkoutStatus.inProgress, to: WorkoutStatus.paused);
+  }) => _changeStatus(
+    sessionUuid,
+    expectedRevision: expectedRevision,
+    from: WorkoutStatus.inProgress,
+    to: WorkoutStatus.paused,
+  );
 
   @override
-  WorkoutSessionRecord resumeWorkout(String sessionUuid, {
+  WorkoutSessionRecord resumeWorkout(
+    String sessionUuid, {
     required int expectedRevision,
-  }) => _changeStatus(sessionUuid, expectedRevision: expectedRevision,
-      from: WorkoutStatus.paused, to: WorkoutStatus.inProgress);
+  }) => _changeStatus(
+    sessionUuid,
+    expectedRevision: expectedRevision,
+    from: WorkoutStatus.paused,
+    to: WorkoutStatus.inProgress,
+  );
 
-  WorkoutSessionRecord _changeStatus(String uuid, {
+  WorkoutSessionRecord _changeStatus(
+    String uuid, {
     required int expectedRevision,
     required WorkoutStatus from,
     required WorkoutStatus to,
@@ -231,13 +270,15 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
       if (session == null || session.deletedAtMs != null) {
         throw StateError('Workout is missing or deleted');
       }
-      if (session.status == to.name && session.revision == expectedRevision + 1) {
+      if (session.status == to.name &&
+          session.revision == expectedRevision + 1) {
         return; // Acknowledged retry of the same state transition.
       }
       if (session.revision != expectedRevision) {
         throw WorkoutRevisionConflict(expectedRevision, session.revision);
       }
-      if (session.status != from.name) throw StateError('Illegal workout transition');
+      if (session.status != from.name)
+        throw StateError('Illegal workout transition');
       final checkpoint = _requireCheckpoint(uuid);
       session.status = to.name;
       _touch(session);
@@ -247,7 +288,8 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
   }
 
   @override
-  WorkoutSessionRecord finishWorkout(String uuid, {
+  WorkoutSessionRecord finishWorkout(
+    String uuid, {
     required int expectedRevision,
     required DateTime finishedAtUtc,
   }) {
@@ -259,7 +301,8 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
         throw StateError('Workout is missing or deleted');
       }
       if (s.status == WorkoutStatus.completed.name &&
-          s.completedAtMs == atMs && s.revision == expectedRevision + 1) {
+          s.completedAtMs == atMs &&
+          s.revision == expectedRevision + 1) {
         return; // Exact replay of finish after an ACK was lost.
       }
       if (s.revision != expectedRevision) {
@@ -280,7 +323,8 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
   }
 
   @override
-  WorkoutSessionRecord discardWorkout(String uuid, {
+  WorkoutSessionRecord discardWorkout(
+    String uuid, {
     required int expectedRevision,
   }) {
     if (expectedRevision < 1) throw ArgumentError.value(expectedRevision);
@@ -310,7 +354,10 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
 
   WorkoutSessionStateEntity _requireCheckpoint(String uuid) {
     final checkpoint = _one(
-      _checkpoints, WorkoutSessionStateEntity_.sessionUuid, uuid);
+      _checkpoints,
+      WorkoutSessionStateEntity_.sessionUuid,
+      uuid,
+    );
     if (checkpoint == null) throw StateError('Workout checkpoint is missing');
     return checkpoint;
   }
