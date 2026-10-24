@@ -40,18 +40,26 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
       }
     } on WorkoutRevisionConflict {
       if (mounted) {
-        setState(
-          () => _error =
-              'This workout changed. Reload before retrying. '
-              'Your unsaved input remains on screen.',
-        );
+        setState(() => _error =
+            'This workout changed elsewhere. Reload the latest saved '
+            'workout and reconcile your edits.');
+      }
+    } on ArgumentError {
+      if (mounted) {
+        setState(() => _error =
+            'The set contains invalid values. Correct them and try again.');
+      }
+    } on StateError {
+      if (mounted) {
+        setState(() => _error =
+            'The workout or rest timer changed. Reload the saved state '
+            'before trying again.');
       }
     } catch (_) {
       if (mounted) {
-        setState(
-          () => _error =
-              'The local write did not complete. Review the values and retry.',
-        );
+        setState(() => _error =
+            'Could not confirm the local save. Reload to verify whether '
+            'the change was saved before retrying.');
       }
     } finally {
       if (mounted) {
@@ -251,10 +259,7 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
           style: Theme.of(context).textTheme.labelMedium,
         ),
         const SizedBox(height: 6),
-        Text(
-          '$completed completed of ${session.sets.length} sets · '
-          'revision ${session.revision}',
-        ),
+        Text('$completed completed of ${session.sets.length} sets'),
         const SizedBox(height: 18),
         if (_error != null)
           Card(
@@ -335,7 +340,7 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
                   const SizedBox(height: 12),
                   for (final set in byExercise[exercise.uuid]!)
                     SetEditorTile(
-                      key: ValueKey('${set.uuid}-${session.revision}'),
+                      key: ValueKey(set.uuid),
                       record: set,
                       enabled: !_busy && !paused,
                       onSave: (updated, rest) => _perform(
@@ -413,12 +418,236 @@ class _SetEditorTileState extends State<SetEditorTile> {
     unit = s.inputUnit == LoadUnit.unknown ? LoadUnit.kg : s.inputUnit;
     kind = s.kind == WorkoutSetKind.unknown ? WorkoutSetKind.working : s.kind;
     reps = TextEditingController(text: s.reps?.toString() ?? '');
-    weight = TextEditingController(
-      text: s.loadGrams == null
-          ? ''
-          : LoadUnits.fromGrams(s.loadGrams!, unit).toStringAsFixed(1),
-    );
+    weight = TextEditingController(text: _savedWeightText(s.loadGrams, unit));
     rpe = TextEditingController(text: s.rpe?.toString() ?? '');
+  }
+
+  /// Keep unsaved drafts on unrelated session revisions; only refresh the
+  /// editor when this set's committed values actually change.
+  @override
+  void didUpdateWidget(covariant SetEditorTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final before = oldWidget.record;
+    final after = widget.record;
+    if (before.reps == after.reps &&
+        before.loadGrams == after.loadGrams &&
+        before.rpe == after.rpe &&
+        before.kind == after.kind &&
+        before.status == after.status &&
+        before.inputUnit == after.inputUnit &&
+        before.completedAtUtc == after.completedAtUtc) {
+      return;
+    }
+    unit = after.inputUnit == LoadUnit.unknown ? LoadUnit.kg : after.inputUnit;
+    kind = after.kind == WorkoutSetKind.unknown
+        ? WorkoutSetKind.working : after.kind;
+    reps.text = after.reps?.toString() ?? '';
+    weight.text = _savedWeightText(after.loadGrams, unit);
+    rpe.text = after.rpe?.toString() ?? '';
+    error = null;
+  }
+
+  static String _savedWeightText(int? grams, LoadUnit unit) {
+    if (grams == null) return '';
+    // Three decimals in kg, five in lb: both round-trip stored integer grams.
+    final precision = unit == LoadUnit.kg ? 3 : 5;
+    return LoadUnits.fromGrams(grams, unit)
+        .toStringAsFixed(precision).replaceFirst(RegExp(r'\\.?0+
+    weight.dispose();
+    rpe.dispose();
+    super.dispose();
+  }
+
+  void _record() {
+    final count = int.tryParse(reps.text.trim());
+    final load = weight.text.trim().isEmpty
+        ? null
+        : double.tryParse(weight.text.trim());
+    final effort = rpe.text.trim().isEmpty
+        ? null
+        : double.tryParse(rpe.text.trim());
+    if (count == null ||
+        count < 0 ||
+        (weight.text.trim().isNotEmpty && load == null) ||
+        (rpe.text.trim().isNotEmpty && effort == null)) {
+      setState(() => error = 'Enter valid reps, weight and RPE.');
+      return;
+    }
+    try {
+      final s = widget.record;
+      final updated = WorkoutSetRecord(
+        uuid: s.uuid,
+        exerciseUuid: s.exerciseUuid,
+        position: s.position,
+        kind: kind,
+        status: WorkoutSetStatus.completed,
+        reps: count,
+        loadGrams: load == null ? null : LoadUnits.toGrams(load, unit),
+        inputUnit: unit,
+        rpe: effort,
+        completedAtUtc: s.completedAtUtc ?? DateTime.now().toUtc(),
+      );
+      updated.validate();
+      widget.onSave(updated, s.status == WorkoutSetStatus.planned && rest > 0 ? rest : null);
+    } catch (_) {
+      setState(() => error = 'Check that the values are in the valid range.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.record;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'SET ${s.position + 1} · ${s.status.name.toUpperCase()}',
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SizedBox(
+                width: 82,
+                child: TextField(
+                  key: ValueKey('reps-${s.uuid}'),
+                  controller: reps,
+                  enabled: widget.enabled,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Reps',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 108,
+                child: TextField(
+                  key: ValueKey('weight-${s.uuid}'),
+                  controller: weight,
+                  enabled: widget.enabled,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'Weight',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              DropdownButton<LoadUnit>(
+                value: unit,
+                onChanged: widget.enabled
+                    ? (next) {
+                        if (next == null || next == unit) {
+                          return;
+                        }
+                        final entered = double.tryParse(weight.text.trim());
+                        if (entered != null &&
+                            entered >= 0 &&
+                            entered.isFinite) {
+                          final grams = LoadUnits.toGrams(entered, unit);
+                          weight.text = _savedWeightText(grams, next);
+                        }
+                        setState(() => unit = next);
+                      }
+                    : null,
+                items: const [
+                  DropdownMenuItem(value: LoadUnit.kg, child: Text('kg')),
+                  DropdownMenuItem(value: LoadUnit.lb, child: Text('lb')),
+                ],
+              ),
+              SizedBox(
+                width: 82,
+                child: TextField(
+                  key: ValueKey('rpe-${s.uuid}'),
+                  controller: rpe,
+                  enabled: widget.enabled,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'RPE',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              DropdownButton<WorkoutSetKind>(
+                value: kind,
+                onChanged: widget.enabled
+                    ? (value) {
+                        if (value != null) {
+                          setState(() => kind = value);
+                        }
+                      }
+                    : null,
+                items: const [
+                  DropdownMenuItem(
+                    value: WorkoutSetKind.working,
+                    child: Text('Working'),
+                  ),
+                  DropdownMenuItem(
+                    value: WorkoutSetKind.warmup,
+                    child: Text('Warm-up'),
+                  ),
+                ],
+              ),
+              DropdownButton<int>(
+                value: rest,
+                onChanged: widget.enabled
+                    ? (v) {
+                        if (v != null) {
+                          setState(() => rest = v);
+                        }
+                      }
+                    : null,
+                items: const [
+                  DropdownMenuItem(value: 0, child: Text('No rest')),
+                  DropdownMenuItem(value: 60, child: Text('Rest 60s')),
+                  DropdownMenuItem(value: 90, child: Text('Rest 90s')),
+                  DropdownMenuItem(value: 120, child: Text('Rest 120s')),
+                ],
+              ),
+              FilledButton(
+                onPressed: widget.enabled ? _record : null,
+                child: Text(
+                  s.status == WorkoutSetStatus.completed
+                      ? 'Update set'
+                      : 'Save set',
+                ),
+              ),
+              TextButton(
+                onPressed: !widget.enabled ||
+                        s.status != WorkoutSetStatus.planned
+                    ? null
+                    : () => widget.onSave(skippedSet(s), null),
+                child: const Text('Skip'),
+              ),
+            ],
+          ),
+          if (error != null)
+            Text(
+              error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+        ],
+      ),
+    );
+  }
+}
+), '');
   }
 
   @override

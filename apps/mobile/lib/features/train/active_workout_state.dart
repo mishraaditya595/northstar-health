@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/ids/uuid_factory.dart';
-import '../../core/units/load_units.dart';
 import '../workouts/data/objectbox_live_workout_engine.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
 import '../workouts/data/objectbox_workout_repository.dart';
@@ -59,7 +58,6 @@ abstract interface class WorkoutActions {
   WorkoutSessionRecord resume(WorkoutSessionRecord session);
   WorkoutSessionRecord finish(WorkoutSessionRecord session);
   WorkoutSessionRecord discard(WorkoutSessionRecord session);
-  WorkoutRecoveryCheckpoint? checkpoint(String sessionUuid);
   WorkoutRecoveryCheckpoint startRest(
     WorkoutSessionRecord session,
     WorkoutRecoveryCheckpoint checkpoint,
@@ -196,10 +194,6 @@ class RepositoryWorkoutActions implements WorkoutActions {
       engine.discardWorkout(session.uuid, expectedRevision: session.revision);
 
   @override
-  WorkoutRecoveryCheckpoint? checkpoint(String sessionUuid) =>
-      engine.readCheckpoint(sessionUuid);
-
-  @override
   WorkoutRecoveryCheckpoint startRest(
     WorkoutSessionRecord session,
     WorkoutRecoveryCheckpoint checkpoint,
@@ -221,27 +215,6 @@ class RepositoryWorkoutActions implements WorkoutActions {
     expectedCheckpointSavedAtMs: checkpoint.savedAtMs,
   );
 }
-
-/// Validation helpers remain independent of widgets for focused tests.
-WorkoutSetRecord recordedSet({
-  required WorkoutSetRecord previous,
-  required int reps,
-  required double load,
-  required LoadUnit unit,
-  double? rpe,
-  required DateTime completedAtUtc,
-}) => WorkoutSetRecord(
-  uuid: previous.uuid,
-  exerciseUuid: previous.exerciseUuid,
-  position: previous.position,
-  kind: previous.kind,
-  status: WorkoutSetStatus.completed,
-  reps: reps,
-  loadGrams: LoadUnits.toGrams(load, unit),
-  inputUnit: unit,
-  rpe: rpe,
-  completedAtUtc: completedAtUtc.toUtc(),
-);
 
 WorkoutSetRecord skippedSet(WorkoutSetRecord previous) => WorkoutSetRecord(
   uuid: previous.uuid,

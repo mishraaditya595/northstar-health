@@ -67,12 +67,12 @@ class TrainPage extends ConsumerWidget {
     try {
       action();
       ref.invalidate(activeWorkoutProvider);
-      context.go('/train/workout');
+      context.push('/train/workout');
     } catch (_) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Could not start. Resume or finish your current workout first.',
+            'Could not start this workout. Check the plan and any unfinished workout.',
           ),
         ),
       );
@@ -175,7 +175,7 @@ class TrainPage extends ConsumerWidget {
                                   : 'Unfinished workout saved on this device',
                             ),
                             trailing: const Icon(Icons.arrow_forward),
-                            onTap: () => context.go('/train/workout'),
+                            onTap: () => context.push('/train/workout'),
                           ),
                         ),
                 );

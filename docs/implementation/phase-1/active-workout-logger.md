@@ -1,4 +1,4 @@
-# Phase 1 — PR 4: Offline active-workout logger and rest timer
+# Phase 1 — PR #10: Offline active-workout logger and rest timer
 
 **Base:** latest reviewed `main` at `a9821633a77a2770510e4de3ec91b497d960dc44`
 (merged engine PR #9). **No schema/model-UID changes.**
@@ -11,7 +11,9 @@
 - Active workout: show historical exercise snapshots and ordered sets, add
   exercises from the local catalog and add sets, record or edit reps,
   optional load, kg/lb display unit, warm-up/working set kind and optional
-  RPE; skip planned sets.
+  RPE; skip planned sets. Completed sets cannot be skipped accidentally.
+  Other rows retain unsaved input after a set is saved, and load values
+  round-trip exact integer grams.
   Display completed set count and durable local-save status.
 - Pause/resume/finish/discard call `LiveWorkoutEngine` with the observed
   session revision. Destructive completion/discard requires user confirmation.
@@ -21,8 +23,9 @@
   (60/90/120 seconds, default 90) with the local set write. A separate
   rest-card control can restart or clear the timer. **The UTC deadline is
   persisted**, not a UI tick counter. Pausing freezes remaining time;
-  resuming recreates the deadline. Backgrounding/reopening the app does not
-  reset countdown duration.
+  resuming recreates the deadline. Updating a completed set does not restart
+  its rest countdown. Backgrounding/reopening the app does not reset
+  countdown duration.
 - Workouts and timer checkpoints are **ObjectBox-local**. No account,
   internet, HealthKit/Health Connect, Firebase collection, watch recording or
   cloud backup is introduced. Prescribed plan targets are not inferred
@@ -61,7 +64,7 @@
   genuine Android/iOS force-stop, airplane-mode and low-storage tests;
   iOS build/archive, backup-exclusion audit, phone/tablet, dark/light,
   2× text-scale and accessibility QA; Codemagic integration validation.
-- PR #4 is review-only. **Never merge without explicit owner approval.**
+- PR #10 is review-only. **Never merge without explicit owner approval.**
 
 ## Known scope limits
 
