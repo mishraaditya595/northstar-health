@@ -134,10 +134,11 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
           .archiveCustomExercise(exercise.uuid);
       ref.invalidate(trainLibraryProvider);
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not archive that exercise.')),
         );
+      }
     }
   }
 
