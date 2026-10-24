@@ -39,7 +39,7 @@ WorkoutSessionRecord workout({
   status: status,
   startedAtUtc: DateTime.utc(2026, 10, 24, 7),
   completedAtUtc: status == WorkoutStatus.completed
-      ? DateTime.utc(2026, 10, 24, 8)
+      ? (completedAt ?? DateTime.utc(2026, 10, 24, 8))
       : null,
   originalOffsetMinutes: 330,
   revision: 4,
@@ -48,7 +48,8 @@ WorkoutSessionRecord workout({
       uuid: 'exercise-$id',
       sessionUuid: id,
       definitionUuid: definition,
-      nameSnapshot: 'Bench press',
+      nameSnapshot: exerciseName,
+      equipmentSnapshot: equipment,
       position: 0,
     ),
   ],

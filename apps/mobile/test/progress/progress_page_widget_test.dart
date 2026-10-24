@@ -117,6 +117,21 @@ void main() {
         ),
       ),
     );
+    await _settleHistory(tester);
+  }
+
+  Future<void> _settleHistory(WidgetTester tester) async {
+    await tester.pump();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(ProgressPage)),
+    );
+    await tester.runAsync(() async {
+      try {
+        await container.read(completedWorkoutHistoryProvider.future);
+      } catch (_) {
+        // Error state itself is asserted in the retry test.
+      }
+    });
     await tester.pumpAndSettle();
   }
 
@@ -182,7 +197,7 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await _settleHistory(tester);
     expect(find.text('Workout wide'), findsOneWidget);
     expect(find.text('1'), findsWidgets);
     expect(find.byType(ChoiceChip), findsAtLeastNWidgets(3));
@@ -249,7 +264,7 @@ void main() {
         routerConfig: router,
       ),
     ));
-    await tester.pumpAndSettle();
+    await _settleHistory(tester);
     await tester.scrollUntilVisible(find.text('Workout recent'), 200,
       scrollable: find.byType(Scrollable).first);
     expect(find.text('Workout older'), findsNothing);
@@ -275,7 +290,7 @@ void main() {
     await tester.tap(find.text('Finish workout'));
     await tester.pumpAndSettle();
     router.go('/progress');
-    await tester.pumpAndSettle();
+    await _settleHistory(tester);
     await tester.scrollUntilVisible(find.text('Workout finishing'), 200,
       scrollable: find.byType(Scrollable).first);
     expect(find.text('Workout finishing'), findsOneWidget);
@@ -294,7 +309,7 @@ void main() {
         routerConfig: router,
       ),
     ));
-    await tester.pumpAndSettle();
+    await _settleHistory(tester);
     expect(find.textContaining('Could not load completed workouts'), findsOneWidget);
     await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
