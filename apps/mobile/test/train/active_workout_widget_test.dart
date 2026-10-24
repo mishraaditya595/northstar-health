@@ -93,7 +93,11 @@ void main() {
       'running',
     );
 
-    await tester.ensureVisible(find.text('Pause'));
+    await tester.scrollUntilVisible(
+      find.text('Pause'), -240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Pause'));
     await tester.pumpAndSettle();
     expect(repository.getSession(sessionUuid)!.status, WorkoutStatus.paused);
