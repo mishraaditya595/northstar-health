@@ -338,7 +338,7 @@ void main() {
         description: '',
         exercises: [part('new-row', 'custom-row', 0)],
       ),
-      throwsStateError,
+      throwsA(isA<ArchivedExercisePlanConflict>()),
     );
     expect(library.getPlan('new-plan'), isNull);
     expect(
@@ -352,7 +352,7 @@ void main() {
           part('added-row', 'custom-row', 1),
         ],
       ),
-      throwsStateError,
+      throwsA(isA<ArchivedExercisePlanConflict>()),
     );
     expect(library.getPlan('old-plan')!.name, 'Retained');
     expect(library.getPlan('old-plan')!.exercises, hasLength(1));

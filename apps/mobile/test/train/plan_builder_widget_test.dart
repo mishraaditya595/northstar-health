@@ -503,4 +503,27 @@ void main() {
     expect(fake.planRecords, isEmpty);
   });
 
+  test('fake repository mirrors archived reference constraint', () {
+    final fake = FakeLibrary();
+    fake.extraExercises.add(const ExerciseRecord(
+      uuid: 'custom.archived', name: 'Archived row',
+      muscleGroup: 'Back', equipment: 'Cable',
+      movementCategory: 'Pull', inputMode: 'reps_load',
+      isBuiltIn: false, updatedAtMs: 1, archivedAtMs: 2,
+    ));
+    expect(
+      () => fake.savePlan(
+        uuid: 'new', name: 'Bad plan', description: '',
+        exercises: [
+          const PlanExerciseRecord(
+            uuid: 'row', exerciseUuid: 'custom.archived',
+            position: 0, targetSets: 3,
+          ),
+        ],
+      ),
+      throwsA(isA<ArchivedExercisePlanConflict>()),
+    );
+    expect(fake.planRecords, isEmpty);
+  });
+
 }

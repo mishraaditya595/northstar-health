@@ -22,8 +22,8 @@ scratch="$(mktemp -d)"
 installed=false
 
 cleanup() {
-  if [[ "$installed" == true ]]; then rm -f -- "$target"; fi
-  rm -rf -- "$scratch"
+  if [[ "$installed" == true ]]; then rm -f "$target"; fi
+  rm -rf "$scratch"
 }
 trap cleanup EXIT
 
@@ -45,7 +45,7 @@ if [[ -z "$native" ]]; then
   exit 3
 fi
 
-cp -- "$native" "$target"
+cp "$native" "$target"
 installed=true
 cd "$app_dir"
 flutter pub get --enforce-lockfile
