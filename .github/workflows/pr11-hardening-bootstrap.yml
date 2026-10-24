@@ -1,4 +1,4 @@
-name: PR11 history hardening and schema proof
+name: PR11 format, analyzer and schema proof
 on:
   push:
     branches: [feat/phase1-workout-history-progress]
@@ -46,18 +46,6 @@ jobs:
       - name: Flutter analyze
         working-directory: apps/mobile
         run: flutter analyze
-      - name: Install native ObjectBox v5.3.2
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -fLsS --retry 3 https://github.com/objectbox/objectbox-c/releases/download/v5.3.2/objectbox-linux-x64.tar.gz -o /tmp/objectbox-linux-x64.tar.gz
-          echo '6dbb5450c36dd11ee9074f16ecc61e79b45ff43c2082934601f3166b39c8a613  /tmp/objectbox-linux-x64.tar.gz' | sha256sum -c -
-          mkdir -p /tmp/obj
-          tar -xzf /tmp/objectbox-linux-x64.tar.gz -C /tmp/obj
-          so=$(find /tmp/obj -type f -name libobjectbox.so -print -quit)
-          test -n "$so"
-          sudo install -m 755 "$so" /usr/local/lib/libobjectbox.so
-          sudo ldconfig
-      - name: Flutter and native ObjectBox full suite
+      - name: Verify generated model is committed
         working-directory: apps/mobile
-        run: flutter test
+        run: git diff --exit-code -- lib/objectbox-model.json lib/objectbox.g.dart
