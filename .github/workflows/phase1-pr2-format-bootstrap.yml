@@ -33,7 +33,8 @@ jobs:
             lib/features/train/train_page.dart \
             lib/features/train/exercise_catalog_page.dart \
             lib/features/train/plan_editor_page.dart \
-            lib/app/northstar_app.dart; do
+            lib/app/northstar_app.dart \
+            test/train/plan_builder_widget_test.dart; do
             echo "BEGIN_FORMATTED_FILE:$file"
             base64 -w0 "$file"
             echo
