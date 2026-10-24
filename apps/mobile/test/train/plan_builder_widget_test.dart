@@ -112,6 +112,11 @@ void main() {
     expect(find.textContaining('3 sets'), findsOneWidget);
 
     await tester.ensureVisible(find.text('Save plan offline'));
+    await tester.pumpAndSettle();
+    // ensureVisible can align to the exact bottom edge of the test viewport.
+    // Move the list farther so the simulated tap hits the button.
+    await tester.drag(find.byType(ListView).last, const Offset(0, -160));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Save plan offline'));
     await tester.pumpAndSettle();
 
