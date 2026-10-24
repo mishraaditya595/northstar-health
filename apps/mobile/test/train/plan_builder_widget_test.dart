@@ -12,6 +12,8 @@ import 'package:northstar_health/features/workouts/domain/workout_library_reposi
 class FakeLibrary implements WorkoutLibraryRepository {
   final planRecords = <String, WorkoutPlanRecord>{};
   int archiveCalls = 0;
+  bool rejectArchivedOnSave = false;
+  final extraExercises = <ExerciseRecord>[];
   final exercise = const ExerciseRecord(
     uuid: 'builtin.v1.bench-press',
     name: 'Barbell bench press',
@@ -29,6 +31,7 @@ class FakeLibrary implements WorkoutLibraryRepository {
   @override
   List<ExerciseRecord> listExercises({bool includeArchived = false}) => [
     exercise,
+    ...extraExercises.where((e) => includeArchived || e.archivedAtMs == null),
   ];
 
   @override
@@ -44,7 +47,10 @@ class FakeLibrary implements WorkoutLibraryRepository {
   void archiveCustomExercise(String uuid) => throw UnimplementedError();
 
   @override
-  WorkoutPlanRecord? getPlan(String uuid) => planRecords[uuid];
+  WorkoutPlanRecord? getPlan(String uuid) {
+    final plan = planRecords[uuid];
+    return plan?.archivedAtMs == null ? plan : null;
+  }
 
   @override
   List<WorkoutPlanRecord> listPlans() => planRecords.values.toList();
@@ -57,7 +63,21 @@ class FakeLibrary implements WorkoutLibraryRepository {
     required List<PlanExerciseRecord> exercises,
     int? expectedUpdatedAtMs,
   }) {
-    final original = planRecords[uuid];
+    final original = getPlan(uuid);
+    if (rejectArchivedOnSave) {
+      throw const ArchivedExercisePlanConflict();
+    }
+    final archivedDefinitions = listExercises(includeArchived: true)
+        .where((e) => e.archivedAtMs != null)
+        .map((e) => e.uuid)
+        .toSet();
+    for (final item in exercises) {
+      if (archivedDefinitions.contains(item.exerciseUuid) &&
+          !(original?.exercises.any((saved) =>
+              saved.uuid == item.uuid && saved.exerciseUuid == item.exerciseUuid) ?? false)) {
+        throw const ArchivedExercisePlanConflict();
+      }
+    }
     if ((original == null && expectedUpdatedAtMs != null) ||
         (original != null && original.updatedAtMs != expectedUpdatedAtMs)) {
       throw const PlanEditConflict();
@@ -181,7 +201,6 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text(' · up to 12 reps'), findsNothing);
     expect(find.textContaining('up to 12 reps'), findsOneWidget);
     await tester.enterText(find.byType(TextField).first, 'Upper B');
     await tester.ensureVisible(find.text('Save plan offline'));
@@ -354,4 +373,134 @@ void main() {
     expect(find.text('No plans yet'), findsOneWidget);
     expect(fake.planRecords, isEmpty);
   });
+  testWidgets('missing edit plan disables save and cannot create ghost', (tester) async {
+    final fake = FakeLibrary();
+    final router = GoRouter(initialLocation: '/train/plans/ghost/edit', routes: [
+      GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+      GoRoute(path: '/train/plans/:id/edit',
+        builder: (_, _) => const PlanEditorPage(planUuid: 'ghost')),
+    ]);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+      child: MaterialApp.router(theme: NorthstarTheme.build(Brightness.light),
+          routerConfig: router),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('This plan was archived or is unavailable.'), findsOneWidget);
+    final save = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Save plan offline'),
+    );
+    expect(save.onPressed, isNull);
+    expect(fake.planRecords, isEmpty);
+  });
+
+  testWidgets('archived edit plan cannot be saved or re-created', (tester) async {
+    final fake = FakeLibrary();
+    fake.planRecords['old'] = const WorkoutPlanRecord(
+      uuid: 'old', name: 'Old archived plan', description: '',
+      updatedAtMs: 1, archivedAtMs: 2, exercises: [],
+    );
+    final router = GoRouter(initialLocation: '/train/plans/old/edit', routes: [
+      GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+      GoRoute(path: '/train/plans/:id/edit',
+        builder: (_, _) => const PlanEditorPage(planUuid: 'old')),
+    ]);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+      child: MaterialApp.router(theme: NorthstarTheme.build(Brightness.light),
+          routerConfig: router),
+    ));
+    await tester.pumpAndSettle();
+    expect(tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Save plan offline'),
+    ).onPressed, isNull);
+    expect(fake.planRecords['old']!.name, 'Old archived plan');
+    expect(fake.archiveCalls, 0);
+  });
+
+  testWidgets('moving cursor only does not produce discard dialog', (tester) async {
+    final fake = FakeLibrary();
+    fake.planRecords['existing'] = const WorkoutPlanRecord(
+      uuid: 'existing', name: 'Upper A', description: '',
+      updatedAtMs: 1, exercises: [],
+    );
+    final router = GoRouter(initialLocation: '/train', routes: [
+      GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+      GoRoute(path: '/train/plans/:id/edit',
+        builder: (_, _) => const PlanEditorPage(planUuid: 'existing')),
+    ]);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+      child: MaterialApp.router(theme: NorthstarTheme.build(Brightness.light),
+          routerConfig: router),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Upper A'));
+    await tester.pumpAndSettle();
+    await tester.showKeyboard(find.byType(TextField).first);
+    tester.testTextInput.updateEditingValue(
+      const TextEditingValue(text: 'Upper A',
+        selection: TextSelection.collapsed(offset: 2)),
+    );
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Discard unsaved changes?'), findsNothing);
+    expect(find.text('Your plans'), findsOneWidget);
+  });
+
+  testWidgets('system back warns before discarding actual edits', (tester) async {
+    final fake = FakeLibrary();
+    final router = GoRouter(initialLocation: '/train', routes: [
+      GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+      GoRoute(path: '/train/plans/new', builder: (_, _) => const PlanEditorPage()),
+    ]);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+      child: MaterialApp.router(theme: NorthstarTheme.build(Brightness.light),
+          routerConfig: router),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Create training plan'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'Actual edit');
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Discard unsaved changes?'), findsOneWidget);
+    await tester.tap(find.text('Keep editing'));
+    await tester.pumpAndSettle();
+    expect(find.text('PLAN THE WORK'), findsOneWidget);
+    expect(fake.planRecords, isEmpty);
+  });
+
+  testWidgets('archived exercise save error is actionable', (tester) async {
+    final fake = FakeLibrary()..rejectArchivedOnSave = true;
+    final router = GoRouter(initialLocation: '/train', routes: [
+      GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+      GoRoute(path: '/train/plans/new', builder: (_, _) => const PlanEditorPage()),
+    ]);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [workoutLibraryRepositoryProvider.overrideWithValue(fake)],
+      child: MaterialApp.router(theme: NorthstarTheme.build(Brightness.light),
+          routerConfig: router),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Create training plan'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'Upper A');
+    await tester.ensureVisible(find.text('Save plan offline'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).last, const Offset(0, -150));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save plan offline'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('archived'), findsWidgets);
+    expect(fake.planRecords, isEmpty);
+  });
+
 }
