@@ -301,4 +301,55 @@ void main() {
     );
     expect(store.box<WorkoutSessionEntity>().count(), 0);
   });
+
+  test('missing checkpoint makes transitions fail closed without status mutation', () {
+    final s = startQuick();
+    final checkpoints = store.box<WorkoutSessionStateEntity>();
+    checkpoints.remove(checkpoints.getAll().single.id);
+    expect(
+      () => engine.pauseWorkout(s.uuid, expectedRevision: s.revision),
+      throwsStateError,
+    );
+    expect(
+      () => engine.finishWorkout(
+        s.uuid, expectedRevision: s.revision, finishedAtUtc: finished,
+      ),
+      throwsStateError,
+    );
+    expect(sessions.getSession(s.uuid)!.status, WorkoutStatus.inProgress);
+    expect(sessions.getSession(s.uuid)!.revision, s.revision);
+    expect(() => engine.recoverActiveWorkout(), throwsStateError);
+  });
+
+  test('unknown unfinished status blocks new starts without guessing state', () {
+    final s = startQuick();
+    final box = store.box<WorkoutSessionEntity>();
+    final entity = box.getAll().single;
+    entity.status = 'future_live_state';
+    box.put(entity);
+    expect(() => engine.recoverActiveWorkout(), throwsStateError);
+    expect(() => startQuick(id: 'second'), throwsStateError);
+    expect(sessions.getSession(s.uuid)!.status, WorkoutStatus.unknown);
+    expect(store.box<WorkoutSessionEntity>().count(), 1);
+  });
+
+  test('start collision with existing workout UUID never mutates first workout', () {
+    final original = startQuick();
+    expect(
+      () => engine.startWorkout(
+        sessionUuid: original.uuid, quickName: 'Different name',
+        startedAtUtc: started, originalOffsetMinutes: 330,
+      ),
+      throwsStateError,
+    );
+    expect(
+      () => engine.startWorkout(
+        sessionUuid: original.uuid, quickName: 'Quick strength',
+        startedAtUtc: started, originalOffsetMinutes: 0,
+      ),
+      throwsStateError,
+    );
+    expect(sessions.getSession(original.uuid)!.revision, original.revision);
+    expect(store.box<WorkoutSessionStateEntity>().count(), 1);
+  });
 }
