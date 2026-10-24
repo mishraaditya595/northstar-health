@@ -10,6 +10,12 @@ Applies to **all AI coding, design, test and review agents**. Read `README.md`, 
 4. Use `prototypes/performance-v2/` and `docs/DESIGN_SYSTEM.md` as visual authority. Support light/dark, phone and tablet split screen, text scaling, accessibility, safe areas, reduced motion and low-end Android.
 5. Test loading, empty, stale, denied, failure/retry, offline, process death, duplicate and account separation. Use fictional or fully synthetic test health data, never real user exports in Git.
 6. From `apps/mobile/`, run `dart format --output=none --set-exit-if-changed lib test`, `flutter analyze`, `flutter test`; include runtime and actual device tests for native/persistence/watch integration. Record all unrun checks and risks.
+7. AI agents may create branches, implement changes, open PRs, address review findings, and run tests. Merging into main is prohibited.
+8. State assumptions. Ask when requirements are ambiguous instead of guessing, especially for data ownership, sync and permissions.
+9. Every changed line must trace to the task. Report unrelated dead code instead of removing it. Match the surrounding code's style; no unrelated formatting or cleanup.
+10. Start a bug fix with a failing test. Each plan step names the check that verifies it.
+11. Write the minimum code that solves the task. No speculative features, single-use abstractions or unrequested error handling, except where the durable write and conflict contract requires it.
+12. Split large work into stages that are each independently verifiable and shippable.
 
 ## Data ownership hard rules
 
