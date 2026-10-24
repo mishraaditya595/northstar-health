@@ -1,0 +1,50 @@
+# Temporary read-only formatting evidence, removed before PR review.
+name: PR10 final warmup formatter
+on:
+  push:
+    branches: [feat/phase1-active-workout-logger]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - name: Format changed Dart
+        working-directory: apps/mobile
+        run: |
+          flutter pub get --enforce-lockfile
+          dart format lib test
+      - name: Print formatted changed sources
+        working-directory: apps/mobile
+        run: |
+          for file in lib/features/train/active_workout_page.dart test/train/active_workout_widget_test.dart; do
+            echo "BEGIN_FORMATTED_FILE:$file"
+            base64 -w0 "$file"
+            echo
+            echo "END_FORMATTED_FILE:$file"
+          done
+      - name: Analyze
+        working-directory: apps/mobile
+        run: flutter analyze
+      - name: Install pinned native ObjectBox
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fLsS --retry 3 https://github.com/objectbox/objectbox-c/releases/download/v5.3.2/objectbox-linux-x64.tar.gz -o /tmp/objectbox.tar.gz
+          echo '6dbb5450c36dd11ee9074f16ecc61e79b45ff43c2082934601f3166b39c8a613  /tmp/objectbox.tar.gz' | sha256sum -c -
+          mkdir -p /tmp/native
+          tar -xzf /tmp/objectbox.tar.gz -C /tmp/native
+          so=$(find /tmp/native -name libobjectbox.so -type f -print -quit)
+          test -n "$so"
+          sudo install -m 755 "$so" /usr/local/lib/libobjectbox.so
+          sudo ldconfig
+      - name: All Flutter tests
+        working-directory: apps/mobile
+        run: flutter test
