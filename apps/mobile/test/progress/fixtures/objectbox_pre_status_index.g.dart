@@ -17,7 +17,7 @@ import 'package:objectbox/internal.dart'
 import 'package:objectbox/objectbox.dart' as obx;
 import 'package:objectbox_flutter_libs/objectbox_flutter_libs.dart';
 
-import '../../../lib/features/workouts/data/workout_entities.dart';
+import 'package:northstar_health/features/workouts/data/workout_entities.dart';
 
 export 'package:objectbox/objectbox.dart'; // so that callers only have to import this file
 
