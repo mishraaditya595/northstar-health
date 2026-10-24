@@ -343,6 +343,31 @@ void main() {
     expect(calculateWorkoutHistory([session]).completedWorkingSets, 0);
   });
 
+  test('trend date matches session finish across local midnight', () {
+    // The top set may be logged before midnight, but the chart represents
+    // the completed workout and must agree with its history-list date.
+    final session = workout(
+      id: 'midnight',
+      status: WorkoutStatus.completed,
+      completedAt: DateTime.utc(2026, 10, 24, 19),
+      sets: [
+        set(
+          id: 'midnight-set',
+          exercise: 'exercise-midnight',
+          status: WorkoutSetStatus.completed,
+          kind: WorkoutSetKind.working,
+          reps: 6,
+          grams: 50000,
+        ),
+      ],
+    );
+    final trend = calculateWorkoutHistory([session]).exerciseTrends.single;
+    expect(originalLocalDay(session), DateTime.utc(2026, 10, 25));
+    expect(trend.points.single.originalLocalDay, originalLocalDay(session));
+    expect(trend.points.single.performedAtUtc, session.completedAtUtc);
+    expect(trend.points.single.reps, 6);
+  });
+
   test('rolling 30 and 90 day periods include exact cutoff UTC', () {
     final now = DateTime.utc(2026, 10, 24, 12);
     final sessions = [
