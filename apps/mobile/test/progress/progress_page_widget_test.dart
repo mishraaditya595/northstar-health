@@ -107,32 +107,21 @@ void main() {
     }
   }
 
-  Future<void> settleHistory(WidgetTester tester) async {
-    await tester.pump();
-    final container = ProviderScope.containerOf(
-      tester.element(find.byType(ProgressPage)),
-    );
-    await tester.runAsync(() async {
-      try {
-        await container.read(completedWorkoutHistoryProvider.future);
-      } catch (_) {
-        // Error state itself is asserted in the retry test.
-      }
-    });
-    await tester.pumpAndSettle();
-  }
-
   Future<void> showProgress(WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [objectBoxStoreProvider.overrideWithValue(store)],
+        overrides: [
+          objectBoxStoreProvider.overrideWithValue(store),
+          workoutHistoryRepositoryProvider.overrideWithValue(
+            _ImmediateHistoryRepository(store)),
+        ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.light),
           routerConfig: router,
         ),
       ),
     );
-    await settleHistory(tester);
+    await tester.pumpAndSettle();
   }
 
 
@@ -191,14 +180,18 @@ void main() {
     writeWorkout('wide');
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [objectBoxStoreProvider.overrideWithValue(store)],
+        overrides: [
+          objectBoxStoreProvider.overrideWithValue(store),
+          workoutHistoryRepositoryProvider.overrideWithValue(
+            _ImmediateHistoryRepository(store)),
+        ],
         child: MaterialApp.router(
           theme: NorthstarTheme.build(Brightness.dark),
           routerConfig: router,
         ),
       ),
     );
-    await settleHistory(tester);
+    await tester.pumpAndSettle();
     expect(find.text('Workout wide'), findsOneWidget);
     expect(find.text('1'), findsWidgets);
     expect(find.byType(ChoiceChip), findsAtLeastNWidgets(3));
@@ -263,13 +256,15 @@ void main() {
       overrides: [
         objectBoxStoreProvider.overrideWithValue(store),
         progressNowProvider.overrideWithValue(anchor),
+        workoutHistoryRepositoryProvider.overrideWithValue(
+          _ImmediateHistoryRepository(store)),
       ],
       child: MaterialApp.router(
         theme: NorthstarTheme.build(Brightness.light),
         routerConfig: router,
       ),
     ));
-    await settleHistory(tester);
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Workout recent'), 200,
       scrollable: find.byType(Scrollable).first);
     expect(find.text('Workout older'), findsNothing);
@@ -295,7 +290,7 @@ void main() {
     await tester.tap(find.text('Finish workout'));
     await tester.pumpAndSettle();
     router.go('/progress');
-    await settleHistory(tester);
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Workout finishing'), 200,
       scrollable: find.byType(Scrollable).first);
     expect(find.text('Workout finishing'), findsOneWidget);
@@ -314,16 +309,16 @@ void main() {
         routerConfig: router,
       ),
     ));
-    await settleHistory(tester);
+    await tester.pumpAndSettle();
     expect(fake.calls, 1);
     expect(find.text('Nothing logged yet'), findsOneWidget);
     router.go('/train');
     await tester.pumpAndSettle();
     router.go('/progress');
-    await settleHistory(tester);
+    await tester.pumpAndSettle();
     expect(fake.calls, 1);
     await tester.tap(find.byTooltip('Refresh completed workouts'));
-    await settleHistory(tester);
+    await tester.pumpAndSettle();
     expect(fake.calls, 2);
   });
 
@@ -340,13 +335,25 @@ void main() {
         routerConfig: router,
       ),
     ));
-    await settleHistory(tester);
+    await tester.pumpAndSettle();
     expect(find.textContaining('Could not load completed workouts'), findsOneWidget);
     await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
     expect(find.text('Nothing logged yet'), findsOneWidget);
     expect(fake.calls, 2);
   });
+}
+
+/// Widget tests use immediate native read of the same ObjectBox Store;
+/// worker-isolate behavior is independently tested by the native suite.
+class _ImmediateHistoryRepository implements WorkoutHistoryRepository {
+  _ImmediateHistoryRepository(Store store)
+      : _native = ObjectBoxWorkoutHistoryRepository(store);
+  final ObjectBoxWorkoutHistoryRepository _native;
+  @override
+  WorkoutHistorySnapshot readCompleted() => _native.readCompleted();
+  @override
+  Future<WorkoutHistorySnapshot> readCompletedAsync() async => readCompleted();
 }
 
 class _FlakyHistoryRepository implements WorkoutHistoryRepository {
