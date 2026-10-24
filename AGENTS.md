@@ -14,7 +14,7 @@ Applies to **all AI coding, design, test and review agents**. Read `README.md`, 
 8. State assumptions. Ask when requirements are ambiguous instead of guessing, especially for data ownership, sync and permissions.
 9. Every changed line must trace to the task. Report unrelated dead code instead of removing it.
 10. Start a bug fix with a failing test. Each plan step names the check that verifies it.
-11. Write the minimum code that solves the task. No speculative features, single-use abstractions or unrequested error handling.
+11. Write the minimum code that solves the task. No speculative features, single-use abstractions or unrequested error handling, except where the durable write and conflict contract requires it.
 
 ## Data ownership hard rules
 
