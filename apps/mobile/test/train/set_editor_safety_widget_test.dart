@@ -163,14 +163,16 @@ void main() {
     expect(writes, hasLength(1));
     expect(writes.single.$2, 90);
   });
-  testWidgets('225 lb displays cleanly and round-trips the saved grams',
-      (tester) async {
+  testWidgets('225 lb displays cleanly and round-trips the saved grams', (
+    tester,
+  ) async {
     current = completed(grams: 102058, inputUnit: LoadUnit.lb);
     await render(tester);
     expect(
-      tester.widget<TextField>(
-        find.byKey(const ValueKey('weight-set-a')),
-      ).controller!.text,
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('weight-set-a')))
+          .controller!
+          .text,
       '225.0',
     );
     await tester.tap(find.text('Update set'));
@@ -179,5 +181,4 @@ void main() {
     expect(writes.single.$1.inputUnit, LoadUnit.lb);
     expect(writes.single.$1.loadGrams, 102058);
   });
-
 }

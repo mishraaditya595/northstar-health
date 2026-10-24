@@ -139,8 +139,9 @@ void main() {
     expect(store.box<WorkoutSessionStateEntity>().count(), 0);
   });
 
-  testWidgets('saving row A retains unsaved reps and load in row B',
-      (tester) async {
+  testWidgets('saving row A retains unsaved reps and load in row B', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(900, 1900);
     tester.view.devicePixelRatio = 1;
     addTearDown(() {
@@ -156,12 +157,14 @@ void main() {
       startedAtUtc: DateTime.now().toUtc(),
       originalOffsetMinutes: 330,
     );
-    repo.addExercise(const WorkoutExerciseRecord(
-      uuid: 'exercise-rows',
-      sessionUuid: 'session-rows',
-      nameSnapshot: 'Squat',
-      position: 0,
-    ));
+    repo.addExercise(
+      const WorkoutExerciseRecord(
+        uuid: 'exercise-rows',
+        sessionUuid: 'session-rows',
+        nameSnapshot: 'Squat',
+        position: 0,
+      ),
+    );
     for (final (index, uuid) in [(0, 'set-a'), (1, 'set-b')]) {
       repo.saveSet(
         sessionUuid: start.uuid,
@@ -190,12 +193,22 @@ void main() {
     await tester.tap(find.text('Save set').first);
     await tester.pumpAndSettle();
 
-    expect(repo.getSession(start.uuid)!.sets
-        .singleWhere((record) => record.uuid == 'set-a').status,
-        WorkoutSetStatus.completed);
-    expect(repo.getSession(start.uuid)!.sets
-        .singleWhere((record) => record.uuid == 'set-b').status,
-        WorkoutSetStatus.planned);
+    expect(
+      repo
+          .getSession(start.uuid)!
+          .sets
+          .singleWhere((record) => record.uuid == 'set-a')
+          .status,
+      WorkoutSetStatus.completed,
+    );
+    expect(
+      repo
+          .getSession(start.uuid)!
+          .sets
+          .singleWhere((record) => record.uuid == 'set-b')
+          .status,
+      WorkoutSetStatus.planned,
+    );
     expect(tester.widget<TextField>(draftReps).controller!.text, '9');
     expect(tester.widget<TextField>(draftWeight).controller!.text, '75.75');
   });
