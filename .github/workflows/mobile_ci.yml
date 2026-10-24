@@ -54,6 +54,37 @@ jobs:
       - name: Unit, widget and native ObjectBox repository tests
         working-directory: apps/mobile
         run: flutter test
+      # ObjectBox's Android JNI module requires this exact side-by-side
+      # CMake version. Preinstall it here instead of letting Gradle attempt an
+      # unverified SDK download during :jni:configureCMakeDebug.
+      - name: Install Android JNI CMake with verification and retries
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          test -n "$SDK_ROOT"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [[ ! -x "$SDKMANAGER" ]]; then
+            SDKMANAGER="$(command -v sdkmanager)"
+          fi
+          CMAKE="$SDK_ROOT/cmake/3.22.1/bin/cmake"
+          for attempt in 1 2 3; do
+            if [[ -x "$CMAKE" ]] && "$CMAKE" --version | head -n 1 | grep -Fq '3.22.1'; then
+              echo "CMake 3.22.1 is available for the Android JNI build."
+              exit 0
+            fi
+            echo "Installing Android SDK CMake 3.22.1 (attempt $attempt of 3)"
+            rm -rf "$SDK_ROOT/cmake/3.22.1"
+            if timeout 360 "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install 'cmake;3.22.1' &&
+              [[ -x "$CMAKE" ]] && "$CMAKE" --version | head -n 1 | grep -Fq '3.22.1'; then
+              echo "CMake 3.22.1 successfully installed and verified."
+              exit 0
+            fi
+            echo "::warning::Android CMake 3.22.1 installation or verification failed (attempt $attempt)"
+            if [[ "$attempt" -lt 3 ]]; then sleep $((attempt * 10)); fi
+          done
+          echo "::error::Cannot install a valid Android CMake 3.22.1 package after three attempts."
+          exit 1
       - name: Android debug APK
         working-directory: apps/mobile
         run: flutter build apk --debug --no-pub
