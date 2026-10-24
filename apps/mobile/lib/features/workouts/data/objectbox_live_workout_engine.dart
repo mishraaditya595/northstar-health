@@ -312,7 +312,9 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
           s.status != WorkoutStatus.paused.name) {
         throw StateError('Workout cannot be finished');
       }
-      if (atMs < s.startedAtMs) throw ArgumentError('End precedes start');
+      if (atMs < s.startedAtMs) {
+        throw ArgumentError('End precedes start');
+      }
       final checkpoint = _requireCheckpoint(uuid);
       s.status = WorkoutStatus.completed.name;
       s.completedAtMs = atMs;
