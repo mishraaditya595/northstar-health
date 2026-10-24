@@ -261,12 +261,24 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
           session.sets.where((s) => s.exerciseUuid == exercise.uuid).toList()
             ..sort((a, b) => a.position.compareTo(b.position));
     }
-    return ListView(
+    final restActive =
+        checkpoint.restStatus == RestTimerStatus.running ||
+        checkpoint.restStatus == RestTimerStatus.paused;
+    final restTimer = RestTimerCard(
+      key: ValueKey('${session.uuid}-${checkpoint.savedAtMs}'),
+      checkpoint: checkpoint,
+      runningWorkout: !paused,
+      floating: true,
+      onStart: (seconds) =>
+          _perform((a) => a.startRest(session, checkpoint, seconds)),
+      onClear: () => _perform((a) => a.clearRest(session, checkpoint)),
+    );
+    final list = ListView(
       padding: EdgeInsets.fromLTRB(
         16,
         16,
         16,
-        40 + MediaQuery.paddingOf(context).bottom,
+        (restActive ? 104 : 40) + MediaQuery.paddingOf(context).bottom,
       ),
       children: [
         Text(
@@ -341,14 +353,9 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
           ],
         ),
         const SizedBox(height: 12),
-        RestTimerCard(
-          key: ValueKey('${session.uuid}-${checkpoint.savedAtMs}'),
-          checkpoint: checkpoint,
-          runningWorkout: !paused,
-          onStart: (seconds) =>
-              _perform((a) => a.startRest(session, checkpoint, seconds)),
-          onClear: () => _perform((a) => a.clearRest(session, checkpoint)),
-        ),
+        // Same slot either way, so set rows keep their unsaved drafts when the
+        // timer starts floating.
+        restActive ? const SizedBox.shrink() : restTimer,
         const SizedBox(height: 16),
         for (final exercise in session.exercises) ...[
           Card(
@@ -422,6 +429,18 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
           'Cloud backup is not enabled in this phase.',
           textAlign: TextAlign.center,
         ),
+      ],
+    );
+    return Stack(
+      children: [
+        list,
+        if (restActive)
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 12 + MediaQuery.paddingOf(context).bottom,
+            child: restTimer,
+          ),
       ],
     );
   }

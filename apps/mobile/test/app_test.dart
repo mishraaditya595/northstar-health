@@ -46,4 +46,36 @@ void main() {
 
     expect(find.text('Energy check-in'), findsNothing);
   });
+
+  testWidgets('Workout screen hides the bottom nav', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const ProviderScope(child: NorthstarApp()));
+    await tester.pumpAndSettle();
+    expect(find.byType(FloatingNavBar), findsOneWidget);
+
+    ProviderScope.containerOf(tester.element(find.byType(MaterialApp)))
+        .read(routerProvider)
+        .go('/train/workout');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Workout in progress'), findsOneWidget);
+    expect(find.byType(FloatingNavBar), findsNothing);
+  });
+
+  testWidgets('Workout screen hides the tablet rail too', (tester) async {
+    tester.view.physicalSize = const Size(1200, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const ProviderScope(child: NorthstarApp()));
+    await tester.pumpAndSettle();
+    ProviderScope.containerOf(tester.element(find.byType(MaterialApp)))
+        .read(routerProvider)
+        .go('/train/workout');
+    await tester.pumpAndSettle();
+    expect(find.byType(NavigationRail), findsNothing);
+  });
 }

@@ -108,6 +108,47 @@ void main() {
     expect(store.box<WorkoutSetEntity>().count(), 0);
   });
 
+  testWidgets('running rest timer stays on screen while the page scrolls', (
+    tester,
+  ) async {
+    await showApp(tester);
+    await tester.tap(find.text('Quick workout'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start workout'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add exercise'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Barbell bench press').last);
+    await tester.pumpAndSettle();
+    for (var n = 0; n < 3; n++) {
+      await tester.ensureVisible(find.text('Add set'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Add set'));
+      await tester.pumpAndSettle();
+    }
+    expect(find.byKey(const ValueKey('floating-rest-timer')), findsNothing);
+
+    final fields = find.descendant(
+      of: find.byType(SetEditorTile),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(fields.first, '5');
+    await tester.ensureVisible(find.text('Save set').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save set').first);
+    await tester.pumpAndSettle();
+
+    final timer = find.byKey(const ValueKey('floating-rest-timer'));
+    expect(timer, findsOneWidget);
+    final viewport = tester.view.physicalSize / tester.view.devicePixelRatio;
+    await tester.drag(find.byType(ListView).first, const Offset(0, -900));
+    await tester.pumpAndSettle();
+    final rect = tester.getRect(timer);
+    expect(rect.top, greaterThan(0));
+    expect(rect.bottom, lessThanOrEqualTo(viewport.height));
+    expect(find.byTooltip('Clear rest'), findsOneWidget);
+  });
+
   testWidgets('quick workout records real sets and finishes locally', (
     tester,
   ) async {

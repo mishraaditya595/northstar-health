@@ -129,6 +129,8 @@ class AdaptiveShell extends ConsumerWidget {
                 ? 2
                 : _routes.indexOf(location))
             .clamp(0, 3);
+    // The live workout is a focus screen: no tab bar or rail.
+    final focus = location == '/train/workout';
     return LayoutBuilder(
       builder: (context, constraints) {
         final expanded = constraints.maxWidth >= 600;
@@ -136,7 +138,7 @@ class AdaptiveShell extends ConsumerWidget {
 
         final body = SafeArea(
           // Compact: the floating nav overlays content; pages pad past it.
-          bottom: expanded,
+          bottom: expanded || focus,
           child: Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
@@ -145,6 +147,8 @@ class AdaptiveShell extends ConsumerWidget {
             ),
           ),
         );
+
+        if (focus) return Scaffold(body: body);
 
         if (!expanded) {
           return Scaffold(
