@@ -19,15 +19,27 @@ class ActiveWorkoutView {
   final WorkoutRecoveryCheckpoint checkpoint;
 }
 
-final activeWorkoutProvider = FutureProvider<ActiveWorkoutView?>((ref) async {
-  final engine = ref.watch(liveWorkoutEngineProvider);
-  final session = engine.recoverActiveWorkout();
-  if (session == null) return null;
-  final checkpoint = engine.readCheckpoint(session.uuid);
-  if (checkpoint == null || checkpoint.checkpointRevision != session.revision) {
-    throw StateError('Recovery checkpoint is missing or outdated');
+/// ObjectBox reads are synchronous. Return an explicit AsyncValue to keep
+/// recoverability errors visible without introducing transient loading states
+/// or destroying in-progress form controls after each saved set.
+final activeWorkoutProvider = Provider<AsyncValue<ActiveWorkoutView?>>((ref) {
+  try {
+    final engine = ref.watch(liveWorkoutEngineProvider);
+    final session = engine.recoverActiveWorkout();
+    if (session == null) {
+      return const AsyncData<ActiveWorkoutView?>(null);
+    }
+    final checkpoint = engine.readCheckpoint(session.uuid);
+    if (checkpoint == null ||
+        checkpoint.checkpointRevision != session.revision) {
+      throw StateError('Recovery checkpoint is missing or outdated');
+    }
+    return AsyncData<ActiveWorkoutView?>(
+      ActiveWorkoutView(session, checkpoint),
+    );
+  } catch (error, trace) {
+    return AsyncError<ActiveWorkoutView?>(error, trace);
   }
-  return ActiveWorkoutView(session, checkpoint);
 });
 
 abstract interface class WorkoutActions {

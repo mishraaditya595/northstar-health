@@ -145,7 +145,9 @@ void main() {
       );
       await showApp(tester);
       expect(find.text('Resume: Quick workout'), findsOneWidget);
-      await tester.tap(find.text('Resume: Quick workout'));
+      await tester.ensureVisible(find.text('Resume: Quick workout'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Resume: Quick workout'));
       await tester.pumpAndSettle();
       expect(find.text('Workout in progress'), findsOneWidget);
       expect(
