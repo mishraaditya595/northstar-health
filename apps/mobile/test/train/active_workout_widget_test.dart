@@ -8,6 +8,7 @@ import 'package:northstar_health/core/design/northstar_theme.dart';
 import 'package:northstar_health/core/storage/objectbox_store_provider.dart';
 import 'package:northstar_health/features/train/active_workout_page.dart';
 import 'package:northstar_health/features/train/train_page.dart';
+import 'package:northstar_health/features/workouts/data/objectbox_live_workout_engine.dart';
 import 'package:northstar_health/features/workouts/data/objectbox_workout_repository.dart';
 import 'package:northstar_health/features/workouts/data/workout_entities.dart';
 import 'package:northstar_health/features/workouts/domain/workout_models.dart';
@@ -136,6 +137,67 @@ void main() {
     await tester.pumpAndSettle();
     expect(repository.getSession(sessionUuid)!.status, WorkoutStatus.completed);
     expect(store.box<WorkoutSessionStateEntity>().count(), 0);
+  });
+
+  testWidgets('saving row A retains unsaved reps and load in row B',
+      (tester) async {
+    tester.view.physicalSize = const Size(900, 1900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final engine = ObjectBoxLiveWorkoutEngine(store);
+    final repo = ObjectBoxWorkoutRepository(store);
+    final start = engine.startWorkout(
+      sessionUuid: 'session-rows',
+      quickName: 'Two rows',
+      startedAtUtc: DateTime.now().toUtc(),
+      originalOffsetMinutes: 330,
+    );
+    repo.addExercise(const WorkoutExerciseRecord(
+      uuid: 'exercise-rows',
+      sessionUuid: 'session-rows',
+      nameSnapshot: 'Squat',
+      position: 0,
+    ));
+    for (final (index, uuid) in [(0, 'set-a'), (1, 'set-b')]) {
+      repo.saveSet(
+        sessionUuid: start.uuid,
+        expectedRevision: repo.getSession(start.uuid)!.revision,
+        set: WorkoutSetRecord(
+          uuid: uuid,
+          exerciseUuid: 'exercise-rows',
+          position: index,
+          kind: WorkoutSetKind.working,
+          status: WorkoutSetStatus.planned,
+        ),
+      );
+    }
+    await showApp(tester);
+    router.go('/train/workout');
+    await tester.pumpAndSettle();
+
+    final draftReps = find.byKey(const ValueKey('reps-set-b'));
+    final draftWeight = find.byKey(const ValueKey('weight-set-b'));
+    expect(draftReps, findsOneWidget);
+    expect(draftWeight, findsOneWidget);
+    await tester.enterText(draftReps, '9');
+    await tester.enterText(draftWeight, '75.75');
+    await tester.enterText(find.byKey(const ValueKey('reps-set-a')), '8');
+    await tester.enterText(find.byKey(const ValueKey('weight-set-a')), '55');
+    await tester.tap(find.text('Save set').first);
+    await tester.pumpAndSettle();
+
+    expect(repo.getSession(start.uuid)!.sets
+        .singleWhere((record) => record.uuid == 'set-a').status,
+        WorkoutSetStatus.completed);
+    expect(repo.getSession(start.uuid)!.sets
+        .singleWhere((record) => record.uuid == 'set-b').status,
+        WorkoutSetStatus.planned);
+    expect(tester.widget<TextField>(draftReps).controller!.text, '9');
+    expect(tester.widget<TextField>(draftWeight).controller!.text, '75.75');
   });
 
   testWidgets(
