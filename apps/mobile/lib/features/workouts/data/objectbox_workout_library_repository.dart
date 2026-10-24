@@ -51,8 +51,9 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
       final now = DateTime.now().toUtc().millisecondsSinceEpoch;
       for (final item in builtInExercises) {
         final uuid = 'builtin.v1.${item.id}';
-        if (_byUuid(_catalog, ExerciseDefinitionEntity_.uuid, uuid) != null)
+        if (_byUuid(_catalog, ExerciseDefinitionEntity_.uuid, uuid) != null) {
           continue;
+        }
         _catalog.put(
           ExerciseDefinitionEntity(
             uuid: uuid,
@@ -125,8 +126,9 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
             e.uuid != uuid &&
             e.name.trim().toLowerCase() == label.toLowerCase(),
       );
-      if (duplicate)
+      if (duplicate) {
         throw StateError('An exercise with this name already exists');
+      }
       final now = DateTime.now().toUtc().millisecondsSinceEpoch;
       final next =
           previous ??
@@ -151,8 +153,9 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
   void archiveCustomExercise(String uuid) {
     _store.runInTransaction(TxMode.write, () {
       final e = _byUuid(_catalog, ExerciseDefinitionEntity_.uuid, uuid);
-      if (e == null || e.isBuiltIn)
+      if (e == null || e.isBuiltIn) {
         throw StateError('Cannot archive built-in/unknown exercise');
+      }
       if (e.archivedAtMs != null) return;
       e.archivedAtMs = DateTime.now().toUtc().millisecondsSinceEpoch;
       _catalog.put(e); // Keep existing plans and workout snapshots readable.
