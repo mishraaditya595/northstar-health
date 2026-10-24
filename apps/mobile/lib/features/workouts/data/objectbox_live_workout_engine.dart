@@ -277,8 +277,9 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
       if (session.revision != expectedRevision) {
         throw WorkoutRevisionConflict(expectedRevision, session.revision);
       }
-      if (session.status != from.name)
+      if (session.status != from.name) {
         throw StateError('Illegal workout transition');
+      }
       final checkpoint = _requireCheckpoint(uuid);
       session.status = to.name;
       _touch(session);
