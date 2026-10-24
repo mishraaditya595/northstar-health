@@ -14,10 +14,32 @@ class ProgressPage extends ConsumerStatefulWidget {
   ConsumerState<ProgressPage> createState() => _ProgressPageState();
 }
 
-class _ProgressPageState extends ConsumerState<ProgressPage> {
+class _ProgressPageState extends ConsumerState<ProgressPage>
+    with WidgetsBindingObserver {
   WorkoutHistoryPeriod _period = WorkoutHistoryPeriod.last30Days;
   String? _selectedExerciseKey;
   LoadUnit? _selectedLoadUnit;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // The tab may stay mounted during days in background. Recalculate the
+      // rolling period without discarding the cached ObjectBox history.
+      ref.invalidate(progressNowProvider);
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
