@@ -31,21 +31,25 @@ void main() {
   late StateSetter redraw;
 
   Future<void> render(WidgetTester tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: SingleChildScrollView(
-          child: StatefulBuilder(builder: (context, setState) {
-            redraw = setState;
-            return SetEditorTile(
-              key: ValueKey(current.uuid),
-              record: current,
-              enabled: true,
-              onSave: (value, rest) => writes.add((value, rest)),
-            );
-          }),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: StatefulBuilder(
+              builder: (context, setState) {
+                redraw = setState;
+                return SetEditorTile(
+                  key: ValueKey(current.uuid),
+                  record: current,
+                  enabled: true,
+                  onSave: (value, rest) => writes.add((value, rest)),
+                );
+              },
+            ),
+          ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
   }
 
@@ -54,44 +58,79 @@ void main() {
     writes = [];
   });
 
-  testWidgets('uncommitted fields survive unrelated parent rebuild', (tester) async {
+  testWidgets('uncommitted fields survive unrelated parent rebuild', (
+    tester,
+  ) async {
     await render(tester);
     await tester.enterText(find.byKey(const ValueKey('reps-set-a')), '9');
     await tester.enterText(find.byKey(const ValueKey('weight-set-a')), '75.75');
     // Mimic an independent set saving: parent rerenders, but this saved
     // record has not changed. Its unsaved draft must not be reset.
-    redraw(() => current = const WorkoutSetRecord(
-      uuid: 'set-a', exerciseUuid: 'exercise-a',
-      position: 0, kind: WorkoutSetKind.working,
-      status: WorkoutSetStatus.planned,
-    ));
+    redraw(
+      () => current = const WorkoutSetRecord(
+        uuid: 'set-a',
+        exerciseUuid: 'exercise-a',
+        position: 0,
+        kind: WorkoutSetKind.working,
+        status: WorkoutSetStatus.planned,
+      ),
+    );
     await tester.pump();
-    expect(tester.widget<TextField>(
-        find.byKey(const ValueKey('reps-set-a'))).controller!.text, '9');
-    expect(tester.widget<TextField>(
-        find.byKey(const ValueKey('weight-set-a'))).controller!.text, '75.75');
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('reps-set-a')))
+          .controller!
+          .text,
+      '9',
+    );
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('weight-set-a')))
+          .controller!
+          .text,
+      '75.75',
+    );
 
     // An actual persisted change for THIS row must update its editor.
     redraw(() => current = completed());
     await tester.pump();
-    expect(tester.widget<TextField>(
-        find.byKey(const ValueKey('reps-set-a'))).controller!.text, '8');
-    expect(tester.widget<TextField>(
-        find.byKey(const ValueKey('weight-set-a'))).controller!.text, '101.25');
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('reps-set-a')))
+          .controller!
+          .text,
+      '8',
+    );
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('weight-set-a')))
+          .controller!
+          .text,
+      '101.25',
+    );
   });
 
-  testWidgets('updating saved 101.25 kg does not silently round grams', (tester) async {
+  testWidgets('updating saved 101.25 kg does not silently round grams', (
+    tester,
+  ) async {
     current = completed();
     await render(tester);
-    expect(tester.widget<TextField>(
-        find.byKey(const ValueKey('weight-set-a'))).controller!.text, '101.25');
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('weight-set-a')))
+          .controller!
+          .text,
+      '101.25',
+    );
     await tester.tap(find.text('Update set'));
     await tester.pump();
     expect(writes, hasLength(1));
     expect(writes.single.$1.loadGrams, 101250);
   });
 
-  testWidgets('completed set cannot be skipped without confirmation', (tester) async {
+  testWidgets('completed set cannot be skipped without confirmation', (
+    tester,
+  ) async {
     current = completed();
     await render(tester);
     final skip = tester.widget<TextButton>(
@@ -106,7 +145,9 @@ void main() {
     expect(writes.single.$1.status, WorkoutSetStatus.skipped);
   });
 
-  testWidgets('updating completed set does not restart rest countdown', (tester) async {
+  testWidgets('updating completed set does not restart rest countdown', (
+    tester,
+  ) async {
     current = completed();
     await render(tester);
     await tester.tap(find.text('Update set'));

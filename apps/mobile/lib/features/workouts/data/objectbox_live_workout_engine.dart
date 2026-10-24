@@ -472,7 +472,7 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
     }
     if (status == RestTimerStatus.idle &&
         (checkpoint.restDeadlineUtcMs != null ||
-        checkpoint.restRemainingMsWhenPaused != null)) {
+            checkpoint.restRemainingMsWhenPaused != null)) {
       throw StateError('Idle rest timer has stale deadline');
     }
   }

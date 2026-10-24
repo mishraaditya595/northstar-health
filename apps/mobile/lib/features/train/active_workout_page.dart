@@ -40,26 +40,34 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
       }
     } on WorkoutRevisionConflict {
       if (mounted) {
-        setState(() => _error =
-            'This workout changed elsewhere. Reload the latest saved '
-            'workout and reconcile your edits.');
+        setState(
+          () => _error =
+              'This workout changed elsewhere. Reload the latest saved '
+              'workout and reconcile your edits.',
+        );
       }
     } on ArgumentError {
       if (mounted) {
-        setState(() => _error =
-            'The set contains invalid values. Correct them and try again.');
+        setState(
+          () => _error =
+              'The set contains invalid values. Correct them and try again.',
+        );
       }
     } on StateError {
       if (mounted) {
-        setState(() => _error =
-            'The workout or rest timer changed. Reload the saved state '
-            'before trying again.');
+        setState(
+          () => _error =
+              'The workout or rest timer changed. Reload the saved state '
+              'before trying again.',
+        );
       }
     } catch (_) {
       if (mounted) {
-        setState(() => _error =
-            'Could not confirm the local save. Reload to verify whether '
-            'the change was saved before retrying.');
+        setState(
+          () => _error =
+              'Could not confirm the local save. Reload to verify whether '
+              'the change was saved before retrying.',
+        );
       }
     } finally {
       if (mounted) {
@@ -440,7 +448,8 @@ class _SetEditorTileState extends State<SetEditorTile> {
     }
     unit = after.inputUnit == LoadUnit.unknown ? LoadUnit.kg : after.inputUnit;
     kind = after.kind == WorkoutSetKind.unknown
-        ? WorkoutSetKind.working : after.kind;
+        ? WorkoutSetKind.working
+        : after.kind;
     reps.text = after.reps?.toString() ?? '';
     weight.text = _savedWeightText(after.loadGrams, unit);
     rpe.text = after.rpe?.toString() ?? '';
@@ -499,7 +508,10 @@ class _SetEditorTileState extends State<SetEditorTile> {
         completedAtUtc: s.completedAtUtc ?? DateTime.now().toUtc(),
       );
       updated.validate();
-      widget.onSave(updated, s.status == WorkoutSetStatus.planned && rest > 0 ? rest : null);
+      widget.onSave(
+        updated,
+        s.status == WorkoutSetStatus.planned && rest > 0 ? rest : null,
+      );
     } catch (_) {
       setState(() => error = 'Check that the values are in the valid range.');
     }
@@ -640,8 +652,8 @@ class _SetEditorTileState extends State<SetEditorTile> {
                 ),
               ),
               TextButton(
-                onPressed: !widget.enabled ||
-                        s.status != WorkoutSetStatus.planned
+                onPressed:
+                    !widget.enabled || s.status != WorkoutSetStatus.planned
                     ? null
                     : () => widget.onSave(skippedSet(s), null),
                 child: const Text('Skip'),
