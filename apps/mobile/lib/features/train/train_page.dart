@@ -17,25 +17,27 @@ class TrainPage extends ConsumerWidget {
   }
 
   Future<void> _startQuick(BuildContext context, WidgetRef ref) async {
-    final name = TextEditingController(text: 'Quick workout');
+    var proposed = 'Quick workout';
     final chosen = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Start an empty workout'),
-        content: TextField(
-          autofocus: true, controller: name, maxLength: 160,
+        content: TextFormField(
+          autofocus: true,
+          initialValue: proposed,
+          onChanged: (value) => proposed = value,
+          maxLength: 160,
           decoration: const InputDecoration(labelText: 'Workout name'),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancel')),
           FilledButton(onPressed: () =>
-              Navigator.pop(dialogContext, name.text.trim()),
+              Navigator.pop(dialogContext, proposed.trim()),
               child: const Text('Start workout')),
         ],
       ),
     );
-    name.dispose();
     if (chosen == null || !context.mounted) return;
     if (chosen.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
