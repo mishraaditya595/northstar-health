@@ -133,6 +133,37 @@ void main() {
     );
   });
 
+  testWidgets('saving only the set type keeps unsaved reps and load', (
+    tester,
+  ) async {
+    await render(tester);
+    await tester.enterText(find.byKey(const ValueKey('reps-set-a')), '9');
+    await tester.enterText(find.byKey(const ValueKey('weight-set-a')), '75.5');
+    // The page re-renders from the saved record after the type is committed.
+    redraw(
+      () => current = const WorkoutSetRecord(
+        uuid: 'set-a',
+        exerciseUuid: 'exercise-a',
+        position: 0,
+        kind: WorkoutSetKind.warmup,
+        status: WorkoutSetStatus.planned,
+      ),
+    );
+    await tester.pump();
+    String text(String key) => tester
+        .widget<TextField>(
+          find.descendant(
+            of: find.byKey(ValueKey('$key-set-a')),
+            matching: find.byType(TextField),
+          ),
+        )
+        .controller!
+        .text;
+    expect(text('reps'), '9');
+    expect(text('weight'), '75.5');
+    expect(find.text('W'), findsOneWidget);
+  });
+
   testWidgets('updating saved 101.25 kg does not silently round grams', (
     tester,
   ) async {
@@ -352,6 +383,38 @@ void main() {
       await tester.drag(find.byType(SetEditorTile), const Offset(-500, 0));
       await tester.pumpAndSettle();
       expect(find.byType(SetEditorTile), findsOneWidget);
+    });
+
+    testWidgets('choosing a set type saves it immediately, not as a draft', (
+      tester,
+    ) async {
+      final writes = <(WorkoutSetRecord, int?)>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: SetEditorTile(
+                record: planned,
+                enabled: true,
+                onSave: (set, rest) => writes.add((set, rest)),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.enterText(find.byType(TextField).last, '9');
+      await tester.tap(find.byTooltip('Set 1 options'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(DropdownButton<WorkoutSetKind>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Warm-up').last);
+      await tester.pumpAndSettle();
+      expect(writes, hasLength(1));
+      expect(writes.single.$1.kind, WorkoutSetKind.warmup);
+      // Only the structural change is written: typed-but-unsaved reps are not.
+      expect(writes.single.$1.status, WorkoutSetStatus.planned);
+      expect(writes.single.$1.reps, isNull);
+      expect(writes.single.$2, isNull);
     });
   });
 }

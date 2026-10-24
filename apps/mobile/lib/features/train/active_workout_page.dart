@@ -537,7 +537,8 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
                     ),
                     const SizedBox(width: SetEditorTile.gap),
                     Expanded(
-                      child: Center(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
                         child: Text('PREVIOUS', style: head(context)),
                       ),
                     ),
@@ -652,13 +653,22 @@ class _SetEditorTileState extends State<SetEditorTile> {
     super.didUpdateWidget(oldWidget);
     final before = oldWidget.record;
     final after = widget.record;
-    if (before.reps == after.reps &&
+    final sameValues =
+        before.reps == after.reps &&
         before.loadGrams == after.loadGrams &&
         before.rpe == after.rpe &&
-        before.kind == after.kind &&
         before.status == after.status &&
         before.inputUnit == after.inputUnit &&
-        before.completedAtUtc == after.completedAtUtc) {
+        before.completedAtUtc == after.completedAtUtc;
+    if (sameValues && before.kind == after.kind) {
+      return;
+    }
+    if (sameValues) {
+      // Only the set type was committed (_changeKind): follow it, but keep
+      // whatever the user has typed and not yet saved.
+      kind = after.kind == WorkoutSetKind.unknown
+          ? WorkoutSetKind.working
+          : after.kind;
       return;
     }
     unit = after.inputUnit == LoadUnit.unknown ? LoadUnit.kg : after.inputUnit;
@@ -762,6 +772,29 @@ class _SetEditorTileState extends State<SetEditorTile> {
     });
   }
 
+  /// Warm-up vs working changes the badge and every later working-set number,
+  /// so it is saved at once; typed-but-unsaved reps and load stay drafts.
+  void _changeKind(WorkoutSetKind next) {
+    if (next == kind) return;
+    final s = widget.record;
+    setState(() => kind = next);
+    widget.onSave(
+      WorkoutSetRecord(
+        uuid: s.uuid,
+        exerciseUuid: s.exerciseUuid,
+        position: s.position,
+        kind: next,
+        status: s.status,
+        reps: s.reps,
+        loadGrams: s.loadGrams,
+        inputUnit: s.inputUnit,
+        rpe: s.rpe,
+        completedAtUtc: s.completedAtUtc,
+      ),
+      null,
+    );
+  }
+
   Future<void> _options() async {
     final s = widget.record;
     await showNsSheet<void>(
@@ -779,7 +812,7 @@ class _SetEditorTileState extends State<SetEditorTile> {
                     value: kind,
                     label: 'Set type',
                     onChanged: (value) {
-                      setState(() => kind = value);
+                      _changeKind(value);
                       refresh(() {});
                     },
                     options: const [

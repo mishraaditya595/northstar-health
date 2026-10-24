@@ -178,6 +178,52 @@ void main() {
     expect(store.box<WorkoutSetEntity>().count(), 0);
   });
 
+  testWidgets('warm-up sets do not shift the working-set numbers', (
+    tester,
+  ) async {
+    await showApp(tester);
+    await tester.tap(find.text('Quick workout'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start workout'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add exercise'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Barbell bench press').last);
+    await tester.pumpAndSettle();
+    for (var n = 0; n < 3; n++) {
+      await tester.ensureVisible(find.text('Add set'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Add set'));
+      await tester.pumpAndSettle();
+    }
+    List<String> badges() => [
+      for (var n = 1; n <= 3; n++)
+        tester
+            .widget<Text>(
+              find.descendant(
+                of: find.byTooltip('Set $n options'),
+                matching: find.byType(Text),
+              ),
+            )
+            .data!,
+    ];
+    expect(badges(), ['1', '2', '3']);
+
+    await tester.ensureVisible(find.byTooltip('Set 2 options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Set 2 options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButton<WorkoutSetKind>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Warm-up').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+
+    // Set 2 is now a warm-up and the working sets stay consecutive.
+    expect(badges(), ['1', 'W', '2']);
+  });
+
   testWidgets('running rest timer stays on screen while the page scrolls', (
     tester,
   ) async {
