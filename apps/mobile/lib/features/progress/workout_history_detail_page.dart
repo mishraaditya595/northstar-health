@@ -21,15 +21,19 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
           constraints: const BoxConstraints(maxWidth: 820),
           child: state.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (_, _) => Center(child: Column(
-              mainAxisSize: MainAxisSize.min, children: [
-                const Text('Could not load local workout history.'),
-                TextButton(
-                  onPressed: () => ref.invalidate(completedWorkoutHistoryProvider),
-                  child: const Text('Retry'),
-                ),
-              ],
-            )),
+            error: (_, _) => Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Could not load local workout history.'),
+                  TextButton(
+                    onPressed: () =>
+                        ref.invalidate(completedWorkoutHistoryProvider),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
             data: (history) {
               WorkoutSessionRecord? chosen;
               for (final session in history.sessions) {
@@ -39,9 +43,9 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
                 }
               }
               if (chosen == null) {
-                return const Center(child: Text(
-                  'This completed workout is unavailable.',
-                ));
+                return const Center(
+                  child: Text('This completed workout is unavailable.'),
+                );
               }
               return _detail(context, chosen);
             },
@@ -54,64 +58,93 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
   Widget _detail(BuildContext context, WorkoutSessionRecord session) {
     final finished = session.completedAtUtc!;
     final day = originalLocalDay(session);
-    final sets = session.sets.where((s) =>
-        s.status == WorkoutSetStatus.completed).toList();
+    final sets = session.sets
+        .where((s) => s.status == WorkoutSetStatus.completed)
+        .toList();
     final theme = Theme.of(context);
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 22, 20, 42),
       children: [
-        Text(session.name,
+        Text(
+          session.name,
           style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w900)),
+            fontWeight: FontWeight.w900,
+          ),
+        ),
         const SizedBox(height: 8),
         Text('${day.day}/${day.month}/${day.year} · FINISHED LOCALLY'),
         const SizedBox(height: 8),
-        Text('${sets.length} recorded sets · '
-            '${session.exercises.length} exercises'),
+        Text(
+          '${sets.length} recorded sets · '
+          '${session.exercises.length} exercises',
+        ),
         const SizedBox(height: 6),
-        Text('Session ended at ${finished.toUtc().toIso8601String()} UTC',
-            style: theme.textTheme.bodySmall),
+        Text(
+          'Session ended at ${finished.toUtc().toIso8601String()} UTC',
+          style: theme.textTheme.bodySmall,
+        ),
         const SizedBox(height: 20),
         if (session.exercises.isEmpty)
-          const Card(child: Padding(
-            padding: EdgeInsets.all(18),
-            child: Text('No exercises were recorded in this session.'),
-          )),
-        for (final exercise in session.exercises) ...[
-          Card(child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(exercise.nameSnapshot,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800)),
-                if (exercise.equipmentSnapshot.isNotEmpty)
-                  Text(exercise.equipmentSnapshot,
-                      style: theme.textTheme.bodySmall),
-                const SizedBox(height: 12),
-                for (final set in session.sets.where(
-                    (set) => set.exerciseUuid == exercise.uuid)) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5),
-                    child: Row(children: [
-                      SizedBox(width: 58, child: Text('Set ${set.position + 1}')),
-                      Expanded(child: Text(_label(set))),
-                      Text(set.kind == WorkoutSetKind.warmup
-                          ? 'Warm-up' : set.kind == WorkoutSetKind.working
-                              ? 'Working' : 'Unknown'),
-                    ]),
-                  ),
-                  const Divider(height: 10),
-                ],
-              ],
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(18),
+              child: Text('No exercises were recorded in this session.'),
             ),
-          )),
+          ),
+        for (final exercise in session.exercises) ...[
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    exercise.nameSnapshot,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  if (exercise.equipmentSnapshot.isNotEmpty)
+                    Text(
+                      exercise.equipmentSnapshot,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  const SizedBox(height: 12),
+                  for (final set in session.sets.where(
+                    (set) => set.exerciseUuid == exercise.uuid,
+                  )) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 58,
+                            child: Text('Set ${set.position + 1}'),
+                          ),
+                          Expanded(child: Text(_label(set))),
+                          Text(
+                            set.kind == WorkoutSetKind.warmup
+                                ? 'Warm-up'
+                                : set.kind == WorkoutSetKind.working
+                                ? 'Working'
+                                : 'Unknown',
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 10),
+                  ],
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: 10),
         ],
-        const Text('Historical snapshots are read-only. '
-            'Edits to the original exercise catalog or training plan '
-            'cannot rewrite a completed workout.'),
+        const Text(
+          'Historical snapshots are read-only. '
+          'Edits to the original exercise catalog or training plan '
+          'cannot rewrite a completed workout.',
+        ),
       ],
     );
   }
@@ -129,19 +162,24 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
     final load = set.loadGrams == null
         ? 'bodyweight / no logged load'
         : '${_load(set.loadGrams!, set.inputUnit)} '
-            '${set.inputUnit == LoadUnit.lb ? 'lb' : 'kg'}';
+              '${set.inputUnit == LoadUnit.lb ? 'lb' : 'kg'}';
     final effort = set.rpe == null ? '' : ' · RPE ${set.rpe}';
     return '${set.reps ?? '?'} reps × $load$effort';
   }
 
   String _load(int grams, LoadUnit unit) {
     final amount = LoadUnits.fromGrams(
-        grams, unit == LoadUnit.unknown ? LoadUnit.kg : unit);
+      grams,
+      unit == LoadUnit.unknown ? LoadUnit.kg : unit,
+    );
     final decimals = unit == LoadUnit.lb ? 5 : 3;
     for (var n = 1; n <= decimals; n++) {
       final text = amount.toStringAsFixed(n);
-      if (LoadUnits.toGrams(double.parse(text),
-              unit == LoadUnit.unknown ? LoadUnit.kg : unit) == grams) {
+      if (LoadUnits.toGrams(
+            double.parse(text),
+            unit == LoadUnit.unknown ? LoadUnit.kg : unit,
+          ) ==
+          grams) {
         return text;
       }
     }

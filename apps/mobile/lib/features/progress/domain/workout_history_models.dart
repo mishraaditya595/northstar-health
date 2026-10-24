@@ -51,7 +51,8 @@ class ExerciseStrengthTrend {
   final String name;
   final List<ExerciseStrengthPoint> points;
 
-  int get bestLoadGrams => points.map((p) => p.grams)
+  int get bestLoadGrams => points
+      .map((p) => p.grams)
       .fold<int>(0, (best, grams) => grams > best ? grams : best);
 }
 
@@ -61,8 +62,9 @@ class ExerciseStrengthTrend {
 WorkoutHistorySummary calculateWorkoutHistory(
   Iterable<WorkoutSessionRecord> source,
 ) {
-  final sessions = source.where((s) =>
-      s.status == WorkoutStatus.completed && s.completedAtUtc != null);
+  final sessions = source.where(
+    (s) => s.status == WorkoutStatus.completed && s.completedAtUtc != null,
+  );
   var workouts = 0;
   var workingSets = 0;
   var loadedWorking = 0;
@@ -106,14 +108,16 @@ WorkoutHistorySummary calculateWorkoutHistory(
     }
     for (final entry in bestByExercise.entries) {
       final sample = entry.value;
-      trends.putIfAbsent(entry.key, () => []).add(
-        ExerciseStrengthPoint(
-          sessionUuid: session.uuid,
-          performedAtUtc: sample.completedAtUtc ?? session.completedAtUtc!,
-          grams: sample.loadGrams!,
-          reps: sample.reps!,
-        ),
-      );
+      trends
+          .putIfAbsent(entry.key, () => [])
+          .add(
+            ExerciseStrengthPoint(
+              sessionUuid: session.uuid,
+              performedAtUtc: sample.completedAtUtc ?? session.completedAtUtc!,
+              grams: sample.loadGrams!,
+              reps: sample.reps!,
+            ),
+          );
     }
   }
   final result = [
@@ -121,10 +125,11 @@ WorkoutHistorySummary calculateWorkoutHistory(
       ExerciseStrengthTrend(
         key: entry.key,
         name: labels[entry.key]!,
-        points: entry.value..sort((a, b) {
-          final time = a.performedAtUtc.compareTo(b.performedAtUtc);
-          return time != 0 ? time : a.sessionUuid.compareTo(b.sessionUuid);
-        }),
+        points: entry.value
+          ..sort((a, b) {
+            final time = a.performedAtUtc.compareTo(b.performedAtUtc);
+            return time != 0 ? time : a.sessionUuid.compareTo(b.sessionUuid);
+          }),
       ),
   ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
   return WorkoutHistorySummary(
@@ -147,7 +152,10 @@ DateTime originalLocalDay(WorkoutSessionRecord workout) {
   return DateTime.utc(shifted.year, shifted.month, shifted.day);
 }
 
-int countWorkingSets(WorkoutSessionRecord session) => session.sets.where(
-  (s) => s.kind == WorkoutSetKind.working &&
-      s.status == WorkoutSetStatus.completed,
-).length;
+int countWorkingSets(WorkoutSessionRecord session) => session.sets
+    .where(
+      (s) =>
+          s.kind == WorkoutSetKind.working &&
+          s.status == WorkoutSetStatus.completed,
+    )
+    .length;

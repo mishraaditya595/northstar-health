@@ -7,11 +7,11 @@ import 'domain/workout_history_models.dart';
 /// No demo values, cloud state, or HealthKit values feed these projections.
 final completedWorkoutHistoryProvider =
     Provider.autoDispose<AsyncValue<WorkoutHistorySnapshot>>((ref) {
-  try {
-    return AsyncData<WorkoutHistorySnapshot>(
-      ref.watch(workoutHistoryRepositoryProvider).readCompleted(),
-    );
-  } catch (error, trace) {
-    return AsyncError<WorkoutHistorySnapshot>(error, trace);
-  }
-});
+      try {
+        return AsyncData<WorkoutHistorySnapshot>(
+          ref.watch(workoutHistoryRepositoryProvider).readCompleted(),
+        );
+      } catch (error, trace) {
+        return AsyncError<WorkoutHistorySnapshot>(error, trace);
+      }
+    });

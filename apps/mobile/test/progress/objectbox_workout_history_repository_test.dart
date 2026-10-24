@@ -28,31 +28,47 @@ void main() {
     directory.deleteSync(recursive: true);
   });
 
-  void create(String id, DateTime start, {bool finish = true,
-      bool discard = false}) {
+  void create(
+    String id,
+    DateTime start, {
+    bool finish = true,
+    bool discard = false,
+  }) {
     engine.startWorkout(
-      sessionUuid: id, quickName: 'Session $id',
-      startedAtUtc: start, originalOffsetMinutes: 330,
+      sessionUuid: id,
+      quickName: 'Session $id',
+      startedAtUtc: start,
+      originalOffsetMinutes: 330,
     );
-    editor.addExercise(WorkoutExerciseRecord(
-      uuid: 'exercise-$id', sessionUuid: id,
-      definitionUuid: 'builtin.v1.bench-press',
-      nameSnapshot: 'Bench press', position: 0,
-    ));
+    editor.addExercise(
+      WorkoutExerciseRecord(
+        uuid: 'exercise-$id',
+        sessionUuid: id,
+        definitionUuid: 'builtin.v1.bench-press',
+        nameSnapshot: 'Bench press',
+        position: 0,
+      ),
+    );
     final current = editor.getSession(id)!;
     editor.saveSet(
-      sessionUuid: id, expectedRevision: current.revision,
+      sessionUuid: id,
+      expectedRevision: current.revision,
       set: WorkoutSetRecord(
-        uuid: 'set-$id', exerciseUuid: 'exercise-$id',
-        position: 0, kind: WorkoutSetKind.working,
-        status: WorkoutSetStatus.completed, reps: 8, loadGrams: 62500,
+        uuid: 'set-$id',
+        exerciseUuid: 'exercise-$id',
+        position: 0,
+        kind: WorkoutSetKind.working,
+        status: WorkoutSetStatus.completed,
+        reps: 8,
+        loadGrams: 62500,
         completedAtUtc: start.add(const Duration(minutes: 5)),
       ),
     );
     final updated = editor.getSession(id)!;
     if (finish) {
       engine.finishWorkout(
-        id, expectedRevision: updated.revision,
+        id,
+        expectedRevision: updated.revision,
         finishedAtUtc: start.add(const Duration(minutes: 20)),
       );
     } else if (discard) {
@@ -78,8 +94,12 @@ void main() {
 
   test('unfinished, discarded, deleted and unknown statuses never appear', () {
     create('complete', DateTime.utc(2026, 10, 21, 8));
-    create('discard', DateTime.utc(2026, 10, 22, 8),
-        finish: false, discard: true);
+    create(
+      'discard',
+      DateTime.utc(2026, 10, 22, 8),
+      finish: false,
+      discard: true,
+    );
     create('active', DateTime.utc(2026, 10, 23, 8), finish: false);
     final original = history.readCompleted().sessions;
     expect(original.map((s) => s.uuid), ['complete']);
@@ -104,7 +124,9 @@ void main() {
   test('history order uses completion time descending, not creation order', () {
     create('late', DateTime.utc(2026, 10, 24, 8));
     create('early', DateTime.utc(2026, 10, 23, 8));
-    expect(history.readCompleted().sessions.map((s) => s.uuid),
-        ['late', 'early']);
+    expect(history.readCompleted().sessions.map((s) => s.uuid), [
+      'late',
+      'early',
+    ]);
   });
 }

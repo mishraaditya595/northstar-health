@@ -21,14 +21,21 @@ void main() {
   setUp(() {
     directory = Directory.systemTemp.createTempSync('northstar-progress-ui-');
     store = Store(getObjectBoxModel(), directory: directory.path);
-    router = GoRouter(initialLocation: '/progress', routes: [
-      GoRoute(path: '/progress', builder: (_, _) => const Scaffold(body: ProgressPage())),
-      GoRoute(path: '/progress/workouts/:id',
-        builder: (_, state) => WorkoutHistoryDetailPage(
-          sessionUuid: state.pathParameters['id']!,
+    router = GoRouter(
+      initialLocation: '/progress',
+      routes: [
+        GoRoute(
+          path: '/progress',
+          builder: (_, _) => const Scaffold(body: ProgressPage()),
         ),
-      ),
-    ]);
+        GoRoute(
+          path: '/progress/workouts/:id',
+          builder: (_, state) => WorkoutHistoryDetailPage(
+            sessionUuid: state.pathParameters['id']!,
+          ),
+        ),
+      ],
+    );
   });
 
   tearDown(() {
@@ -47,13 +54,15 @@ void main() {
       startedAtUtc: started,
       originalOffsetMinutes: 330,
     );
-    editor.addExercise(WorkoutExerciseRecord(
-      uuid: 'movement-$id',
-      sessionUuid: id,
-      definitionUuid: 'builtin.v1.bench-press',
-      nameSnapshot: 'Bench press',
-      position: 0,
-    ));
+    editor.addExercise(
+      WorkoutExerciseRecord(
+        uuid: 'movement-$id',
+        sessionUuid: id,
+        definitionUuid: 'builtin.v1.bench-press',
+        nameSnapshot: 'Bench press',
+        position: 0,
+      ),
+    );
     final active = editor.getSession(id)!;
     editor.saveSet(
       sessionUuid: id,
@@ -71,33 +80,38 @@ void main() {
     );
     if (finish) {
       engine.finishWorkout(
-        id, expectedRevision: editor.getSession(id)!.revision,
+        id,
+        expectedRevision: editor.getSession(id)!.revision,
         finishedAtUtc: started.add(const Duration(minutes: 30)),
       );
     }
   }
 
   Future<void> showProgress(WidgetTester tester) async {
-    await tester.pumpWidget(ProviderScope(
-      overrides: [objectBoxStoreProvider.overrideWithValue(store)],
-      child: MaterialApp.router(
-        theme: NorthstarTheme.build(Brightness.light),
-        routerConfig: router,
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [objectBoxStoreProvider.overrideWithValue(store)],
+        child: MaterialApp.router(
+          theme: NorthstarTheme.build(Brightness.light),
+          routerConfig: router,
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
   }
 
-  testWidgets('empty history is honest and contains no fictional best set',
-      (tester) async {
+  testWidgets('empty history is honest and contains no fictional best set', (
+    tester,
+  ) async {
     await showProgress(tester);
     expect(find.text('Nothing logged yet'), findsOneWidget);
     expect(find.textContaining('Squat · demo'), findsNothing);
     expect(find.text('WORKOUT HISTORY'), findsNothing);
   });
 
-  testWidgets('one completed session supplies real progress and detail',
-      (tester) async {
+  testWidgets('one completed session supplies real progress and detail', (
+    tester,
+  ) async {
     writeWorkout('first');
     await showProgress(tester);
     expect(find.text('500'), findsOneWidget); // 8 × 62.5 kg
@@ -120,8 +134,9 @@ void main() {
     expect(find.textContaining('8 reps'), findsOneWidget);
   });
 
-  testWidgets('paused workout is excluded even when a set was completed',
-      (tester) async {
+  testWidgets('paused workout is excluded even when a set was completed', (
+    tester,
+  ) async {
     writeWorkout('unfinished', finish: false);
     await showProgress(tester);
     expect(find.text('Nothing logged yet'), findsOneWidget);
@@ -136,13 +151,15 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
     writeWorkout('wide');
-    await tester.pumpWidget(ProviderScope(
-      overrides: [objectBoxStoreProvider.overrideWithValue(store)],
-      child: MaterialApp.router(
-        theme: NorthstarTheme.build(Brightness.dark),
-        routerConfig: router,
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [objectBoxStoreProvider.overrideWithValue(store)],
+        child: MaterialApp.router(
+          theme: NorthstarTheme.build(Brightness.dark),
+          routerConfig: router,
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     expect(find.text('Workout wide'), findsOneWidget);
     expect(tester.takeException(), isNull);

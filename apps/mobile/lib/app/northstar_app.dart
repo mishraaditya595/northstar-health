@@ -106,11 +106,12 @@ class AdaptiveShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final index =
-        (location.startsWith('/train/') ? 1 :
-            location.startsWith('/progress/') ? 2 : _routes.indexOf(location)).clamp(
-          0,
-          3,
-        );
+        (location.startsWith('/train/')
+                ? 1
+                : location.startsWith('/progress/')
+                ? 2
+                : _routes.indexOf(location))
+            .clamp(0, 3);
     return LayoutBuilder(
       builder: (context, constraints) {
         final expanded = constraints.maxWidth >= 600;
