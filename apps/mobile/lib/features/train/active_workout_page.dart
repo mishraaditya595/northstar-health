@@ -356,10 +356,23 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    exercise.nameSnapshot,
-                    style: Theme.of(context).textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.w800),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          exercise.nameSnapshot,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.8,
+                              ),
+                        ),
+                      ),
+                      NsTag(
+                        '${byExercise[exercise.uuid]!.where((e) => e.status == WorkoutSetStatus.completed).length}'
+                        '/${byExercise[exercise.uuid]!.length}',
+                      ),
+                    ],
                   ),
                   if (exercise.equipmentSnapshot.isNotEmpty)
                     Text(exercise.equipmentSnapshot),
@@ -548,14 +561,30 @@ class _SetEditorTileState extends State<SetEditorTile> {
   @override
   Widget build(BuildContext context) {
     final s = widget.record;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final done = s.status == WorkoutSetStatus.completed;
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: done
+            ? (dark
+                  ? NorthstarPalette.forestSoftDark
+                  : NorthstarPalette.forestSoftLight)
+            : (dark ? NorthstarPalette.darkSoft : NorthstarPalette.lightSoft),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'SET ${s.position + 1} · ${s.status.name.toUpperCase()}',
-            style: Theme.of(context).textTheme.labelLarge,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              letterSpacing: 1.1,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 6),
           Wrap(
@@ -572,7 +601,9 @@ class _SetEditorTileState extends State<SetEditorTile> {
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                     labelText: 'Reps',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                    ),
                   ),
                 ),
               ),
@@ -587,7 +618,9 @@ class _SetEditorTileState extends State<SetEditorTile> {
                   ),
                   decoration: const InputDecoration(
                     labelText: 'Weight',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                    ),
                   ),
                 ),
               ),
@@ -624,7 +657,9 @@ class _SetEditorTileState extends State<SetEditorTile> {
                   ),
                   decoration: const InputDecoration(
                     labelText: 'RPE',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                    ),
                   ),
                 ),
               ),
@@ -673,6 +708,12 @@ class _SetEditorTileState extends State<SetEditorTile> {
               ),
               FilledButton(
                 onPressed: widget.enabled ? _record : null,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 46),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
                 child: Text(
                   s.status == WorkoutSetStatus.completed
                       ? 'Update set'
