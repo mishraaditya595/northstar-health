@@ -6,7 +6,7 @@ import 'domain/workout_history_models.dart';
 /// Explicit refresh on navigation / after workout completion.
 /// No demo values, cloud state, or HealthKit values feed these projections.
 final completedWorkoutHistoryProvider =
-    Provider<AsyncValue<WorkoutHistorySnapshot>>((ref) {
+    Provider.autoDispose<AsyncValue<WorkoutHistorySnapshot>>((ref) {
   try {
     return AsyncData<WorkoutHistorySnapshot>(
       ref.watch(workoutHistoryRepositoryProvider).readCompleted(),
