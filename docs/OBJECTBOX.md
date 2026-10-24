@@ -4,8 +4,9 @@
 in PR #5. PR #7 added the exercise catalog and transactional plan builder.
 The offline quick/plan-start and recovery engine is tracked in
 [Phase 1 live workout engine](implementation/phase-1/live-workout-engine.md).
-**Today/Progress still show fictional demo data**; no live workout UI is
-implemented yet. ObjectBox cloud Sync is not used.
+**Today/Progress still show fictional demo data**. The active logger UI
+and persisted rest timer are under review in
+[Phase 1 PR 4](implementation/phase-1/active-workout-logger.md). ObjectBox cloud Sync is not used.
 
 ## Data classification and lifetime
 

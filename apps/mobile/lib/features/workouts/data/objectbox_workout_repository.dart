@@ -249,8 +249,12 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
     required String sessionUuid,
     required WorkoutSetRecord set,
     required int expectedRevision,
+    int? restSeconds,
   }) {
     if (expectedRevision < 1) throw ArgumentError.value(expectedRevision);
+    if (restSeconds != null && (restSeconds < 0 || restSeconds > 1800)) {
+      throw ArgumentError.value(restSeconds, 'restSeconds');
+    }
     set.validate();
     _store.runInTransaction(TxMode.write, () {
       final session = _one(_sessions, WorkoutSessionEntity_.uuid, sessionUuid);
@@ -323,7 +327,18 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
       checkpoint.selectedExerciseUuid = set.exerciseUuid;
       checkpoint.selectedSetUuid = set.uuid;
       checkpoint.checkpointRevision = session.revision;
-      checkpoint.savedAtMs = DateTime.now().toUtc().millisecondsSinceEpoch;
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      if (set.status == WorkoutSetStatus.completed &&
+          restSeconds != null &&
+          restSeconds > 0 &&
+          session.status == WorkoutStatus.inProgress.name) {
+        checkpoint.restState = 'running';
+        checkpoint.restDeadlineUtcMs = now + restSeconds * 1000;
+        checkpoint.restRemainingMsWhenPaused = null;
+      }
+      checkpoint.savedAtMs = now > checkpoint.savedAtMs
+          ? now
+          : checkpoint.savedAtMs + 1;
       _checkpoints.put(checkpoint);
     });
   }

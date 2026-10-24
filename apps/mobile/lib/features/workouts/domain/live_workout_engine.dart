@@ -20,6 +20,22 @@ abstract interface class LiveWorkoutEngine {
 
   WorkoutRecoveryCheckpoint? readCheckpoint(String sessionUuid);
 
+  /// Starts a wall-clock rest countdown, independent of frame updates.
+  /// Timer writes use checkpoint CAS so a delayed skip cannot cancel a
+  /// newer timer. The session revision does not change for timer-only edits.
+  WorkoutRecoveryCheckpoint startRestTimer(
+    String sessionUuid, {
+    required int expectedRevision,
+    required int expectedCheckpointSavedAtMs,
+    required int seconds,
+  });
+
+  WorkoutRecoveryCheckpoint clearRestTimer(
+    String sessionUuid, {
+    required int expectedRevision,
+    required int expectedCheckpointSavedAtMs,
+  });
+
   WorkoutSessionRecord pauseWorkout(
     String sessionUuid, {
     required int expectedRevision,
@@ -44,14 +60,35 @@ abstract interface class LiveWorkoutEngine {
   });
 }
 
+/// Frozen decoding contract; unknown future states are never treated as idle.
+enum RestTimerStatus { idle, running, paused, unknown }
+
+RestTimerStatus restTimerStatusFromStorage(String value) => switch (value) {
+  'idle' => RestTimerStatus.idle,
+  'running' => RestTimerStatus.running,
+  'paused' => RestTimerStatus.paused,
+  _ => RestTimerStatus.unknown,
+};
+
 class WorkoutRecoveryCheckpoint {
   const WorkoutRecoveryCheckpoint({
     required this.sessionUuid,
     required this.checkpointRevision,
     this.selectedExerciseUuid,
     this.selectedSetUuid,
+    this.restState = 'idle',
+    this.restDeadlineUtcMs,
+    this.restRemainingMsWhenPaused,
+    this.savedAtMs = 0,
   });
 
+  final String restState;
+  RestTimerStatus get restStatus => restTimerStatusFromStorage(restState);
+  final int? restDeadlineUtcMs;
+  final int? restRemainingMsWhenPaused;
+
+  /// Monotonic checkpoint write token for timer-only compare-and-set.
+  final int savedAtMs;
   final String sessionUuid;
   final int checkpointRevision;
   final String? selectedExerciseUuid;

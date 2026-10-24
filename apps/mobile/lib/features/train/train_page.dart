@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/design/northstar_theme.dart';
 import '../../core/design/section.dart';
 import '../workouts/domain/workout_library_models.dart';
+import 'active_workout_state.dart';
 import 'train_library_state.dart';
 
 class TrainPage extends ConsumerWidget {
@@ -13,6 +14,70 @@ class TrainPage extends ConsumerWidget {
   Future<void> _open(BuildContext context, WidgetRef ref, String route) async {
     await context.push<void>(route);
     ref.invalidate(trainLibraryProvider);
+  }
+
+  Future<void> _startQuick(BuildContext context, WidgetRef ref) async {
+    var proposed = 'Quick workout';
+    final chosen = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Start an empty workout'),
+        content: TextFormField(
+          autofocus: true,
+          initialValue: proposed,
+          onChanged: (value) => proposed = value,
+          maxLength: 160,
+          decoration: const InputDecoration(labelText: 'Workout name'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, proposed.trim()),
+            child: const Text('Start workout'),
+          ),
+        ],
+      ),
+    );
+    if (chosen == null || !context.mounted) return;
+    if (chosen.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a workout name first.')),
+      );
+      return;
+    }
+    _start(
+      context,
+      ref,
+      () => ref.read(workoutActionsProvider).startQuick(chosen),
+    );
+  }
+
+  void _startPlan(BuildContext context, WidgetRef ref, String uuid) {
+    _start(
+      context,
+      ref,
+      () => ref.read(workoutActionsProvider).startPlan(uuid),
+    );
+  }
+
+  void _start(BuildContext context, WidgetRef ref, void Function() action) {
+    try {
+      action();
+      ref.invalidate(activeWorkoutProvider);
+      context.push('/train/workout');
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Could not start this workout. Check the plan and any unfinished workout.',
+          ),
+        ),
+      );
+      ref.invalidate(activeWorkoutProvider);
+    }
   }
 
   @override
@@ -53,11 +118,17 @@ class TrainPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Create a repeatable training session. Logging live sets comes next.',
+                      'Build a plan or start recording reps and weights offline.',
                       style: TextStyle(color: colors.muted),
                     ),
                     const SizedBox(height: 18),
                     FilledButton.icon(
+                      onPressed: () => _startQuick(context, ref),
+                      icon: const Icon(Icons.play_arrow),
+                      label: const Text('Quick workout'),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
                       onPressed: () => _open(context, ref, '/train/plans/new'),
                       icon: const Icon(Icons.add),
                       label: const Text('Create training plan'),
@@ -65,6 +136,50 @@ class TrainPage extends ConsumerWidget {
                   ],
                 ),
               ),
+            ),
+            Consumer(
+              builder: (context, ref, _) {
+                final current = ref.watch(activeWorkoutProvider);
+                return current.when(
+                  loading: () => const SizedBox(
+                    height: 32,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  error: (_, _) => Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Workout recovery needs attention. '
+                            'No local data has been deleted.',
+                          ),
+                          TextButton(
+                            onPressed: () =>
+                                ref.invalidate(activeWorkoutProvider),
+                            child: const Text('Retry recovery'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  data: (view) => view == null
+                      ? const SizedBox.shrink()
+                      : Card(
+                          child: ListTile(
+                            leading: const Icon(Icons.restore),
+                            title: Text('Resume: ${view.session.name}'),
+                            subtitle: Text(
+                              view.session.status.name == 'paused'
+                                  ? 'Paused workout saved on this device'
+                                  : 'Unfinished workout saved on this device',
+                            ),
+                            trailing: const Icon(Icons.arrow_forward),
+                            onTap: () => context.push('/train/workout'),
+                          ),
+                        ),
+                );
+              },
             ),
             const SizedBox(height: 26),
             Row(
@@ -169,7 +284,22 @@ class TrainPage extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'Start ${plan.name}',
+                      icon: const Icon(Icons.play_circle_fill),
+                      onPressed: () => _startPlan(context, ref, plan.uuid),
+                    ),
+                    IconButton(
+                      tooltip: 'Edit ${plan.name}',
+                      icon: const Icon(Icons.edit_outlined),
+                      onPressed: () =>
+                          _open(context, ref, '/train/plans/${plan.uuid}/edit'),
+                    ),
+                  ],
+                ),
                 onTap: () =>
                     _open(context, ref, '/train/plans/${plan.uuid}/edit'),
               ),
