@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:northstar_health/core/design/northstar_theme.dart';
+import 'package:northstar_health/core/design/page_header.dart';
 import 'package:northstar_health/core/storage/objectbox_store_provider.dart';
 import 'package:northstar_health/features/train/active_workout_page.dart';
 import 'package:northstar_health/features/train/train_page.dart';
@@ -67,7 +68,13 @@ void main() {
     expect(router.canPop(), isTrue);
     router.pop();
     await tester.pumpAndSettle();
-    expect(find.text('TRAIN'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(PageHeader),
+        matching: find.text('Train'),
+      ),
+      findsOneWidget,
+    );
     await tester.ensureVisible(find.text('Resume: Quick workout'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Resume: Quick workout'));

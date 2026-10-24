@@ -67,6 +67,7 @@ class NorthstarTheme {
       cardTheme: CardThemeData(
         color: surface,
         elevation: 0,
+        margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           side: BorderSide(color: border),
           borderRadius: BorderRadius.circular(22),

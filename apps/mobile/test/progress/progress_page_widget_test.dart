@@ -138,7 +138,7 @@ void main() {
     await showProgress(tester);
     expect(find.text('Nothing logged yet'), findsOneWidget);
     expect(find.textContaining('Squat · demo'), findsNothing);
-    expect(find.text('WORKOUT HISTORY'), findsNothing);
+    expect(find.text('Workout history'), findsNothing);
   });
 
   testWidgets('one completed session supplies real progress and detail', (

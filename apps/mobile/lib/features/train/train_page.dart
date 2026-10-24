@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/design/northstar_theme.dart';
+import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 import '../workouts/domain/workout_library_models.dart';
 import 'active_workout_state.dart';
@@ -90,58 +91,86 @@ class TrainPage extends ConsumerWidget {
         constraints: const BoxConstraints(maxWidth: 900),
         child: ListView(
           padding: EdgeInsets.fromLTRB(
-            20,
-            22,
-            20,
+            16,
+            16,
+            16,
             28 + MediaQuery.paddingOf(context).bottom,
           ),
           children: [
-            Text(
-              'TRAIN',
-              style: Theme.of(context).textTheme.headlineLarge
-                  ?.copyWith(fontWeight: FontWeight.w900, letterSpacing: -1.2),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Own your training. Your plans stay on this device.',
-              style: TextStyle(color: colors.muted),
+            const PageHeader(
+              title: 'Train',
+              eyebrow: 'PLAN AND PERFORM TRAINING',
             ),
             const SizedBox(height: 24),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Friday, 23 October',
+                        style: TextStyle(color: colors.muted, fontSize: 12),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Your training week',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                    ],
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _open(context, ref, '/train/plans/new'),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Create training plan'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            const _WeekStrip(),
+            const SizedBox(height: 27),
+            const SectionHeading('Start training'),
             Card(
-              clipBehavior: Clip.antiAlias,
+              margin: EdgeInsets.zero,
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.fitness_center_rounded, size: 32),
-                    const SizedBox(height: 12),
+                    const NsTag('Strength'),
+                    const SizedBox(height: 10),
                     Text(
-                      'BUILD THE WORK.',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w900),
+                      'Build the work.',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.8,
+                      ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
-                      'Build a plan or start recording reps and weights offline.',
+                      'Start recording reps and weights offline, or build a plan.',
                       style: TextStyle(color: colors.muted),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
                     FilledButton.icon(
                       onPressed: () => _startQuick(context, ref),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 46),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
                       icon: const Icon(Icons.play_arrow),
                       label: const Text('Quick workout'),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: () => _open(context, ref, '/train/plans/new'),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Create training plan'),
                     ),
                   ],
                 ),
               ),
             ),
+            const SizedBox(height: 10),
             Consumer(
               builder: (context, ref, _) {
                 final current = ref.watch(activeWorkoutProvider);
@@ -186,17 +215,8 @@ class TrainPage extends ConsumerWidget {
                 );
               },
             ),
-            const SizedBox(height: 26),
-            Row(
-              children: [
-                const Expanded(child: SectionHeading('Your plans')),
-                TextButton.icon(
-                  onPressed: () => _open(context, ref, '/train/exercises'),
-                  icon: const Icon(Icons.menu_book_outlined),
-                  label: const Text('Exercise library'),
-                ),
-              ],
-            ),
+            const SizedBox(height: 17),
+            const SectionHeading('Your plans'),
             state.when(
               loading: () => const Center(
                 child: Padding(
@@ -214,6 +234,14 @@ class TrainPage extends ConsumerWidget {
                 ],
               ),
               data: (snapshot) => _planList(context, ref, snapshot),
+            ),
+            const SizedBox(height: 17),
+            const SectionHeading('More ways to move'),
+            NsListCard(
+              icon: Icons.menu_book_outlined,
+              title: 'Exercise library',
+              subtitle: 'Browse movements and add your own',
+              onTap: () => _open(context, ref, '/train/exercises'),
             ),
             const SizedBox(height: 20),
             Text(
@@ -264,52 +292,97 @@ class TrainPage extends ConsumerWidget {
         for (final plan in data.plans)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: Card(
-              child: ListTile(
-                minVerticalPadding: 14,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 18),
-                title: Text(
-                  plan.name,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-                subtitle: Padding(
-                  padding: const EdgeInsets.only(top: 5),
-                  child: Text(
-                    plan.exercises.isEmpty
-                        ? 'No exercises added'
-                        : plan.exercises
-                              .map(
-                                (e) =>
-                                    labels[e.exerciseUuid] ??
-                                    'Archived exercise',
-                              )
-                              .take(3)
-                              .join(' · '),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+            child: NsListCard(
+              icon: Icons.fitness_center,
+              title: plan.name,
+              subtitle: plan.exercises.isEmpty
+                  ? 'No exercises added'
+                  : plan.exercises
+                        .map(
+                          (e) => labels[e.exerciseUuid] ?? 'Archived exercise',
+                        )
+                        .take(3)
+                        .join(' · '),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: 'Start ${plan.name}',
+                    icon: const Icon(Icons.play_circle_fill),
+                    onPressed: () => _startPlan(context, ref, plan.uuid),
                   ),
+                  IconButton(
+                    tooltip: 'Edit ${plan.name}',
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () =>
+                        _open(context, ref, '/train/plans/${plan.uuid}/edit'),
+                  ),
+                ],
+              ),
+              onTap: () =>
+                  _open(context, ref, '/train/plans/${plan.uuid}/edit'),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Prototype `.week-strip`: display-only M–S dates with today highlighted.
+class _WeekStrip extends StatelessWidget {
+  const _WeekStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final muted = theme.extension<NorthstarColors>()!.muted;
+    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    return Row(
+      children: [
+        for (var i = 0; i < days.length; i++) ...[
+          if (i > 0) const SizedBox(width: 6),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: i == 4
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.surface,
+                border: Border.all(
+                  color: i == 4
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.outline,
                 ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      tooltip: 'Start ${plan.name}',
-                      icon: const Icon(Icons.play_circle_fill),
-                      onPressed: () => _startPlan(context, ref, plan.uuid),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    days[i],
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: i == 4
+                          ? (dark ? NorthstarPalette.heroDark : Colors.white)
+                          : muted,
                     ),
-                    IconButton(
-                      tooltip: 'Edit ${plan.name}',
-                      icon: const Icon(Icons.edit_outlined),
-                      onPressed: () =>
-                          _open(context, ref, '/train/plans/${plan.uuid}/edit'),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${19 + i}',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: i == 4
+                          ? (dark ? NorthstarPalette.heroDark : Colors.white)
+                          : theme.colorScheme.onSurface,
                     ),
-                  ],
-                ),
-                onTap: () =>
-                    _open(context, ref, '/train/plans/${plan.uuid}/edit'),
+                  ),
+                ],
               ),
             ),
           ),
+        ],
       ],
     );
   }

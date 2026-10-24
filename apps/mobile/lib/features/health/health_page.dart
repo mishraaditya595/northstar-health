@@ -1,67 +1,163 @@
 import 'package:flutter/material.dart';
 
+import '../../core/design/northstar_theme.dart';
+import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 
 class HealthPage extends StatelessWidget {
   const HealthPage({super.key});
 
   @override
-  Widget build(BuildContext context) => ListView(
-    padding: EdgeInsets.all(20)
-        .copyWith(bottom: 20 + MediaQuery.paddingOf(context).bottom),
-    children: [
-      const DemoLabel(),
-      const SizedBox(height: 8),
-      Text(
-        'HEALTH',
-        style: Theme.of(context).textTheme.headlineLarge
-            ?.copyWith(fontWeight: FontWeight.w900),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.extension<NorthstarColors>()!.muted;
+    return ListView(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        16,
+        16,
+        32 + MediaQuery.paddingOf(context).bottom,
       ),
-      const SizedBox(height: 28),
-      Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(26),
-          gradient: const LinearGradient(
-            colors: [Color(0xFF2E284A), Color(0xFF202C43)],
-          ),
+      children: [
+        const PageHeader(
+          title: 'Health',
+          eyebrow: 'FICTIONAL DEMO DATA · 23 OCT 2026',
         ),
-        child: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        const SizedBox(height: 24),
+        Row(
           children: [
-            Text(
-              'LAST NIGHT / SLEEP',
-              style: TextStyle(color: Color(0xFFD1C2FF), letterSpacing: 1.3),
-            ),
-            SizedBox(height: 20),
-            Text(
-              '6h 18m',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 42,
-                fontWeight: FontWeight.w900,
+            const NsTag('Not connected'),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Health platforms are not linked yet',
+                style: theme.textTheme.bodySmall?.copyWith(color: muted),
               ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Fictional data · simulated Apple Health source',
-              style: TextStyle(color: Color(0xFFD8CEEF)),
             ),
           ],
         ),
-      ),
-      const SizedBox(height: 24),
-      const SectionHeading('Connect your sources'),
-      const Card(
-        child: ListTile(
-          leading: Icon(Icons.health_and_safety_outlined),
-          title: Text('Health platforms are not connected'),
-          subtitle: Text(
-            'Permissioned Apple Health and Health Connect '
-            'support will arrive in a later milestone.',
+        const SizedBox(height: 17),
+        const InsightCard(
+          icon: Icons.sync,
+          text: TextSpan(
+            text:
+                'Permissioned Apple Health and Health Connect support will '
+                'arrive in a later milestone. The values below are fictional.',
+          ),
+        ),
+        const SizedBox(height: 27),
+        const SectionHeading('Today'),
+        const _Stat(
+          'Sleep',
+          '6h 18m',
+          'Night ending 23 Oct · Demo',
+          Icons.bedtime_outlined,
+          sleep: true,
+        ),
+        const SizedBox(height: 10),
+        const _Stat('Steps', '6,420', '23 Oct · Demo', Icons.directions_walk),
+        const SizedBox(height: 10),
+        const _Stat(
+          'Resting heart rate',
+          '58 bpm',
+          '23 Oct · Demo',
+          Icons.favorite_border,
+        ),
+        const SizedBox(height: 10),
+        const _Stat(
+          'Weight',
+          '74.2 kg',
+          'Entered 22 Oct · Demo',
+          Icons.monitor_weight_outlined,
+        ),
+        const SizedBox(height: 27),
+        const SectionHeading('Imported activities'),
+        const NsListCard(
+          icon: Icons.directions_walk,
+          title: 'Outdoor walk',
+          subtitle: '22 Oct · 28 min · Demo summary',
+          trailing: NsTag('Demo'),
+        ),
+      ],
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat(
+    this.name,
+    this.value,
+    this.source,
+    this.icon, {
+    this.sleep = false,
+  });
+
+  final String name;
+  final String value;
+  final String source;
+  final IconData icon;
+  final bool sleep;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final muted = theme.extension<NorthstarColors>()!.muted;
+    final iconBg = sleep
+        ? (dark
+              ? NorthstarPalette.sleepSoftDark
+              : NorthstarPalette.sleepSoftLight)
+        : (dark
+              ? NorthstarPalette.forestSoftDark
+              : NorthstarPalette.forestSoftLight);
+    final iconColor = sleep
+        ? (dark ? NorthstarPalette.sleepDark : NorthstarPalette.sleepLight)
+        : theme.colorScheme.primary;
+    return Semantics(
+      label: '$name: $value. $source',
+      excludeSemantics: true,
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 27,
+                height: 27,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(icon, size: 15, color: iconColor),
+              ),
+              const SizedBox(height: 13),
+              Text(
+                name,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: muted,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -1.4,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                source,
+                style: theme.textTheme.labelSmall?.copyWith(color: muted),
+              ),
+            ],
           ),
         ),
       ),
-    ],
-  );
+    );
+  }
 }

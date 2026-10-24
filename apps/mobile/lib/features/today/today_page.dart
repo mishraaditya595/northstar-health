@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../app/theme_controller.dart';
 import '../../core/design/northstar_theme.dart';
+import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 
 class TodayPage extends ConsumerStatefulWidget {
@@ -33,60 +33,9 @@ class _TodayPageState extends ConsumerState<TodayPage> {
         32 + MediaQuery.paddingOf(context).bottom,
       ),
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const DemoLabel(),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Today',
-                    style: theme.textTheme.headlineLarge?.copyWith(
-                      fontSize: 35,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -2.2,
-                      height: 1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            _SquareButton(
-              tooltip: dark ? 'Use light mode' : 'Use dark mode',
-              onPressed: () => ref
-                  .read(themeControllerProvider.notifier)
-                  .toggle(theme.brightness),
-              child: Icon(
-                dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              width: 44,
-              height: 44,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: dark ? NorthstarPalette.lime : const Color(0xFFE5EDDF),
-                border: dark
-                    ? null
-                    : Border.all(color: const Color(0xFFD2DFD0)),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                'A',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  color: dark
-                      ? NorthstarPalette.heroDark
-                      : const Color(0xFF245137),
-                ),
-              ),
-            ),
-          ],
+        const PageHeader(
+          title: 'Today',
+          eyebrow: 'FICTIONAL DEMO DATA · 23 OCT 2026',
         ),
         const SizedBox(height: 24),
         _Hero(
@@ -145,55 +94,20 @@ class _TodayPageState extends ConsumerState<TodayPage> {
         ),
         const SizedBox(height: 27),
         const SectionHeading('One useful context'),
-        Container(
-          padding: const EdgeInsets.fromLTRB(15, 14, 15, 14),
-          decoration: BoxDecoration(
-            color: dark
-                ? NorthstarPalette.darkSoft
-                : NorthstarPalette.lightSoft,
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: Row(
+        InsightCard(
+          icon: Icons.nights_stay_outlined,
+          text: const TextSpan(
             children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: dark
-                      ? NorthstarPalette.sleepSoftDark
-                      : NorthstarPalette.sleepSoftLight,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.nights_stay_outlined,
-                  size: 16,
-                  color: dark
-                      ? NorthstarPalette.sleepDark
-                      : NorthstarPalette.sleepLight,
-                ),
+              TextSpan(text: 'Your last recorded sleep was '),
+              TextSpan(
+                text: '52 min shorter',
+                style: TextStyle(fontWeight: FontWeight.w800),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text.rich(
-                  const TextSpan(
-                    children: [
-                      TextSpan(text: 'Your last recorded sleep was '),
-                      TextSpan(
-                        text: '52 min shorter',
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      TextSpan(text: ' than your recent average.'),
-                    ],
-                  ),
-                  style: theme.textTheme.bodySmall?.copyWith(height: 1.55),
-                ),
-              ),
-              TextButton(
-                onPressed: () => context.go('/health'),
-                child: const Text('View'),
-              ),
+              TextSpan(text: ' than your recent average.'),
             ],
           ),
+          actionLabel: 'View',
+          onAction: () => context.go('/health'),
         ),
         const SizedBox(height: 27),
         const SectionHeading('This week', action: 'Weekly review'),
@@ -249,38 +163,6 @@ class _TodayPageState extends ConsumerState<TodayPage> {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _SquareButton extends StatelessWidget {
-  const _SquareButton({
-    required this.tooltip,
-    required this.onPressed,
-    required this.child,
-  });
-
-  final String tooltip;
-  final VoidCallback onPressed;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: theme.colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          side: BorderSide(color: theme.colorScheme.outline),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onPressed,
-          child: SizedBox(width: 44, height: 44, child: Center(child: child)),
-        ),
-      ),
     );
   }
 }

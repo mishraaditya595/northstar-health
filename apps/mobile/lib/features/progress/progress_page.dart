@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/design/northstar_theme.dart';
+import '../../core/design/page_header.dart';
+import '../../core/design/section.dart';
 import '../../core/units/load_units.dart';
 
 import 'domain/workout_history_models.dart';
@@ -95,34 +98,22 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
 
     return ListView(
       padding: EdgeInsets.fromLTRB(
-        20,
-        24,
-        20,
+        16,
+        16,
+        16,
         44 + MediaQuery.paddingOf(context).bottom,
       ),
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'PROGRESS',
-                style: theme.textTheme.headlineLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -1.1,
-                ),
-              ),
-            ),
-            IconButton(
+        PageHeader(
+          title: 'Progress',
+          eyebrow: 'REVIEW CHANGE OVER TIME',
+          actions: [
+            SquareButton(
               tooltip: 'Refresh completed workouts',
               onPressed: () => ref.invalidate(completedWorkoutHistoryProvider),
-              icon: const Icon(Icons.refresh),
+              child: const Icon(Icons.refresh, size: 20),
             ),
           ],
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'YOUR REAL TRAINING · SAVED ON THIS DEVICE',
-          style: theme.textTheme.labelSmall,
         ),
         const SizedBox(height: 20),
         Wrap(
@@ -212,13 +203,7 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
               style: theme.textTheme.bodySmall,
             ),
           const SizedBox(height: 28),
-          Text(
-            'STRENGTH TREND',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 12),
+          const SectionHeading('Strength trend'),
           if (selected == null)
             const _EmptyProgress(
               title: 'No loaded working sets yet',
@@ -283,42 +268,21 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
               ),
             ),
           const SizedBox(height: 28),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'WORKOUT HISTORY',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              Text(
-                '${sessions.length} finished',
-                style: theme.textTheme.bodySmall,
-              ),
-            ],
+          SectionHeading(
+            'Workout history',
+            action: '${sessions.length} finished',
           ),
-          const SizedBox(height: 10),
           for (final session in sessions) ...[
-            Card(
-              child: ListTile(
-                minVerticalPadding: 12,
-                leading: const Icon(Icons.check_circle_outline),
-                title: Text(
-                  session.name,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(
+            NsListCard(
+              icon: Icons.check_circle_outline,
+              title: session.name,
+              subtitle:
                   '${formatWorkoutDay(originalLocalDay(session))} · '
                   '${countWorkingSets(session)} working sets · '
                   '${session.exercises.length} exercises',
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => context.push('/progress/workouts/${session.uuid}'),
-              ),
+              onTap: () => context.push('/progress/workouts/${session.uuid}'),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 10),
           ],
         ],
         const SizedBox(height: 18),
@@ -368,7 +332,21 @@ class _SummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon),
+          Container(
+            width: 27,
+            height: 27,
+            decoration: BoxDecoration(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? NorthstarPalette.forestSoftDark
+                  : NorthstarPalette.forestSoftLight,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(
+              icon,
+              size: 15,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
           const SizedBox(height: 14),
           Text(heading, style: Theme.of(context).textTheme.labelSmall),
           const SizedBox(height: 6),
