@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme_controller.dart';
+import '../account/account_gate.dart';
 import '../../core/design/northstar_theme.dart';
 import '../../core/design/section.dart';
 
@@ -33,6 +34,13 @@ class TodayPage extends ConsumerWidget {
                 ],
               ),
             ),
+            if (ref.watch(accountAuthControllerProvider) != null)
+              IconButton(
+                tooltip: 'Sign out of NorthStar',
+                onPressed: () =>
+                    ref.read(accountAuthControllerProvider)!.signOut(),
+                icon: const Icon(Icons.logout_rounded),
+              ),
             IconButton(
               tooltip: dark ? 'Use light mode' : 'Use dark mode',
               onPressed: () => ref
