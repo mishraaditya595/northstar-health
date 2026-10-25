@@ -4,8 +4,8 @@
 
 NorthStar is a proposed privacy-conscious, offline-first health and strength-training app for **Android, iPhone, Android tablets and iPad**, with **Apple Watch and Wear OS** companions planned. Build the Flutter product with a distinct athletic performance aesthetic, not a generic wellness dashboard.
 
-> **Development status — foundation only.** The Flutter code currently provides fictional demo screens, Riverpod-based theme settings, routing, responsive navigation, quality checks and technical design documents. There is **a functioning local ObjectBox workout/plan database foundation** with
-an exercise catalog and plan editor, but **no live workout logger, cloud
+> **Development status — actively implementing workout tracking and authenticated sync.** The Flutter code currently provides fictional demo screens, Riverpod-based theme settings, routing, responsive navigation, quality checks and technical design documents. There is **a functioning local ObjectBox workout/plan database foundation** with
+an exercise catalog, plan editor, and local workout logger/history, but **no shipped Flutter authentication, automatic cloud
 backup, shipping wearable app, Firebase collection, or HealthKit/Health
 Connect connection**. The pictures below are **proposed static UI concepts**, not functioning application screenshots.
 
@@ -29,13 +29,13 @@ Connect connection**. The pictures below are **proposed static UI concepts**, no
 | State + dependency injection | Riverpod 3 | Theme state scaffolded |
 | Navigation | go_router, bottom tabs / adaptive side rail | Scaffolded |
 | On-device workout data | **ObjectBox** | Local model, repositories, exercise catalog and training plan editor implemented; live logging pending |
-| User identity + workout-only backup | **Supabase Auth + PostgreSQL** | Architectural decision; not integrated |
+| User identity + workout lifecycle sync | **Supabase Auth + PostgreSQL** | P2-01 development schema/RPC under review; Flutter authentication and automatic sync not implemented |
 | Health measurements | **Apple HealthKit and Android Health Connect** | Permissioned read planned; no SDK permissions yet |
 | Workout summary write-back | One app-owned completed workout, opt-in, no duplicates | Planned |
 | Crash/usage telemetry | **Firebase Crashlytics + Analytics** | Chosen, **not installed/collecting**; explicit privacy gate |
 | Watches | Native HealthKit workout service / Wear OS Health Services, watch UI under evaluation | Architecture/PoC only |
 
-The data policy is narrow: NorthStar **owns detailed workout logs**; HealthKit and Health Connect remain the source for physiology; Supabase receives only authenticated **completed NorthStar workout history** and essential exercise snapshots. No heart-rate/HRV/sleep/SpO₂/steps sensor stream, health-platform cache, imported external workout, or location trail is backed up to Supabase. Plans/templates remain **local-only initially**: a reinstall will restore past finished sessions but not necessarily user-created plans.
+The data policy is narrow: NorthStar **owns detailed workout logs**; HealthKit and Health Connect remain the source for physiology; Supabase receives only authenticated **NorthStar-authored phone workout lifecycle snapshots** (active/paused/completed/discarded) and essential exercise/set history, per [ADR-0005](docs/adr/0005-mandatory-auth-and-workout-sync.md). No heart-rate/HRV/sleep/SpO₂/steps sensor stream, health-platform cache, imported external workout, or location trail is backed up to Supabase. Plans/templates remain **local-only initially**: a reinstall will restore past finished sessions but not necessarily user-created plans.
 
 ## Production monorepo structure
 
@@ -57,7 +57,7 @@ apps/
     gradlew                    # Gradle wrapper
 contracts/workout_sync/v1/    # language-neutral event schema + tested fixture JSON
 packages/                     # Dart workspace packages when there is real reuse
-supabase/                     # future Auth/RLS/schema migrations; not yet implemented
+supabase/                     # versioned development RPC/database migrations and pgTAP tests
 experiments/                  # isolated Flutter-on-watch spikes; not in release
 prototypes/performance-v2/     # preserved original HTML/CSS/JS clickable reference
 docs/                         # ADRs, security, design, cloud sync, watch and release
@@ -65,7 +65,7 @@ docs/                         # ADRs, security, design, cloud sync, watch and re
 AGENTS.md                     # repository-wide AI coding and review instructions
 ```
 
-**Not a released health product:** the phone's ObjectBox Store, native Apple Health/Health Connect integrations, Supabase, Firebase and live watch recording are still future feature work. Watch source now has native non-recording starter UI; the Xcode watch target must still be embedded in the iOS Runner and validated for companion signing/distribution before release.
+**Not a released health product:** local ObjectBox workout logging exists, but Flutter account gating/sync, native Apple Health/Health Connect integrations, Firebase and live watch recording are not shipped. The Supabase P2-01 development backend is not production-ready. Watch source now has native non-recording starter UI; the Xcode watch target must still be embedded in the iOS Runner and validated for companion signing/distribution before release.
 
 Read [monorepo boundaries](docs/REPOSITORY_LAYOUT.md), [ADR-0004](docs/adr/0004-production-monorepo.md), [watchOS setup](apps/watch_os/README.md), [Wear OS setup](apps/wear_os/README.md), and the [watch sync contract](contracts/workout_sync/v1/README.md). Also see [AGENTS.md](AGENTS.md), [ADR-0003](docs/adr/0003-data-cloud-health.md) and the [independent review checklist](docs/REVIEW_GUIDE.md).
 

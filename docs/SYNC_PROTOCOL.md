@@ -1,6 +1,6 @@
 # Cross-device workout event protocol (watch -> phone -> Supabase)
 
-**Status:** Adopted design, not implemented. See [ADR-0002](adr/0002-watch-workout-architecture.md), [ADR-0003](adr/0003-data-cloud-health.md), [Cloud Sync](CLOUD_SYNC.md).
+**Status:** Adopted design, not implemented. See [ADR-0002](adr/0002-watch-workout-architecture.md), [ADR-0003](adr/0003-data-cloud-health.md), [ADR-0005](adr/0005-mandatory-auth-and-workout-sync.md), [Cloud Sync](CLOUD_SYNC.md).
 
 ## Two different durable transfers
 
@@ -68,7 +68,7 @@ Origin is stable across reconnection; do not arbitrarily transfer active workout
 2. Watch sends event UUID and per-session sequence. Receiver validates IDs, unit, schema version, owner/pairing and event shape; write domain update **and inbox dedupe receipt in one ObjectBox transaction**.
 3. Only then send an explicit ACK #1 for the accepted `event_id`. Retrying the same event must return the same receipt without duplicating a set.
 4. Sequence gaps, clock drift, deleted set corrections and unsupported schema versions are handled explicitly; no wall-clock-only total ordering.
-5. Phone's cloud outbox snapshots **completed NorthStar workouts** into stable revisioned aggregates; cloud operation UUID/revision is different from watch event UUID/sequence.
+5. Phone's cloud outbox synchronizes **NorthStar phone workout lifecycle snapshots** (active/paused/completed/discarded) as stable revisioned aggregates under ADR-0005; watch-origin session transfer/backup is deferred for its separate implementation. Cloud operation UUID/revision is different from watch event UUID/sequence.
 6. Server enforces authenticated conditional update, operation idempotency and owner isolation; ACK #2 is returned only after commit.
 7. Account logout stops cloud transfers; no unknown account auto-association. Device reboot, backgrounding and network loss preserve pending queues.
 8. Watch platform export receipt is transmitted with `platform_workout_exported` so phone doesn't duplicate HealthKit `HKWorkout`. Android uses one elected writer. External record metadata never becomes a sync event of raw HR/SpO₂.
