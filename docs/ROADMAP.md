@@ -16,11 +16,11 @@ completed workout history/progress is under review in PR #11. Physical-device
 persistence QA, backups, iOS build verification and accessibility remain
 outstanding.
 
-ObjectBox schema and generated model committed; domain models and repository boundary; plan/exercise editor, custom exercise catalog, live sets/reps/weight/RPE, rest timer, progress and session checkpoints; atomic durable write; model-migration and process-death tests. App usable with no account, internet or health permission.
+ObjectBox schema and generated model committed; domain models and repository boundary; plan/exercise editor, custom exercise catalog, live sets/reps/weight/RPE, rest timer, progress and session checkpoints; atomic durable write; model-migration and process-death tests. At Phase 1 this logger supported guests; Phase 2 replaces the public entry flow with mandatory initial sign-in, while preserving authenticated offline logging.
 
-## Phase 2 — Narrow Supabase workout backup
+## Phase 2 — Mandatory accounts, automatic workout sync and server processing
 
-Supabase Auth, session association and secure token storage; row-level security; versioned completed-workout DTO with exercise snapshots; transactional ObjectBox outbox; server-enforced optimistic concurrency/idempotency; pull/restore including tombstones, conflicts and deletion. **Mandatory backfill:** after explicit guest-to-account consent, scan existing *completed* local Phase 1 workouts and enqueue stable, idempotent outbox operations in the same association transaction; resume safely after interruption and never associate to another account. **Only finished NorthStar logs** are backed up. Custom plans, exercise catalog, in-progress drafts, preferences and health observations remain local initially; clearly state restore limitation.
+[ADR-0005](adr/0005-mandatory-auth-and-workout-sync.md) removes guest login and keeps completed-only backup. Users must register/sign in before using NorthStar. After initial verification, workouts remain editable offline using the securely bound account. Automatically queue each NorthStar phone workout once the user finishes it; unfinished sessions stay local. Server validates and processes completed metrics. Implement owner-scoped RLS, strict DTO validation, request hashing, transactional outbox, server revision CAS, per-account cursors, restore/tombstones and conflict handling. There is no guest data to migrate; never reassign local workouts between accounts. Custom plans, exercise definitions outside history, local recovery checkpoints, preferences and health-platform observations stay local. P2-01 is a development schema and RPC only; Flutter auth/sync/release QA remain open.
 
 ## Phase 3 — Permission-based platform health reads
 

@@ -15,7 +15,7 @@
 ## Feature and privacy readiness
 
 - ObjectBox real sessions/sets with generated model UID fixture migration, durable offline writes and recovery through process death.
-- No Supabase backup until authenticated RLS, conflict resolution, tombstones and completed-workout-only payload allowlist are verified.
+- No Supabase synchronization release until mandatory authentication, authenticated RLS, strict completed-workout DTO allowlist, conflicts, tombstones, owner-scoped restoration and privacy disclosures are verified under ADR-0005. The development RPC/migrations are not a release.
 - No HealthKit/Health Connect reads or summary exports until permissions/consent, provenance, stale/denied, duplicate-platform-workout prevention and release policy review.
 - No Firebase SDK collection until separate diagnostics/analytics default-off initialization, consent controls, redaction and synthetic leak tests.
 - Watch set logging must persist locally and survive screen off, disconnect, battery constraints and reconnect before UI claims success; native sensors and workout lifecycle operate independently of UI. Two-stage ACK (watch->phone and phone->Supabase).
@@ -32,7 +32,7 @@
 1. Integrate `apps/watch_os/Sources` with a **real existing-iOS-app watchOS target** inside `apps/mobile/ios` using Xcode; commit project settings, embedding/copy phase and test a companion archive.
 2. Verify mobile iOS simulator and native watchOS build in macOS CI, then replace placeholder bundle identifiers with final approved organization IDs and signing configuration.
 3. Implement transactional ObjectBox workout repo and mobile native adapters; only then add sensor/HealthKit/Health Services features.
-4. Implement cloud backup and independent watch event queues against v1 protocol; add multi-device permission/reconnect and version migration tests.
+4. Implement account-gated automatic completed phone workout sync, restoration and independent watch event queues against v1 protocol; add multi-device permission/reconnect and version migration tests.
 
 ## CI/CD cutover status
 

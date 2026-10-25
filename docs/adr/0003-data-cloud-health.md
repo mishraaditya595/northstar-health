@@ -1,5 +1,7 @@
 # ADR-0003 — Local data, cloud backup, health integrations and diagnostics
 
+**Supersession notice (2026-10-25):** [ADR-0005](0005-mandatory-auth-and-workout-sync.md) requires an account for everyone (no guest mode) and keeps cloud sync to completed phone workouts. Optional-auth and guest passages below document the historical decision and are **not current policy**. Health-platform prohibitions and other data boundaries remain unchanged.
+
 **Status:** Accepted direction for initial implementation; specified product and release gates remain open  
 **Date:** 2026-10-23  
 **Source:** User-supplied *NorthStar Health — Local Data, Cloud Backup & Health Platform Integration* (ADR-001, 23 October 2026). This repository numbers it ADR-0003 to avoid collisions with ADR-0001 (Flutter foundation) and ADR-0002 (watch architecture).
@@ -80,7 +82,7 @@ Review platform store policies, data safety disclosures, permissions, deletion a
 
 ## Reconciliation with earlier ADRs
 
-This ADR **supersedes ADR-0001 only** for backend scope and diagnostics provider: Supabase + Firebase replace the earlier “none initially / Sentry candidate” direction. ADR-0001 remains authoritative for Flutter/Riverpod/go_router/adaptive UI. ADR-0002 remains authoritative for watch-native session engines. ObjectBox remains the chosen local store.
+This ADR **supersedes ADR-0001 only** for backend scope and diagnostics provider; its optional-account assumptions were subsequently superseded by ADR-0005: Supabase + Firebase replace the earlier “none initially / Sentry candidate” direction. ADR-0001 remains authoritative for Flutter/Riverpod/go_router/adaptive UI. ADR-0002 remains authoritative for watch-native session engines. ObjectBox remains the chosen local store.
 
 ## Release acceptance
 

@@ -1,0 +1,8 @@
+# Local CI-only Supabase stack; no hosted project identifiers or credentials.
+project_id = "northstar-health-local"
+
+[db]
+major_version = 17
+
+[db.migrations]
+enabled = true
