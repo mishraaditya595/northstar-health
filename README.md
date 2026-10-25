@@ -29,13 +29,13 @@ Connect connection**. The pictures below are **proposed static UI concepts**, no
 | State + dependency injection | Riverpod 3 | Theme state scaffolded |
 | Navigation | go_router, bottom tabs / adaptive side rail | Scaffolded |
 | On-device workout data | **ObjectBox** | Local model, repositories, exercise catalog and training plan editor implemented; live logging pending |
-| User identity + workout lifecycle sync | **Supabase Auth + PostgreSQL** | P2-01 development schema/RPC under review; Flutter authentication and automatic sync not implemented |
+| User identity + completed-workout sync | **Supabase Auth + PostgreSQL** | P2-01 development schema/RPC under review; Flutter authentication and automatic sync not implemented |
 | Health measurements | **Apple HealthKit and Android Health Connect** | Permissioned read planned; no SDK permissions yet |
 | Workout summary write-back | One app-owned completed workout, opt-in, no duplicates | Planned |
 | Crash/usage telemetry | **Firebase Crashlytics + Analytics** | Chosen, **not installed/collecting**; explicit privacy gate |
 | Watches | Native HealthKit workout service / Wear OS Health Services, watch UI under evaluation | Architecture/PoC only |
 
-The data policy is narrow: NorthStar **owns detailed workout logs**; HealthKit and Health Connect remain the source for physiology; Supabase receives only authenticated **NorthStar-authored phone workout lifecycle snapshots** (active/paused/completed/discarded) and essential exercise/set history, per [ADR-0005](docs/adr/0005-mandatory-auth-and-workout-sync.md). No heart-rate/HRV/sleep/SpO₂/steps sensor stream, health-platform cache, imported external workout, or location trail is backed up to Supabase. Plans/templates remain **local-only initially**: a reinstall will restore past finished sessions but not necessarily user-created plans.
+The data policy is narrow: NorthStar **owns detailed workout logs**; HealthKit and Health Connect remain the source for physiology; Supabase receives only authenticated **completed NorthStar-authored phone workouts** and essential exercise/set history, per [ADR-0005](docs/adr/0005-mandatory-auth-and-workout-sync.md). No heart-rate/HRV/sleep/SpO₂/steps sensor stream, health-platform cache, imported external workout, or location trail is backed up to Supabase. Plans/templates remain **local-only initially**: a reinstall will restore past finished sessions but not necessarily user-created plans.
 
 ## Production monorepo structure
 

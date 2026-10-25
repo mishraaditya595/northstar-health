@@ -1,14 +1,14 @@
-# NorthStar authenticated workout lifecycle synchronization
+# NorthStar authenticated completed-workout synchronization
 
-**Policy:** [ADR-0005](adr/0005-mandatory-auth-and-workout-sync.md) (product direction requested 2026-10-25; ADR pending explicit owner sign-off) supersedes ADR-0003's optional-login and completed-only backup assumptions. This is a *new product decision*, not an observation about the shipping Flutter app.
+**Policy:** [ADR-0005](adr/0005-mandatory-auth-and-workout-sync.md) (owner decisions 2026-10-25; ADR pending explicit owner sign-off on PR #13) supersedes ADR-0003's optional-login and guest assumptions and keeps its completed-only backup scope. This is a *new product decision*, not an observation about the shipping Flutter app.
 
 **Implementation status:** P2-01 has been applied to the connected **development** Supabase project and committed as migrations in `supabase/migrations/`. It is **not production-ready**. Flutter Auth, local ObjectBox outbox, restoration, processing UX, background retry, device tests and full conflict handling have **not** been implemented.
 
 ## Data classification and account gating
 
-New users must register/sign in before using workout features; first authentication requires internet. A securely authenticated account may continue offline, save locally and enqueue changes until the network and auth session can resume. Supabase Auth anonymous accounts are not valid NorthStar accounts.
+Everyone must register/sign in before using workout features (no guest mode); first authentication requires internet. A securely authenticated account may continue offline, save locally and enqueue changes until the network and auth session can resume. Supabase Auth anonymous accounts are not valid NorthStar accounts.
 
-Cloud accepts *versioned NorthStar-authored phone workout snapshots* in `inProgress`, `paused`, `completed`, or `discarded` state and deletion tombstones. One aggregate contains session metadata, exercise name/muscle/equipment snapshots, and per-set position/status/type/reps/gram load/unit/RPE/completion time. **This is not a full active-workout checkpoint or plan backup.**
+Cloud accepts *versioned NorthStar-authored phone workouts* only in `completed` state (finished by the user), and deletion tombstones. In-progress, paused and discarded sessions are rejected by the RPC and the table constraint. One aggregate contains session metadata, exercise name/muscle/equipment snapshots, and per-set position/status/type/reps/gram load/unit/RPE/completion time. **This is not a full active-workout checkpoint or plan backup.**
 
 **Never upload:** HealthKit/Health Connect physiological data (HR, HRV, sleep, steps, SpO₂, GPS, etc), imported workouts, raw watch sensor streams, full ObjectBox databases, platform access tokens, app telemetry or device secrets; local recovery timers and editor state; custom plans/templates/catalogs or preferences. Any expansion to exercise notes/durations/RIR requires an explicit versioned DTO change plus privacy/tests.
 
@@ -19,11 +19,11 @@ Cloud accepts *versioned NorthStar-authored phone workout snapshots* in `inProgr
 - `northstar_private.workout_owner_cursors`: per-owner monotonic counter, transactionally advanced. It is not an exposed Data API table.
 - `public.sync_workout(operation_id,workout_id,expected_revision,action,payload)`: SECURITY INVOKER wrapper calling an audited private SECURITY DEFINER implementation. Anonymous callers have no EXECUTE grant. Direct client INSERT/UPDATE/DELETE on tables is revoked; owner-only SELECT on records uses RLS. The function derives account identity from `auth.uid()`, not user-supplied JSON.
 
-Migration names/versions correspond to the development project migration history: `20261025060300_phase2_workout_sync_foundation.sql`, `20261025063753_phase2_workout_sync_hardening.sql`, `20261025063912_phase2_validation_coalesce_fix.sql`, `20261025064908_phase2_receipt_expiry_and_security_cleanup.sql`, `20261025070923_phase2_identity_and_tombstone_guards.sql`, `20261025071009_phase2_tombstone_delete_retry_guard.sql`. The original migration is retained and repaired by subsequent migrations; *do not rewrite already applied migration history*. Replay all six in order on clean test databases.
+Migration names/versions correspond to the development project migration history: `20261025060300_phase2_workout_sync_foundation.sql`, `20261025063753_phase2_workout_sync_hardening.sql`, `20261025063912_phase2_validation_coalesce_fix.sql`, `20261025064908_phase2_receipt_expiry_and_security_cleanup.sql`, `20261025070923_phase2_identity_and_tombstone_guards.sql`, `20261025071009_phase2_tombstone_delete_retry_guard.sql`, `20261025090000_phase2_completed_only_scope.sql`. The original migration is retained and repaired by subsequent migrations; *do not rewrite already applied migration history*. Replay all seven in order on clean test databases.
 
 ## Disclosure and data rights (pending owner sign-off)
 
-Before an active or draft workout is uploaded, onboarding must disclose automatic cloud transfer of unfinished sets, loads and workout status and record an explicit acknowledgement. Proposed data policy: workout records last until deletion/account closure; tombstones last for the account lifetime; hash-only receipts expire after 90 days. The mobile app must support authenticated workout JSON export and in-app account deletion, including unsynced-data warnings and secure local cleanup. **These are not yet approved or implemented; ADR-0005 requires explicit owner sign-off before merge.**
+The privacy notice and signup flow disclose that finished workouts are backed up automatically. Proposed data policy: workout records last until deletion/account closure; tombstones last for the account lifetime; hash-only receipts expire after 90 days. The mobile app must support authenticated workout JSON export and in-app account deletion, including unsynced-data warnings and secure local cleanup. **These are not yet approved or implemented; ADR-0005 requires explicit owner sign-off before merge.**
 
 ## Validation and replay
 
@@ -35,19 +35,19 @@ Replay compares SHA-256 of a canonical JSON request tuple (workout ID, expected 
 
 ## Processing and missing values
 
-For *completed* workouts only, the server calculates completed working sets, loaded working sets and loaded volume (positive recorded grams times recorded reps). Warmups, non-performed sets, missing/zero loads and unknown states are excluded from loaded volume. A known workout with **no positive recorded weight** stores NULL loaded volume, never a fictional zero. Active, paused and discarded sessions carry no completed metrics. Processing is synchronous in P2-01; no asynchronous worker is implemented yet.
+For *completed* workouts only, the server calculates completed working sets, loaded working sets and loaded volume (positive recorded grams times recorded reps). Warmups, non-performed sets, missing/zero loads and unknown states are excluded from loaded volume. A known workout with **no positive recorded weight** stores NULL loaded volume, never a fictional zero. Processing is synchronous in P2-01; no asynchronous worker is implemented yet.
 
 ## Retention, deletion, restore and backward compatibility
 
 - A delete writes a tombstone and nulls the primary payload. The receipt stores only a hash. Hash receipts expire after **90 days**. The next authenticated sync opportunistically deletes that owner's expired receipts; `northstar_private.prune_expired_workout_receipts()` also supports a privileged full purge. **Scheduling/monitoring that full purge for inactive accounts remains a release blocker**. When an expired operation is retried, it may return a revision conflict and require reconciliation; never silently overwrite.
-- Deleted workout UUIDs are sticky tombstones: a new upsert is rejected with an explicit `reason: deleted` conflict, while a repeated explicit delete is allowed; exact replay remains idempotent. Tombstone retention for the account lifetime is a **proposal requiring owner approval**. Cursor-safe restores still need pagination testing. Do not purge tombstones as if they were receipts.
-- No automatic import of Phase 1 guest workouts: on first account sign-in show explicit one-time consent to associate legacy eligible sessions to the selected user. Denial preserves the old local records. Prevent cross-user attachment on logout/switch.
+- Deleted workout UUIDs are sticky tombstones: a new upsert is rejected with an explicit `reason: deleted` conflict, while a repeated explicit delete is allowed; exact replay remains idempotent. Tombstones are kept until the account is deleted (ADR-0005). Cursor-safe restores still need pagination testing. Do not purge tombstones as if they were receipts.
+- There is no guest mode and no guest data to import. Prevent cross-user attachment on logout/switch.
 - Phone outbox, account-bound local stores, offline JWT lifecycle, last-server-revision tracking, resume and conflict-resolution UI are future PRs. **Current server existence does not mean cloud sync is working in Flutter.**
-- Cloud lifecycle snapshots may be restored, but a running workout's rest timer/recovery checkpoint cannot yet be reconstructed remotely. Plans, catalog and preferences are not restored.
+- Only completed workout history can be restored; unfinished sessions never leave the device. Plans, catalog and preferences are not restored.
 
 ## Validation, security and rollback
 
-`supabase/tests/workout_sync.test.sql` emits 60 pgTAP assertions with `plan(60)` and standard TAP output, including RPE 10.5, case-insensitive UUID uniqueness and permanent tombstone protection. It contains synthetic tests for missing fields at each depth, replay and hash-only retention, malformed numeric/timestamp inputs, denial of table writes, owner separation and tombstones. Run `supabase test db` on a **clean** local/CI Supabase stack before merge; the development Supabase SQL execution is additional evidence, not a replacement for clean migration replay or multi-connection concurrency testing.
+`supabase/tests/workout_sync.test.sql` emits 64 pgTAP assertions with `plan(64)` and standard TAP output, including rejection of in-progress/paused/discarded workouts, RPE 10.5, case-insensitive UUID uniqueness and permanent tombstone protection. It contains synthetic tests for missing fields at each depth, replay and hash-only retention, malformed numeric/timestamp inputs, denial of table writes, owner separation and tombstones. Run `supabase test db` on a **clean** local/CI Supabase stack before merge; the development Supabase SQL execution is additional evidence, not a replacement for clean migration replay or multi-connection concurrency testing.
 
 Always run Supabase security/performance advisors. The fourth migration revoked unauthorized public invocation of the existing `rls_auto_enable()` event-trigger function. Remaining INFO notices for policy-less RLS tables are intentionally deny-all. Privileged/secret API keys, access tokens and database passwords must **never** enter Git or mobile packages; a publishable key can be embedded only with RLS and authenticated server authorization.
 

@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(60);
+select plan(64);
 
 insert into auth.users(id,email) values
  ('00000000-0000-4000-8000-0000000000a1','northstar-p2-a@example.invalid'),
@@ -141,6 +141,24 @@ select is(pg_temp.try_sync('00000000-0000-4000-8000-000000000099',
  '00000000-0000-4000-8000-000000000101',0,'upsert',
  current_setting('northstar.fixture')::jsonb - 'status'),
  '22023','missing status rejected');
+-- ADR-0005: only workouts the user finished are synchronized.
+select is(pg_temp.try_sync('00000000-0000-4000-8000-000000000099',
+ '00000000-0000-4000-8000-000000000101',0,'upsert',
+ jsonb_set(current_setting('northstar.fixture')::jsonb,'{status}','"inProgress"'::jsonb)),
+ '22023','in-progress workout rejected');
+select is(pg_temp.try_sync('00000000-0000-4000-8000-000000000099',
+ '00000000-0000-4000-8000-000000000101',0,'upsert',
+ jsonb_set(current_setting('northstar.fixture')::jsonb,'{status}','"paused"'::jsonb)),
+ '22023','paused workout rejected');
+select is(pg_temp.try_sync('00000000-0000-4000-8000-000000000099',
+ '00000000-0000-4000-8000-000000000101',0,'upsert',
+ jsonb_set(current_setting('northstar.fixture')::jsonb,'{status}','"discarded"'::jsonb)),
+ '22023','discarded workout rejected');
+reset role;
+select is((select pg_get_constraintdef(oid) from pg_constraint
+ where conname='workout_records_status_check'),
+ 'CHECK ((status = ''completed''::text))','table accepts only completed status');
+set local role authenticated;
 select is(pg_temp.try_sync('00000000-0000-4000-8000-000000000099',
  '00000000-0000-4000-8000-000000000101',0,'upsert',
  current_setting('northstar.fixture')::jsonb - 'started_at_utc'),

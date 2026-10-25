@@ -17,8 +17,8 @@ Every finding: affected file/line, reproducible impact, smallest correction, tes
 - [ ] Phone Android/iOS; tablet/iPad portrait, landscape and split view; dark/light, text scale and keyboard
 - [ ] Offline workout edits; process death; rest timer; ObjectBox local write+outbox atomicity
 - [ ] ObjectBox generated bindings and `objectbox-model.json` UID stability; migration on prior DB
-- [ ] Cloud payload allowlist: authenticated NorthStar phone lifecycle snapshots only (including active sets); no health cache/vitals, rest/recovery checkpoints, imported workouts or plans (ADR-0005)
-- [ ] Mandatory signup for new users; explicit *legacy Phase 1 guest* -> account import consent; logout/account-switch with unsynced data
+- [ ] Cloud payload allowlist: authenticated, completed NorthStar phone workouts only; no unfinished sessions, health cache/vitals, rest/recovery checkpoints, imported workouts or plans (ADR-0005)
+- [ ] Mandatory signup, no guest mode; logout/account-switch with unsynced data
 - [ ] Supabase RLS SELECT/INSERT/UPDATE/DELETE and any privileged RPC ownership, least-privilege
 - [ ] Concurrent device update/revision rejection; retry identical operation ID; deletion tombstones/cursor ordering
 - [ ] HealthKit/Health Connect source/time/units, per-metric permission, cache expiry/revocation, no double aggregate

@@ -1,6 +1,6 @@
 # ADR-0003 — Local data, cloud backup, health integrations and diagnostics
 
-**Supersession notice (2026-10-25):** [ADR-0005](0005-mandatory-auth-and-workout-sync.md) requires accounts for new users and extends workout cloud sync to phone lifecycle snapshots (active, paused, completed, discarded). Completed-only and optional-auth passages below document the historical decision and are **not current policy**. Health-platform prohibitions and other data boundaries remain unchanged.
+**Supersession notice (2026-10-25):** [ADR-0005](0005-mandatory-auth-and-workout-sync.md) requires an account for everyone (no guest mode) and keeps cloud sync to completed phone workouts. Optional-auth and guest passages below document the historical decision and are **not current policy**. Health-platform prohibitions and other data boundaries remain unchanged.
 
 **Status:** Accepted direction for initial implementation; specified product and release gates remain open  
 **Date:** 2026-10-23  
@@ -11,7 +11,7 @@
 NorthStar is an offline-first workout tracker and a permission-based viewer of health-platform measurements.
 
 - **ObjectBox** owns the mobile app's durable, user-created workout plans/logs, local in-progress state, sync queue, export receipts and short-lived permitted health *caches*.
-- **Supabase Auth + PostgreSQL** syncs *NorthStar phone workout lifecycle aggregates and the minimum exercise/set snapshots needed to interpret them* (ADR-0005 supersession). Never upload platform-derived heart rate, HRV, sleep, steps, SpO₂, GPS tracks or health dashboard caches. **ObjectBox files are never uploaded**: use portable DTOs and domain UUIDs.
+- **Supabase Auth + PostgreSQL** backs up and restores *completed NorthStar-created workout history and the minimum exercise snapshots needed to interpret it*. Never upload platform-derived heart rate, HRV, sleep, steps, SpO₂, GPS tracks or health dashboard caches. **ObjectBox files are never uploaded**: use portable DTOs and domain UUIDs.
 - **HealthKit on Apple platforms / Health Connect on Android phones** supply authorized physiological measurements and imported workout summaries. No universal third-party wearable coverage is promised.
 - **WorkoutHealthExport** may write one summary of a *completed, NorthStar-owned* workout into the platform's supported workout/exercise-session format with separate user permission. Do not write individual reps/sets as health measurements, manufacture calories, or re-export third-party workouts.
 - **Firebase Crashlytics and Analytics** are chosen *future* diagnostics providers. Collection defaults off, separate consent and hard data minimization are mandatory before the SDKs are activated. No workout values, notes or raw health samples in events, custom keys, breadcrumbs, crash attachments or logs.
@@ -25,7 +25,7 @@ This is a decision about boundaries and implementation order, **not a claim that
 | --- | --- | --- | --- | --- |
 | NorthStar completed session + exercise snapshots | NorthStar workout record | Durable | Backed up | Optional summary export only |
 | Set logs, load, reps, RPE/RIR, rest, user notes | NorthStar workout record | Durable | Backed up | Not portable as individual sets |
-| In-progress workout and recovery checkpoint | Originating NorthStar device | Durable | **Active set/session snapshot only**, not rest/recovery checkpoint state (ADR-0005) | Never export draft |
+| In-progress workout and recovery checkpoint | Originating NorthStar device | Durable | **Not in initial scope** | Never export draft |
 | Custom plans and exercise catalog | NorthStar user/device | Durable | **Local only initially** | No |
 | HR, resting HR, HRV, sleep, steps, distance, energy, SpO₂ | Contributing health platform | Bounded authorized cache | **Never** | Read only initially |
 | Derived progress/health analytics | Derived on device | Recompute or temporary cache | No independent backup | Read source values locally |
@@ -36,7 +36,7 @@ This is a decision about boundaries and implementation order, **not a claim that
 
 ## Cloud consistency: adopted MVP strategy
 
-Choose **one logical versioned workout aggregate per NorthStar phone session** across its lifecycle rather than independently synchronizing every set row (ADR-0005). The proposed first Supabase schema is a row per workout `(user_id, workout_id, revision, payload_jsonb, updated_at, deleted_at)`, with exercise/set snapshots in a size-bounded versioned payload. The canonical ObjectBox entities remain separate, mapped into a portable DTO. Later normalization is possible without changing external UUIDs or revision semantics.
+Choose **one logical versioned workout aggregate per completed session** rather than independently synchronizing every set row. The proposed first Supabase schema is a row per workout `(user_id, workout_id, revision, payload_jsonb, updated_at, deleted_at)`, with exercise/set snapshots in a size-bounded versioned payload. The canonical ObjectBox entities remain separate, mapped into a portable DTO. Later normalization is possible without changing external UUIDs or revision semantics.
 
 - Client mutation stores its data and outbox command in **one ObjectBox transaction**.
 - Server operations include `operation_id`, `workout_id`, `expected_revision`, versioned DTO, and authenticated principal.
@@ -73,7 +73,7 @@ Review platform store policies, data safety disclosures, permissions, deletion a
 ## Deferred / explicit decisions
 
 - No custom plan backup in initial scope; separately prioritize optional inclusion later.
-- Full in-progress UI/checkpoint recovery across phones is deferred although active-session sets synchronize under ADR-0005. Watch/phone local recovery is **required**.
+- In-progress workout cloud recovery across multiple phones is deferred. Watch/phone local recovery is **required**.
 - Whether export is prompted at first completed workout vs later settings is a UX decision; default no export until permission and purpose explained.
 - Define retention/deletion tombstone periods and account-switch UI before production.
 - Define post-export update/delete behavior for immutable HealthKit workouts; no silent duplicate writes.
@@ -82,7 +82,7 @@ Review platform store policies, data safety disclosures, permissions, deletion a
 
 ## Reconciliation with earlier ADRs
 
-This ADR **supersedes ADR-0001 only** for backend scope and diagnostics provider; its optional-account and completed-only sync assumptions were subsequently superseded by ADR-0005: Supabase + Firebase replace the earlier “none initially / Sentry candidate” direction. ADR-0001 remains authoritative for Flutter/Riverpod/go_router/adaptive UI. ADR-0002 remains authoritative for watch-native session engines. ObjectBox remains the chosen local store.
+This ADR **supersedes ADR-0001 only** for backend scope and diagnostics provider; its optional-account assumptions were subsequently superseded by ADR-0005: Supabase + Firebase replace the earlier “none initially / Sentry candidate” direction. ADR-0001 remains authoritative for Flutter/Riverpod/go_router/adaptive UI. ADR-0002 remains authoritative for watch-native session engines. ObjectBox remains the chosen local store.
 
 ## Release acceptance
 

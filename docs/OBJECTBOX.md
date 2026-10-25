@@ -15,8 +15,8 @@ cloud Sync is not used.
 
 | Entity | Lifetime | Cloud backup? |
 | --- | --- | --- |
-| `WorkoutSession` / `WorkoutExercise` / `WorkoutSet` | Durable until user deletes | NorthStar phone lifecycle snapshots (active/paused/completed/discarded), after authentication; no local recovery checkpoint |
-| `WorkoutSessionState` | Durable checkpoint until finished/recovered | No; server active-session snapshots exclude rest/recovery UI checkpoints |
+| `WorkoutSession` / `WorkoutExercise` / `WorkoutSet` | Durable until user deletes | Completed NorthStar phone workouts only, after authentication; no unfinished sessions or local recovery checkpoint |
+| `WorkoutSessionState` | Durable checkpoint until finished/recovered | No |
 | `WorkoutPlan` / `PlanExercise` / `ExerciseDefinition` | Durable local, owner-scoped | **Not in MVP**; embed names in backed-up historical logs |
 | `SyncOutbox`, `CloudSyncCursor`, `InboxReceipt` | Until durable ACK and retention policy | Metadata only on device |
 | `HealthExportReceipt` | As long as corresponding workout relevant | Local platform-record references only |
@@ -80,7 +80,7 @@ set or session edit
   -> independent Supabase worker retries by operation UUID
 ```
 
-New users must authenticate first; subsequent local logging stays available offline to a device securely bound to that account. Legacy Phase 1 guest workouts require explicit one-time migration consent and are never assigned to whoever signs in automatically. An acknowledged server write (not a sent HTTP request) permits outbox advancement. See ADR-0005. Watch-origin events first require the phone's own durable receipt before it acknowledges the watch.
+Everyone must authenticate first (no guest mode); subsequent local logging stays available offline to a device securely bound to that account. Local workouts are never assigned to a different account. An acknowledged server write (not a sent HTTP request) permits outbox advancement. See ADR-0005. Watch-origin events first require the phone's own durable receipt before it acknowledges the watch.
 
 ## Lifetime, performance and security
 
