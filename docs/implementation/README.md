@@ -13,6 +13,8 @@ The [roadmap](../ROADMAP.md) defines product milestones. Each note records actua
 
 ## Phase 2 — mandatory accounts and automatic sync
 
-- [P2-01 Supabase backend foundation and review remediation](phase-2/p2-01-supabase-foundation.md) — PR #13 (draft), strict account-scoped sync RPC, migration history, tests and outstanding gates.
+- [P2-01 Supabase backend foundation and review remediation](phase-2/p2-01-supabase-foundation.md) — PR #13 (merged), completed-only phone workout RPC, migration history, tests and outstanding release gates.
+
+- [P2-02 Mandatory Flutter authentication and owner-bound offline storage](phase-2/p2-02-account-authentication.md) — in review; account gate, secure email code auth, isolated ObjectBox directories and account sign-out. Sync queue still outstanding.
 
 Authoritative policy: [ADR-0003](../adr/0003-data-cloud-health.md) **as superseded for auth/cloud workout scope** by [ADR-0005](../adr/0005-mandatory-auth-and-workout-sync.md), [ObjectBox](../OBJECTBOX.md), and [Cloud Sync](../CLOUD_SYNC.md).

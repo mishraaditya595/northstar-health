@@ -21,6 +21,8 @@ class NsTextField extends StatelessWidget {
     this.prefixIcon,
     this.dense = false,
     this.textAlign = TextAlign.start,
+    this.autofillHints,
+    this.autocorrect = true,
     this.onChanged,
     this.onSubmitted,
     super.key,
@@ -43,6 +45,8 @@ class NsTextField extends StatelessWidget {
   final TextCapitalization textCapitalization;
   final List<TextInputFormatter>? inputFormatters;
   final IconData? prefixIcon;
+  final Iterable<String>? autofillHints;
+  final bool autocorrect;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
 
@@ -68,6 +72,8 @@ class NsTextField extends StatelessWidget {
         textCapitalization: textCapitalization,
         textAlign: textAlign,
         inputFormatters: inputFormatters,
+        autofillHints: autofillHints,
+        autocorrect: autocorrect,
         decoration: decoration,
         onChanged: onChanged,
         onFieldSubmitted: onSubmitted,
@@ -84,6 +90,8 @@ class NsTextField extends StatelessWidget {
       textCapitalization: textCapitalization,
       textAlign: textAlign,
       inputFormatters: inputFormatters,
+      autofillHints: autofillHints,
+      autocorrect: autocorrect,
       decoration: decoration,
       onChanged: onChanged,
       onSubmitted: onSubmitted,

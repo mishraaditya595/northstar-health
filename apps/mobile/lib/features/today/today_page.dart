@@ -6,6 +6,7 @@ import '../../core/design/dialogs.dart';
 import '../../core/design/northstar_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
+import '../account/account_auth_provider.dart';
 
 class TodayPage extends ConsumerStatefulWidget {
   const TodayPage({super.key});
@@ -18,6 +19,22 @@ class _TodayPageState extends ConsumerState<TodayPage> {
   String? energy;
 
   void _later() => showNsMessage(context, 'Available in a later phase.');
+
+  Future<void> _signOut() async {
+    final yes = await showNsConfirm(
+      context,
+      title: 'Sign out?',
+      message:
+          'Your workouts stay on this device, including any unfinished '
+          'session, and come back when you sign in to this account again.',
+      confirmLabel: 'Sign out',
+    );
+    if (!yes) return;
+    final auth = ref.read(accountAuthControllerProvider);
+    await auth.signOut();
+    // A failed sign-out keeps the account open, so say so.
+    if (auth.error != null && mounted) showNsMessage(context, auth.error!);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,9 +49,16 @@ class _TodayPageState extends ConsumerState<TodayPage> {
         32 + MediaQuery.paddingOf(context).bottom,
       ),
       children: [
-        const PageHeader(
+        PageHeader(
           title: 'Today',
           eyebrow: 'FICTIONAL DEMO DATA · 23 OCT 2026',
+          actions: [
+            SquareButton(
+              tooltip: 'Sign out of NorthStar',
+              onPressed: _signOut,
+              child: const Icon(Icons.logout_rounded, size: 20),
+            ),
+          ],
         ),
         const SizedBox(height: 24),
         _Hero(

@@ -3,14 +3,58 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:northstar_health/app/floating_nav_bar.dart';
 import 'package:northstar_health/app/northstar_app.dart';
+import 'package:northstar_health/features/account/account_auth_controller.dart';
+import 'package:northstar_health/features/account/account_auth_provider.dart';
+
+import 'support/fake_account_auth.dart';
+
+Widget signedInApp([AccountAuthController? auth]) => ProviderScope(
+  overrides: [
+    accountAuthControllerProvider.overrideWithValue(
+      auth ?? AccountAuthController(FakeAuthApi(), FakeBoundAccountStore()),
+    ),
+  ],
+  child: const NorthstarApp(),
+);
 
 void main() {
+  testWidgets('sign-out asks first and keeps the account on cancel', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final bound = FakeBoundAccountStore()..saved = accountA;
+    final auth = AccountAuthController(
+      FakeAuthApi()..sessionId = accountA,
+      bound,
+    );
+    addTearDown(auth.dispose);
+    await auth.restore();
+    await tester.pumpWidget(signedInApp(auth));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Sign out of NorthStar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(auth.userId, accountA);
+
+    await tester.tap(find.byTooltip('Sign out of NorthStar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
+    await tester.pumpAndSettle();
+    expect(auth.userId, isNull);
+    expect(bound.saved, isNull);
+  });
+
   testWidgets('Today shows fictional metrics and four tabs', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const ProviderScope(child: NorthstarApp()));
+    await tester.pumpWidget(signedInApp());
     await tester.pumpAndSettle();
 
     expect(find.text('Full Body A'), findsOneWidget);
@@ -25,7 +69,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const ProviderScope(child: NorthstarApp()));
+    await tester.pumpWidget(signedInApp());
     await tester.pumpAndSettle();
 
     expect(find.byType(NavigationRail), findsOneWidget);
