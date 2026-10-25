@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/design/dialogs.dart';
+import '../../core/design/inputs.dart';
 import '../../core/design/northstar_theme.dart';
+import '../../core/design/page_header.dart';
 import '../../core/ids/uuid_factory.dart';
+import '../../core/ui/dispose_after_dialog.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
 import '../workouts/domain/workout_library_models.dart';
 import 'train_library_state.dart';
@@ -39,24 +43,13 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
 
   Future<bool> _confirmDiscard() async {
     if (!_dirty) return true;
-    return await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: const Text('Discard unsaved changes?'),
-            content: const Text('Changes to this plan have not been saved.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('Keep editing'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text('Discard changes'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+    return showNsConfirm(
+      context,
+      title: 'Discard unsaved changes?',
+      message: 'Changes to this plan have not been saved.',
+      cancelLabel: 'Keep editing',
+      confirmLabel: 'Discard changes',
+    );
   }
 
   Future<void> _requestExit() async {
@@ -154,77 +147,68 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
         .where((e) => e.archivedAtMs == null)
         .toList();
     var search = '';
-    final selected = await showModalBottomSheet<ExerciseRecord>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: FractionallySizedBox(
-          heightFactor: 0.75,
-          child: StatefulBuilder(
-            builder: (context, setSheetState) {
-              final visible = definitions
-                  .where(
-                    (e) =>
-                        e.archivedAtMs == null &&
-                        (search.isEmpty ||
-                            e.name.toLowerCase().contains(search) ||
-                            e.muscleGroup.toLowerCase().contains(search) ||
-                            e.equipment.toLowerCase().contains(search)),
-                  )
-                  .toList();
-              return Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'ADD EXERCISE',
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w900),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          onChanged: (text) => setSheetState(
-                            () => search = text.trim().toLowerCase(),
-                          ),
-                          decoration: const InputDecoration(
-                            prefixIcon: Icon(Icons.search),
-                            hintText: 'Search exercises',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ],
+    final selected = await showNsSheet<ExerciseRecord>(
+      context,
+      heightFactor: 0.75,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final visible = definitions
+              .where(
+                (e) =>
+                    e.archivedAtMs == null &&
+                    (search.isEmpty ||
+                        e.name.toLowerCase().contains(search) ||
+                        e.muscleGroup.toLowerCase().contains(search) ||
+                        e.equipment.toLowerCase().contains(search)),
+              )
+              .toList();
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'ADD EXERCISE',
+                      style: Theme.of(context).textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w900),
                     ),
-                  ),
-                  Expanded(
-                    child: visible.isEmpty
-                        ? const Center(child: Text('No matching exercises.'))
-                        : ListView.builder(
-                            itemCount: visible.length,
-                            itemBuilder: (_, index) {
-                              final e = visible[index];
-                              return ListTile(
-                                title: Text(e.name),
-                                subtitle: Text(
-                                  [
-                                    e.muscleGroup,
-                                    e.equipment,
-                                  ].where((s) => s.isNotEmpty).join(' · '),
-                                ),
-                                trailing: const Icon(Icons.add_circle_outline),
-                                onTap: () => Navigator.pop(sheetContext, e),
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
+                    const SizedBox(height: 12),
+                    NsTextField(
+                      onChanged: (text) => setSheetState(
+                        () => search = text.trim().toLowerCase(),
+                      ),
+                      prefixIcon: Icons.search,
+                      hint: 'Search exercises',
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: visible.isEmpty
+                    ? const Center(child: Text('No matching exercises.'))
+                    : ListView.builder(
+                        itemCount: visible.length,
+                        itemBuilder: (_, index) {
+                          final e = visible[index];
+                          return ListTile(
+                            title: Text(e.name),
+                            subtitle: Text(
+                              [
+                                e.muscleGroup,
+                                e.equipment,
+                              ].where((s) => s.isNotEmpty).join(' · '),
+                            ),
+                            trailing: const Icon(Icons.add_circle_outline),
+                            onTap: () => Navigator.pop(sheetContext, e),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
     if (selected == null || !mounted) return;
@@ -260,52 +244,47 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
     int? optional(String value) =>
         value.trim().isEmpty ? null : int.tryParse(value.trim()) ?? -1;
     try {
-      await showDialog<void>(
+      await showNsDialog<void>(
         context: context,
         builder: (dialogContext) => StatefulBuilder(
-          builder: (context, updateDialog) => AlertDialog(
-            title: const Text('Exercise targets'),
+          builder: (context, updateDialog) => NsDialog(
+            title: 'Exercise targets',
             content: SizedBox(
               width: 420,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(
+                    NsTextField(
                       controller: sets,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Sets (1–30)',
-                      ),
+                      label: 'Sets (1–30)',
                     ),
-                    TextField(
+                    const SizedBox(height: 10),
+                    NsTextField(
                       controller: min,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Minimum reps (optional)',
-                      ),
+                      label: 'Minimum reps (optional)',
                     ),
-                    TextField(
+                    const SizedBox(height: 10),
+                    NsTextField(
                       controller: max,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Maximum reps (optional)',
-                      ),
+                      label: 'Maximum reps (optional)',
                     ),
-                    TextField(
+                    const SizedBox(height: 10),
+                    NsTextField(
                       controller: rest,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Rest seconds (optional)',
-                      ),
+                      label: 'Rest seconds (optional)',
                     ),
-                    TextField(
+                    const SizedBox(height: 10),
+                    NsTextField(
                       controller: note,
                       maxLength: 1000,
+                      minLines: 3,
                       maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Coaching notes (local only)',
-                      ),
+                      label: 'Coaching notes (local only)',
                     ),
                     if (error != null)
                       Text(
@@ -355,11 +334,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
         ),
       );
     } finally {
-      sets.dispose();
-      min.dispose();
-      max.dispose();
-      rest.dispose();
-      note.dispose();
+      disposeAfterDialog([sets, min, max, rest, note]);
     }
   }
 
@@ -434,27 +409,15 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
   }
 
   Future<void> _archive() async {
-    final yes = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Archive this plan?'),
-        content: const Text(
+    final yes = await showNsConfirm(
+      context,
+      title: 'Archive this plan?',
+      message:
           'It will leave your plan list. '
           'Previously recorded workouts will not be removed.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Archive'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Archive',
     );
-    if (yes != true || !mounted) return;
+    if (!yes || !mounted) return;
     try {
       final version = expectedUpdatedAtMs;
       if (version == null) throw StateError('Missing plan version');
@@ -496,7 +459,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
       onPopInvokedWithResult: _onPopInvoked,
       child: Scaffold(
         appBar: AppBar(
-          leading: BackButton(onPressed: _requestExit),
+          leading: NsBackButton(onPressed: _requestExit),
           title: Text(
             widget.planUuid == null
                 ? 'New training plan'
@@ -515,7 +478,12 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 860),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 40),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                8,
+                16,
+                40 + MediaQuery.paddingOf(context).bottom,
+              ),
               children: [
                 Text(
                   'PLAN THE WORK',
@@ -528,27 +496,22 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
                   style: TextStyle(color: muted),
                 ),
                 const SizedBox(height: 20),
-                TextField(
+                NsTextField(
                   controller: name,
                   onChanged: _markDirty,
                   maxLength: 100,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Plan name *',
-                    hintText: 'e.g. Upper Body A',
-                    border: OutlineInputBorder(),
-                  ),
+                  label: 'Plan name *',
+                  hint: 'e.g. Upper Body A',
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                NsTextField(
                   controller: description,
                   onChanged: _markDirty,
                   maxLength: 1000,
+                  minLines: 2,
                   maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Description (optional)',
-                    border: OutlineInputBorder(),
-                  ),
+                  label: 'Description (optional)',
                 ),
                 const SizedBox(height: 18),
                 Row(

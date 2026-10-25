@@ -66,4 +66,60 @@ void main() {
       expect(find.text('1:19'), findsOneWidget);
     },
   );
+
+  group('floating', () {
+    final origin = DateTime.utc(2026, 10, 24, 8);
+    WorkoutRecoveryCheckpoint running() => WorkoutRecoveryCheckpoint(
+      sessionUuid: 'session-a',
+      checkpointRevision: 2,
+      restState: 'running',
+      restDeadlineUtcMs: origin
+          .add(const Duration(seconds: 47))
+          .millisecondsSinceEpoch,
+    );
+
+    testWidgets('running rest shows a compact bar with the time and clear', (
+      tester,
+    ) async {
+      var cleared = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RestTimerCard(
+              checkpoint: running(),
+              runningWorkout: true,
+              floating: true,
+              nowUtc: () => origin,
+              onStart: (_) {},
+              onClear: () => cleared++,
+            ),
+          ),
+        ),
+      );
+      expect(find.text('0:47'), findsOneWidget);
+      expect(find.text('90s'), findsNothing);
+      await tester.tap(find.byTooltip('Clear rest'));
+      expect(cleared, 1);
+    });
+
+    testWidgets('idle floating card keeps the start choices', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RestTimerCard(
+              checkpoint: WorkoutRecoveryCheckpoint(
+                sessionUuid: 'session-a',
+                checkpointRevision: 1,
+              ),
+              runningWorkout: true,
+              floating: true,
+              onStart: (_) {},
+              onClear: () {},
+            ),
+          ),
+        ),
+      );
+      expect(find.text('90s'), findsOneWidget);
+    });
+  });
 }

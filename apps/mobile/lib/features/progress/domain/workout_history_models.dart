@@ -249,3 +249,18 @@ int countWorkingSets(WorkoutSessionRecord session) => session.sets
           s.reps != null,
     )
     .length;
+
+/// Readable load for display. Integer grams stay the source of truth; never
+/// round and re-store the shown value.
+String formatLoadAmount(int grams, LoadUnit unit) {
+  final value = LoadUnits.fromGrams(grams, unit);
+  final precision = unit == LoadUnit.lb ? 2 : 3;
+  var display = value.toStringAsFixed(precision);
+  while (display.contains('.') && display.endsWith('0')) {
+    display = display.substring(0, display.length - 1);
+  }
+  if (display.endsWith('.')) {
+    display = display.substring(0, display.length - 1);
+  }
+  return display;
+}
