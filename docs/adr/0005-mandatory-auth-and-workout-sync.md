@@ -1,6 +1,6 @@
 # ADR-0005 — Mandatory accounts and automatic completed-workout sync
 
-**Status:** **Proposed — awaiting explicit owner approval on PR #13.** This document cannot approve itself.  
+**Status:** **Accepted** — approved by the project owner on 2026-10-25 (PR #13).  
 **Supersedes:** ADR-0003 and earlier Phase 1/2 roadmaps **only where they specify optional accounts and guest access**. ADR-0003's completed-workout-only cloud scope is **kept**. All privacy and local-first constraints not explicitly changed remain in force.
 
 ## Decision and rationale
@@ -13,14 +13,14 @@ This is **synchronization plus backup** of finished history, not an unrestricted
 
 ## Owner decisions
 
-The owner decided on 2026-10-25: mandatory accounts, no guest mode, completed-only sync, automatic upload after the workout ends, and tombstones kept for the account lifetime. The remaining terms below are recorded for approval in PR #13:
+The owner decided on 2026-10-25: mandatory accounts, no guest mode, completed-only sync, automatic upload after the workout ends, and tombstones kept for the account lifetime. The owner also approved the following terms:
 
 1. **Disclosure.** The privacy notice and signup flow state that finished workouts (sets, exercise labels, repetitions, loads and timestamps) are backed up automatically to the user's account.
 2. **Workout retention.** Completed workouts are kept while the account exists unless the user deletes them. A verified delete removes the payload and statistics immediately and keeps a *tombstone* (user ID, workout ID, revision, deletion time; no workout content) until **the account itself is deleted**, so an offline or second device cannot resurrect it. The old workout UUID is never reused. Hash-only request receipts expire after 90 days, with global scheduled pruning still a release gate. Determine any separate legal retention obligations before shipping.
 3. **User export.** Provide an authenticated, owner-scoped, machine-readable JSON export of all completed workout history (schema version, IDs, timestamps, exercises and sets), excluding access tokens and other accounts' records. Export must be available before account deletion. Document what is *not* included, such as custom plans and platform-owned physiological records.
 4. **Account deletion.** Provide a clearly labeled in-app delete-account workflow requiring an online, freshly verified session and explicit confirmation. Warn about pending offline changes and irreversible deletion; pause sync queues, revoke sessions, delete account-related database records and tombstones with verified server-side authorization, then safely clear or lock local owner-bound data. The server must not silently re-associate orphaned records to another account. An operational retention/deletion runbook, status feedback, and cross-device verification are needed before release.
 
-**Merge rule:** Marking ADR-0005 accepted requires the human owner to comment on PR #13 approving this ADR. Agent-authored text is not approval. Do not merge while this approval is missing.
+**Approval:** Accepted by the human owner on PR #13. Future changes to these terms require a new numbered ADR; agent-authored text is never approval.
 
 ## Privacy and identity rules
 

@@ -1,6 +1,6 @@
 # Phase 2 / P2-01 — Supabase workout sync foundation
 
-**Review state:** Remediation for PR #13; do not merge without owner review.  
+**Review state:** PR #13; ADR-0005 accepted by the owner. Merge is a human action.  
 **Policy:** [ADR-0005](../../adr/0005-mandatory-auth-and-workout-sync.md) (mandatory accounts, no guest mode, completed-workout sync).  
 **Backend environment:** Connected *development* Supabase project, not production.
 
@@ -34,7 +34,7 @@ Everyone must authenticate initially (no guest mode); offline logging is still a
 - **Retention:** Owner-specific pruning now occurs during sync and is covered by pgTAP; verify external 90-day purge scheduling/monitoring for inactive users and replay behavior after expiry.
 - **RLS:** Run additional authenticated cross-user API tests outside the DB simulation (real JWTs) and re-review private SECURITY DEFINER permissions/search_path.
 - **Mobile:** P2-02+ are required for actual sign-in, ObjectBox account ownership/outbox, retry, conflict UX and restoration and device release verification.
-- **Privacy and policy sign-off:** ADR-0005 is **proposed, pending owner sign-off**. Before release implement the signup disclosure, account-lifetime tombstone retention, authenticated data export and in-app account deletion. No agent can self-approve.
+- **Privacy and policy:** ADR-0005 is **accepted** by the owner. Before release implement the signup disclosure, account-lifetime tombstone retention, authenticated data export and in-app account deletion.
 - **CI:** New `.github/workflows/supabase_sql.yml` runs clean local database initialization, reset/migration replay and `supabase test db`. Do not mark this gate verified until that GitHub check succeeds.
 
 ## Rollback

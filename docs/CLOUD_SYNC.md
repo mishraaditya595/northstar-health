@@ -1,6 +1,6 @@
 # NorthStar authenticated completed-workout synchronization
 
-**Policy:** [ADR-0005](adr/0005-mandatory-auth-and-workout-sync.md) (owner decisions 2026-10-25; ADR pending explicit owner sign-off on PR #13) supersedes ADR-0003's optional-login and guest assumptions and keeps its completed-only backup scope. This is a *new product decision*, not an observation about the shipping Flutter app.
+**Policy:** [ADR-0005](adr/0005-mandatory-auth-and-workout-sync.md) (accepted by the owner 2026-10-25) supersedes ADR-0003's optional-login and guest assumptions and keeps its completed-only backup scope. This is a *new product decision*, not an observation about the shipping Flutter app.
 
 **Implementation status:** P2-01 has been applied to the connected **development** Supabase project and committed as migrations in `supabase/migrations/`. It is **not production-ready**. Flutter Auth, local ObjectBox outbox, restoration, processing UX, background retry, device tests and full conflict handling have **not** been implemented.
 
@@ -21,9 +21,9 @@ Cloud accepts *versioned NorthStar-authored phone workouts* only in `completed` 
 
 Migration names/versions correspond to the development project migration history: `20261025060300_phase2_workout_sync_foundation.sql`, `20261025063753_phase2_workout_sync_hardening.sql`, `20261025063912_phase2_validation_coalesce_fix.sql`, `20261025064908_phase2_receipt_expiry_and_security_cleanup.sql`, `20261025070923_phase2_identity_and_tombstone_guards.sql`, `20261025071009_phase2_tombstone_delete_retry_guard.sql`, `20261025090000_phase2_completed_only_scope.sql`. The original migration is retained and repaired by subsequent migrations; *do not rewrite already applied migration history*. Replay all seven in order on clean test databases.
 
-## Disclosure and data rights (pending owner sign-off)
+## Disclosure and data rights
 
-The privacy notice and signup flow disclose that finished workouts are backed up automatically. Proposed data policy: workout records last until deletion/account closure; tombstones last for the account lifetime; hash-only receipts expire after 90 days. The mobile app must support authenticated workout JSON export and in-app account deletion, including unsynced-data warnings and secure local cleanup. **These are not yet approved or implemented; ADR-0005 requires explicit owner sign-off before merge.**
+The privacy notice and signup flow disclose that finished workouts are backed up automatically. Approved data policy: workout records last until deletion/account closure; tombstones last for the account lifetime; hash-only receipts expire after 90 days. The mobile app must support authenticated workout JSON export and in-app account deletion, including unsynced-data warnings and secure local cleanup. **Approved in ADR-0005 but not yet implemented.**
 
 ## Validation and replay
 
