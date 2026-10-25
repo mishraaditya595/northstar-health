@@ -437,10 +437,90 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "8:7182930008744971703",
+      "lastPropertyId": "13:3612977737979895369",
+      "name": "WorkoutSyncOutboxEntity",
+      "properties": [
+        {
+          "id": "1:969062180527392181",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:4568142297077724087",
+          "name": "operationUuid",
+          "indexId": "12:302775981512831844",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:8184839670834163480",
+          "name": "sessionUuid",
+          "indexId": "13:9134466809272770358",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "4:4454587139481571249",
+          "name": "localRevision",
+          "type": 6
+        },
+        {
+          "id": "5:6825791991566744836",
+          "name": "action",
+          "type": 9
+        },
+        {
+          "id": "6:351215266771476420",
+          "name": "payloadJson",
+          "type": 9
+        },
+        {
+          "id": "7:2269155396768700060",
+          "name": "state",
+          "indexId": "14:898067203127664905",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "8:5043758238672481912",
+          "name": "createdAtMs",
+          "type": 6
+        },
+        {
+          "id": "9:3283788942288831959",
+          "name": "attemptedAtMs",
+          "type": 6
+        },
+        {
+          "id": "10:1957875260428284841",
+          "name": "attempts",
+          "type": 6
+        },
+        {
+          "id": "11:8666084983915837349",
+          "name": "serverRevision",
+          "type": 6
+        },
+        {
+          "id": "12:4734504839192541130",
+          "name": "serverChangeSeq",
+          "type": 6
+        },
+        {
+          "id": "13:3612977737979895369",
+          "name": "errorCode",
+          "type": 9
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "7:8818928578441733620",
-  "lastIndexId": "11:7104938556051225709",
+  "lastEntityId": "8:7182930008744971703",
+  "lastIndexId": "14:898067203127664905",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

@@ -7,6 +7,8 @@ import '../../core/design/northstar_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 import '../account/account_auth_provider.dart';
+import '../workouts/data/objectbox_workout_outbox.dart';
+import 'backup_status_notice.dart';
 
 class TodayPage extends ConsumerStatefulWidget {
   const TodayPage({super.key});
@@ -31,6 +33,7 @@ class _TodayPageState extends ConsumerState<TodayPage> {
     );
     if (!yes) return;
     final auth = ref.read(accountAuthControllerProvider);
+    if (auth == null) return;
     await auth.signOut();
     // A failed sign-out keeps the account open, so say so.
     if (auth.error != null && mounted) showNsMessage(context, auth.error!);
@@ -59,6 +62,10 @@ class _TodayPageState extends ConsumerState<TodayPage> {
               child: const Icon(Icons.logout_rounded, size: 20),
             ),
           ],
+        ),
+        BackupStatusNotice(
+          controller: ref.watch(accountAuthControllerProvider),
+          blockedCount: ref.watch(blockedWorkoutCountProvider),
         ),
         const SizedBox(height: 24),
         _Hero(

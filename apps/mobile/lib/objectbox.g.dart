@@ -520,6 +520,97 @@ final _entities = <obx_int.ModelEntity>[
     relations: <obx_int.ModelRelation>[],
     backlinks: <obx_int.ModelBacklink>[],
   ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(8, 7182930008744971703),
+    name: 'WorkoutSyncOutboxEntity',
+    lastPropertyId: const obx_int.IdUid(13, 3612977737979895369),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 969062180527392181),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 4568142297077724087),
+        name: 'operationUuid',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(12, 302775981512831844),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 8184839670834163480),
+        name: 'sessionUuid',
+        type: 9,
+        flags: 2048,
+        indexId: const obx_int.IdUid(13, 9134466809272770358),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 4454587139481571249),
+        name: 'localRevision',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 6825791991566744836),
+        name: 'action',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 351215266771476420),
+        name: 'payloadJson',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(7, 2269155396768700060),
+        name: 'state',
+        type: 9,
+        flags: 2048,
+        indexId: const obx_int.IdUid(14, 898067203127664905),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(8, 5043758238672481912),
+        name: 'createdAtMs',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(9, 3283788942288831959),
+        name: 'attemptedAtMs',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(10, 1957875260428284841),
+        name: 'attempts',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(11, 8666084983915837349),
+        name: 'serverRevision',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(12, 4734504839192541130),
+        name: 'serverChangeSeq',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(13, 3612977737979895369),
+        name: 'errorCode',
+        type: 9,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
 ];
 
 /// Shortcut for [obx.Store.new] that passes [getObjectBoxModel] and for Flutter
@@ -565,8 +656,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
     // Typically, this is done with `dart run build_runner build`.
     generatorVersion: obx_int.GeneratorVersion.v2025_12_16,
     entities: _entities,
-    lastEntityId: const obx_int.IdUid(7, 8818928578441733620),
-    lastIndexId: const obx_int.IdUid(11, 7104938556051225709),
+    lastEntityId: const obx_int.IdUid(8, 7182930008744971703),
+    lastIndexId: const obx_int.IdUid(14, 898067203127664905),
     lastRelationId: const obx_int.IdUid(0, 0),
     lastSequenceId: const obx_int.IdUid(0, 0),
     retiredEntityUids: const [],
@@ -1201,6 +1292,114 @@ obx_int.ModelDefinition getObjectBoxModel() {
         return object;
       },
     ),
+    WorkoutSyncOutboxEntity: obx_int.EntityDefinition<WorkoutSyncOutboxEntity>(
+      model: _entities[7],
+      toOneRelations: (WorkoutSyncOutboxEntity object) => [],
+      toManyRelations: (WorkoutSyncOutboxEntity object) => {},
+      getId: (WorkoutSyncOutboxEntity object) => object.id,
+      setId: (WorkoutSyncOutboxEntity object, int id) {
+        object.id = id;
+      },
+      objectToFB: (WorkoutSyncOutboxEntity object, fb.Builder fbb) {
+        final operationUuidOffset = fbb.writeString(object.operationUuid);
+        final sessionUuidOffset = fbb.writeString(object.sessionUuid);
+        final actionOffset = fbb.writeString(object.action);
+        final payloadJsonOffset = fbb.writeString(object.payloadJson);
+        final stateOffset = fbb.writeString(object.state);
+        final errorCodeOffset = object.errorCode == null
+            ? null
+            : fbb.writeString(object.errorCode!);
+        fbb.startTable(14);
+        fbb.addInt64(0, object.id);
+        fbb.addOffset(1, operationUuidOffset);
+        fbb.addOffset(2, sessionUuidOffset);
+        fbb.addInt64(3, object.localRevision);
+        fbb.addOffset(4, actionOffset);
+        fbb.addOffset(5, payloadJsonOffset);
+        fbb.addOffset(6, stateOffset);
+        fbb.addInt64(7, object.createdAtMs);
+        fbb.addInt64(8, object.attemptedAtMs);
+        fbb.addInt64(9, object.attempts);
+        fbb.addInt64(10, object.serverRevision);
+        fbb.addInt64(11, object.serverChangeSeq);
+        fbb.addOffset(12, errorCodeOffset);
+        fbb.finish(fbb.endTable());
+        return object.id;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final idParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          4,
+          0,
+        );
+        final operationUuidParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final sessionUuidParam = const fb.StringReader(asciiOptimization: true)
+            .vTableGet(buffer, rootOffset, 8, '');
+        final localRevisionParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          10,
+          0,
+        );
+        final actionParam = const fb.StringReader(asciiOptimization: true)
+            .vTableGet(buffer, rootOffset, 12, '');
+        final payloadJsonParam = const fb.StringReader(asciiOptimization: true)
+            .vTableGet(buffer, rootOffset, 14, '');
+        final stateParam = const fb.StringReader(asciiOptimization: true)
+            .vTableGet(buffer, rootOffset, 16, '');
+        final createdAtMsParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          18,
+          0,
+        );
+        final attemptedAtMsParam = const fb.Int64Reader().vTableGetNullable(
+          buffer,
+          rootOffset,
+          20,
+        );
+        final attemptsParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          22,
+          0,
+        );
+        final serverRevisionParam = const fb.Int64Reader().vTableGetNullable(
+          buffer,
+          rootOffset,
+          24,
+        );
+        final serverChangeSeqParam = const fb.Int64Reader().vTableGetNullable(
+          buffer,
+          rootOffset,
+          26,
+        );
+        final errorCodeParam = const fb.StringReader(asciiOptimization: true)
+            .vTableGetNullable(buffer, rootOffset, 28);
+        final object = WorkoutSyncOutboxEntity(
+          id: idParam,
+          operationUuid: operationUuidParam,
+          sessionUuid: sessionUuidParam,
+          localRevision: localRevisionParam,
+          action: actionParam,
+          payloadJson: payloadJsonParam,
+          state: stateParam,
+          createdAtMs: createdAtMsParam,
+          attemptedAtMs: attemptedAtMsParam,
+          attempts: attemptsParam,
+          serverRevision: serverRevisionParam,
+          serverChangeSeq: serverChangeSeqParam,
+          errorCode: errorCodeParam,
+        );
+
+        return object;
+      },
+    ),
   };
 
   return obx_int.ModelDefinition(model, bindings);
@@ -1584,5 +1783,77 @@ class WorkoutSetEntity_ {
   /// See [WorkoutSetEntity.updatedAtMs].
   static final updatedAtMs = obx.QueryIntegerProperty<WorkoutSetEntity>(
     _entities[6].properties[11],
+  );
+}
+
+/// [WorkoutSyncOutboxEntity] entity fields to define ObjectBox queries.
+class WorkoutSyncOutboxEntity_ {
+  /// See [WorkoutSyncOutboxEntity.id].
+  static final id = obx.QueryIntegerProperty<WorkoutSyncOutboxEntity>(
+    _entities[7].properties[0],
+  );
+
+  /// See [WorkoutSyncOutboxEntity.operationUuid].
+  static final operationUuid = obx.QueryStringProperty<WorkoutSyncOutboxEntity>(
+    _entities[7].properties[1],
+  );
+
+  /// See [WorkoutSyncOutboxEntity.sessionUuid].
+  static final sessionUuid = obx.QueryStringProperty<WorkoutSyncOutboxEntity>(
+    _entities[7].properties[2],
+  );
+
+  /// See [WorkoutSyncOutboxEntity.localRevision].
+  static final localRevision =
+      obx.QueryIntegerProperty<WorkoutSyncOutboxEntity>(
+        _entities[7].properties[3],
+      );
+
+  /// See [WorkoutSyncOutboxEntity.action].
+  static final action = obx.QueryStringProperty<WorkoutSyncOutboxEntity>(
+    _entities[7].properties[4],
+  );
+
+  /// See [WorkoutSyncOutboxEntity.payloadJson].
+  static final payloadJson = obx.QueryStringProperty<WorkoutSyncOutboxEntity>(
+    _entities[7].properties[5],
+  );
+
+  /// See [WorkoutSyncOutboxEntity.state].
+  static final state = obx.QueryStringProperty<WorkoutSyncOutboxEntity>(
+    _entities[7].properties[6],
+  );
+
+  /// See [WorkoutSyncOutboxEntity.createdAtMs].
+  static final createdAtMs = obx.QueryIntegerProperty<WorkoutSyncOutboxEntity>(
+    _entities[7].properties[7],
+  );
+
+  /// See [WorkoutSyncOutboxEntity.attemptedAtMs].
+  static final attemptedAtMs =
+      obx.QueryIntegerProperty<WorkoutSyncOutboxEntity>(
+        _entities[7].properties[8],
+      );
+
+  /// See [WorkoutSyncOutboxEntity.attempts].
+  static final attempts = obx.QueryIntegerProperty<WorkoutSyncOutboxEntity>(
+    _entities[7].properties[9],
+  );
+
+  /// See [WorkoutSyncOutboxEntity.serverRevision].
+  static final serverRevision =
+      obx.QueryIntegerProperty<WorkoutSyncOutboxEntity>(
+        _entities[7].properties[10],
+      );
+
+  /// See [WorkoutSyncOutboxEntity.serverChangeSeq].
+  static final serverChangeSeq =
+      obx.QueryIntegerProperty<WorkoutSyncOutboxEntity>(
+        _entities[7].properties[11],
+      );
+
+  /// See [WorkoutSyncOutboxEntity.errorCode].
+  static final errorCode = obx.QueryStringProperty<WorkoutSyncOutboxEntity>(
+    _entities[7].properties[12],
   );
 }

@@ -2,7 +2,7 @@
 
 **Policy:** [ADR-0005](adr/0005-mandatory-auth-and-workout-sync.md) (accepted by the owner 2026-10-25) supersedes ADR-0003's optional-login and guest assumptions and keeps its completed-only backup scope. This is a *new product decision*, not an observation about the shipping Flutter app.
 
-**Implementation status:** P2-01 has been applied to the connected **development** Supabase project and committed as migrations in `supabase/migrations/`. It is **not production-ready**. Flutter Auth, local ObjectBox outbox, restoration, processing UX, background retry, device tests and full conflict handling have **not** been implemented.
+**Implementation status:** P2-01 development backend and P2-02 Flutter authentication are merged. P2-03 (PR #15: **open draft, under review, not merged**) adds the local, validated, immutable **completed-only** ObjectBox outbox with account isolation and backup-paused authentication state,  Invalid cloud DTOs create `blocked` local receipts without preventing local completion; they are never uploaded. Today refreshes its cached blocked-receipt count after a committed finish (without requiring app restart). **No network upload or cloud backup worker is implemented yet.** Remote restoration, deletion sync, conflict resolution and device QA remain outstanding.
 
 ## Data classification and account gating
 

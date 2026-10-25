@@ -71,6 +71,10 @@ abstract class AccountAuthApi {
   String? get signedInUserId;
   bool get isAnonymous;
 
+  /// A presently unexpired, non-anonymous session; null pauses cloud upload.
+  String? get cloudSessionUserId;
+  Stream<String?> get cloudIdentityChanges;
+
   Future<void> sendEmailCode(String email);
   Future<String> verifyEmailCode(String email, String code);
   Future<void> signOutLocally();
@@ -87,6 +91,23 @@ class SupabaseAccountAuthApi implements AccountAuthApi {
   @override
   bool get isAnonymous =>
       _client.auth.currentSession?.user.isAnonymous ?? false;
+
+  @override
+  String? get cloudSessionUserId {
+    final session = _client.auth.currentSession;
+    final expiresAt = session?.expiresAt;
+    if (session == null ||
+        session.user.isAnonymous ||
+        expiresAt == null ||
+        expiresAt <= DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000) {
+      return null;
+    }
+    return session.user.id;
+  }
+
+  @override
+  Stream<String?> get cloudIdentityChanges =>
+      _client.auth.onAuthStateChange.map((_) => cloudSessionUserId);
 
   @override
   Future<void> sendEmailCode(String email) =>
@@ -116,10 +137,44 @@ class SupabaseAccountAuthApi implements AccountAuthApi {
 /// the bound user ID into OS secure storage. When a token refresh cannot run
 /// offline, only that same account may open its partitioned local database.
 class AccountAuthController extends ChangeNotifier {
-  AccountAuthController(this._api, this._binding);
+  AccountAuthController(this._api, this._binding) {
+    _authSubscription = _api.cloudIdentityChanges.listen(
+      _onIdentityChange,
+      onError: (Object _) {
+        _refreshFailed = true;
+        _onIdentityChange(null);
+      },
+    );
+  }
 
   final AccountAuthApi _api;
   final BoundAccountStore _binding;
+  late final StreamSubscription<String?> _authSubscription;
+  bool _refreshFailed = false;
+
+  void _onIdentityChange(String? accountId) {
+    // Look at the restored session's owner even if its JWT has expired.
+    // A different expired account must never keep the previous user's
+    // ObjectBox partition mounted.
+    final sessionOwner = _accountIdOrNull(_api.signedInUserId);
+    if (_userId != null && sessionOwner != null && sessionOwner != _userId) {
+      // A different user's live JWT must immediately unmount this account's
+      // ObjectBox Store. Keep its protected binding for future recovery.
+      _userId = null;
+    }
+    if (accountId != null) _refreshFailed = false;
+    notifyListeners();
+  }
+
+  /// This is a UI/worker permission hint, not server authorization.
+  /// P2-04 must still let Supabase enforce token validity and RLS.
+  bool get cloudBackupReady =>
+      _userId != null &&
+      !_refreshFailed &&
+      !_api.isAnonymous &&
+      _accountIdOrNull(_api.cloudSessionUserId) == _userId;
+
+  bool get backupPaused => _userId != null && !cloudBackupReady;
 
   String? _userId;
   bool _busy = false;
@@ -259,5 +314,11 @@ class AccountAuthController extends ChangeNotifier {
       _busy = false;
       notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
   }
 }

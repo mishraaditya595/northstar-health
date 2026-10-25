@@ -7,20 +7,25 @@ import '../domain/workout_models.dart';
 import '../domain/workout_repository.dart';
 import '../domain/workout_status_codec.dart';
 import 'unfinished_workout_query.dart';
+import 'objectbox_workout_outbox.dart';
 import 'workout_entities.dart';
 
 final workoutRepositoryProvider = Provider<WorkoutRepository>(
-  (ref) => ObjectBoxWorkoutRepository(ref.watch(objectBoxStoreProvider)),
+  (ref) => ObjectBoxWorkoutRepository(
+    ref.watch(objectBoxStoreProvider),
+    outbox: ref.watch(workoutOutboxProvider),
+  ),
 );
 
 class ObjectBoxWorkoutRepository implements WorkoutRepository {
-  ObjectBoxWorkoutRepository(this._store)
+  ObjectBoxWorkoutRepository(this._store, {this.outbox})
     : _sessions = _store.box<WorkoutSessionEntity>(),
       _exercises = _store.box<WorkoutExerciseEntity>(),
       _sets = _store.box<WorkoutSetEntity>(),
       _checkpoints = _store.box<WorkoutSessionStateEntity>();
 
   final Store _store;
+  final ObjectBoxWorkoutOutbox? outbox;
   final Box<WorkoutSessionEntity> _sessions;
   final Box<WorkoutExerciseEntity> _exercises;
   final Box<WorkoutSetEntity> _sets;
@@ -381,6 +386,7 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
       session.completedAtMs = endMs;
       _touch(session);
       _checkpoints.remove(checkpoint.id);
+      outbox?.enqueueCompletedInTransaction(uuid);
     });
   }
 

@@ -208,3 +208,43 @@ class WorkoutSessionStateEntity {
     required this.savedAtMs,
   });
 }
+
+@Entity()
+class WorkoutSyncOutboxEntity {
+  @Id()
+  int id = 0;
+
+  /// Stable identity for one immutable locally committed snapshot.
+  @Unique()
+  String operationUuid;
+
+  @Index()
+  String sessionUuid;
+  int localRevision;
+  String action;
+  String payloadJson;
+  @Index()
+  String state;
+  int createdAtMs;
+  int? attemptedAtMs;
+  int attempts;
+  int? serverRevision;
+  int? serverChangeSeq;
+  String? errorCode;
+
+  WorkoutSyncOutboxEntity({
+    this.id = 0,
+    required this.operationUuid,
+    required this.sessionUuid,
+    required this.localRevision,
+    required this.action,
+    required this.payloadJson,
+    this.state = 'pending',
+    required this.createdAtMs,
+    this.attemptedAtMs,
+    this.attempts = 0,
+    this.serverRevision,
+    this.serverChangeSeq,
+    this.errorCode,
+  });
+}
