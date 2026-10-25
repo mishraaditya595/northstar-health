@@ -9,7 +9,7 @@ The read-only completed workout history and exercise trends are under review in
 [Phase 1 PR #11](implementation/phase-1/workout-history-progress.md).
 **Today health tiles still contain clearly labeled prototype data** until
 Phase 3 platform permissions and measurements are implemented. ObjectBox
-cloud Sync is not used.
+cloud Sync is not used. P2-03 introduces the durable completed-workout outbox (PR #15: **open draft, under review, not merged**); it does **not** upload data yet.
 
 ## Data classification and lifetime
 
@@ -18,7 +18,7 @@ cloud Sync is not used.
 | `WorkoutSession` / `WorkoutExercise` / `WorkoutSet` | Durable until user deletes | Completed NorthStar phone workouts only, after authentication; no unfinished sessions or local recovery checkpoint |
 | `WorkoutSessionState` | Durable checkpoint until finished/recovered | No |
 | `WorkoutPlan` / `PlanExercise` / `ExerciseDefinition` | Durable local, owner-scoped | **Not in MVP**; embed names in backed-up historical logs |
-| `SyncOutbox`, `CloudSyncCursor`, `InboxReceipt` | Until durable ACK and retention policy | Metadata only on device |
+| `WorkoutSyncOutboxEntity` | Completed phone workout snapshots remain pending until matched server ACK; retain ack receipts as needed for retry and conflict | **Device only** until an authenticated worker sends completed-workout DTOs in P2-04 |
 | `HealthExportReceipt` | As long as corresponding workout relevant | Local platform-record references only |
 | `HealthCache` | Expiring, permission-scoped summaries | **Never** |
 | `HealthQueryCheckpoint` | Per-device until invalidated | **Never** |
@@ -67,6 +67,10 @@ Don't create an unbounded permanent `HealthObservation` archive from platform me
   unchanged. CI must keep this upgrade test, not replace it with JSON-only
   comparisons or a clean-database restart test.
 - Migrate type changes with versioned properties and explicit data transformation; don't assume automatic conversion or database-file encryption.
+
+## P2-03 committed outbox boundary
+
+The production live workout engine and legacy repository finish method call `ObjectBoxWorkoutOutbox.enqueueCompletedInTransaction` **inside** their session-completion write transaction. Only `completed` phone-authored workouts create a validated, immutable P2-01 JSON DTO and durable operation UUID. Paused, active and discarded sessions never enqueue. Invalid cloud DTOs do **not** block local completion: the same atomic transaction stores the completed workout plus a `blocked` receipt (no payload), surfaced to the user as not backed up. Database write failures still roll back. A duplicate finish does not enqueue twice. Pending queries use an indexed, bounded batch with deterministic timestamp/revision/IDs ordering before the limit instead of loading all rows. Completing a workout invalidates the cached blocked-workout count so Today immediately reflects any new blocked receipt. Per-owner physical ObjectBox partitions from P2-02 isolate pending operations. `pending()` survives process restart; `acknowledge()` requires a matching operation UUID/local revision and validated server sequence, and is scaffolding for the P2-04 network worker. No HTTP or cloud backup occurs in P2-03. See [P2-03 implementation notes](implementation/phase-2/p2-03-durable-outbox.md).
 
 ## Local-first transaction
 

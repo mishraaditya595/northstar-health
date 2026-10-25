@@ -12,8 +12,15 @@ import 'package:northstar_health/features/progress/workout_history_state.dart';
 import 'package:northstar_health/features/progress/data/objectbox_workout_history_repository.dart';
 import 'package:northstar_health/features/progress/domain/workout_history_models.dart';
 import 'package:northstar_health/features/train/active_workout_page.dart';
+import 'package:northstar_health/features/today/today_page.dart';
+import 'package:northstar_health/features/account/account_auth_provider.dart';
+import 'package:northstar_health/features/workouts/data/objectbox_workout_outbox.dart';
+
+import '../support/fake_account_auth.dart';
+
 import 'package:northstar_health/features/progress/workout_history_detail_page.dart';
 import 'package:northstar_health/features/workouts/data/objectbox_live_workout_engine.dart';
+import 'package:northstar_health/features/workouts/data/workout_entities.dart';
 import 'package:northstar_health/features/workouts/data/objectbox_workout_repository.dart';
 import 'package:northstar_health/features/workouts/domain/workout_models.dart';
 import 'package:northstar_health/objectbox.g.dart';
@@ -48,6 +55,10 @@ void main() {
           builder: (_, _) => const ActiveWorkoutPage(),
         ),
         GoRoute(
+          path: '/today',
+          builder: (_, _) => const Scaffold(body: TodayPage()),
+        ),
+        GoRoute(
           path: '/progress',
           builder: (_, _) => const Scaffold(body: ProgressPage()),
         ),
@@ -78,30 +89,41 @@ void main() {
     final started =
         startedAtUtc ??
         DateTime.now().toUtc().subtract(const Duration(hours: 2));
+    // Only the route-driven completion uses the production cloud outbox.
+    // Supply canonical UUIDs there; other read-only test fixtures remain local.
+    final sessionId = id == 'finishing'
+        ? '00000000-0000-4000-8000-000000000101'
+        : id;
+    final movementId = id == 'finishing'
+        ? '00000000-0000-4000-8000-000000000201'
+        : 'movement-$id';
+    final setId = id == 'finishing'
+        ? '00000000-0000-4000-8000-000000000301'
+        : 'set-$id';
     final engine = ObjectBoxLiveWorkoutEngine(store);
     final editor = ObjectBoxWorkoutRepository(store);
     engine.startWorkout(
-      sessionUuid: id,
+      sessionUuid: sessionId,
       quickName: 'Workout $id',
       startedAtUtc: started,
       originalOffsetMinutes: 330,
     );
     editor.addExercise(
       WorkoutExerciseRecord(
-        uuid: 'movement-$id',
-        sessionUuid: id,
+        uuid: movementId,
+        sessionUuid: sessionId,
         definitionUuid: 'builtin.v1.bench-press',
         nameSnapshot: 'Bench press',
         position: 0,
       ),
     );
-    final active = editor.getSession(id)!;
+    final active = editor.getSession(sessionId)!;
     editor.saveSet(
-      sessionUuid: id,
+      sessionUuid: sessionId,
       expectedRevision: active.revision,
       set: WorkoutSetRecord(
-        uuid: 'set-$id',
-        exerciseUuid: 'movement-$id',
+        uuid: setId,
+        exerciseUuid: movementId,
         position: 0,
         kind: WorkoutSetKind.working,
         status: WorkoutSetStatus.completed,
@@ -112,14 +134,14 @@ void main() {
     );
     if (finish) {
       engine.finishWorkout(
-        id,
-        expectedRevision: editor.getSession(id)!.revision,
+        sessionId,
+        expectedRevision: editor.getSession(sessionId)!.revision,
         finishedAtUtc: started.add(const Duration(minutes: 30)),
       );
     } else if (pause) {
       engine.pauseWorkout(
-        id,
-        expectedRevision: editor.getSession(id)!.revision,
+        sessionId,
+        expectedRevision: editor.getSession(sessionId)!.revision,
       );
     }
   }
@@ -536,6 +558,76 @@ void main() {
     );
     expect(find.text('Workout finishing'), findsOneWidget);
   });
+
+  testWidgets(
+    'finishing an invalid-backup workout refreshes the Today blocked notice',
+    (tester) async {
+      tallView(tester);
+      writeWorkout('finishing', finish: false);
+      final exerciseBox = store.box<WorkoutExerciseEntity>();
+      final exercise = exerciseBox.getAll().single;
+      // This exceeds the server's 160-codepoint exercise-name limit but
+      // must not prevent an otherwise valid offline workout from finishing.
+      exercise.nameSnapshot = '🏋️' * 161;
+      exerciseBox.put(exercise);
+
+      final api = FakeAuthApi()..sessionId = accountA;
+      final binding = FakeBoundAccountStore()..saved = accountA;
+      final auth = controller(api, binding);
+      addTearDown(auth.dispose);
+      await auth.restore();
+
+      final container = ProviderContainer(
+        overrides: [
+          objectBoxStoreProvider.overrideWithValue(store),
+          workoutHistoryRepositoryProvider.overrideWithValue(
+            _ImmediateHistoryRepository(store),
+          ),
+          accountAuthControllerProvider.overrideWithValue(auth),
+          blockedWorkoutCountProvider.overrideWith(
+            (ref) => ref.watch(workoutOutboxProvider).blockedCount(),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: NorthstarTheme.build(Brightness.light),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Prime the count while no receipt exists. This specifically guards
+      // against the old never-invalidated cached provider behavior.
+      expect(container.read(blockedWorkoutCountProvider), 0);
+      router.go('/train/workout');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Finish'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Finish workout'));
+      await tester.pumpAndSettle();
+      expect(container.read(blockedWorkoutCountProvider), 1);
+      expect(
+        store.box<WorkoutSyncOutboxEntity>().getAll().single.state,
+        'blocked',
+      );
+
+      router.go('/today');
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('1 completed workout saved locally'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('No upload will be attempted'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('history is cached across navigation and refresh is explicit', (
     tester,

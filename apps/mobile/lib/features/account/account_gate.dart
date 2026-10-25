@@ -7,6 +7,7 @@ import '../../core/storage/account_store.dart';
 import '../../core/storage/objectbox_store_provider.dart';
 import '../../objectbox.g.dart';
 import 'account_auth_controller.dart';
+import '../workouts/data/objectbox_workout_outbox.dart';
 import 'account_auth_provider.dart';
 import 'account_sign_in_page.dart';
 
@@ -99,6 +100,9 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
           overrides: [
             objectBoxStoreProvider.overrideWithValue(snapshot.requireData),
             accountAuthControllerProvider.overrideWithValue(widget.controller),
+            blockedWorkoutCountProvider.overrideWith(
+              (ref) => ref.watch(workoutOutboxProvider).blockedCount(),
+            ),
           ],
           child: const NorthstarApp(),
         );

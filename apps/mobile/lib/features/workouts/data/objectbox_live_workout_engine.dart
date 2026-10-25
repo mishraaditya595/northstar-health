@@ -7,11 +7,15 @@ import '../domain/live_workout_engine.dart';
 import '../domain/workout_models.dart';
 import '../domain/workout_repository.dart';
 import 'objectbox_workout_repository.dart';
+import 'objectbox_workout_outbox.dart';
 import 'unfinished_workout_query.dart';
 import 'workout_entities.dart';
 
 final liveWorkoutEngineProvider = Provider<LiveWorkoutEngine>(
-  (ref) => ObjectBoxLiveWorkoutEngine(ref.watch(objectBoxStoreProvider)),
+  (ref) => ObjectBoxLiveWorkoutEngine(
+    ref.watch(objectBoxStoreProvider),
+    outbox: ref.watch(workoutOutboxProvider),
+  ),
 );
 
 /// Coordinates the full local workout lifecycle without changing ObjectBox's
@@ -21,20 +25,24 @@ final liveWorkoutEngineProvider = Provider<LiveWorkoutEngine>(
 /// individual set writes; this engine handles one atomic plan-to-session
 /// materialization and the session lifecycle.
 class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
-  ObjectBoxLiveWorkoutEngine(Store store, {UuidFactory? uuidFactory})
-    : _store = store,
-      _ids = uuidFactory ?? SecureUuidFactory(),
-      _reader = ObjectBoxWorkoutRepository(store),
-      _sessions = store.box<WorkoutSessionEntity>(),
-      _exercises = store.box<WorkoutExerciseEntity>(),
-      _sets = store.box<WorkoutSetEntity>(),
-      _checkpoints = store.box<WorkoutSessionStateEntity>(),
-      _plans = store.box<WorkoutPlanEntity>(),
-      _planExercises = store.box<PlanExerciseEntity>(),
-      _definitions = store.box<ExerciseDefinitionEntity>();
+  ObjectBoxLiveWorkoutEngine(
+    Store store, {
+    UuidFactory? uuidFactory,
+    this.outbox,
+  }) : _store = store,
+       _ids = uuidFactory ?? SecureUuidFactory(),
+       _reader = ObjectBoxWorkoutRepository(store),
+       _sessions = store.box<WorkoutSessionEntity>(),
+       _exercises = store.box<WorkoutExerciseEntity>(),
+       _sets = store.box<WorkoutSetEntity>(),
+       _checkpoints = store.box<WorkoutSessionStateEntity>(),
+       _plans = store.box<WorkoutPlanEntity>(),
+       _planExercises = store.box<PlanExerciseEntity>(),
+       _definitions = store.box<ExerciseDefinitionEntity>();
 
   final Store _store;
   final UuidFactory _ids;
+  final ObjectBoxWorkoutOutbox? outbox;
   final ObjectBoxWorkoutRepository _reader;
   final Box<WorkoutSessionEntity> _sessions;
   final Box<WorkoutExerciseEntity> _exercises;
@@ -409,6 +417,7 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
       s.completedAtMs = atMs;
       _touch(s);
       _checkpoints.remove(checkpoint.id);
+      outbox?.enqueueCompletedInTransaction(uuid);
     });
     return _reader.getSession(uuid)!;
   }

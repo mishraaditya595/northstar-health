@@ -6,6 +6,70 @@ import 'package:northstar_health/features/account/account_gate.dart';
 import '../support/fake_account_auth.dart';
 
 void main() {
+  test(
+    'expired JWT pauses backup without blocking local workout access',
+    () async {
+      final api = FakeAuthApi()
+        ..sessionId = accountA
+        ..expired = true;
+      final bound = FakeBoundAccountStore()..saved = accountA;
+      final auth = controller(api, bound);
+      addTearDown(auth.dispose);
+      await auth.restore();
+      expect(auth.userId, accountA);
+      expect(auth.backupPaused, true);
+      api.emitSession(accountA);
+      expect(auth.cloudBackupReady, true);
+      api.emitSession(null);
+      expect(auth.userId, accountA);
+      expect(auth.backupPaused, true);
+    },
+  );
+
+  test('unexpected account change locks old partition immediately', () async {
+    final api = FakeAuthApi()..sessionId = accountA;
+    final bound = FakeBoundAccountStore()..saved = accountA;
+    final auth = controller(api, bound);
+    addTearDown(auth.dispose);
+    await auth.restore();
+    expect(auth.cloudBackupReady, true);
+    api.emitSession(accountB);
+    expect(auth.userId, isNull);
+    expect(bound.saved, accountA);
+    expect(auth.cloudBackupReady, false);
+  });
+
+  test('SDK offline refresh stream error pauses backup immediately', () async {
+    final api = FakeAuthApi()..sessionId = accountA;
+    final bound = FakeBoundAccountStore()..saved = accountA;
+    final auth = controller(api, bound);
+    addTearDown(auth.dispose);
+    await auth.restore();
+    expect(auth.cloudBackupReady, true);
+    var notifications = 0;
+    auth.addListener(() => notifications++);
+    api.emitRefreshError();
+    expect(notifications, greaterThan(0));
+    expect(auth.userId, accountA);
+    expect(auth.backupPaused, true);
+    api.emitSession(accountA);
+    expect(auth.cloudBackupReady, true);
+  });
+
+  test(
+    'different expired account locks previously bound owner immediately',
+    () async {
+      final api = FakeAuthApi()..sessionId = accountA;
+      final bound = FakeBoundAccountStore()..saved = accountA;
+      final auth = controller(api, bound);
+      addTearDown(auth.dispose);
+      await auth.restore();
+      api.emitSession(accountB, isExpired: true);
+      expect(auth.userId, isNull);
+      expect(bound.saved, accountA);
+    },
+  );
+
   test('fresh install has no access without a verified account', () async {
     final api = FakeAuthApi();
     final binding = FakeBoundAccountStore();

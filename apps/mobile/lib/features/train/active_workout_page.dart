@@ -14,6 +14,7 @@ import '../workouts/domain/live_workout_engine.dart';
 import '../workouts/domain/workout_models.dart';
 import '../progress/workout_history_state.dart';
 import '../workouts/domain/workout_repository.dart';
+import '../workouts/data/objectbox_workout_outbox.dart';
 import 'previous_sets.dart';
 import 'active_workout_state.dart';
 import 'rest_timer_card.dart';
@@ -34,6 +35,7 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
   Future<bool> _perform(
     void Function(WorkoutActions actions) action, {
     bool leaveOnSuccess = false,
+    String? completedWorkoutUuid,
   }) async {
     if (_busy) {
       return false;
@@ -49,6 +51,18 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
       ref.invalidate(activeWorkoutProvider);
       if (leaveOnSuccess) {
         ref.invalidate(completedWorkoutHistoryProvider);
+        // Re-query this account's ObjectBox blocked receipts after the
+        // finish transaction commits, before navigating back to Today.
+        ref.invalidate(blockedWorkoutCountProvider);
+      }
+      if (completedWorkoutUuid != null &&
+          mounted &&
+          ref.read(workoutOutboxProvider).isBlocked(completedWorkoutUuid)) {
+        showNsMessage(
+          context,
+          'Workout saved locally. This workout could not be prepared '
+          'for cloud backup and will not be uploaded.',
+        );
       }
       if (leaveOnSuccess && mounted) {
         context.go('/train');
@@ -108,6 +122,7 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
     await _perform(
       (a) => discard ? a.discard(workout) : a.finish(workout),
       leaveOnSuccess: true,
+      completedWorkoutUuid: discard ? null : workout.uuid,
     );
   }
 
