@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme_controller.dart';
-import '../account/account_gate.dart';
+import '../account/account_auth_provider.dart';
 import '../../core/design/northstar_theme.dart';
 import '../../core/design/section.dart';
 
@@ -13,6 +13,7 @@ class TodayPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
+    final auth = ref.watch(accountAuthControllerProvider);
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
       children: [
@@ -34,13 +35,11 @@ class TodayPage extends ConsumerWidget {
                 ],
               ),
             ),
-            if (ref.watch(accountAuthControllerProvider) != null)
-              IconButton(
-                tooltip: 'Sign out of NorthStar',
-                onPressed: () =>
-                    ref.read(accountAuthControllerProvider)!.signOut(),
-                icon: const Icon(Icons.logout_rounded),
-              ),
+            IconButton(
+              tooltip: 'Sign out of NorthStar',
+              onPressed: auth.signOut,
+              icon: const Icon(Icons.logout_rounded),
+            ),
             IconButton(
               tooltip: dark ? 'Use light mode' : 'Use dark mode',
               onPressed: () => ref
@@ -49,6 +48,19 @@ class TodayPage extends ConsumerWidget {
               icon: Icon(dark ? Icons.light_mode : Icons.dark_mode),
             ),
           ],
+        ),
+        // A failed sign-out keeps the account open, so say so here.
+        ListenableBuilder(
+          listenable: auth,
+          builder: (context, _) => auth.error == null
+              ? const SizedBox.shrink()
+              : Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    auth.error!,
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
+                ),
         ),
         const SizedBox(height: 24),
         Container(

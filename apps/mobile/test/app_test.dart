@@ -2,6 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:northstar_health/app/northstar_app.dart';
+import 'package:northstar_health/features/account/account_auth_controller.dart';
+import 'package:northstar_health/features/account/account_auth_provider.dart';
+
+import 'support/fake_account_auth.dart';
+
+Widget signedInApp() => ProviderScope(
+  overrides: [
+    accountAuthControllerProvider.overrideWithValue(
+      AccountAuthController(FakeAuthApi(), FakeBoundAccountStore()),
+    ),
+  ],
+  child: const NorthstarApp(),
+);
 
 void main() {
   testWidgets('Today shows fictional metrics and four tabs', (tester) async {
@@ -9,7 +22,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const ProviderScope(child: NorthstarApp()));
+    await tester.pumpWidget(signedInApp());
     await tester.pumpAndSettle();
 
     expect(find.text('SHOW UP.\nGET STRONG.'), findsOneWidget);
@@ -24,7 +37,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const ProviderScope(child: NorthstarApp()));
+    await tester.pumpWidget(signedInApp());
     await tester.pumpAndSettle();
 
     expect(find.byType(NavigationRail), findsOneWidget);

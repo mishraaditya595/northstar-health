@@ -1,46 +1,14 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:objectbox_flutter_libs/objectbox_flutter_libs.dart';
 
 import '../../app/northstar_app.dart';
 import '../../core/design/northstar_theme.dart';
+import '../../core/storage/account_store.dart';
 import '../../core/storage/objectbox_store_provider.dart';
 import '../../objectbox.g.dart';
 import 'account_auth_controller.dart';
+import 'account_auth_provider.dart';
 import 'account_sign_in_page.dart';
-
-/// Optional in old isolated widget tests; required in the signed-in app.
-/// UI must not use this provider to infer server-side authorization.
-final accountAuthControllerProvider = Provider<AccountAuthController?>(
-  (ref) => null,
-);
-
-String accountStoreRelativePath(
-  String accountId, {
-  required String projectHost,
-}) {
-  final host = projectHost.toLowerCase();
-  if (!RegExp(r'^[a-z0-9.-]+$').hasMatch(host)) {
-    throw const FormatException('Invalid backend host');
-  }
-  return 'northstar_accounts/$host/${AccountAuthController.validUserId(accountId)}';
-}
-
-/// Only opens a *distinct* ObjectBox Store for a UUID returned by a verified
-/// Supabase sign-in or a previously securely bound offline account.
-/// The pre-P2-02 root ObjectBox Store is never opened or auto-associated.
-Future<Store> openBoundAccountStore(
-  String accountId, {
-  required String projectHost,
-}) async {
-  final base = await defaultStoreDirectory();
-  final path =
-      '${base.path}/${accountStoreRelativePath(accountId, projectHost: projectHost)}';
-  await Directory(path).create(recursive: true);
-  return openStore(directory: path);
-}
 
 /// The entire workout UI stays unmounted unless an account is unlocked.
 /// In tests, [authenticatedBuilder] can replace the native ObjectBox store.
@@ -157,11 +125,6 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
                         FilledButton(
                           onPressed: _retry,
                           child: const Text('Retry'),
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: () => widget.controller.signOut(),
-                          child: const Text('Sign out of this account'),
                         ),
                         const SizedBox(height: 8),
                         TextButton(

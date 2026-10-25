@@ -4,6 +4,16 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/storage/account_store.dart';
+
+// Readable after the first unlock so a token refresh during a locked-screen
+// workout still persists; `this_device` keeps items out of device backups.
+const _secureStorage = FlutterSecureStorage(
+  iOptions: IOSOptions(
+    accessibility: KeychainAccessibility.first_unlock_this_device,
+  ),
+);
+
 /// Persists Supabase session credentials in OS-protected storage, not
 /// SharedPreferences, ObjectBox, files, analytics, or application logs.
 class NorthstarSecureSessionStorage extends LocalStorage {
@@ -11,23 +21,22 @@ class NorthstarSecureSessionStorage extends LocalStorage {
     : _key = 'northstar.supabase.session.v1.$projectHost';
 
   final String _key;
-  static const _storage = FlutterSecureStorage();
 
   @override
   Future<void> initialize() async {}
 
   @override
-  Future<String?> accessToken() => _storage.read(key: _key);
+  Future<String?> accessToken() => _secureStorage.read(key: _key);
 
   @override
-  Future<bool> hasAccessToken() => _storage.containsKey(key: _key);
+  Future<bool> hasAccessToken() => _secureStorage.containsKey(key: _key);
 
   @override
   Future<void> persistSession(String session) =>
-      _storage.write(key: _key, value: session);
+      _secureStorage.write(key: _key, value: session);
 
   @override
-  Future<void> removePersistedSession() => _storage.delete(key: _key);
+  Future<void> removePersistedSession() => _secureStorage.delete(key: _key);
 }
 
 /// An authenticated device can reopen only its last securely bound account.
@@ -44,16 +53,16 @@ class SecureBoundAccountStore implements BoundAccountStore {
     : _key = 'northstar.trusted_account.v1.$projectHost';
 
   final String _key;
-  static const _storage = FlutterSecureStorage();
 
   @override
-  Future<String?> read() => _storage.read(key: _key);
+  Future<String?> read() => _secureStorage.read(key: _key);
 
   @override
-  Future<void> write(String userId) => _storage.write(key: _key, value: userId);
+  Future<void> write(String userId) =>
+      _secureStorage.write(key: _key, value: userId);
 
   @override
-  Future<void> clear() => _storage.delete(key: _key);
+  Future<void> clear() => _secureStorage.delete(key: _key);
 }
 
 /// Kept behind an interface to test without real accounts or live emails.
@@ -124,32 +133,30 @@ class AccountAuthController extends ChangeNotifier {
   String? get error => _error;
   bool get isAuthenticated => _userId != null;
 
-  static final _uuid = RegExp(
-    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
-  );
-
-  static String validUserId(String value) {
-    final id = value.toLowerCase();
-    if (!_uuid.hasMatch(id)) {
-      throw const FormatException('Invalid account identifier');
-    }
-    return id;
-  }
-
   /// Called only after Supabase has restored its securely persisted session.
   /// If an online SDK session belongs to a different account, no partition
-  /// is opened: explicit reauthentication is required.
+  /// is opened: explicit reauthentication is required. With no session at
+  /// all (refresh token rejected), ADR-0005 keeps the bound owner's local
+  /// access; cloud transfer must re-authenticate first.
+  /// A corrupt binding counts as no binding; account data stays on disk.
   Future<void> restore() async {
-    final bound = await _binding.read();
+    final bound = _accountIdOrNull(await _binding.read());
     final active = _api.signedInUserId;
-    if (bound != null) {
-      final verifiedBound = validUserId(bound);
-      if (active == null ||
-          (!_api.isAnonymous && validUserId(active) == verifiedBound)) {
-        _userId = verifiedBound;
-      }
+    if (bound != null &&
+        (active == null ||
+            (!_api.isAnonymous && _accountIdOrNull(active) == bound))) {
+      _userId = bound;
     }
     notifyListeners();
+  }
+
+  static String? _accountIdOrNull(String? value) {
+    if (value == null) return null;
+    try {
+      return validAccountId(value);
+    } on FormatException {
+      return null;
+    }
   }
 
   Future<void> requestCode(String email) async {
@@ -195,12 +202,21 @@ class AccountAuthController extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final identity = validUserId(
+      final identity = validAccountId(
         await _api.verifyEmailCode(_pendingEmail!, code),
       );
       // Never expose an account's ObjectBox directory before a durable
       // secure binding succeeds, even if Supabase signed in successfully.
-      await _binding.write(identity);
+      try {
+        await _binding.write(identity);
+      } catch (_) {
+        // The code is spent, so send the user back to request a new one.
+        _error =
+            'This device could not save your sign-in securely. '
+            'Send a new code to retry.';
+        _codeSent = false;
+        return;
+      }
       _userId = identity;
       _codeSent = false;
       _pendingEmail = null;
@@ -223,13 +239,22 @@ class AccountAuthController extends ChangeNotifier {
       // If removing this binding fails, retain the account and report an
       // error. Never present a successful sign-out while the grant persists.
       await _binding.clear();
-      _userId = null;
-      _codeSent = false;
-      _pendingEmail = null;
-      notifyListeners();
-      await _api.signOutLocally();
     } catch (_) {
       _error = 'Could not finish signing out. Retry before sharing the device.';
+      _busy = false;
+      notifyListeners();
+      return;
+    }
+    _userId = null;
+    _codeSent = false;
+    _pendingEmail = null;
+    notifyListeners();
+    try {
+      await _api.signOutLocally();
+    } catch (_) {
+      // The binding is gone, so the device is already locked. Supabase drops
+      // its local session before the network revoke, so an offline revoke
+      // failure is not a failed sign-out.
     } finally {
       _busy = false;
       notifyListeners();

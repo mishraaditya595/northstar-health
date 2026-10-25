@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/design/northstar_theme.dart';
 import 'features/account/account_auth_controller.dart';
 import 'features/account/account_gate.dart';
 
@@ -25,7 +26,7 @@ class _AuthBootstrap extends StatefulWidget {
 
 class _AuthBootstrapState extends State<_AuthBootstrap> {
   AccountAuthController? _controller;
-  late final Future<AccountAuthController> _opening = _initialize();
+  late Future<AccountAuthController> _opening = _initialize();
 
   Future<AccountAuthController> _initialize() async {
     final uri = Uri.tryParse(_url);
@@ -80,22 +81,32 @@ class _AuthBootstrapState extends State<_AuthBootstrap> {
       }
       return MaterialApp(
         title: 'Northstar Health',
+        theme: NorthstarTheme.build(Brightness.light),
+        darkTheme: NorthstarTheme.build(Brightness.dark),
         home: Scaffold(
           body: SafeArea(
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: snapshot.hasError
-                    ? const Column(
+                    ? Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.lock_outline, size: 44),
-                          SizedBox(height: 16),
-                          Text(
+                          const Icon(Icons.lock_outline, size: 44),
+                          const SizedBox(height: 16),
+                          const Text(
                             'NorthStar authentication is unavailable. '
                             'Check the public build configuration and '
                             'secure storage setup. Workout data is locked.',
                             textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          // Secure storage reads can fail transiently, e.g.
+                          // before the first unlock after a reboot.
+                          FilledButton(
+                            onPressed: () =>
+                                setState(() => _opening = _initialize()),
+                            child: const Text('Retry'),
                           ),
                         ],
                       )

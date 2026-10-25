@@ -1,62 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/features/account/account_auth_controller.dart';
+import 'package:northstar_health/core/storage/account_store.dart';
 import 'package:northstar_health/features/account/account_gate.dart';
 
-const accountA = '00000000-0000-4000-8000-0000000000a1';
-const accountB = '00000000-0000-4000-8000-0000000000b2';
-
-class FakeBoundAccountStore implements BoundAccountStore {
-  String? saved;
-  bool failClear = false;
-
-  @override
-  Future<String?> read() async => saved;
-
-  @override
-  Future<void> write(String userId) async => saved = userId;
-
-  @override
-  Future<void> clear() async {
-    if (failClear) throw StateError('Keychain unavailable');
-    saved = null;
-  }
-}
-
-class FakeAuthApi implements AccountAuthApi {
-  String? sessionId;
-  bool anonymous = false;
-  String verifiedId = accountA;
-  String? sentTo;
-  bool signedOut = false;
-
-  @override
-  String? get signedInUserId => sessionId;
-
-  @override
-  bool get isAnonymous => anonymous;
-
-  @override
-  Future<void> sendEmailCode(String email) async => sentTo = email;
-
-  @override
-  Future<String> verifyEmailCode(String email, String code) async {
-    if (code != '123456') throw StateError('Invalid code');
-    sessionId = verifiedId;
-    return verifiedId;
-  }
-
-  @override
-  Future<void> signOutLocally() async {
-    signedOut = true;
-    sessionId = null;
-  }
-}
-
-AccountAuthController controller(
-  FakeAuthApi api,
-  FakeBoundAccountStore bound,
-) => AccountAuthController(api, bound);
+import '../support/fake_account_auth.dart';
 
 void main() {
   test('fresh install has no access without a verified account', () async {
@@ -86,6 +33,17 @@ void main() {
   });
 
   test('returning verified owner can reopen offline', () async {
+    // supabase_flutter keeps an expired session when refresh cannot connect.
+    final api = FakeAuthApi()..sessionId = accountA;
+    final bound = FakeBoundAccountStore()..saved = accountA;
+    final auth = controller(api, bound);
+    addTearDown(auth.dispose);
+
+    await auth.restore();
+    expect(auth.userId, accountA);
+  });
+
+  test('rejected refresh keeps bound owner local access (ADR-0005)', () async {
     final api = FakeAuthApi()..sessionId = null;
     final bound = FakeBoundAccountStore()..saved = accountA;
     final auth = controller(api, bound);
@@ -93,6 +51,30 @@ void main() {
 
     await auth.restore();
     expect(auth.userId, accountA);
+  });
+
+  test('corrupt binding locks without throwing or erasing it', () async {
+    final api = FakeAuthApi()..sessionId = accountA;
+    final bound = FakeBoundAccountStore()..saved = 'not-an-account';
+    final auth = controller(api, bound);
+    addTearDown(auth.dispose);
+
+    await auth.restore();
+    expect(auth.userId, isNull);
+    expect(bound.saved, 'not-an-account');
+  });
+
+  test('failed binding write stays locked and asks for a new code', () async {
+    final api = FakeAuthApi();
+    final bound = FakeBoundAccountStore()..failWrite = true;
+    final auth = controller(api, bound);
+    addTearDown(auth.dispose);
+
+    await auth.requestCode('test@example.invalid');
+    await auth.verifyCode('123456');
+    expect(auth.userId, isNull);
+    expect(auth.codeSent, false);
+    expect(auth.error, contains('new code'));
   });
 
   test('a different active session cannot unlock old owner data', () async {
@@ -129,6 +111,21 @@ void main() {
     expect(auth.userId, isNull);
     expect(bound.saved, isNull);
     expect(api.signedOut, true);
+  });
+
+  test('offline sign-out still succeeds once the binding is gone', () async {
+    final api = FakeAuthApi()
+      ..sessionId = accountA
+      ..offline = true;
+    final bound = FakeBoundAccountStore()..saved = accountA;
+    final auth = controller(api, bound);
+    addTearDown(auth.dispose);
+    await auth.restore();
+
+    await auth.signOut();
+    expect(auth.userId, isNull);
+    expect(bound.saved, isNull);
+    expect(auth.error, isNull);
   });
 
   test('failed keychain clear never claims a successful sign-out', () async {
@@ -168,10 +165,7 @@ void main() {
   });
 
   test('untrusted storage directory identifiers are rejected', () {
-    expect(
-      () => AccountAuthController.validUserId('../other-account'),
-      throwsFormatException,
-    );
+    expect(() => validAccountId('../other-account'), throwsFormatException);
   });
 
   testWidgets('no workout routes mounted for locked user', (tester) async {
