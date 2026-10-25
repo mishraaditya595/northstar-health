@@ -7,15 +7,16 @@ Applies to **all AI coding, design, test and review agents**. Read `README.md`, 
 1. Inspect current implementation and tests. Write a focused plan describing the actual data owner, device behavior, security/permissions, recovery tests and changed files.
 2. Work in a task branch; keep PRs small, reproducible and independently reviewable. Do not self-approve, merge, override a check or claim CI ran when it did not.
 3. Keep Dart feature-first: UI renders Riverpod state, go_router handles routes, repositories and mappers isolate platform APIs/ObjectBox/Supabase DTOs/Firebase. No network/storage SDK use directly in widgets.
-4. Use `prototypes/performance-v2/` and `docs/DESIGN_SYSTEM.md` as visual authority. Support light/dark, phone and tablet split screen, text scaling, accessibility, safe areas, reduced motion and low-end Android.
-5. Test loading, empty, stale, denied, failure/retry, offline, process death, duplicate and account separation. Use fictional or fully synthetic test health data, never real user exports in Git.
-6. From `apps/mobile/`, run `dart format --output=none --set-exit-if-changed lib test`, `flutter analyze`, `flutter test`; include runtime and actual device tests for native/persistence/watch integration. Record all unrun checks and risks.
-7. AI agents may create branches, implement changes, open PRs, address review findings, and run tests. Merging into main is prohibited.
-8. State assumptions. Ask when requirements are ambiguous instead of guessing, especially for data ownership, sync and permissions.
-9. Every changed line must trace to the task. Report unrelated dead code instead of removing it. Match the surrounding code's style; no unrelated formatting or cleanup.
-10. Start a bug fix with a failing test. Each plan step names the check that verifies it.
-11. Write the minimum code that solves the task. No speculative features, single-use abstractions or unrequested error handling, except where the durable write and conflict contract requires it.
-12. Split large work into stages that are each independently verifiable and shippable.
+4. **Reuse the shared Flutter component kit; never invent UI components.** Text inputs, selects, dialogs, bottom sheets, chips, list cards, tags, insight cards, page headers, snackbars and buttons come from `apps/mobile/lib/core/design/` (catalog in `docs/DESIGN_SYSTEM.md`). If something is missing, extend the kit in its own small PR, theme-first, then use it. Features must not call raw `TextField`, `DropdownButton`, `AlertDialog`, `showDialog`, `showModalBottomSheet`, `ChoiceChip`/`FilterChip` or `SnackBar`; `test/design_kit_guard_test.dart` enforces this.
+5. Use `prototypes/performance-v2/` and `docs/DESIGN_SYSTEM.md` as visual authority. Support light/dark, phone and tablet split screen, text scaling, accessibility, safe areas, reduced motion and low-end Android.
+6. Test loading, empty, stale, denied, failure/retry, offline, process death, duplicate and account separation. Use fictional or fully synthetic test health data, never real user exports in Git.
+7. From `apps/mobile/`, run `dart format --output=none --set-exit-if-changed lib test`, `flutter analyze`, `flutter test`; include runtime and actual device tests for native/persistence/watch integration. Record all unrun checks and risks.
+8. AI agents may create branches, implement changes, open PRs, address review findings, and run tests. Merging into main is prohibited.
+9. State assumptions. Ask when requirements are ambiguous instead of guessing, especially for data ownership, sync and permissions.
+10. Every changed line must trace to the task. Report unrelated dead code instead of removing it. Match the surrounding code's style; no unrelated formatting or cleanup.
+11. Start a bug fix with a failing test. Each plan step names the check that verifies it.
+12. Write the minimum code that solves the task. No speculative features, single-use abstractions or unrequested error handling, except where the durable write and conflict contract requires it.
+13. Split large work into stages that are each independently verifiable and shippable.
 
 ## Data ownership hard rules
 

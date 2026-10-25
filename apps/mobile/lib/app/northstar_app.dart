@@ -11,23 +11,24 @@ import '../features/train/train_page.dart';
 import '../features/train/exercise_catalog_page.dart';
 import '../features/train/plan_editor_page.dart';
 import '../features/train/active_workout_page.dart';
+import 'floating_nav_bar.dart';
 import 'theme_controller.dart';
 
 final _routes = <String>['/today', '/train', '/progress', '/health'];
 final _destinations = <NavigationDestination>[
   const NavigationDestination(
-    icon: Icon(Icons.space_dashboard_outlined),
-    selectedIcon: Icon(Icons.space_dashboard),
+    icon: Icon(Icons.home_outlined),
+    selectedIcon: Icon(Icons.home),
     label: 'Today',
   ),
   const NavigationDestination(
-    icon: Icon(Icons.fitness_center_outlined),
-    selectedIcon: Icon(Icons.fitness_center),
+    icon: Icon(Icons.contrast),
+    selectedIcon: Icon(Icons.contrast),
     label: 'Train',
   ),
   const NavigationDestination(
-    icon: Icon(Icons.insights_outlined),
-    selectedIcon: Icon(Icons.insights),
+    icon: Icon(Icons.north_east),
+    selectedIcon: Icon(Icons.north_east),
     label: 'Progress',
   ),
   const NavigationDestination(
@@ -37,6 +38,10 @@ final _destinations = <NavigationDestination>[
   ),
 ];
 
+// Tabs swap in place; default page transitions keep the outgoing tab visible.
+Page<void> _tabPage(GoRouterState state, Widget child) =>
+    NoTransitionPage<void>(key: state.pageKey, child: child);
+
 final routerProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
     initialLocation: '/today',
@@ -45,8 +50,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, child) =>
             AdaptiveShell(location: state.uri.path, child: child),
         routes: [
-          GoRoute(path: '/today', builder: (_, _) => const TodayPage()),
-          GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+          GoRoute(
+            path: '/today',
+            pageBuilder: (_, state) => _tabPage(state, const TodayPage()),
+          ),
+          GoRoute(
+            path: '/train',
+            pageBuilder: (_, state) => _tabPage(state, const TrainPage()),
+          ),
           GoRoute(
             path: '/train/workout',
             builder: (_, _) => const ActiveWorkoutPage(),
@@ -64,14 +75,20 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, state) =>
                 PlanEditorPage(planUuid: state.pathParameters['id']),
           ),
-          GoRoute(path: '/progress', builder: (_, _) => const ProgressPage()),
+          GoRoute(
+            path: '/progress',
+            pageBuilder: (_, state) => _tabPage(state, const ProgressPage()),
+          ),
           GoRoute(
             path: '/progress/workouts/:id',
             builder: (_, state) => WorkoutHistoryDetailPage(
               sessionUuid: state.pathParameters['id']!,
             ),
           ),
-          GoRoute(path: '/health', builder: (_, _) => const HealthPage()),
+          GoRoute(
+            path: '/health',
+            pageBuilder: (_, state) => _tabPage(state, const HealthPage()),
+          ),
         ],
       ),
     ],
@@ -112,12 +129,16 @@ class AdaptiveShell extends ConsumerWidget {
                 ? 2
                 : _routes.indexOf(location))
             .clamp(0, 3);
+    // The live workout is a focus screen: no tab bar or rail.
+    final focus = location == '/train/workout';
     return LayoutBuilder(
       builder: (context, constraints) {
         final expanded = constraints.maxWidth >= 600;
         void select(int value) => context.go(_routes[value]);
 
         final body = SafeArea(
+          // Compact: the floating nav overlays content; pages pad past it.
+          bottom: expanded || focus,
           child: Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
@@ -127,12 +148,15 @@ class AdaptiveShell extends ConsumerWidget {
           ),
         );
 
+        if (focus) return Scaffold(body: body);
+
         if (!expanded) {
           return Scaffold(
+            extendBody: true,
             body: body,
-            bottomNavigationBar: NavigationBar(
+            bottomNavigationBar: FloatingNavBar(
               selectedIndex: index,
-              onDestinationSelected: select,
+              onSelected: select,
               destinations: _destinations,
             ),
           );

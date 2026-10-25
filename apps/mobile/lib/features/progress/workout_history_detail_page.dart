@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
+
+import '../../core/design/page_header.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/design/stats.dart';
+import '../../core/design/section.dart';
+import '../../core/design/northstar_theme.dart';
+import 'domain/progress_overview.dart';
 import '../../core/units/load_units.dart';
 import '../workouts/domain/workout_models.dart';
 import 'domain/workout_history_models.dart';
@@ -14,7 +21,10 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(completedWorkoutHistoryProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Workout details')),
+      appBar: AppBar(
+        leading: const NsBackButton(),
+        title: const Text('Workout details'),
+      ),
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
@@ -62,28 +72,89 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
         .where((s) => s.status == WorkoutSetStatus.completed)
         .toList();
     final theme = Theme.of(context);
+    final summary = calculateWorkoutHistory([session]);
+    final duration = finished.difference(session.startedAtUtc);
+    final started = session.startedAtUtc.toUtc().add(
+      Duration(minutes: session.originalOffsetMinutes),
+    );
+    final lb = sets.any(
+      (s) => s.loadGrams != null && s.inputUnit == LoadUnit.lb,
+    );
+    final unit = lb ? LoadUnit.lb : LoadUnit.kg;
+    final volume = summary.loadedWorkingSets == 0
+        ? null
+        : formatLoadAmount(summary.loadedVolumeGramReps, unit);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 42),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        8,
+        16,
+        42 + MediaQuery.paddingOf(context).bottom,
+      ),
       children: [
-        Text(
-          session.name,
-          style: theme.textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.w900,
+        Align(
+          alignment: Alignment.centerLeft,
+          child: NsTag(
+            'started at '
+            '${started.hour.toString().padLeft(2, '0')}:'
+            '${started.minute.toString().padLeft(2, '0')}',
           ),
         ),
-        const SizedBox(height: 8),
-        Text('${formatWorkoutDay(day)} · FINISHED LOCALLY'),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         Text(
-          '${sets.length} recorded sets · '
-          '${session.exercises.length} exercises',
+          formatDurationShort(duration.isNegative ? Duration.zero : duration),
+          style: theme.textTheme.displaySmall?.copyWith(
+            fontWeight: FontWeight.w900,
+            letterSpacing: -2,
+          ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
+        Text(
+          session.name,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          '${formatWorkoutDay(day)} · FINISHED LOCALLY',
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.mutedColor),
+        ),
+        const SizedBox(height: 2),
         Text(
           _friendlyFinish(finished, session.originalOffsetMinutes),
-          style: theme.textTheme.bodySmall,
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.mutedColor),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: StatTile(
+                label: 'Volume',
+                value: volume ?? '—',
+                unit: volume == null ? null : (lb ? 'lb' : 'kg'),
+                caption: volume == null ? 'No loaded sets' : null,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: StatTile(label: 'Sets', value: '${sets.length}'),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: StatTile(
+                label: 'Exercises',
+                value: '${session.exercises.length}',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        SectionHeading(
+          '${session.exercises.length} '
+          '${session.exercises.length == 1 ? 'exercise' : 'exercises'}',
+        ),
         if (session.exercises.isEmpty)
           const Card(
             child: Padding(
@@ -107,19 +178,42 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
                   if (exercise.equipmentSnapshot.isNotEmpty)
                     Text(
                       exercise.equipmentSnapshot,
-                      style: theme.textTheme.bodySmall,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.mutedColor,
+                      ),
                     ),
                   const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 44,
+                        child: Text('SET', style: _head(theme)),
+                      ),
+                      Expanded(child: Text('PERFORMANCE', style: _head(theme))),
+                      Text('TYPE', style: _head(theme)),
+                    ],
+                  ),
+                  const Divider(height: 14),
                   for (final set in session.sets.where(
                     (set) => set.exerciseUuid == exercise.uuid,
                   )) ...[
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 5),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
                       child: Row(
                         children: [
                           SizedBox(
-                            width: 58,
-                            child: Text('Set ${set.position + 1}'),
+                            width: 44,
+                            child: Text(
+                              set.kind == WorkoutSetKind.warmup
+                                  ? 'W'
+                                  : '${set.position + 1}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: set.kind == WorkoutSetKind.warmup
+                                    ? const Color(0xFFE5A92B)
+                                    : theme.colorScheme.onSurface,
+                              ),
+                            ),
                           ),
                           Expanded(child: Text(_label(set))),
                           Text(
@@ -128,11 +222,13 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
                                 : set.kind == WorkoutSetKind.working
                                 ? 'Working'
                                 : 'Unknown',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.mutedColor,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const Divider(height: 10),
                   ],
                 ],
               ),
@@ -140,14 +236,24 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
         ],
-        const Text(
-          'Historical snapshots are read-only. '
-          'Edits to the original exercise catalog or training plan '
-          'cannot rewrite a completed workout.',
+        const InsightCard(
+          icon: Icons.info_outline,
+          text: TextSpan(
+            text:
+                'Historical snapshots are read-only. '
+                'Edits to the original exercise catalog or training plan '
+                'cannot rewrite a completed workout.',
+          ),
         ),
       ],
     );
   }
+
+  TextStyle? _head(ThemeData theme) => theme.textTheme.labelSmall?.copyWith(
+    color: theme.mutedColor,
+    letterSpacing: 1,
+    fontWeight: FontWeight.w800,
+  );
 
   String _friendlyFinish(DateTime finished, int offsetMinutes) {
     final local = finished.toUtc().add(Duration(minutes: offsetMinutes));

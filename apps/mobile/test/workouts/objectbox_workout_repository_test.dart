@@ -353,4 +353,91 @@ void main() {
       );
     },
   );
+
+  group('removeSet', () {
+    WorkoutSessionRecord seedThree() {
+      final session = start();
+      var revision = session.revision;
+      for (var n = 0; n < 3; n++) {
+        repository.saveSet(
+          sessionUuid: session.uuid,
+          expectedRevision: revision,
+          set: makeSet(
+            uuid: 'set-$n',
+            position: n,
+            status: WorkoutSetStatus.planned,
+            reps: n + 1,
+          ),
+        );
+        revision = repository.getSession(session.uuid)!.revision;
+      }
+      return repository.getSession(session.uuid)!;
+    }
+
+    test('removes the set, compacts positions and advances the revision', () {
+      final session = seedThree();
+      repository.removeSet(
+        sessionUuid: session.uuid,
+        setUuid: 'set-1',
+        expectedRevision: session.revision,
+      );
+      final after = repository.getSession(session.uuid)!;
+      expect(after.sets.map((e) => e.uuid), ['set-0', 'set-2']);
+      expect(after.sets.map((e) => e.position), [0, 1]);
+      expect(after.revision, session.revision + 1);
+      final checkpoint = store.box<WorkoutSessionStateEntity>().getAll().single;
+      expect(checkpoint.checkpointRevision, after.revision);
+      expect(checkpoint.selectedSetUuid, isNot('set-1'));
+    });
+
+    test('stale revision conflicts and leaves every set in place', () {
+      final session = seedThree();
+      expect(
+        () => repository.removeSet(
+          sessionUuid: session.uuid,
+          setUuid: 'set-1',
+          expectedRevision: session.revision - 1,
+        ),
+        throwsA(isA<WorkoutRevisionConflict>()),
+      );
+      expect(repository.getSession(session.uuid)!.sets, hasLength(3));
+    });
+
+    test('an exact retry after a committed removal is a no-op', () {
+      final session = seedThree();
+      repository.removeSet(
+        sessionUuid: session.uuid,
+        setUuid: 'set-1',
+        expectedRevision: session.revision,
+      );
+      final committed = repository.getSession(session.uuid)!;
+      repository.removeSet(
+        sessionUuid: session.uuid,
+        setUuid: 'set-1',
+        expectedRevision: session.revision,
+      );
+      final retried = repository.getSession(session.uuid)!;
+      expect(retried.revision, committed.revision);
+      expect(retried.sets, hasLength(2));
+    });
+
+    test('finished sessions cannot lose sets', () {
+      final session = seedThree();
+      repository.finishSession(
+        session.uuid,
+        expectedRevision: session.revision,
+        finishedAtUtc: DateTime.utc(2026, 10, 24, 11),
+      );
+      final finished = repository.getSession(session.uuid)!;
+      expect(
+        () => repository.removeSet(
+          sessionUuid: session.uuid,
+          setUuid: 'set-1',
+          expectedRevision: finished.revision,
+        ),
+        throwsStateError,
+      );
+      expect(repository.getSession(session.uuid)!.sets, hasLength(3));
+    });
+  });
 }

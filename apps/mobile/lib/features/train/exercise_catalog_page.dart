@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/design/inputs.dart';
+import '../../core/design/dialogs.dart';
 import '../../core/design/northstar_theme.dart';
+import '../../core/design/page_header.dart';
+import '../../core/design/section.dart';
 import '../../core/ids/uuid_factory.dart';
+import '../../core/ui/dispose_after_dialog.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
 import '../workouts/domain/workout_library_models.dart';
 import 'train_library_state.dart';
@@ -25,37 +30,35 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
     final equipment = TextEditingController(text: existing?.equipment ?? '');
     String? error;
     try {
-      await showDialog<void>(
+      await showNsDialog<void>(
         context: context,
         builder: (dialogContext) => StatefulBuilder(
-          builder: (context, setDialogState) => AlertDialog(
-            title: Text(existing == null ? 'New exercise' : 'Edit exercise'),
+          builder: (context, setDialogState) => NsDialog(
+            title: existing == null ? 'New exercise' : 'Edit exercise',
             content: SizedBox(
               width: 420,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(
+                    NsTextField(
                       controller: name,
                       autofocus: true,
                       maxLength: 80,
                       textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
-                        labelText: 'Exercise name *',
-                      ),
+                      label: 'Exercise name *',
                     ),
-                    TextField(
+                    const SizedBox(height: 8),
+                    NsTextField(
                       controller: muscle,
                       maxLength: 60,
-                      decoration: const InputDecoration(
-                        labelText: 'Muscle group',
-                      ),
+                      label: 'Muscle group',
                     ),
-                    TextField(
+                    const SizedBox(height: 8),
+                    NsTextField(
                       controller: equipment,
                       maxLength: 60,
-                      decoration: const InputDecoration(labelText: 'Equipment'),
+                      label: 'Equipment',
                     ),
                     if (error != null)
                       Text(
@@ -100,34 +103,20 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
         ),
       );
     } finally {
-      name.dispose();
-      muscle.dispose();
-      equipment.dispose();
+      disposeAfterDialog([name, muscle, equipment]);
     }
   }
 
   Future<void> _archive(ExerciseRecord exercise) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Archive exercise?'),
-        content: Text(
+    final confirm = await showNsConfirm(
+      context,
+      title: 'Archive exercise?',
+      message:
           'Remove "${exercise.name}" from your library? '
           'It will remain in existing plans and workout history.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Archive'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Archive',
     );
-    if (confirm != true || !mounted) return;
+    if (!confirm || !mounted) return;
     try {
       ref
           .read(workoutLibraryRepositoryProvider)
@@ -135,9 +124,7 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
       ref.invalidate(trainLibraryProvider);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not archive that exercise.')),
-        );
+        showNsMessage(context, 'Could not archive that exercise.');
       }
     }
   }
@@ -147,43 +134,46 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
     final async = ref.watch(trainLibraryProvider);
     final muted = Theme.of(context).extension<NorthstarColors>()!.muted;
     return Scaffold(
-      appBar: AppBar(title: const Text('Exercise library')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _edit(null),
-        icon: const Icon(Icons.add),
-        label: const Text('Custom exercise'),
+      appBar: AppBar(
+        leading: const NsBackButton(),
+        title: const Text('Exercise library'),
+      ),
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
+        child: FloatingActionButton.extended(
+          onPressed: () => _edit(null),
+          icon: const Icon(Icons.add),
+          label: const Text('Custom exercise'),
+        ),
       ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 900),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              8,
+              16,
+              100 + MediaQuery.paddingOf(context).bottom,
+            ),
             children: [
-              Text(
-                'FIND YOUR MOVEMENT',
-                style: Theme.of(context).textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 8),
+              const SectionHeading('Find your movement'),
               Text(
                 'Built-ins are read-only. Your own exercises stay on this device.',
                 style: TextStyle(color: muted),
               ),
               const SizedBox(height: 16),
-              TextField(
+              NsTextField(
                 onChanged: (value) =>
                     setState(() => query = value.trim().toLowerCase()),
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search),
-                  hintText: 'Search exercise or equipment',
-                  border: OutlineInputBorder(),
-                ),
+                prefixIcon: Icons.search,
+                hint: 'Search exercise or equipment',
               ),
               const SizedBox(height: 12),
               Align(
                 alignment: Alignment.centerLeft,
-                child: FilterChip(
-                  label: const Text('Custom only'),
+                child: NsChip(
+                  label: 'Custom only',
                   selected: customOnly,
                   onSelected: (value) => setState(() => customOnly = value),
                 ),
@@ -220,31 +210,19 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
                   return Column(
                     children: [
                       for (final exercise in visible)
-                        Card(
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 6,
-                            ),
-                            leading: Icon(
-                              exercise.isBuiltIn
-                                  ? Icons.fitness_center
-                                  : Icons.edit_note,
-                            ),
-                            title: Text(
-                              exercise.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            subtitle: Text(
-                              [
-                                exercise.muscleGroup,
-                                exercise.equipment,
-                              ].where((s) => s.isNotEmpty).join(' · '),
-                            ),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: NsListCard(
+                            icon: exercise.isBuiltIn
+                                ? Icons.fitness_center
+                                : Icons.edit_note,
+                            title: exercise.name,
+                            subtitle: [
+                              exercise.muscleGroup,
+                              exercise.equipment,
+                            ].where((s) => s.isNotEmpty).join(' · '),
                             trailing: exercise.isBuiltIn
-                                ? const Text('BUILT-IN')
+                                ? const NsTag('Built-in')
                                 : PopupMenuButton<String>(
                                     tooltip:
                                         'Exercise actions for ${exercise.name}',

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/design/inputs.dart';
 import 'account_auth_controller.dart';
 
 /// Initial authentication requires an online Supabase email OTP.
@@ -81,17 +82,13 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                           ),
                           const SizedBox(height: 28),
                           if (!auth.codeSent) ...[
-                            TextField(
+                            NsTextField(
                               controller: _email,
                               enabled: !auth.busy,
                               keyboardType: TextInputType.emailAddress,
-                              textInputAction: TextInputAction.done,
                               autofillHints: const [AutofillHints.email],
                               autocorrect: false,
-                              decoration: const InputDecoration(
-                                labelText: 'Email address',
-                                border: OutlineInputBorder(),
-                              ),
+                              label: 'Email address',
                               onSubmitted: (_) => auth.requestCode(_email.text),
                             ),
                             const SizedBox(height: 14),
@@ -102,21 +99,17 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                               child: const Text('Send sign-in code'),
                             ),
                           ] else ...[
-                            TextField(
+                            NsTextField(
                               controller: _otp,
                               enabled: !auth.busy,
                               autofocus: true,
                               keyboardType: TextInputType.number,
-                              textInputAction: TextInputAction.done,
                               autofillHints: const [AutofillHints.oneTimeCode],
                               inputFormatters: [
                                 FilteringTextInputFormatter.digitsOnly,
                                 LengthLimitingTextInputFormatter(6),
                               ],
-                              decoration: const InputDecoration(
-                                labelText: 'Six-digit code',
-                                border: OutlineInputBorder(),
-                              ),
+                              label: 'Six-digit code',
                               onSubmitted: (_) => auth.verifyCode(_otp.text),
                             ),
                             const SizedBox(height: 14),

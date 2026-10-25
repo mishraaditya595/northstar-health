@@ -54,6 +54,7 @@ abstract interface class WorkoutActions {
     WorkoutSetRecord set, {
     int? restSeconds,
   });
+  void removeSet(WorkoutSessionRecord session, WorkoutSetRecord set);
   WorkoutSessionRecord pause(WorkoutSessionRecord session);
   WorkoutSessionRecord resume(WorkoutSessionRecord session);
   WorkoutSessionRecord finish(WorkoutSessionRecord session);
@@ -170,6 +171,19 @@ class RepositoryWorkoutActions implements WorkoutActions {
       expectedRevision: session.revision,
       set: set,
       restSeconds: restSeconds,
+    );
+  }
+
+  @override
+  void removeSet(WorkoutSessionRecord session, WorkoutSetRecord set) {
+    if (session.status != WorkoutStatus.inProgress &&
+        session.status != WorkoutStatus.paused) {
+      throw StateError('Workout is not editable');
+    }
+    repository.removeSet(
+      sessionUuid: session.uuid,
+      setUuid: set.uuid,
+      expectedRevision: session.revision,
     );
   }
 
