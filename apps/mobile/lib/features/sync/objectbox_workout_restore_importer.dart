@@ -49,9 +49,8 @@ class ObjectBoxWorkoutRestoreImporter {
   ObjectBoxWorkoutRestoreImporter(
     this._store, {
     required String accountId,
-    required String? Function() activeAccountId,
-  }) : accountId = validAccountId(accountId),
-       _activeAccountId = activeAccountId,
+    required this.activeAccountId,
+  }) : accountId = validAccountId(accountId),,
        _cursors = _store.box<WorkoutRestoreCursorEntity>(),
        _remote = _store.box<WorkoutRemoteStateEntity>(),
        _sessions = _store.box<WorkoutSessionEntity>(),
@@ -61,7 +60,7 @@ class ObjectBoxWorkoutRestoreImporter {
 
   final Store _store;
   final String accountId;
-  final String? Function() _activeAccountId;
+  final String? Function() activeAccountId;
   final Box<WorkoutRestoreCursorEntity> _cursors;
   final Box<WorkoutRemoteStateEntity> _remote;
   final Box<WorkoutSessionEntity> _sessions;
@@ -70,7 +69,7 @@ class ObjectBoxWorkoutRestoreImporter {
   final Box<WorkoutSyncOutboxEntity> _outbox;
 
   void _checkAccount() {
-    final current = _activeAccountId();
+    final current = activeAccountId();
     if (current == null || validAccountId(current) != accountId) {
       throw const RestoreImportException('account_changed');
     }
