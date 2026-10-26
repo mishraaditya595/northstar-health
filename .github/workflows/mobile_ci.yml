@@ -70,6 +70,17 @@ jobs:
       - name: Resolve from committed lockfile
         working-directory: apps/mobile
         run: flutter pub get --enforce-lockfile
+      # One-run pinned formatter capture; removed after source sync.
+      - name: Temporary pinned formatter capture
+        working-directory: apps/mobile
+        run: |
+          dart format lib/features/sync/objectbox_workout_restore_importer.dart test/sync/objectbox_workout_restore_importer_test.dart
+          python3 - <<'PY'
+          import json
+          for path in ('lib/features/sync/objectbox_workout_restore_importer.dart', 'test/sync/objectbox_workout_restore_importer_test.dart'):
+              print('RESTORE_FMT_CAPTURE:' + json.dumps({'path': path, 'content': open(path).read()}))
+          PY
+          exit 1
       - name: Format
         working-directory: apps/mobile
         run: dart format --output=none --set-exit-if-changed lib test
