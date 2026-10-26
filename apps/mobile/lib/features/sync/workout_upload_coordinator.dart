@@ -120,6 +120,7 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
   final AccountAuthController auth;
   final ObjectBoxWorkoutOutbox outbox;
   final WorkoutUploadTransport transport;
+
   /// Both fields must be provided together. Null keeps legacy upload-only
   /// tests and the uploader's non-restore behavior unchanged.
   final WorkoutRestoreTransport? restoreTransport;
