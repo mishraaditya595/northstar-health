@@ -153,23 +153,21 @@ class ObjectBoxWorkoutRestoreImporter {
 
   /// Explicit recovery after a reviewed correction or user-approved action.
   /// Ordinary applyPage retries cannot clear a durable blocked reason.
-  bool clearBlocked({
-    required int afterSeq,
-    required String? requestedEpoch,
-  }) => _store.runInTransaction(TxMode.write, () {
-    _checkAccount();
-    final state = _cursorEntity();
-    if (state == null ||
-        state.nextCursor != afterSeq ||
-        state.cursorEpoch != requestedEpoch ||
-        state.blockedCode == null) {
-      return false;
-    }
-    state.blockedCode = null;
-    state.blockedAtMs = null;
-    _cursors.put(state);
-    return true;
-  });
+  bool clearBlocked({required int afterSeq, required String? requestedEpoch}) =>
+      _store.runInTransaction(TxMode.write, () {
+        _checkAccount();
+        final state = _cursorEntity();
+        if (state == null ||
+            state.nextCursor != afterSeq ||
+            state.cursorEpoch != requestedEpoch ||
+            state.blockedCode == null) {
+          return false;
+        }
+        state.blockedCode = null;
+        state.blockedAtMs = null;
+        _cursors.put(state);
+        return true;
+      });
 
   /// [afterSeq] and [requestedEpoch] MUST be the arguments used for fetchPage.
   /// The only mutable input is a validated WorkoutRestorePage. This method
@@ -179,9 +177,7 @@ class ObjectBoxWorkoutRestoreImporter {
     WorkoutRestorePage page, {
     required int afterSeq,
     required String? requestedEpoch,
-  }) => _applyPage(
-    page, afterSeq: afterSeq, requestedEpoch: requestedEpoch,
-  );
+  }) => _applyPage(page, afterSeq: afterSeq, requestedEpoch: requestedEpoch);
 
   /// Fault injection for native tests, never part of production applyPage.
   @visibleForTesting
@@ -191,7 +187,9 @@ class ObjectBoxWorkoutRestoreImporter {
     required String? requestedEpoch,
     required void Function() beforeCommit,
   }) => _applyPage(
-    page, afterSeq: afterSeq, requestedEpoch: requestedEpoch,
+    page,
+    afterSeq: afterSeq,
+    requestedEpoch: requestedEpoch,
     beforeCommitForTest: beforeCommit,
   );
 
