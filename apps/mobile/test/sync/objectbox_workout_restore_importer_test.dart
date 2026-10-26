@@ -528,13 +528,17 @@ void main() {
       requestedEpoch: epochA,
     );
     expect(updated.imported, 1);
-    expect(store.box<WorkoutSessionEntity>().getAll().single.name,
-        'Rows after correction');
+    expect(
+      store.box<WorkoutSessionEntity>().getAll().single.name,
+      'Rows after correction',
+    );
     expect(store.box<WorkoutSessionEntity>().getAll().single.revision, 2);
     expect(store.box<WorkoutExerciseEntity>().count(), 1);
     expect(store.box<WorkoutSetEntity>().count(), 1);
-    expect(store.box<WorkoutRemoteStateEntity>().getAll().single.serverRevision,
-        2);
+    expect(
+      store.box<WorkoutRemoteStateEntity>().getAll().single.serverRevision,
+      2,
+    );
     expect(importer.readCursor().nextCursor, 2);
     expect(ObjectBoxWorkoutOutbox(store).backfillCompleted(), 0);
   });
@@ -566,12 +570,20 @@ void main() {
       ],
     };
     final page = WorkoutRestorePage.decode(
-      raw, afterSeq: 0, requestedEpoch: null, limit: 100,
+      raw,
+      afterSeq: 0,
+      requestedEpoch: null,
+      limit: 100,
     );
     expect(
       () => importer.applyPage(page, afterSeq: 0, requestedEpoch: null),
-      throwsA(isA<RestoreImportException>()
-          .having((e) => e.code, 'code', 'exercise_uuid_collision')),
+      throwsA(
+        isA<RestoreImportException>().having(
+          (e) => e.code,
+          'code',
+          'exercise_uuid_collision',
+        ),
+      ),
     );
     expect(store.box<WorkoutSessionEntity>().count(), 0);
     expect(store.box<WorkoutExerciseEntity>().count(), 0);
@@ -582,11 +594,21 @@ void main() {
   });
 
   test('account changing immediately before commit rolls back all writes', () {
-    expect(() => importer.applyPage(
-      feed(), afterSeq: 0, requestedEpoch: null,
-      beforeCommitForTest: () => activeOwner = accountB,
-    ), throwsA(isA<RestoreImportException>().having(
-      (e) => e.code, 'code', 'account_changed')));
+    expect(
+      () => importer.applyPage(
+        feed(),
+        afterSeq: 0,
+        requestedEpoch: null,
+        beforeCommitForTest: () => activeOwner = accountB,
+      ),
+      throwsA(
+        isA<RestoreImportException>().having(
+          (e) => e.code,
+          'code',
+          'account_changed',
+        ),
+      ),
+    );
     expect(store.box<WorkoutSessionEntity>().count(), 0);
     expect(store.box<WorkoutRestoreCursorEntity>().count(), 0);
     activeOwner = accountA;
