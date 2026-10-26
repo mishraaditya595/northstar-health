@@ -50,7 +50,7 @@ class ObjectBoxWorkoutRestoreImporter {
     this._store, {
     required String accountId,
     required this.activeAccountId,
-  }) : accountId = validAccountId(accountId),,
+  }) : accountId = validAccountId(accountId),
        _cursors = _store.box<WorkoutRestoreCursorEntity>(),
        _remote = _store.box<WorkoutRemoteStateEntity>(),
        _sessions = _store.box<WorkoutSessionEntity>(),
