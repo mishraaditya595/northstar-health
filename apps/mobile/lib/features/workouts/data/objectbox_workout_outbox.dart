@@ -433,9 +433,40 @@ class ObjectBoxWorkoutOutbox {
                   )
                   .toList()
                 ..sort((a, b) => b.localRevision.compareTo(a.localRevision));
-          final expected = acknowledgements.isEmpty
+          final remote = _find(
+            _remote,
+            WorkoutRemoteStateEntity_.workoutUuid,
+            op.sessionUuid,
+          );
+          if (remote.length > 1) {
+            _transition(op, 'blocked', 'invalid_remote_state');
+            blockedAny = true;
+            continue;
+          }
+          final tracked = remote.isEmpty ? null : remote.single;
+          if (tracked != null &&
+              (tracked.deleted ||
+                  op.localRevision <= tracked.localRevisionAtImport)) {
+            // Never resurrect a remote tombstone or upload a revision that
+            // was already imported at a later local watermark.
+            _transition(
+              op,
+              'blocked',
+              tracked.deleted ? 'remote_tombstone' : 'stale_local_revision',
+            );
+            blockedAny = true;
+            continue;
+          }
+          final lastAckRevision = acknowledgements.isEmpty
               ? 0
               : acknowledgements.first.serverRevision!;
+          // A restored workout may have no local ACK at all; its imported
+          // server CAS baseline is authoritative. An ACK newer than that
+          // baseline still wins for a subsequent local operation.
+          final remoteRevision = tracked?.serverRevision ?? 0;
+          final expected = remoteRevision > lastAckRevision
+              ? remoteRevision
+              : lastAckRevision;
           op.attemptedAtMs = nowMs;
           op.attempts++;
           _operations.put(op);
