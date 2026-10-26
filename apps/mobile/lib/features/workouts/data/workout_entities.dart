@@ -283,6 +283,7 @@ class WorkoutRemoteStateEntity {
   String ownerAccountId;
   int serverRevision;
   int serverChangeSeq;
+  String cursorEpoch;
   int localRevisionAtImport;
   bool deleted;
 
@@ -292,6 +293,7 @@ class WorkoutRemoteStateEntity {
     required this.ownerAccountId,
     required this.serverRevision,
     required this.serverChangeSeq,
+    required this.cursorEpoch,
     required this.localRevisionAtImport,
     this.deleted = false,
   });
