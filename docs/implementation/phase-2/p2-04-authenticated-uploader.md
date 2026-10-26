@@ -1,6 +1,6 @@
 # P2-04 — Automatic authenticated upload of completed workouts
 
-**Status:** Draft PR, not merged or released.  
+**Status:** PR #16 **merged**. Production release remains gated by real authenticated RLS/E2E and device QA.  
 **Policy:** [ADR-0005](../../adr/0005-mandatory-auth-and-workout-sync.md) — mandatory account; **only completed phone workouts** synchronize. The phone is local-first.
 
 ## Delivered in this milestone
