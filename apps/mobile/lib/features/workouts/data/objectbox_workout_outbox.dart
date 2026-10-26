@@ -54,6 +54,7 @@ class ObjectBoxWorkoutOutbox {
       _ids = uuidFactory ?? SecureUuidFactory(),
       _operations = store.box<WorkoutSyncOutboxEntity>(),
       _sessions = store.box<WorkoutSessionEntity>(),
+      _remote = store.box<WorkoutRemoteStateEntity>(),
       _exercises = store.box<WorkoutExerciseEntity>(),
       _sets = store.box<WorkoutSetEntity>();
 
@@ -61,6 +62,7 @@ class ObjectBoxWorkoutOutbox {
   final UuidFactory _ids;
   final Box<WorkoutSyncOutboxEntity> _operations;
   final Box<WorkoutSessionEntity> _sessions;
+  final Box<WorkoutRemoteStateEntity> _remote;
   final Box<WorkoutExerciseEntity> _exercises;
   final Box<WorkoutSetEntity> _sets;
 
@@ -343,7 +345,14 @@ class ObjectBoxWorkoutOutbox {
             _operations,
             WorkoutSyncOutboxEntity_.sessionUuid,
             session.uuid.toLowerCase(),
-          ).isNotEmpty) {
+          ).isNotEmpty ||
+              _find(
+                _remote,
+                WorkoutRemoteStateEntity_.workoutUuid,
+                session.uuid.toLowerCase(),
+              ).isNotEmpty) {
+            // Imported server rows must never become new outgoing uploads,
+            // including across process restarts and historical backfills.
             continue;
           }
           // A malformed historical session must never starve a newer
