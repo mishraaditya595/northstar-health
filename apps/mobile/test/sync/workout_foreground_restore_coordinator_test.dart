@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:northstar_health/core/storage/objectbox_store_provider.dart';
 import 'package:northstar_health/features/account/account_auth_provider.dart';
+import 'package:northstar_health/features/progress/workout_history_state.dart';
 import 'package:northstar_health/features/account/account_auth_controller.dart';
 import 'package:northstar_health/features/sync/objectbox_workout_restore_importer.dart';
 import 'package:northstar_health/features/sync/workout_restore_feed.dart';
@@ -274,7 +275,7 @@ void main() {
     pull.handler = (_, _) async => page();
     await worker.drain();
     expect(pull.requests, isEmpty);
-    expect(worker.lastRestoreFailureKind, 'upload_pending');
+    expect(worker.lastRestoreFailureKind, 'upload_unresolved');
     expect(importer.readCursor().blockedCode, null);
   });
 
@@ -300,12 +301,12 @@ void main() {
       expect(store.box<WorkoutSessionEntity>().count(), 0);
       expect(importer.readCursor().nextCursor, 0);
       expect(importer.readCursor().blockedCode, null);
-      expect(worker.lastRestoreFailureKind, 'upload_pending');
+      expect(worker.lastRestoreFailureKind, 'upload_unresolved');
     },
   );
 
   test(
-    'token expiration and account switch during pull never write old data',
+    'account switch during pull never writes old owner data',
     () async {
       final response = Completer<WorkoutRestorePage>();
       pull.handler = (_, _) => response.future;
@@ -318,6 +319,96 @@ void main() {
       expect(store.box<WorkoutRestoreCursorEntity>().count(), 0);
     },
   );
+
+
+  test('blocked or conflicted upload defers restore without poisoning cursor',
+      () async {
+    for (final status in ['conflict', 'blocked']) {
+      final row = WorkoutSyncOutboxEntity(
+        operationUuid: operation,
+        sessionUuid: workout,
+        localRevision: 1,
+        action: 'upsert',
+        state: status,
+        payloadJson: '{}',
+        createdAtMs: 10,
+      );
+      final rowId = store.box<WorkoutSyncOutboxEntity>().put(row);
+      pull.handler = (_, _) async => page();
+      expect(outbox.hasUnacknowledgedOperations(), true);
+      await worker.drain();
+      expect(pull.requests, isEmpty);
+      expect(importer.readCursor().nextCursor, 0);
+      expect(importer.readCursor().blockedCode, isNull);
+      expect(worker.lastRestoreFailureKind, 'upload_unresolved');
+      // Simulate a future reviewed resolution; no automatic deletion or
+      // conflict clearing exists in this milestone.
+      store.box<WorkoutSyncOutboxEntity>().remove(rowId);
+    }
+    expect(outbox.hasUnacknowledgedOperations(), false);
+    await worker.drain();
+    expect(pull.requests, hasLength(1));
+    expect(importer.readCursor().nextCursor, 1);
+    expect(importer.readCursor().blockedCode, isNull);
+  });
+
+  test('unresolved operation created during fetch defers, even if blocked',
+      () async {
+    final response = Completer<WorkoutRestorePage>();
+    pull.handler = (_, _) => response.future;
+    final ongoing = worker.drain();
+    await Future<void>.delayed(Duration.zero);
+    store.box<WorkoutSyncOutboxEntity>().put(WorkoutSyncOutboxEntity(
+      operationUuid: operation,
+      sessionUuid: workout,
+      localRevision: 1,
+      action: 'upsert',
+      state: 'conflict',
+      payloadJson: '{}',
+      createdAtMs: 10,
+    ));
+    response.complete(page());
+    await ongoing;
+    expect(importer.readCursor().nextCursor, 0);
+    expect(importer.readCursor().blockedCode, isNull);
+    expect(store.box<WorkoutSessionEntity>().count(), 0);
+    expect(worker.lastRestoreFailureKind, 'upload_unresolved');
+  });
+
+  test('token expires in-flight: network response cannot mutate the Store',
+      () async {
+    final response = Completer<WorkoutRestorePage>();
+    pull.handler = (_, _) => response.future;
+    final ongoing = worker.drain();
+    await Future<void>.delayed(Duration.zero);
+    api.emitSession(accountA, isExpired: true);
+    response.complete(page());
+    await ongoing;
+    expect(store.box<WorkoutSessionEntity>().count(), 0);
+    expect(store.box<WorkoutRestoreCursorEntity>().count(), 0);
+    expect(importer.readCursor().blockedCode, null);
+    api.emitSession(accountA);
+    pull.handler = (_, _) async => page();
+    await worker.drain();
+    expect(importer.readCursor().nextCursor, 1);
+  });
+
+  test('malformed half-configured upload and restore worker is rejected', () {
+    expect(() => WorkoutUploadCoordinator(
+      accountId: accountA,
+      auth: auth,
+      outbox: outbox,
+      transport: push,
+      restoreTransport: pull,
+    ), throwsAssertionError);
+    expect(() => WorkoutUploadCoordinator(
+      accountId: accountA,
+      auth: auth,
+      outbox: outbox,
+      transport: push,
+      restoreImporter: importer,
+    ), throwsAssertionError);
+  });
 
   test('offline RPC retry uses unchanged cursor on next drain', () async {
     var attempts = 0;
