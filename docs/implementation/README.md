@@ -21,6 +21,8 @@ The [roadmap](../ROADMAP.md) defines product milestones. Each note records actua
 
 - [P2-04 Authenticated Supabase upload worker](phase-2/p2-04-authenticated-uploader.md) — PR #16 (**merged**), foreground automatic uploader, resilient retries, CAS/idempotency, completed-only backfill and account guard; restore and conflict UX remain outstanding.
 
-- [P2-05 Server progress aggregation](phase-2/p2-05-server-progress.md) — PR #17 (**draft/in progress**), server-derived day-level workout aggregates, nullable weighted-volume semantics, authenticated read API and SQL regressions. No Flutter UI / raw physiological data.
+- [P2-05 Server progress aggregation](phase-2/p2-05-server-progress.md) — PR #17 (**merged 2026-10-26**), server-derived day-level workout aggregates, nullable weighted-volume semantics, authenticated read API and SQL regressions. No Flutter UI / raw physiological data.
+
+- [P2-06 Restore feed and conflict handling](phase-2/p2-06-restore-and-conflicts.md) — **implementation started**, read-only owner-isolated paginated server change feed and pgTAP tests. Safe mobile import, reconciliation, deletion and conflict UX remain open.
 
 Authoritative policy: [ADR-0003](../adr/0003-data-cloud-health.md) **as superseded for auth/cloud workout scope** by [ADR-0005](../adr/0005-mandatory-auth-and-workout-sync.md), [ObjectBox](../OBJECTBOX.md), and [Cloud Sync](../CLOUD_SYNC.md).
