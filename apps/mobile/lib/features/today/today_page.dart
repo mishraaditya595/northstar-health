@@ -40,6 +40,12 @@ class _TodayPageState extends ConsumerState<TodayPage> {
     if (auth.error != null && mounted) showNsMessage(context, auth.error!);
   }
 
+  int _count(WorkoutSyncFlag flag) => ref
+      .watch(workoutSyncFlagsProvider)
+      .values
+      .where((value) => value == flag)
+      .length;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -67,11 +73,8 @@ class _TodayPageState extends ConsumerState<TodayPage> {
         BackupStatusNotice(
           controller: ref.watch(accountAuthControllerProvider),
           blockedCount: ref.watch(blockedWorkoutCountProvider),
-          unsyncedCount: ref
-              .watch(workoutSyncFlagsProvider)
-              .values
-              .where((flag) => flag == WorkoutSyncFlag.notSynced)
-              .length,
+          unsyncedCount: _count(WorkoutSyncFlag.notSynced),
+          reviewCount: _count(WorkoutSyncFlag.needsReview),
           onSyncNow: ref.watch(workoutUploadKickProvider),
         ),
         const SizedBox(height: 24),

@@ -14,6 +14,7 @@ import 'package:northstar_health/features/workouts/domain/workout_models.dart';
 import 'package:northstar_health/objectbox.g.dart';
 
 import 'fixtures/objectbox_pre_outbox.g.dart' as pre_outbox;
+import 'fixtures/objectbox_pre_restore_skip.g.dart' as pre_restore_skip;
 
 const workoutId = '00000000-0000-4000-8000-000000000101';
 const exerciseId = '00000000-0000-4000-8000-000000000201';
@@ -228,9 +229,9 @@ void main() {
     );
     expect(outbox.syncFlags(), {
       'pending': WorkoutSyncFlag.notSynced,
-      'conflict': WorkoutSyncFlag.notSynced,
+      'conflict': WorkoutSyncFlag.needsReview,
       'blocked': WorkoutSyncFlag.localOnly,
-      'skipped': WorkoutSyncFlag.notSynced,
+      'skipped': WorkoutSyncFlag.needsReview,
     });
   });
 
@@ -573,6 +574,50 @@ void main() {
           workoutId,
         );
         expect(upgraded.box<WorkoutSyncOutboxEntity>().count(), 0);
+      } finally {
+        upgraded.close();
+      }
+    } finally {
+      upgradeDir.deleteSync(recursive: true);
+    }
+  });
+
+  test('pre-skip (PR #22 18aa4e4) DB upgrades and keeps restore state', () {
+    final upgradeDir = Directory.systemTemp.createTempSync(
+      'northstar-skip-upgrade-',
+    );
+    try {
+      final old = Store(
+        pre_restore_skip.getObjectBoxModel(),
+        directory: upgradeDir.path,
+      );
+      old.box<WorkoutRestoreCursorEntity>().put(
+        WorkoutRestoreCursorEntity(
+          ownerAccountId: 'owner',
+          cursorEpoch: 'epoch',
+          nextCursor: 7,
+        ),
+      );
+      old.close();
+      final upgraded = Store(getObjectBoxModel(), directory: upgradeDir.path);
+      try {
+        expect(
+          upgraded.box<WorkoutRestoreCursorEntity>().getAll().single.nextCursor,
+          7,
+        );
+        expect(upgraded.box<WorkoutRestoreSkipEntity>().count(), 0);
+        upgraded.box<WorkoutRestoreSkipEntity>().put(
+          WorkoutRestoreSkipEntity(
+            workoutUuid: workoutId,
+            ownerAccountId: 'owner',
+            serverChangeSeq: 8,
+            cursorEpoch: 'epoch',
+            skippedAtMs: 1,
+          ),
+        );
+        expect(ObjectBoxWorkoutOutbox(upgraded).syncFlags(), {
+          workoutId: WorkoutSyncFlag.needsReview,
+        });
       } finally {
         upgraded.close();
       }

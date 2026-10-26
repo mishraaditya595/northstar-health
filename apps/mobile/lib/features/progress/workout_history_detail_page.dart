@@ -110,7 +110,7 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
               '${started.hour.toString().padLeft(2, '0')}:'
               '${started.minute.toString().padLeft(2, '0')}',
             ),
-            if (syncFlag != null) NsTag(syncFlag.label),
+            if (syncFlag != null) NsTag(syncFlag.label, warning: true),
           ],
         ),
         const SizedBox(height: 10),

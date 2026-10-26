@@ -355,12 +355,16 @@ class ObjectBoxWorkoutRestoreImporter {
     if (operations.any((op) => op.state != 'acknowledged')) {
       // A conflicted/blocked local upload keeps its copy. Record the skipped
       // remote change so one workout never stops the rest of the feed.
+      final existing = _one(
+        _skips,
+        WorkoutRestoreSkipEntity_.workoutUuid,
+        change.workoutId,
+      );
+      if (existing != null && existing.ownerAccountId != accountId) {
+        throw const RestoreImportException('owner_store_mismatch');
+      }
       final skip =
-          _one(
-            _skips,
-            WorkoutRestoreSkipEntity_.workoutUuid,
-            change.workoutId,
-          ) ??
+          existing ??
           WorkoutRestoreSkipEntity(
             workoutUuid: change.workoutId,
             ownerAccountId: accountId,
@@ -469,12 +473,6 @@ class ObjectBoxWorkoutRestoreImporter {
     metadata.localRevisionAtImport = localRevision;
     metadata.deleted = change.deleted;
     _remote.put(metadata);
-    final skipped = _one(
-      _skips,
-      WorkoutRestoreSkipEntity_.workoutUuid,
-      change.workoutId,
-    );
-    if (skipped != null) _skips.remove(skipped.id);
     return true;
   }
 

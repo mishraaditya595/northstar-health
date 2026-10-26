@@ -527,17 +527,19 @@ class _SessionSummaryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              // Wrap, not Row: the tag moves under the name at large text.
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Expanded(
-                    child: Text(
-                      session.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                  Text(
+                    session.name,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  if (syncFlag != null) NsTag(syncFlag!.label),
+                  if (syncFlag != null) NsTag(syncFlag!.label, warning: true),
                 ],
               ),
               const SizedBox(height: 2),

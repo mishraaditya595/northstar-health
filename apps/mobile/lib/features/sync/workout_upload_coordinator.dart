@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -92,7 +93,13 @@ final workoutUploadCoordinatorProvider = Provider<WorkoutUploadCoordinator>((
       () => auth.userId,
     ),
     onQueueChanged: () => ref.invalidate(blockedWorkoutCountProvider),
-    onSyncStateChanged: () => ref.invalidate(workoutSyncFlagsProvider),
+    // Rebuild tagged UI only when a workout's sync state actually changed.
+    onSyncStateChanged: () {
+      final outbox = ref.read(workoutOutboxProvider);
+      if (!mapEquals(outbox.syncFlags(), ref.read(workoutSyncFlagsProvider))) {
+        ref.invalidate(workoutSyncFlagsProvider);
+      }
+    },
     onRestored: () => ref.invalidate(completedWorkoutHistoryProvider),
   );
   ref.onDispose(coordinator.dispose);
@@ -395,6 +402,7 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
             lastRestoreFailureKind = 'repeated_cursor_reset';
             return;
           }
+          if (index == maxPagesPerPass - 1) _rerunRequested = true;
           continue; // Persisted zero cursor and new epoch: fetch from zero.
         }
         if (!page.hasMore) {

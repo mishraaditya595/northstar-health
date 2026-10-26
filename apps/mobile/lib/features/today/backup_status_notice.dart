@@ -9,6 +9,7 @@ class BackupStatusNotice extends StatelessWidget {
     required this.controller,
     this.blockedCount = 0,
     this.unsyncedCount = 0,
+    this.reviewCount = 0,
     this.onSyncNow,
     super.key,
   });
@@ -16,6 +17,9 @@ class BackupStatusNotice extends StatelessWidget {
   final AccountAuthController? controller;
   final int blockedCount;
   final int unsyncedCount;
+
+  /// Conflicted/skipped workouts: retrying cannot fix them, so no action.
+  final int reviewCount;
 
   /// Runs the foreground upload/restore now. Null hides the action.
   final VoidCallback? onSyncNow;
@@ -28,7 +32,10 @@ class BackupStatusNotice extends StatelessWidget {
       listenable: auth,
       builder: (context, child) {
         final showUnsynced = !auth.backupPaused && unsyncedCount > 0;
-        if (!auth.backupPaused && blockedCount == 0 && !showUnsynced) {
+        if (!auth.backupPaused &&
+            blockedCount == 0 &&
+            reviewCount == 0 &&
+            !showUnsynced) {
           return const SizedBox.shrink();
         }
         return Padding(
@@ -60,7 +67,21 @@ class BackupStatusNotice extends StatelessWidget {
                     actionLabel: onSyncNow == null ? null : 'Sync now',
                     onAction: onSyncNow,
                   ),
-                if ((auth.backupPaused || showUnsynced) && blockedCount > 0)
+                if ((auth.backupPaused || showUnsynced) && reviewCount > 0)
+                  const SizedBox(height: 8),
+                if (reviewCount > 0)
+                  InsightCard(
+                    icon: Icons.devices_outlined,
+                    text: TextSpan(
+                      text:
+                          '$reviewCount completed '
+                          'workout${reviewCount == 1 ? '' : 's'} changed on '
+                          'another device. This phone\'s copy is kept; '
+                          'conflict review is not available yet.',
+                    ),
+                  ),
+                if ((auth.backupPaused || showUnsynced || reviewCount > 0) &&
+                    blockedCount > 0)
                   const SizedBox(height: 8),
                 if (blockedCount > 0)
                   InsightCard(

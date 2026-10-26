@@ -20,6 +20,7 @@ ObjectBox's own cloud sync is not used. P2-03 introduced the durable outbox (PR 
 | `WorkoutPlan` / `PlanExercise` / `ExerciseDefinition` | Durable local, owner-scoped | **Not in MVP**; embed names in backed-up historical logs |
 | `WorkoutSyncOutboxEntity` | Completed phone workout snapshots remain pending until matched server ACK; retain ack receipts as needed for retry and conflict | **P2-04 draft:** completed-workout DTOs are uploaded via authenticated Supabase RPC; local outbox records remain device-only |
 | `WorkoutRestoreCursorEntity` / `WorkoutRemoteStateEntity` | Account-scoped durable restore epoch/cursor, remote revisions and tombstones (P2-06 draft PR #20) | No — local protocol metadata only |
+| `WorkoutRestoreSkipEntity` | Remote change deliberately not imported because this phone has a conflicted/blocked upload for that workout; local copy kept (ADR-0006, PR #22) | No — local protocol metadata only |
 | `HealthExportReceipt` | As long as corresponding workout relevant | Local platform-record references only |
 | `HealthCache` | Expiring, permission-scoped summaries | **Never** |
 | `HealthQueryCheckpoint` | Per-device until invalidated | **Never** |

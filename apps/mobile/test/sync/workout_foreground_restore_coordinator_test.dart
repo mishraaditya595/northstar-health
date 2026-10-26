@@ -442,28 +442,88 @@ void main() {
     expect(importer.readCursor().blockedCode, isNull);
   });
 
-  test('a later applied remote change clears its skip record', () async {
-    final rowId = store.box<WorkoutSyncOutboxEntity>().put(
-      WorkoutSyncOutboxEntity(
-        operationUuid: operation,
-        sessionUuid: workout,
-        localRevision: 1,
-        action: 'upsert',
-        state: 'conflict',
-        payloadJson: '{}',
-        createdAtMs: 10,
-      ),
-    );
+  WorkoutSessionEntity localCompleted() => WorkoutSessionEntity(
+    uuid: workout,
+    name: 'This phone copy',
+    status: 'completed',
+    startedAtMs: DateTime.utc(2026, 10, 25, 9).millisecondsSinceEpoch,
+    completedAtMs: DateTime.utc(2026, 10, 25, 10).millisecondsSinceEpoch,
+    originalOffsetMinutes: 330,
+    updatedAtMs: DateTime.utc(2026, 10, 25, 10).millisecondsSinceEpoch,
+  );
+
+  WorkoutSyncOutboxEntity conflictOp() => WorkoutSyncOutboxEntity(
+    operationUuid: operation,
+    sessionUuid: workout,
+    localRevision: 1,
+    action: 'upsert',
+    state: 'conflict',
+    payloadJson: '{}',
+    createdAtMs: 10,
+  );
+
+  test(
+    'conflicted workout keeps its local copy across repeated remote changes',
+    () async {
+      store.box<WorkoutSessionEntity>().put(localCompleted());
+      store.box<WorkoutSyncOutboxEntity>().put(conflictOp());
+      pull.handler = (_, _) async => page();
+      await worker.drain();
+      pull.handler = (_, _) async =>
+          page(nextCursor: 2, changes: [change(2, id: workout)]);
+      await worker.drain();
+      expect(
+        store.box<WorkoutSessionEntity>().getAll().single.name,
+        'This phone copy',
+      );
+      final skip = store.box<WorkoutRestoreSkipEntity>().getAll().single;
+      expect(skip.serverChangeSeq, 2);
+      expect(store.box<WorkoutRemoteStateEntity>().count(), 0);
+      expect(importer.readCursor().nextCursor, 2);
+      expect(importer.readCursor().blockedCode, isNull);
+    },
+  );
+
+  test('resolution contract: dropping a conflict without reconciling the '
+      'importer baseline is refused, so P2-07 must reconcile both', () async {
+    store.box<WorkoutSessionEntity>().put(localCompleted());
+    final rowId = store.box<WorkoutSyncOutboxEntity>().put(conflictOp());
     pull.handler = (_, _) async => page();
     await worker.drain();
-    expect(store.box<WorkoutRestoreSkipEntity>().count(), 1);
-    // Simulate a future reviewed resolution that discards the local edit.
     store.box<WorkoutSyncOutboxEntity>().remove(rowId);
     pull.handler = (_, _) async =>
         page(nextCursor: 2, changes: [change(2, id: workout)]);
     await worker.drain();
-    expect(store.box<WorkoutSessionEntity>().getAll().single.uuid, workout);
-    expect(store.box<WorkoutRestoreSkipEntity>().count(), 0);
+    // The importer never overwrites an untracked local copy. This is why
+    // ADR-0006 requires the future resolution flow to write the remote
+    // baseline (and fetch the server version) instead of deleting rows.
+    expect(importer.readCursor().blockedCode, 'untracked_local_workout');
+    expect(
+      store.box<WorkoutSessionEntity>().getAll().single.name,
+      'This phone copy',
+    );
+    expect(store.box<WorkoutRestoreSkipEntity>().count(), 1);
+  });
+
+  test('skip record owned by another account is refused', () async {
+    store.box<WorkoutSyncOutboxEntity>().put(conflictOp());
+    store.box<WorkoutRestoreSkipEntity>().put(
+      WorkoutRestoreSkipEntity(
+        workoutUuid: workout,
+        ownerAccountId: accountB,
+        serverChangeSeq: 1,
+        cursorEpoch: epoch,
+        skippedAtMs: 1,
+      ),
+    );
+    pull.handler = (_, _) async => page();
+    await worker.drain();
+    expect(worker.lastRestoreFailureKind, 'owner_store_mismatch');
+    expect(importer.readCursor().nextCursor, 0);
+    expect(
+      store.box<WorkoutRestoreSkipEntity>().getAll().single.ownerAccountId,
+      accountB,
+    );
   });
 
   test(
@@ -581,6 +641,53 @@ void main() {
       expect(importer.readCursor().blockedCode, isNull);
     },
   );
+
+  test('resets to two different epochs in one pass halt safely', () async {
+    const thirdEpoch = '00000000-0000-4000-8000-000000000903';
+    pull.handler = (_, requestedEpoch) async => page(
+      cursorReset: true,
+      cursorEpoch: requestedEpoch == null ? newEpoch : thirdEpoch,
+      nextCursor: 0,
+      changes: const [],
+    );
+    await worker.drain();
+    expect(pull.requests, [(0, null, 100), (0, newEpoch, 100)]);
+    expect(worker.lastRestoreFailureKind, 'repeated_cursor_reset');
+    expect(importer.readCursor().epoch, thirdEpoch);
+    expect(importer.readCursor().nextCursor, 0);
+    expect(importer.readCursor().blockedCode, isNull);
+  });
+
+  test('a reset on the last page slot reruns instead of waiting', () async {
+    pull.handler = (after, requestedEpoch) async {
+      if (requestedEpoch == newEpoch) {
+        return page(cursorEpoch: newEpoch, nextCursor: 0, changes: const []);
+      }
+      if (after == 300) {
+        return page(
+          cursorReset: true,
+          cursorEpoch: newEpoch,
+          nextCursor: 0,
+          changes: const [],
+        );
+      }
+      return page(
+        nextCursor: after + 100,
+        hasMore: true,
+        changes: [change(after + 100)],
+      );
+    };
+    await worker.drain();
+    expect(pull.requests.map((r) => (r.$1, r.$2)), [
+      (0, null),
+      (100, epoch),
+      (200, epoch),
+      (300, epoch),
+      (0, newEpoch),
+    ]);
+    expect(importer.readCursor().epoch, newEpoch);
+    expect(worker.lastRestoreFailureKind, isNull);
+  });
 
   test(
     'concurrent already-applied page reports no progress, not data loss',

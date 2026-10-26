@@ -241,6 +241,7 @@ void main() {
           workoutSyncFlagsProvider.overrideWithValue({
             'wk': WorkoutSyncFlag.notSynced,
             'old': WorkoutSyncFlag.localOnly,
+            'ok': WorkoutSyncFlag.needsReview,
           }),
         ],
         child: MaterialApp.router(
@@ -252,6 +253,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Not synced'), findsOneWidget);
     expect(find.text('Local only'), findsOneWidget);
+    expect(find.text('Needs review'), findsOneWidget);
     await tester.ensureVisible(find.text('View details').first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('View details').first);
