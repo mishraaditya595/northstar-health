@@ -355,7 +355,6 @@ void main() {
   });
 
   test('cross-workout exercise identity collision rolls back the page', () {
-    final time = DateTime.utc(2026, 10, 25).millisecondsSinceEpoch;
     store.box<WorkoutExerciseEntity>().put(WorkoutExerciseEntity(
       uuid: exercise, sessionUuid: workoutB,
       nameSnapshot: 'Another workout', position: 0,
