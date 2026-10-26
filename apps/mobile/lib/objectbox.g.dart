@@ -611,6 +611,112 @@ final _entities = <obx_int.ModelEntity>[
     relations: <obx_int.ModelRelation>[],
     backlinks: <obx_int.ModelBacklink>[],
   ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(9, 1060972994758425353),
+    name: 'WorkoutRemoteStateEntity',
+    lastPropertyId: const obx_int.IdUid(8, 6436774755317038046),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 4811113757752350940),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 8863740906654710439),
+        name: 'workoutUuid',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(15, 6155209029603021132),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 5934664202840953844),
+        name: 'ownerAccountId',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 1793285696296267008),
+        name: 'serverRevision',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 4770963020883251175),
+        name: 'serverChangeSeq',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 8839902411236529831),
+        name: 'cursorEpoch',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(7, 4621202132820547330),
+        name: 'localRevisionAtImport',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(8, 6436774755317038046),
+        name: 'deleted',
+        type: 1,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(10, 2200710836443110649),
+    name: 'WorkoutRestoreCursorEntity',
+    lastPropertyId: const obx_int.IdUid(6, 7745315329127938983),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 411253470100115506),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 4814238428967328411),
+        name: 'ownerAccountId',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(16, 3623109986186578998),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 8801092711682064542),
+        name: 'cursorEpoch',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 4546401710344396177),
+        name: 'nextCursor',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 2674350340086328176),
+        name: 'blockedCode',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 7745315329127938983),
+        name: 'blockedAtMs',
+        type: 6,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
 ];
 
 /// Shortcut for [obx.Store.new] that passes [getObjectBoxModel] and for Flutter
@@ -656,8 +762,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
     // Typically, this is done with `dart run build_runner build`.
     generatorVersion: obx_int.GeneratorVersion.v2025_12_16,
     entities: _entities,
-    lastEntityId: const obx_int.IdUid(8, 7182930008744971703),
-    lastIndexId: const obx_int.IdUid(14, 898067203127664905),
+    lastEntityId: const obx_int.IdUid(10, 2200710836443110649),
+    lastIndexId: const obx_int.IdUid(16, 3623109986186578998),
     lastRelationId: const obx_int.IdUid(0, 0),
     lastSequenceId: const obx_int.IdUid(0, 0),
     retiredEntityUids: const [],
@@ -713,10 +819,12 @@ obx_int.ModelDefinition getObjectBoxModel() {
               4,
               0,
             );
-            final uuidParam = const fb.StringReader(asciiOptimization: true)
-                .vTableGet(buffer, rootOffset, 6, '');
-            final nameParam = const fb.StringReader(asciiOptimization: true)
-                .vTableGet(buffer, rootOffset, 8, '');
+            final uuidParam = const fb.StringReader(
+              asciiOptimization: true,
+            ).vTableGet(buffer, rootOffset, 6, '');
+            final nameParam = const fb.StringReader(
+              asciiOptimization: true,
+            ).vTableGet(buffer, rootOffset, 8, '');
             final muscleGroupParam = const fb.StringReader(
               asciiOptimization: true,
             ).vTableGet(buffer, rootOffset, 10, '');
@@ -812,12 +920,15 @@ obx_int.ModelDefinition getObjectBoxModel() {
           4,
           0,
         );
-        final uuidParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 6, '');
-        final planUuidParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 8, '');
-        final exerciseUuidParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 10, '');
+        final uuidParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final planUuidParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
+        final exerciseUuidParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 10, '');
         final positionParam = const fb.Int64Reader().vTableGet(
           buffer,
           rootOffset,
@@ -845,8 +956,9 @@ obx_int.ModelDefinition getObjectBoxModel() {
           rootOffset,
           20,
         );
-        final notesParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 22, '');
+        final notesParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 22, '');
         final object = PlanExerciseEntity(
           id: idParam,
           uuid: uuidParam,
@@ -903,15 +1015,18 @@ obx_int.ModelDefinition getObjectBoxModel() {
           4,
           0,
         );
-        final uuidParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 6, '');
-        final sessionUuidParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 8, '');
+        final uuidParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final sessionUuidParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
         final definitionUuidParam = const fb.StringReader(
           asciiOptimization: true,
         ).vTableGetNullable(buffer, rootOffset, 10);
-        final nameSnapshotParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 12, '');
+        final nameSnapshotParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 12, '');
         final muscleSnapshotParam = const fb.StringReader(
           asciiOptimization: true,
         ).vTableGet(buffer, rootOffset, 14, '');
@@ -970,12 +1085,15 @@ obx_int.ModelDefinition getObjectBoxModel() {
           4,
           0,
         );
-        final uuidParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 6, '');
-        final nameParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 8, '');
-        final descriptionParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 10, '');
+        final uuidParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final nameParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
+        final descriptionParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 10, '');
         final createdAtMsParam = const fb.Int64Reader().vTableGet(
           buffer,
           rootOffset,
@@ -1047,16 +1165,21 @@ obx_int.ModelDefinition getObjectBoxModel() {
           4,
           0,
         );
-        final uuidParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 6, '');
-        final nameParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 8, '');
-        final planUuidParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGetNullable(buffer, rootOffset, 10);
-        final statusParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 12, '');
-        final originParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 14, '');
+        final uuidParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final nameParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
+        final planUuidParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGetNullable(buffer, rootOffset, 10);
+        final statusParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 12, '');
+        final originParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 14, '');
         final revisionParam = const fb.Int64Reader().vTableGet(
           buffer,
           rootOffset,
@@ -1232,20 +1355,24 @@ obx_int.ModelDefinition getObjectBoxModel() {
           4,
           0,
         );
-        final uuidParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 6, '');
-        final exerciseUuidParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 8, '');
+        final uuidParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final exerciseUuidParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
         final positionParam = const fb.Int64Reader().vTableGet(
           buffer,
           rootOffset,
           10,
           0,
         );
-        final kindParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 12, '');
-        final statusParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 14, '');
+        final kindParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 12, '');
+        final statusParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 14, '');
         final repsParam = const fb.Int64Reader().vTableGetNullable(
           buffer,
           rootOffset,
@@ -1256,8 +1383,9 @@ obx_int.ModelDefinition getObjectBoxModel() {
           rootOffset,
           18,
         );
-        final inputUnitParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 20, '');
+        final inputUnitParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 20, '');
         final rpeParam = const fb.Float64Reader().vTableGetNullable(
           buffer,
           rootOffset,
@@ -1338,20 +1466,24 @@ obx_int.ModelDefinition getObjectBoxModel() {
         final operationUuidParam = const fb.StringReader(
           asciiOptimization: true,
         ).vTableGet(buffer, rootOffset, 6, '');
-        final sessionUuidParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 8, '');
+        final sessionUuidParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
         final localRevisionParam = const fb.Int64Reader().vTableGet(
           buffer,
           rootOffset,
           10,
           0,
         );
-        final actionParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 12, '');
-        final payloadJsonParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 14, '');
-        final stateParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGet(buffer, rootOffset, 16, '');
+        final actionParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 12, '');
+        final payloadJsonParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 14, '');
+        final stateParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 16, '');
         final createdAtMsParam = const fb.Int64Reader().vTableGet(
           buffer,
           rootOffset,
@@ -1379,8 +1511,9 @@ obx_int.ModelDefinition getObjectBoxModel() {
           rootOffset,
           26,
         );
-        final errorCodeParam = const fb.StringReader(asciiOptimization: true)
-            .vTableGetNullable(buffer, rootOffset, 28);
+        final errorCodeParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGetNullable(buffer, rootOffset, 28);
         final object = WorkoutSyncOutboxEntity(
           id: idParam,
           operationUuid: operationUuidParam,
@@ -1400,6 +1533,155 @@ obx_int.ModelDefinition getObjectBoxModel() {
         return object;
       },
     ),
+    WorkoutRemoteStateEntity:
+        obx_int.EntityDefinition<WorkoutRemoteStateEntity>(
+          model: _entities[8],
+          toOneRelations: (WorkoutRemoteStateEntity object) => [],
+          toManyRelations: (WorkoutRemoteStateEntity object) => {},
+          getId: (WorkoutRemoteStateEntity object) => object.id,
+          setId: (WorkoutRemoteStateEntity object, int id) {
+            object.id = id;
+          },
+          objectToFB: (WorkoutRemoteStateEntity object, fb.Builder fbb) {
+            final workoutUuidOffset = fbb.writeString(object.workoutUuid);
+            final ownerAccountIdOffset = fbb.writeString(object.ownerAccountId);
+            final cursorEpochOffset = fbb.writeString(object.cursorEpoch);
+            fbb.startTable(9);
+            fbb.addInt64(0, object.id);
+            fbb.addOffset(1, workoutUuidOffset);
+            fbb.addOffset(2, ownerAccountIdOffset);
+            fbb.addInt64(3, object.serverRevision);
+            fbb.addInt64(4, object.serverChangeSeq);
+            fbb.addOffset(5, cursorEpochOffset);
+            fbb.addInt64(6, object.localRevisionAtImport);
+            fbb.addBool(7, object.deleted);
+            fbb.finish(fbb.endTable());
+            return object.id;
+          },
+          objectFromFB: (obx.Store store, ByteData fbData) {
+            final buffer = fb.BufferContext(fbData);
+            final rootOffset = buffer.derefObject(0);
+            final idParam = const fb.Int64Reader().vTableGet(
+              buffer,
+              rootOffset,
+              4,
+              0,
+            );
+            final workoutUuidParam = const fb.StringReader(
+              asciiOptimization: true,
+            ).vTableGet(buffer, rootOffset, 6, '');
+            final ownerAccountIdParam = const fb.StringReader(
+              asciiOptimization: true,
+            ).vTableGet(buffer, rootOffset, 8, '');
+            final serverRevisionParam = const fb.Int64Reader().vTableGet(
+              buffer,
+              rootOffset,
+              10,
+              0,
+            );
+            final serverChangeSeqParam = const fb.Int64Reader().vTableGet(
+              buffer,
+              rootOffset,
+              12,
+              0,
+            );
+            final cursorEpochParam = const fb.StringReader(
+              asciiOptimization: true,
+            ).vTableGet(buffer, rootOffset, 14, '');
+            final localRevisionAtImportParam = const fb.Int64Reader().vTableGet(
+              buffer,
+              rootOffset,
+              16,
+              0,
+            );
+            final deletedParam = const fb.BoolReader().vTableGet(
+              buffer,
+              rootOffset,
+              18,
+              false,
+            );
+            final object = WorkoutRemoteStateEntity(
+              id: idParam,
+              workoutUuid: workoutUuidParam,
+              ownerAccountId: ownerAccountIdParam,
+              serverRevision: serverRevisionParam,
+              serverChangeSeq: serverChangeSeqParam,
+              cursorEpoch: cursorEpochParam,
+              localRevisionAtImport: localRevisionAtImportParam,
+              deleted: deletedParam,
+            );
+
+            return object;
+          },
+        ),
+    WorkoutRestoreCursorEntity:
+        obx_int.EntityDefinition<WorkoutRestoreCursorEntity>(
+          model: _entities[9],
+          toOneRelations: (WorkoutRestoreCursorEntity object) => [],
+          toManyRelations: (WorkoutRestoreCursorEntity object) => {},
+          getId: (WorkoutRestoreCursorEntity object) => object.id,
+          setId: (WorkoutRestoreCursorEntity object, int id) {
+            object.id = id;
+          },
+          objectToFB: (WorkoutRestoreCursorEntity object, fb.Builder fbb) {
+            final ownerAccountIdOffset = fbb.writeString(object.ownerAccountId);
+            final cursorEpochOffset = object.cursorEpoch == null
+                ? null
+                : fbb.writeString(object.cursorEpoch!);
+            final blockedCodeOffset = object.blockedCode == null
+                ? null
+                : fbb.writeString(object.blockedCode!);
+            fbb.startTable(7);
+            fbb.addInt64(0, object.id);
+            fbb.addOffset(1, ownerAccountIdOffset);
+            fbb.addOffset(2, cursorEpochOffset);
+            fbb.addInt64(3, object.nextCursor);
+            fbb.addOffset(4, blockedCodeOffset);
+            fbb.addInt64(5, object.blockedAtMs);
+            fbb.finish(fbb.endTable());
+            return object.id;
+          },
+          objectFromFB: (obx.Store store, ByteData fbData) {
+            final buffer = fb.BufferContext(fbData);
+            final rootOffset = buffer.derefObject(0);
+            final idParam = const fb.Int64Reader().vTableGet(
+              buffer,
+              rootOffset,
+              4,
+              0,
+            );
+            final ownerAccountIdParam = const fb.StringReader(
+              asciiOptimization: true,
+            ).vTableGet(buffer, rootOffset, 6, '');
+            final cursorEpochParam = const fb.StringReader(
+              asciiOptimization: true,
+            ).vTableGetNullable(buffer, rootOffset, 8);
+            final nextCursorParam = const fb.Int64Reader().vTableGet(
+              buffer,
+              rootOffset,
+              10,
+              0,
+            );
+            final blockedCodeParam = const fb.StringReader(
+              asciiOptimization: true,
+            ).vTableGetNullable(buffer, rootOffset, 12);
+            final blockedAtMsParam = const fb.Int64Reader().vTableGetNullable(
+              buffer,
+              rootOffset,
+              14,
+            );
+            final object = WorkoutRestoreCursorEntity(
+              id: idParam,
+              ownerAccountId: ownerAccountIdParam,
+              cursorEpoch: cursorEpochParam,
+              nextCursor: nextCursorParam,
+              blockedCode: blockedCodeParam,
+              blockedAtMs: blockedAtMsParam,
+            );
+
+            return object;
+          },
+        ),
   };
 
   return obx_int.ModelDefinition(model, bindings);
@@ -1856,4 +2138,89 @@ class WorkoutSyncOutboxEntity_ {
   static final errorCode = obx.QueryStringProperty<WorkoutSyncOutboxEntity>(
     _entities[7].properties[12],
   );
+}
+
+/// [WorkoutRemoteStateEntity] entity fields to define ObjectBox queries.
+class WorkoutRemoteStateEntity_ {
+  /// See [WorkoutRemoteStateEntity.id].
+  static final id = obx.QueryIntegerProperty<WorkoutRemoteStateEntity>(
+    _entities[8].properties[0],
+  );
+
+  /// See [WorkoutRemoteStateEntity.workoutUuid].
+  static final workoutUuid = obx.QueryStringProperty<WorkoutRemoteStateEntity>(
+    _entities[8].properties[1],
+  );
+
+  /// See [WorkoutRemoteStateEntity.ownerAccountId].
+  static final ownerAccountId =
+      obx.QueryStringProperty<WorkoutRemoteStateEntity>(
+        _entities[8].properties[2],
+      );
+
+  /// See [WorkoutRemoteStateEntity.serverRevision].
+  static final serverRevision =
+      obx.QueryIntegerProperty<WorkoutRemoteStateEntity>(
+        _entities[8].properties[3],
+      );
+
+  /// See [WorkoutRemoteStateEntity.serverChangeSeq].
+  static final serverChangeSeq =
+      obx.QueryIntegerProperty<WorkoutRemoteStateEntity>(
+        _entities[8].properties[4],
+      );
+
+  /// See [WorkoutRemoteStateEntity.cursorEpoch].
+  static final cursorEpoch = obx.QueryStringProperty<WorkoutRemoteStateEntity>(
+    _entities[8].properties[5],
+  );
+
+  /// See [WorkoutRemoteStateEntity.localRevisionAtImport].
+  static final localRevisionAtImport =
+      obx.QueryIntegerProperty<WorkoutRemoteStateEntity>(
+        _entities[8].properties[6],
+      );
+
+  /// See [WorkoutRemoteStateEntity.deleted].
+  static final deleted = obx.QueryBooleanProperty<WorkoutRemoteStateEntity>(
+    _entities[8].properties[7],
+  );
+}
+
+/// [WorkoutRestoreCursorEntity] entity fields to define ObjectBox queries.
+class WorkoutRestoreCursorEntity_ {
+  /// See [WorkoutRestoreCursorEntity.id].
+  static final id = obx.QueryIntegerProperty<WorkoutRestoreCursorEntity>(
+    _entities[9].properties[0],
+  );
+
+  /// See [WorkoutRestoreCursorEntity.ownerAccountId].
+  static final ownerAccountId =
+      obx.QueryStringProperty<WorkoutRestoreCursorEntity>(
+        _entities[9].properties[1],
+      );
+
+  /// See [WorkoutRestoreCursorEntity.cursorEpoch].
+  static final cursorEpoch =
+      obx.QueryStringProperty<WorkoutRestoreCursorEntity>(
+        _entities[9].properties[2],
+      );
+
+  /// See [WorkoutRestoreCursorEntity.nextCursor].
+  static final nextCursor =
+      obx.QueryIntegerProperty<WorkoutRestoreCursorEntity>(
+        _entities[9].properties[3],
+      );
+
+  /// See [WorkoutRestoreCursorEntity.blockedCode].
+  static final blockedCode =
+      obx.QueryStringProperty<WorkoutRestoreCursorEntity>(
+        _entities[9].properties[4],
+      );
+
+  /// See [WorkoutRestoreCursorEntity.blockedAtMs].
+  static final blockedAtMs =
+      obx.QueryIntegerProperty<WorkoutRestoreCursorEntity>(
+        _entities[9].properties[5],
+      );
 }
