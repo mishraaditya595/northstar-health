@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/storage/account_store.dart';
@@ -50,7 +51,9 @@ class ObjectBoxWorkoutRestoreImporter {
     this._store, {
     required String accountId,
     required this.activeAccountId,
+    DateTime Function()? clock,
   }) : accountId = validAccountId(accountId),
+       _clock = clock ?? DateTime.now,
        _cursors = _store.box<WorkoutRestoreCursorEntity>(),
        _remote = _store.box<WorkoutRemoteStateEntity>(),
        _sessions = _store.box<WorkoutSessionEntity>(),
@@ -61,6 +64,7 @@ class ObjectBoxWorkoutRestoreImporter {
   final Store _store;
   final String accountId;
   final String? Function() activeAccountId;
+  final DateTime Function() _clock;
   final Box<WorkoutRestoreCursorEntity> _cursors;
   final Box<WorkoutRemoteStateEntity> _remote;
   final Box<WorkoutSessionEntity> _sessions;
@@ -134,25 +138,64 @@ class ObjectBoxWorkoutRestoreImporter {
       _checkAccount();
       final state = _cursorEntity();
       if ((state?.nextCursor ?? 0) != afterSeq ||
-          state?.cursorEpoch != requestedEpoch) {
+          state?.cursorEpoch != requestedEpoch ||
+          state?.blockedCode != null) {
         return false;
       }
       final row =
           state ?? WorkoutRestoreCursorEntity(ownerAccountId: accountId);
       row.blockedCode = code;
-      row.blockedAtMs = DateTime.now().toUtc().millisecondsSinceEpoch;
+      row.blockedAtMs = _clock().toUtc().millisecondsSinceEpoch;
       _cursors.put(row);
       return true;
     });
   }
 
+  /// Explicit recovery after a reviewed correction or user-approved action.
+  /// Ordinary applyPage retries cannot clear a durable blocked reason.
+  bool clearBlocked({
+    required int afterSeq,
+    required String? requestedEpoch,
+  }) => _store.runInTransaction(TxMode.write, () {
+    _checkAccount();
+    final state = _cursorEntity();
+    if (state == null ||
+        state.nextCursor != afterSeq ||
+        state.cursorEpoch != requestedEpoch ||
+        state.blockedCode == null) {
+      return false;
+    }
+    state.blockedCode = null;
+    state.blockedAtMs = null;
+    _cursors.put(state);
+    return true;
+  });
+
   /// [afterSeq] and [requestedEpoch] MUST be the arguments used for fetchPage.
   /// The only mutable input is a validated WorkoutRestorePage. This method
   /// never performs HTTP, UI work, upload outbox enqueues or polling.
   ///
-  /// [beforeCommitForTest] is a deterministic transaction fault-injection
-  /// hook: when it throws, *all* data and cursor writes roll back.
   RestoreApplyResult applyPage(
+    WorkoutRestorePage page, {
+    required int afterSeq,
+    required String? requestedEpoch,
+  }) => _applyPage(
+    page, afterSeq: afterSeq, requestedEpoch: requestedEpoch,
+  );
+
+  /// Fault injection for native tests, never part of production applyPage.
+  @visibleForTesting
+  RestoreApplyResult applyPageForTesting(
+    WorkoutRestorePage page, {
+    required int afterSeq,
+    required String? requestedEpoch,
+    required void Function() beforeCommit,
+  }) => _applyPage(
+    page, afterSeq: afterSeq, requestedEpoch: requestedEpoch,
+    beforeCommitForTest: beforeCommit,
+  );
+
+  RestoreApplyResult _applyPage(
     WorkoutRestorePage page, {
     required int afterSeq,
     required String? requestedEpoch,
@@ -169,12 +212,29 @@ class ObjectBoxWorkoutRestoreImporter {
         _checkAccount();
         final state = _cursorEntity();
         final current = _cursorValue(state);
+        if (current.blockedCode != null) {
+          throw const RestoreImportException('restore_blocked');
+        }
         // A page which was durably applied before a process restart is a
         // strict no-op. Do not report it as fresh work.
         if (!page.cursorReset &&
             current.epoch == page.cursorEpoch &&
             page.nextCursor <= current.nextCursor &&
             afterSeq < current.nextCursor) {
+          return RestoreApplyResult(
+            cursor: current,
+            imported: 0,
+            tombstones: 0,
+            alreadyApplied: true,
+          );
+        }
+        // Duplicate reset replies must not rewind a cursor after progress.
+        if (page.cursorReset &&
+            current.epoch == page.cursorEpoch &&
+            current.nextCursor == 0 &&
+            page.nextCursor == 0 &&
+            !page.hasMore &&
+            page.changes.isEmpty) {
           return RestoreApplyResult(
             cursor: current,
             imported: 0,
@@ -211,7 +271,8 @@ class ObjectBoxWorkoutRestoreImporter {
         }
         if (page.nextCursor < afterSeq ||
             page.changes.length > 200 ||
-            (page.changes.isEmpty && page.nextCursor != afterSeq) ||
+            (page.changes.isEmpty &&
+                (page.nextCursor != afterSeq || page.hasMore)) ||
             (page.changes.isNotEmpty &&
                 page.changes.last.changeSeq != page.nextCursor)) {
           throw const RestoreImportException('invalid_page_cursor');
@@ -261,7 +322,8 @@ class ObjectBoxWorkoutRestoreImporter {
       // current owner's progress. Other deterministic failures are durable.
       if (error.code != 'account_changed' &&
           error.code != 'owner_store_mismatch' &&
-          error.code != 'cursor_mismatch') {
+          error.code != 'cursor_mismatch' &&
+          error.code != 'restore_blocked') {
         recordBlocked(
           afterSeq: afterSeq,
           requestedEpoch: requestedEpoch,
@@ -302,10 +364,10 @@ class ObjectBoxWorkoutRestoreImporter {
       if (change.serverRevision < remote.serverRevision) {
         throw const RestoreImportException('server_revision_regressed');
       }
-      if (change.serverRevision == remote.serverRevision &&
-          change.changeSeq <= remote.serverChangeSeq) {
-        // Under a new page cursor this would be an inconsistent feed, not
-        // permission to discard changes.
+      if (change.serverRevision == remote.serverRevision) {
+        // P2-01 increments revision alongside the change sequence on each
+        // successful write. A new sequence with identical revision is
+        // inconsistent, not a permitted unchanged re-emission.
         throw const RestoreImportException('duplicate_remote_sequence');
       }
     } else if (remote != null &&
@@ -349,7 +411,7 @@ class ObjectBoxWorkoutRestoreImporter {
     var localRevision = local?.revision ?? 0;
     if (change.deleted) {
       if (local != null && local.deletedAtMs == null) {
-        local.deletedAtMs = DateTime.now().toUtc().millisecondsSinceEpoch;
+        local.deletedAtMs = _clock().toUtc().millisecondsSinceEpoch;
         local.updatedAtMs = local.deletedAtMs!;
         local.revision++;
         _sessions.put(local);
@@ -357,12 +419,13 @@ class ObjectBoxWorkoutRestoreImporter {
       }
     } else {
       final snapshot = change.snapshot!;
-      // An unchanged local ACK is already an exact uploaded snapshot;
-      // avoid re-materializing and changing its optimistic local revision.
+      // A matching acknowledged local snapshot needs no reconstruction.
+      // The existing remote same-revision case is rejected above because
+      // the server never emits the same revision at a new sequence.
       final unchangedAck =
-          remote == null &&
           local != null &&
-          latestAck?.serverRevision == change.serverRevision;
+          latestAck?.serverRevision == change.serverRevision &&
+          (remote == null || remote.serverRevision == change.serverRevision);
       if (!unchangedAck) {
         localRevision = _materialize(snapshot, local);
       }
@@ -424,7 +487,7 @@ class ObjectBoxWorkoutRestoreImporter {
       }
       _exercises.remove(exercise.id);
     }
-    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    final now = _clock().toUtc().millisecondsSinceEpoch;
     final session =
         existing ??
         WorkoutSessionEntity(
