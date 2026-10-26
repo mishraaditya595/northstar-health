@@ -20,7 +20,23 @@ ObjectBox schema and generated model committed; domain models and repository bou
 
 ## Phase 2 — Mandatory accounts, automatic workout sync and server processing
 
-[ADR-0005](adr/0005-mandatory-auth-and-workout-sync.md) removes guest login and keeps completed-only backup. Users must register/sign in before using NorthStar. After initial verification, workouts remain editable offline using the securely bound account. Automatically queue each NorthStar phone workout once the user finishes it; unfinished sessions stay local. Server validates and processes completed metrics. Implement owner-scoped RLS, strict DTO validation, request hashing, transactional outbox, server revision CAS, per-account cursors, restore/tombstones and conflict handling. There is no guest data to migrate; never reassign local workouts between accounts. Custom plans, exercise definitions outside history, local recovery checkpoints, preferences and health-platform observations stay local. P2-01 (backend), P2-02 (required account) and P2-03 (durable outbox) are merged. P2-04 automatic foreground uploader is under review in PR #16, with account-matched JWTs, durable retry and CAS. P2-05 server progress, P2-06 restoration/conflict resolution, P2-07 account/sync UI and P2-08 end-to-end release QA remain pending.
+[ADR-0005](adr/0005-mandatory-auth-and-workout-sync.md) removes guest login and keeps completed-only backup. Users must register/sign in before using NorthStar. After initial verification, workouts remain editable offline using the securely bound account. Automatically queue each NorthStar phone workout once the user finishes it; unfinished sessions stay local. Server validates and processes completed metrics. Implement owner-scoped RLS, strict DTO validation, request hashing, transactional outbox, server revision CAS, per-account cursors, restore/tombstones and conflict handling. There is no guest data to migrate; never reassign local workouts between accounts. Custom plans, exercise definitions outside history, local recovery checkpoints, preferences and health-platform observations stay local. P2-01 (backend), P2-02 (required account) and P2-03 (durable outbox) are merged. P2-04 automatic foreground uploader **merged in PR #16**, with account-matched JWTs, durable retry and CAS. P2-05 server progress aggregation is **in progress in draft PR #17**. P2-06 restoration/conflict resolution, P2-07 account/sync UI and P2-08 end-to-end release QA remain pending. P2-04 remains foreground best-effort; real-account E2E and physical-device testing are release gates.
+
+
+### Phase 2 milestone tracker (26 October 2026)
+
+| Milestone | GitHub PR | Implementation status | Outstanding gate |
+| --- | --- | --- | --- |
+| P2-01 — Supabase schema, authentication boundaries and sync RPC | #13 | **Merged** | Real-account isolation/device E2E |
+| P2-02 — Mandatory Flutter auth and bound account storage | #14 | **Merged** | Physical-device secure-storage QA |
+| P2-03 — Durable completed-workout outbox | #15 | **Merged** | Device rollback/restart QA |
+| P2-04 — Automatic authenticated foreground uploader | #16 | **Merged** | Live JWT/RLS and network interruption tests |
+| P2-05 — Server-side workout progress | [#17](https://github.com/mishraaditya595/northstar-health/pull/17) | **Review candidate (check live PR state)** | Expanded SQL tests, independent security review, live Auth/RLS, controlled deployment |
+| P2-06 — Multi-device restore and conflicts | — | Planned | Owner cursor/tombstones, dependency-aware queue |
+| P2-07 — Account, progress/sync status, export and deletion UI | — | Planned | Explicit sync failure recovery and data rights |
+| P2-08 — End-to-end validation and release readiness | — | Planned | iOS/Android physical-device, performance, CI/CD gates |
+
+This is the repository's authoritative **implementation milestone tracker**; "merged" does **not** mean released or deployed. Phase 2 is complete only after the remaining release and data-rights gates pass.
 
 ## Phase 3 — Permission-based platform health reads
 
