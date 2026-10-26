@@ -1,7 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:northstar_health/core/storage/objectbox_store_provider.dart';
+import 'package:northstar_health/features/account/account_auth_provider.dart';
 import 'package:northstar_health/features/account/account_auth_controller.dart';
 import 'package:northstar_health/features/sync/objectbox_workout_restore_importer.dart';
 import 'package:northstar_health/features/sync/workout_restore_feed.dart';
@@ -341,5 +345,32 @@ void main() {
     expect(pull.requests, hasLength(1));
     expect(store.box<WorkoutSessionEntity>().getAll().single.name,
         'Unsynced old local session');
+  });
+
+  testWidgets('authenticated account host starts restore and resumes pull',
+      (tester) async {
+    pull.handler = (after, currentEpoch) async =>
+        page(nextCursor: 0, changes: const []);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        objectBoxStoreProvider.overrideWithValue(store),
+        accountAuthControllerProvider.overrideWithValue(auth),
+        workoutUploadTransportProvider.overrideWithValue((_) => push),
+        workoutRestoreTransportProvider.overrideWithValue((_) => pull),
+      ],
+      child: const Directionality(
+        textDirection: TextDirection.ltr,
+        child: AccountWorkoutUploadHost(child: SizedBox()),
+      ),
+    ));
+    await tester.pump();
+    expect(pull.requests, [(0, null, 100)]);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump();
+    expect(pull.requests, hasLength(1));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(pull.requests, [(0, null, 100), (0, epoch, 100)]);
+    await tester.pumpWidget(const SizedBox());
   });
 }
