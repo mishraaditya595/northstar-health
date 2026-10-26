@@ -30,15 +30,19 @@ jobs:
       - name: Resolve from committed lockfile
         working-directory: apps/mobile
         run: flutter pub get --enforce-lockfile
-      # Temporary generator capture, removed once both generated files are committed.
-      - name: Temporary ObjectBox generator capture
+      # Temporary canonical formatting capture; remove before review.
+      - name: Temporary Dart formatter capture
         working-directory: apps/mobile
         run: |
-          dart run build_runner build --delete-conflicting-outputs
+          dart format lib/features/workouts/data/workout_entities.dart lib/features/workouts/data/objectbox_workout_outbox.dart lib/features/sync/objectbox_workout_restore_importer.dart test/sync/objectbox_workout_restore_importer_test.dart
           python3 - <<'PY'
           import json
-          for path in ('lib/objectbox-model.json', 'lib/objectbox.g.dart'):
-              print('OBJECTBOX_GENERATED:' + json.dumps({'path':path, 'content':open(path).read()}))
+          for path in (
+              'lib/features/workouts/data/workout_entities.dart',
+              'lib/features/workouts/data/objectbox_workout_outbox.dart',
+              'lib/features/sync/objectbox_workout_restore_importer.dart',
+              'test/sync/objectbox_workout_restore_importer_test.dart'):
+              print('FMT_CAPTURE:' + json.dumps({'path': path, 'content': open(path).read()}))
           PY
           exit 1
       - name: Format
