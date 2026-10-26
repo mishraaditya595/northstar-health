@@ -1,17 +1,48 @@
 name: WatchOS standalone build proof (manual)
+
+# Runs on every PR so the `watch` check can be required in branch rules.
+# The macOS job is skipped (which counts as passing) only when path detection
+# succeeded and found no change under apps/watch_os/ or this workflow. A manual
+# run, or failed detection, runs the full build (fail closed).
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - 'apps/watch_os/**'
-      - '.github/workflows/watchos_smoke.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  watch:
-    runs-on: macos-15
-    timeout-minutes: 35
+  changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
+      pull-requests: read
+    outputs:
+      watch: ${{ steps.filter.outputs.watch }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            watch:
+              - "apps/watch_os/**"
+              - ".github/workflows/watchos_smoke.yml"
+
+  watch:
+    needs: changes
+    if: >-
+      !cancelled() &&
+      (needs.changes.result != 'success' ||
+       needs.changes.outputs.watch == 'true')
+    runs-on: macos-15
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - name: Install XcodeGen

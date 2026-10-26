@@ -1,14 +1,54 @@
 name: Mobile and Wear quality
+
+# Runs on every PR so `mobile` and `wear_os` can be required in branch rules.
+# On PRs each job is skipped (which counts as passing) only when path
+# detection succeeded and found no change in its app, the shared contracts or
+# this workflow. If detection fails, both jobs run in full (fail closed).
+# Pushes to main always run everything.
 on:
   pull_request:
   push:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      mobile: ${{ steps.filter.outputs.mobile }}
+      wear_os: ${{ steps.filter.outputs.wear_os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            mobile:
+              - "apps/mobile/**"
+              - "contracts/**"
+              - ".github/workflows/mobile_ci.yml"
+            wear_os:
+              - "apps/wear_os/**"
+              - "contracts/**"
+              - ".github/workflows/mobile_ci.yml"
+
   mobile:
+    needs: changes
+    if: >-
+      !cancelled() &&
+      (github.event_name == 'push' ||
+       needs.changes.result != 'success' ||
+       needs.changes.outputs.mobile == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -90,6 +130,12 @@ jobs:
         run: flutter build apk --debug --no-pub
 
   wear_os:
+    needs: changes
+    if: >-
+      !cancelled() &&
+      (github.event_name == 'push' ||
+       needs.changes.result != 'success' ||
+       needs.changes.outputs.wear_os == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
