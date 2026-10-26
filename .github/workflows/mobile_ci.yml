@@ -30,6 +30,17 @@ jobs:
       - name: Resolve from committed lockfile
         working-directory: apps/mobile
         run: flutter pub get --enforce-lockfile
+      # One-time generated binding formatting capture; remove after use.
+      - name: Temporary generated Dart formatter capture
+        working-directory: apps/mobile
+        run: |
+          dart format lib/objectbox.g.dart
+          python3 - <<'PY'
+          import json
+          path='lib/objectbox.g.dart'
+          print('GEN_FORMAT:' + json.dumps({'content': open(path).read()}))
+          PY
+          exit 1
       - name: Format
         working-directory: apps/mobile
         run: dart format --output=none --set-exit-if-changed lib test
