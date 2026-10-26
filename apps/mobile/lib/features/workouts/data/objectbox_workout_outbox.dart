@@ -15,6 +15,23 @@ final workoutOutboxProvider = Provider<ObjectBoxWorkoutOutbox>(
 /// its bound ObjectBox store. Standalone previews need no native Store.
 final blockedWorkoutCountProvider = Provider<int>((ref) => 0);
 
+/// Workouts whose cloud copy differs from this phone. Absent means synced.
+enum WorkoutSyncFlag {
+  /// Waiting to upload, conflicted, or a remote change was skipped.
+  notSynced('Not synced'),
+
+  /// Can never be uploaded as it is (blocked); stays on this phone only.
+  localOnly('Local only');
+
+  const WorkoutSyncFlag(this.label);
+  final String label;
+}
+
+/// Presentation-only, overridden in account scope like the blocked count.
+final workoutSyncFlagsProvider = Provider<Map<String, WorkoutSyncFlag>>(
+  (ref) => const {},
+);
+
 /// These are durable queued *local* operations, not network acknowledgements.
 /// A server worker in a later PR must send them in localRevision order and
 /// supply the server's latest acknowledged revision to each RPC call.
@@ -306,6 +323,32 @@ class ObjectBoxWorkoutOutbox {
           query.close();
         }
       });
+
+  /// Per-workout sync state for UI tags. Blocked wins over not synced.
+  Map<String, WorkoutSyncFlag> syncFlags() => _store.runInTransaction(
+    TxMode.read,
+    () {
+      final flags = <String, WorkoutSyncFlag>{};
+      final query = _operations
+          .query(WorkoutSyncOutboxEntity_.state.notEquals('acknowledged'))
+          .build();
+      try {
+        for (final op in query.find()) {
+          if (op.state == 'blocked') {
+            flags[op.sessionUuid] = WorkoutSyncFlag.localOnly;
+          } else {
+            flags.putIfAbsent(op.sessionUuid, () => WorkoutSyncFlag.notSynced);
+          }
+        }
+      } finally {
+        query.close();
+      }
+      for (final skip in _store.box<WorkoutRestoreSkipEntity>().getAll()) {
+        flags.putIfAbsent(skip.workoutUuid, () => WorkoutSyncFlag.notSynced);
+      }
+      return flags;
+    },
+  );
 
   /// A local-only blocked record stays durable and never reaches the RPC.
   int blockedCount() {

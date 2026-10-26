@@ -197,6 +197,43 @@ void main() {
     expect(outbox.isBlocked(active.uuid), true);
   });
 
+  test('sync flags mark unsynced and local-only workouts', () {
+    final box = store.box<WorkoutSyncOutboxEntity>();
+    var n = 0;
+    void op(String session, String state) => box.put(
+      WorkoutSyncOutboxEntity(
+        operationUuid: 'op-${n++}',
+        sessionUuid: session,
+        localRevision: n,
+        action: 'upsert',
+        payloadJson: '{}',
+        state: state,
+        createdAtMs: n,
+      ),
+    );
+    op('synced', 'acknowledged');
+    op('pending', 'pending');
+    op('conflict', 'acknowledged');
+    op('conflict', 'conflict');
+    op('blocked', 'pending');
+    op('blocked', 'blocked');
+    store.box<WorkoutRestoreSkipEntity>().put(
+      WorkoutRestoreSkipEntity(
+        workoutUuid: 'skipped',
+        ownerAccountId: 'owner',
+        serverChangeSeq: 4,
+        cursorEpoch: 'epoch',
+        skippedAtMs: 1,
+      ),
+    );
+    expect(outbox.syncFlags(), {
+      'pending': WorkoutSyncFlag.notSynced,
+      'conflict': WorkoutSyncFlag.notSynced,
+      'blocked': WorkoutSyncFlag.localOnly,
+      'skipped': WorkoutSyncFlag.notSynced,
+    });
+  });
+
   test('server rejects early set timestamp locally without losing finish', () {
     final active = withSet();
     final set = store.box<WorkoutSetEntity>().getAll().single;

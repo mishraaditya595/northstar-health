@@ -394,6 +394,27 @@ void main() {
     },
   );
 
+  test('each drain refreshes per-workout sync tags once', () async {
+    var refreshes = 0;
+    worker.dispose();
+    worker = WorkoutUploadCoordinator(
+      accountId: accountA,
+      auth: auth,
+      outbox: outbox,
+      transport: push,
+      restoreTransport: pull,
+      restoreImporter: importer,
+      onSyncStateChanged: () => refreshes++,
+      pollInterval: const Duration(hours: 1),
+    );
+    pull.handler = (_, _) async => page();
+    await worker.drain();
+    expect(refreshes, 1);
+    worker.dispose();
+    await worker.drain();
+    expect(refreshes, 1);
+  });
+
   test('conflict created during fetch is skipped, not imported', () async {
     final response = Completer<WorkoutRestorePage>();
     pull.handler = (_, _) => response.future;

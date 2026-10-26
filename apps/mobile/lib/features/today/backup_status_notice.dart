@@ -8,11 +8,17 @@ class BackupStatusNotice extends StatelessWidget {
   const BackupStatusNotice({
     required this.controller,
     this.blockedCount = 0,
+    this.unsyncedCount = 0,
+    this.onSyncNow,
     super.key,
   });
 
   final AccountAuthController? controller;
   final int blockedCount;
+  final int unsyncedCount;
+
+  /// Runs the foreground upload/restore now. Null hides the action.
+  final VoidCallback? onSyncNow;
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +27,8 @@ class BackupStatusNotice extends StatelessWidget {
     return ListenableBuilder(
       listenable: auth,
       builder: (context, child) {
-        if (!auth.backupPaused && blockedCount == 0) {
+        final showUnsynced = !auth.backupPaused && unsyncedCount > 0;
+        if (!auth.backupPaused && blockedCount == 0 && !showUnsynced) {
           return const SizedBox.shrink();
         }
         return Padding(
@@ -41,7 +48,19 @@ class BackupStatusNotice extends StatelessWidget {
                           'Sign in again before they can sync.',
                     ),
                   ),
-                if (auth.backupPaused && blockedCount > 0)
+                if (showUnsynced)
+                  InsightCard(
+                    icon: Icons.sync_problem_outlined,
+                    text: TextSpan(
+                      text:
+                          '$unsyncedCount completed '
+                          'workout${unsyncedCount == 1 ? '' : 's'} not synced '
+                          'yet. Saved on this phone.',
+                    ),
+                    actionLabel: onSyncNow == null ? null : 'Sync now',
+                    onAction: onSyncNow,
+                  ),
+                if ((auth.backupPaused || showUnsynced) && blockedCount > 0)
                   const SizedBox(height: 8),
                 if (blockedCount > 0)
                   InsightCard(

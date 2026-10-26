@@ -107,6 +107,9 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
             blockedWorkoutCountProvider.overrideWith(
               (ref) => ref.watch(workoutOutboxProvider).blockedCount(),
             ),
+            workoutSyncFlagsProvider.overrideWith(
+              (ref) => ref.watch(workoutOutboxProvider).syncFlags(),
+            ),
           ],
           child: const AccountWorkoutUploadHost(child: NorthstarApp()),
         );

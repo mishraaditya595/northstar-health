@@ -92,6 +92,7 @@ final workoutUploadCoordinatorProvider = Provider<WorkoutUploadCoordinator>((
       () => auth.userId,
     ),
     onQueueChanged: () => ref.invalidate(blockedWorkoutCountProvider),
+    onSyncStateChanged: () => ref.invalidate(workoutSyncFlagsProvider),
     onRestored: () => ref.invalidate(completedWorkoutHistoryProvider),
   );
   ref.onDispose(coordinator.dispose);
@@ -113,6 +114,7 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
     this.onRestored,
     DateTime Function()? clock,
     this.onQueueChanged,
+    this.onSyncStateChanged,
     this.pollInterval = const Duration(seconds: 45),
   }) : assert((restoreTransport == null) == (restoreImporter == null)),
        _clock = clock ?? DateTime.now;
@@ -128,6 +130,9 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
   final ObjectBoxWorkoutRestoreImporter? restoreImporter;
   final void Function()? onRestored;
   final void Function()? onQueueChanged;
+
+  /// After each serialized drain, when per-workout sync tags may change.
+  final void Function()? onSyncStateChanged;
   final DateTime Function() _clock;
   final Duration pollInterval;
 
@@ -201,6 +206,8 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
       } while (_rerunRequested && _isAuthorized);
     } finally {
       _running = false;
+      // ACKs and restore skips change which workouts show as not synced.
+      if (!_disposed) onSyncStateChanged?.call();
     }
   }
 
