@@ -317,65 +317,133 @@ void main() {
     expect(store.box<WorkoutRestoreCursorEntity>().count(), 0);
   });
 
+  test('blocked upload for another workout never stops restore', () async {
+    store.box<WorkoutSyncOutboxEntity>().put(
+      WorkoutSyncOutboxEntity(
+        operationUuid: operation,
+        sessionUuid: workoutId(50),
+        localRevision: 1,
+        action: 'upsert',
+        state: 'blocked',
+        errorCode: 'payload_too_large',
+        payloadJson: '{}',
+        createdAtMs: 10,
+      ),
+    );
+    pull.handler = (_, _) async => page();
+    await worker.drain();
+    expect(pull.requests, hasLength(1));
+    expect(store.box<WorkoutSessionEntity>().getAll().single.uuid, workout);
+    expect(importer.readCursor().nextCursor, 1);
+    expect(importer.readCursor().blockedCode, isNull);
+    expect(store.box<WorkoutRestoreSkipEntity>().count(), 0);
+    expect(worker.lastRestoreFailureKind, isNull);
+  });
+
   test(
-    'blocked or conflicted upload defers restore without poisoning cursor',
+    'blocked or conflicted workout in the feed is skipped and recorded',
     () async {
       for (final status in ['conflict', 'blocked']) {
-        final row = WorkoutSyncOutboxEntity(
-          operationUuid: operation,
-          sessionUuid: workout,
-          localRevision: 1,
-          action: 'upsert',
-          state: status,
-          payloadJson: '{}',
-          createdAtMs: 10,
+        final rowId = store.box<WorkoutSyncOutboxEntity>().put(
+          WorkoutSyncOutboxEntity(
+            operationUuid: operation,
+            sessionUuid: workout,
+            localRevision: 1,
+            action: 'upsert',
+            state: status,
+            payloadJson: '{}',
+            createdAtMs: 10,
+          ),
         );
-        final rowId = store.box<WorkoutSyncOutboxEntity>().put(row);
-        pull.handler = (_, _) async => page();
-        expect(outbox.hasUnacknowledgedOperations(), true);
+        final base = importer.readCursor().nextCursor;
+        pull.handler = (_, _) async => page(
+          nextCursor: base + 2,
+          changes: [
+            change(base + 1, id: workout),
+            change(base + 2, id: workoutId(60 + base)),
+          ],
+        );
         await worker.drain();
-        expect(pull.requests, isEmpty);
-        expect(importer.readCursor().nextCursor, 0);
+        // The local copy wins until a reviewed resolution; the other
+        // device's unrelated workout still restores.
+        expect(
+          store
+              .box<WorkoutSessionEntity>()
+              .getAll()
+              .map((s) => s.uuid)
+              .contains(workout),
+          false,
+        );
+        expect(
+          store
+              .box<WorkoutSessionEntity>()
+              .getAll()
+              .map((s) => s.uuid)
+              .contains(workoutId(60 + base)),
+          true,
+        );
+        final skip = store.box<WorkoutRestoreSkipEntity>().getAll().single;
+        expect(skip.workoutUuid, workout);
+        expect(skip.ownerAccountId, accountA);
+        expect(skip.serverChangeSeq, base + 1);
+        expect(importer.readCursor().nextCursor, base + 2);
         expect(importer.readCursor().blockedCode, isNull);
-        expect(worker.lastRestoreFailureKind, 'upload_unresolved');
-        // Simulate a future reviewed resolution; no automatic deletion or
-        // conflict clearing exists in this milestone.
+        expect(worker.lastRestoreFailureKind, isNull);
         store.box<WorkoutSyncOutboxEntity>().remove(rowId);
       }
-      expect(outbox.hasUnacknowledgedOperations(), false);
-      await worker.drain();
-      expect(pull.requests, hasLength(1));
-      expect(importer.readCursor().nextCursor, 1);
-      expect(importer.readCursor().blockedCode, isNull);
     },
   );
 
-  test(
-    'unresolved operation created during fetch defers, even if blocked',
-    () async {
-      final response = Completer<WorkoutRestorePage>();
-      pull.handler = (_, _) => response.future;
-      final ongoing = worker.drain();
-      await Future<void>.delayed(Duration.zero);
-      store.box<WorkoutSyncOutboxEntity>().put(
-        WorkoutSyncOutboxEntity(
-          operationUuid: operation,
-          sessionUuid: workout,
-          localRevision: 1,
-          action: 'upsert',
-          state: 'conflict',
-          payloadJson: '{}',
-          createdAtMs: 10,
-        ),
-      );
-      response.complete(page());
-      await ongoing;
-      expect(importer.readCursor().nextCursor, 0);
-      expect(importer.readCursor().blockedCode, isNull);
-      expect(store.box<WorkoutSessionEntity>().count(), 0);
-      expect(worker.lastRestoreFailureKind, 'upload_unresolved');
-    },
-  );
+  test('conflict created during fetch is skipped, not imported', () async {
+    final response = Completer<WorkoutRestorePage>();
+    pull.handler = (_, _) => response.future;
+    final ongoing = worker.drain();
+    await Future<void>.delayed(Duration.zero);
+    store.box<WorkoutSyncOutboxEntity>().put(
+      WorkoutSyncOutboxEntity(
+        operationUuid: operation,
+        sessionUuid: workout,
+        localRevision: 1,
+        action: 'upsert',
+        state: 'conflict',
+        payloadJson: '{}',
+        createdAtMs: 10,
+      ),
+    );
+    response.complete(page());
+    await ongoing;
+    expect(store.box<WorkoutSessionEntity>().count(), 0);
+    expect(
+      store.box<WorkoutRestoreSkipEntity>().getAll().single.workoutUuid,
+      workout,
+    );
+    expect(importer.readCursor().nextCursor, 1);
+    expect(importer.readCursor().blockedCode, isNull);
+  });
+
+  test('a later applied remote change clears its skip record', () async {
+    final rowId = store.box<WorkoutSyncOutboxEntity>().put(
+      WorkoutSyncOutboxEntity(
+        operationUuid: operation,
+        sessionUuid: workout,
+        localRevision: 1,
+        action: 'upsert',
+        state: 'conflict',
+        payloadJson: '{}',
+        createdAtMs: 10,
+      ),
+    );
+    pull.handler = (_, _) async => page();
+    await worker.drain();
+    expect(store.box<WorkoutRestoreSkipEntity>().count(), 1);
+    // Simulate a future reviewed resolution that discards the local edit.
+    store.box<WorkoutSyncOutboxEntity>().remove(rowId);
+    pull.handler = (_, _) async =>
+        page(nextCursor: 2, changes: [change(2, id: workout)]);
+    await worker.drain();
+    expect(store.box<WorkoutSessionEntity>().getAll().single.uuid, workout);
+    expect(store.box<WorkoutRestoreSkipEntity>().count(), 0);
+  });
 
   test(
     'token expires in-flight: network response cannot mutate the Store',

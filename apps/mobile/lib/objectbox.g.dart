@@ -717,6 +717,59 @@ final _entities = <obx_int.ModelEntity>[
     relations: <obx_int.ModelRelation>[],
     backlinks: <obx_int.ModelBacklink>[],
   ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(11, 1108347530871021507),
+    name: 'WorkoutRestoreSkipEntity',
+    lastPropertyId: const obx_int.IdUid(7, 7110654962137542360),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 3199928661863688603),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 3816415957073075254),
+        name: 'workoutUuid',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(17, 8660571198025360781),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 294517533429839962),
+        name: 'ownerAccountId',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 2538316949230219388),
+        name: 'serverChangeSeq',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 3253884753992624342),
+        name: 'cursorEpoch',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 6888054986635040588),
+        name: 'deleted',
+        type: 1,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(7, 7110654962137542360),
+        name: 'skippedAtMs',
+        type: 6,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
 ];
 
 /// Shortcut for [obx.Store.new] that passes [getObjectBoxModel] and for Flutter
@@ -762,8 +815,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
     // Typically, this is done with `dart run build_runner build`.
     generatorVersion: obx_int.GeneratorVersion.v2025_12_16,
     entities: _entities,
-    lastEntityId: const obx_int.IdUid(10, 2200710836443110649),
-    lastIndexId: const obx_int.IdUid(16, 3623109986186578998),
+    lastEntityId: const obx_int.IdUid(11, 1108347530871021507),
+    lastIndexId: const obx_int.IdUid(17, 8660571198025360781),
     lastRelationId: const obx_int.IdUid(0, 0),
     lastSequenceId: const obx_int.IdUid(0, 0),
     retiredEntityUids: const [],
@@ -1655,6 +1708,79 @@ obx_int.ModelDefinition getObjectBoxModel() {
             return object;
           },
         ),
+    WorkoutRestoreSkipEntity:
+        obx_int.EntityDefinition<WorkoutRestoreSkipEntity>(
+          model: _entities[10],
+          toOneRelations: (WorkoutRestoreSkipEntity object) => [],
+          toManyRelations: (WorkoutRestoreSkipEntity object) => {},
+          getId: (WorkoutRestoreSkipEntity object) => object.id,
+          setId: (WorkoutRestoreSkipEntity object, int id) {
+            object.id = id;
+          },
+          objectToFB: (WorkoutRestoreSkipEntity object, fb.Builder fbb) {
+            final workoutUuidOffset = fbb.writeString(object.workoutUuid);
+            final ownerAccountIdOffset = fbb.writeString(object.ownerAccountId);
+            final cursorEpochOffset = fbb.writeString(object.cursorEpoch);
+            fbb.startTable(8);
+            fbb.addInt64(0, object.id);
+            fbb.addOffset(1, workoutUuidOffset);
+            fbb.addOffset(2, ownerAccountIdOffset);
+            fbb.addInt64(3, object.serverChangeSeq);
+            fbb.addOffset(4, cursorEpochOffset);
+            fbb.addBool(5, object.deleted);
+            fbb.addInt64(6, object.skippedAtMs);
+            fbb.finish(fbb.endTable());
+            return object.id;
+          },
+          objectFromFB: (obx.Store store, ByteData fbData) {
+            final buffer = fb.BufferContext(fbData);
+            final rootOffset = buffer.derefObject(0);
+            final idParam = const fb.Int64Reader().vTableGet(
+              buffer,
+              rootOffset,
+              4,
+              0,
+            );
+            final workoutUuidParam = const fb.StringReader(
+              asciiOptimization: true,
+            ).vTableGet(buffer, rootOffset, 6, '');
+            final ownerAccountIdParam = const fb.StringReader(
+              asciiOptimization: true,
+            ).vTableGet(buffer, rootOffset, 8, '');
+            final serverChangeSeqParam = const fb.Int64Reader().vTableGet(
+              buffer,
+              rootOffset,
+              10,
+              0,
+            );
+            final cursorEpochParam = const fb.StringReader(
+              asciiOptimization: true,
+            ).vTableGet(buffer, rootOffset, 12, '');
+            final deletedParam = const fb.BoolReader().vTableGet(
+              buffer,
+              rootOffset,
+              14,
+              false,
+            );
+            final skippedAtMsParam = const fb.Int64Reader().vTableGet(
+              buffer,
+              rootOffset,
+              16,
+              0,
+            );
+            final object = WorkoutRestoreSkipEntity(
+              id: idParam,
+              workoutUuid: workoutUuidParam,
+              ownerAccountId: ownerAccountIdParam,
+              serverChangeSeq: serverChangeSeqParam,
+              cursorEpoch: cursorEpochParam,
+              deleted: deletedParam,
+              skippedAtMs: skippedAtMsParam,
+            );
+
+            return object;
+          },
+        ),
   };
 
   return obx_int.ModelDefinition(model, bindings);
@@ -2196,4 +2322,44 @@ class WorkoutRestoreCursorEntity_ {
       obx.QueryIntegerProperty<WorkoutRestoreCursorEntity>(
         _entities[9].properties[5],
       );
+}
+
+/// [WorkoutRestoreSkipEntity] entity fields to define ObjectBox queries.
+class WorkoutRestoreSkipEntity_ {
+  /// See [WorkoutRestoreSkipEntity.id].
+  static final id = obx.QueryIntegerProperty<WorkoutRestoreSkipEntity>(
+    _entities[10].properties[0],
+  );
+
+  /// See [WorkoutRestoreSkipEntity.workoutUuid].
+  static final workoutUuid = obx.QueryStringProperty<WorkoutRestoreSkipEntity>(
+    _entities[10].properties[1],
+  );
+
+  /// See [WorkoutRestoreSkipEntity.ownerAccountId].
+  static final ownerAccountId =
+      obx.QueryStringProperty<WorkoutRestoreSkipEntity>(
+        _entities[10].properties[2],
+      );
+
+  /// See [WorkoutRestoreSkipEntity.serverChangeSeq].
+  static final serverChangeSeq =
+      obx.QueryIntegerProperty<WorkoutRestoreSkipEntity>(
+        _entities[10].properties[3],
+      );
+
+  /// See [WorkoutRestoreSkipEntity.cursorEpoch].
+  static final cursorEpoch = obx.QueryStringProperty<WorkoutRestoreSkipEntity>(
+    _entities[10].properties[4],
+  );
+
+  /// See [WorkoutRestoreSkipEntity.deleted].
+  static final deleted = obx.QueryBooleanProperty<WorkoutRestoreSkipEntity>(
+    _entities[10].properties[5],
+  );
+
+  /// See [WorkoutRestoreSkipEntity.skippedAtMs].
+  static final skippedAtMs = obx.QueryIntegerProperty<WorkoutRestoreSkipEntity>(
+    _entities[10].properties[6],
+  );
 }

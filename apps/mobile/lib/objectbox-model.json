@@ -609,10 +609,56 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "11:1108347530871021507",
+      "lastPropertyId": "7:7110654962137542360",
+      "name": "WorkoutRestoreSkipEntity",
+      "properties": [
+        {
+          "id": "1:3199928661863688603",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3816415957073075254",
+          "name": "workoutUuid",
+          "indexId": "17:8660571198025360781",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:294517533429839962",
+          "name": "ownerAccountId",
+          "type": 9
+        },
+        {
+          "id": "4:2538316949230219388",
+          "name": "serverChangeSeq",
+          "type": 6
+        },
+        {
+          "id": "5:3253884753992624342",
+          "name": "cursorEpoch",
+          "type": 9
+        },
+        {
+          "id": "6:6888054986635040588",
+          "name": "deleted",
+          "type": 1
+        },
+        {
+          "id": "7:7110654962137542360",
+          "name": "skippedAtMs",
+          "type": 6
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "10:2200710836443110649",
-  "lastIndexId": "16:3623109986186578998",
+  "lastEntityId": "11:1108347530871021507",
+  "lastIndexId": "17:8660571198025360781",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

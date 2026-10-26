@@ -307,23 +307,6 @@ class ObjectBoxWorkoutOutbox {
         }
       });
 
-  /// A pull must not import ahead of *any* unresolved local operation.
-  /// Unlike pending(), this includes terminal conflict/blocked records, even
-  /// if a previous upload attempt has stopped retrying. A bounded query is
-  /// enough regardless of how many historical operations the owner has.
-  bool hasUnacknowledgedOperations() =>
-      _store.runInTransaction(TxMode.read, () {
-        final query = _operations
-            .query(WorkoutSyncOutboxEntity_.state.notEquals('acknowledged'))
-            .build();
-        try {
-          query.limit = 1;
-          return query.findFirst() != null;
-        } finally {
-          query.close();
-        }
-      });
-
   /// A local-only blocked record stays durable and never reaches the RPC.
   int blockedCount() {
     final query = _operations

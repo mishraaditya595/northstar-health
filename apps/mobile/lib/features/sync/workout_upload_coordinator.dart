@@ -325,12 +325,12 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
     final pull = restoreTransport;
     final importer = restoreImporter;
     if (pull == null || importer == null || !_isAuthorized) return;
-    // NEVER fetch past an unresolved local operation: conflict/blocked rows
-    // are just as important as pending retry rows. Otherwise the importer
-    // would durably block the entire account on local_outbox_unresolved.
-    // A stalled/terminal upload defers restoration until explicit resolution.
+    // Pending uploads finish (or back off) before any remote state is read;
+    // they clear on their own. Conflicted/blocked uploads never clear here,
+    // so they do not defer the feed: the importer skips and records only
+    // that workout's remote change and keeps the local copy.
     try {
-      if (outbox.hasUnacknowledgedOperations()) {
+      if (outbox.pending(limit: 1).isNotEmpty) {
         lastRestoreFailureKind = 'upload_unresolved';
         return;
       }
@@ -367,9 +367,9 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
         // A sign-out/dispose/token expiry during the RPC cannot mutate the
         // old owner's ObjectBox Store, even if a test transport ignores auth.
         if (!_isAuthorized) return;
-        // An upload may have become pending, conflicted or blocked while
-        // the RPC was in flight; protect the entire cursor until resolved.
-        if (outbox.hasUnacknowledgedOperations()) {
+        // A local workout may have entered the outbox while the RPC was in
+        // flight. Defer the page; do not import over a transient edit.
+        if (outbox.pending(limit: 1).isNotEmpty) {
           lastRestoreFailureKind = 'upload_unresolved';
           return;
         }
