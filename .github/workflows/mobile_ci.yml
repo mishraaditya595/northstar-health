@@ -70,6 +70,17 @@ jobs:
       - name: Resolve from committed lockfile
         working-directory: apps/mobile
         run: flutter pub get --enforce-lockfile
+      # Temporary pinned-format capture; removed in the following commit.
+      - name: Temporary canonical Dart capture
+        working-directory: apps/mobile
+        run: |
+          dart format lib/features/sync/objectbox_workout_restore_importer.dart lib/features/sync/workout_upload_coordinator.dart test/sync/workout_foreground_restore_coordinator_test.dart
+          python3 - <<'PY'
+          import json
+          for path in ('lib/features/sync/objectbox_workout_restore_importer.dart', 'lib/features/sync/workout_upload_coordinator.dart', 'test/sync/workout_foreground_restore_coordinator_test.dart'):
+              print('FMT_P20622:' + json.dumps({'path': path, 'content': open(path).read()}))
+          PY
+          exit 1
       - name: Format
         working-directory: apps/mobile
         run: dart format --output=none --set-exit-if-changed lib test
