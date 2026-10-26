@@ -1,6 +1,6 @@
 # P2-03 · Durable completed-workout outbox and auth pausing
 
-**Status:** PR #15 — **open draft, under review, not merged or deployed**. Independent review and device QA required.  
+**Status:** PR #15 — **merged**. Native/device release QA remains outstanding; network uploading is in P2-04 (draft PR #16).  
 **Policy:** [ADR-0005](../../adr/0005-mandatory-auth-and-workout-sync.md) governs scope. Only NorthStar-authored **completed** phone workouts may enter cloud-bound operations. In-progress, paused, discarded, watch-imported and platform health data remain local.
 
 ## Delivered

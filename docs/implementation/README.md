@@ -17,6 +17,8 @@ The [roadmap](../ROADMAP.md) defines product milestones. Each note records actua
 
 - [P2-02 Mandatory Flutter authentication and owner-bound offline storage](phase-2/p2-02-account-authentication.md) — PR #14 (merged), account gate, secure email code auth, isolated ObjectBox directories and account sign-out.
 
-- [P2-03 Durable ObjectBox outbox and auth backup-paused state](phase-2/p2-03-durable-outbox.md) — PR #15 (**open draft, under review, not merged**), completed phone workout snapshot queue and schema upgrade tests, no network worker.
+- [P2-03 Durable ObjectBox outbox and auth backup-paused state](phase-2/p2-03-durable-outbox.md) — PR #15 (**merged**), completed phone workout snapshot queue and schema upgrade tests.
+
+- [P2-04 Authenticated Supabase upload worker](phase-2/p2-04-authenticated-uploader.md) — PR #16 (**draft, under review**), foreground automatic uploader, resilient retries, CAS/idempotency, completed-only backfill and account guard; restore and conflict UX remain outstanding.
 
 Authoritative policy: [ADR-0003](../adr/0003-data-cloud-health.md) **as superseded for auth/cloud workout scope** by [ADR-0005](../adr/0005-mandatory-auth-and-workout-sync.md), [ObjectBox](../OBJECTBOX.md), and [Cloud Sync](../CLOUD_SYNC.md).
