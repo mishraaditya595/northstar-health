@@ -205,6 +205,7 @@ class ObjectBoxWorkoutRestoreImporter {
           cursor.blockedAtMs = null;
           _cursors.put(cursor);
           beforeCommitForTest?.call();
+          _checkAccount(); // Do not commit when a test simulates a switch.
           return RestoreApplyResult(
             cursor: _cursorValue(cursor),
             imported: 0,
@@ -255,6 +256,7 @@ class ObjectBoxWorkoutRestoreImporter {
         cursor.blockedAtMs = null;
         _cursors.put(cursor);
         beforeCommitForTest?.call();
+        _checkAccount();
         return RestoreApplyResult(
           cursor: _cursorValue(cursor),
           imported: applied,
@@ -312,8 +314,7 @@ class ObjectBoxWorkoutRestoreImporter {
         throw const RestoreImportException('duplicate_remote_sequence');
       }
     } else if (remote != null &&
-        change.serverRevision < remote.serverRevision &&
-        !change.deleted) {
+        change.serverRevision < remote.serverRevision) {
       // PITR may roll the server back while the device still has newer
       // acknowledged material. Never silently overwrite that local copy.
       throw const RestoreImportException('restore_epoch_rewind_conflict');
@@ -340,6 +341,10 @@ class ObjectBoxWorkoutRestoreImporter {
           change.serverRevision < latestAck.serverRevision!) {
         throw const RestoreImportException('server_revision_regressed');
       }
+    } else if (remote != null && !remote.deleted) {
+      // A previously restored nondeleted workout disappearing from local
+      // storage is ambiguous (possible user deletion). Never resurrect it.
+      throw const RestoreImportException('missing_tracked_workout');
     } else if (latestAck != null) {
       // A locally deleted row with a prior upload receipt is ambiguous.
       throw const RestoreImportException('missing_acknowledged_workout');
