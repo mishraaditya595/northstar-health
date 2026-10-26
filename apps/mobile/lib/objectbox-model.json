@@ -517,10 +517,102 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "9:1060972994758425353",
+      "lastPropertyId": "8:6436774755317038046",
+      "name": "WorkoutRemoteStateEntity",
+      "properties": [
+        {
+          "id": "1:4811113757752350940",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:8863740906654710439",
+          "name": "workoutUuid",
+          "indexId": "15:6155209029603021132",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:5934664202840953844",
+          "name": "ownerAccountId",
+          "type": 9
+        },
+        {
+          "id": "4:1793285696296267008",
+          "name": "serverRevision",
+          "type": 6
+        },
+        {
+          "id": "5:4770963020883251175",
+          "name": "serverChangeSeq",
+          "type": 6
+        },
+        {
+          "id": "6:8839902411236529831",
+          "name": "cursorEpoch",
+          "type": 9
+        },
+        {
+          "id": "7:4621202132820547330",
+          "name": "localRevisionAtImport",
+          "type": 6
+        },
+        {
+          "id": "8:6436774755317038046",
+          "name": "deleted",
+          "type": 1
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "10:2200710836443110649",
+      "lastPropertyId": "6:7745315329127938983",
+      "name": "WorkoutRestoreCursorEntity",
+      "properties": [
+        {
+          "id": "1:411253470100115506",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:4814238428967328411",
+          "name": "ownerAccountId",
+          "indexId": "16:3623109986186578998",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:8801092711682064542",
+          "name": "cursorEpoch",
+          "type": 9
+        },
+        {
+          "id": "4:4546401710344396177",
+          "name": "nextCursor",
+          "type": 6
+        },
+        {
+          "id": "5:2674350340086328176",
+          "name": "blockedCode",
+          "type": 9
+        },
+        {
+          "id": "6:7745315329127938983",
+          "name": "blockedAtMs",
+          "type": 6
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "8:7182930008744971703",
-  "lastIndexId": "14:898067203127664905",
+  "lastEntityId": "10:2200710836443110649",
+  "lastIndexId": "16:3623109986186578998",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

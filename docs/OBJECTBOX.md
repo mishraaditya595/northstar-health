@@ -9,7 +9,7 @@ The read-only completed workout history and exercise trends are under review in
 [Phase 1 PR #11](implementation/phase-1/workout-history-progress.md).
 **Today health tiles still contain clearly labeled prototype data** until
 Phase 3 platform permissions and measurements are implemented. ObjectBox
-ObjectBox's own cloud sync is not used. P2-03 introduced the durable outbox (PR #15: **merged**), and P2-04 (PR #16: **draft**) connects it to an authenticated, foreground-only Supabase uploader.
+ObjectBox's own cloud sync is not used. P2-03 introduced the durable outbox (PR #15: **merged**), and P2-04 (PR #16: **merged**) connects it to an authenticated, foreground-only Supabase uploader.
 
 ## Data classification and lifetime
 
@@ -19,6 +19,7 @@ ObjectBox's own cloud sync is not used. P2-03 introduced the durable outbox (PR 
 | `WorkoutSessionState` | Durable checkpoint until finished/recovered | No |
 | `WorkoutPlan` / `PlanExercise` / `ExerciseDefinition` | Durable local, owner-scoped | **Not in MVP**; embed names in backed-up historical logs |
 | `WorkoutSyncOutboxEntity` | Completed phone workout snapshots remain pending until matched server ACK; retain ack receipts as needed for retry and conflict | **P2-04 draft:** completed-workout DTOs are uploaded via authenticated Supabase RPC; local outbox records remain device-only |
+| `WorkoutRestoreCursorEntity` / `WorkoutRemoteStateEntity` | Account-scoped durable restore epoch/cursor, remote revisions and tombstones (P2-06 draft PR #20) | No — local protocol metadata only |
 | `HealthExportReceipt` | As long as corresponding workout relevant | Local platform-record references only |
 | `HealthCache` | Expiring, permission-scoped summaries | **Never** |
 | `HealthQueryCheckpoint` | Per-device until invalidated | **Never** |
@@ -42,6 +43,7 @@ Don't create an unbounded permanent `HealthObservation` archive from platform me
 - Built-in catalog identities **`builtin.v1.*` must never be renamed or
   repurposed**. They are permanent identifiers, not UI labels. Future catalog
   revisions add new IDs or explicitly migrate referents without resetting UIDs.
+- PR #20 adds two new ObjectBox entities for the restore cursor and remote workout state, **without altering any existing UID**. `ObjectBoxWorkoutRestoreImporter` writes validated remote snapshots, tombstones and the cursor in one transaction; `backfillCompleted()` skips already-imported workouts. Restore transport activation and the foreground pull coordinator remain separate work.
 - An archived exercise is preserved for plans already referencing the **same
   row and exercise IDs**. It cannot be newly attached; validation is enforced
   inside the ObjectBox save transaction, not only in an editor picker.

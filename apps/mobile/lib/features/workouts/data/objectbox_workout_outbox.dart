@@ -54,6 +54,7 @@ class ObjectBoxWorkoutOutbox {
       _ids = uuidFactory ?? SecureUuidFactory(),
       _operations = store.box<WorkoutSyncOutboxEntity>(),
       _sessions = store.box<WorkoutSessionEntity>(),
+      _remote = store.box<WorkoutRemoteStateEntity>(),
       _exercises = store.box<WorkoutExerciseEntity>(),
       _sets = store.box<WorkoutSetEntity>();
 
@@ -61,6 +62,7 @@ class ObjectBoxWorkoutOutbox {
   final UuidFactory _ids;
   final Box<WorkoutSyncOutboxEntity> _operations;
   final Box<WorkoutSessionEntity> _sessions;
+  final Box<WorkoutRemoteStateEntity> _remote;
   final Box<WorkoutExerciseEntity> _exercises;
   final Box<WorkoutSetEntity> _sets;
 
@@ -340,10 +342,17 @@ class ObjectBoxWorkoutOutbox {
         }
         try {
           if (_find(
-            _operations,
-            WorkoutSyncOutboxEntity_.sessionUuid,
-            session.uuid.toLowerCase(),
-          ).isNotEmpty) {
+                _operations,
+                WorkoutSyncOutboxEntity_.sessionUuid,
+                session.uuid.toLowerCase(),
+              ).isNotEmpty ||
+              _find(
+                _remote,
+                WorkoutRemoteStateEntity_.workoutUuid,
+                session.uuid.toLowerCase(),
+              ).isNotEmpty) {
+            // Imported server rows must never become new outgoing uploads,
+            // including across process restarts and historical backfills.
             continue;
           }
           // A malformed historical session must never starve a newer
@@ -424,9 +433,40 @@ class ObjectBoxWorkoutOutbox {
                   )
                   .toList()
                 ..sort((a, b) => b.localRevision.compareTo(a.localRevision));
-          final expected = acknowledgements.isEmpty
+          final remote = _find(
+            _remote,
+            WorkoutRemoteStateEntity_.workoutUuid,
+            op.sessionUuid,
+          );
+          if (remote.length > 1) {
+            _transition(op, 'blocked', 'invalid_remote_state');
+            blockedAny = true;
+            continue;
+          }
+          final tracked = remote.isEmpty ? null : remote.single;
+          if (tracked != null &&
+              (tracked.deleted ||
+                  op.localRevision <= tracked.localRevisionAtImport)) {
+            // Never resurrect a remote tombstone or upload a revision that
+            // was already imported at a later local watermark.
+            _transition(
+              op,
+              'blocked',
+              tracked.deleted ? 'remote_tombstone' : 'stale_local_revision',
+            );
+            blockedAny = true;
+            continue;
+          }
+          final lastAckRevision = acknowledgements.isEmpty
               ? 0
               : acknowledgements.first.serverRevision!;
+          // A restored workout may have no local ACK at all; its imported
+          // server CAS baseline is authoritative. An ACK newer than that
+          // baseline still wins for a subsequent local operation.
+          final remoteRevision = tracked?.serverRevision ?? 0;
+          final expected = remoteRevision > lastAckRevision
+              ? remoteRevision
+              : lastAckRevision;
           op.attemptedAtMs = nowMs;
           op.attempts++;
           _operations.put(op);
