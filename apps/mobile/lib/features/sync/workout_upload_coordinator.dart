@@ -114,7 +114,8 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
     DateTime Function()? clock,
     this.onQueueChanged,
     this.pollInterval = const Duration(seconds: 45),
-  }) : _clock = clock ?? DateTime.now;
+  }) : assert((restoreTransport == null) == (restoreImporter == null)),
+       _clock = clock ?? DateTime.now;
 
   final String accountId;
   final AccountAuthController auth;
@@ -145,7 +146,6 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
   /// durable in the owner-specific ObjectBox Store.
   String? lastRestoreFailureKind;
 
-  bool get isRestoring => _running && restoreImporter != null;
   bool get isUploading => _running;
   bool get isStopped => _disposed;
 
@@ -325,13 +325,13 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
     final pull = restoreTransport;
     final importer = restoreImporter;
     if (pull == null || importer == null || !_isAuthorized) return;
-    // Local pending snapshots take precedence over remote changes. Upload
-    // retry/ACK must finish before the corresponding remote state can safely
-    // be imported. Conflicted/blocked operations remain protected by the
-    // importer's per-workout fail-closed check.
+    // NEVER fetch past an unresolved local operation: conflict/blocked rows
+    // are just as important as pending retry rows. Otherwise the importer
+    // would durably block the entire account on local_outbox_unresolved.
+    // A stalled/terminal upload defers restoration until explicit resolution.
     try {
-      if (outbox.pending(limit: 1).isNotEmpty) {
-        lastRestoreFailureKind = 'upload_pending';
+      if (outbox.hasUnacknowledgedOperations()) {
+        lastRestoreFailureKind = 'upload_unresolved';
         return;
       }
     } catch (_) {
@@ -367,11 +367,10 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
         // A sign-out/dispose/token expiry during the RPC cannot mutate the
         // old owner's ObjectBox Store, even if a test transport ignores auth.
         if (!_isAuthorized) return;
-        // A locally completed/edited workout may have entered the outbox
-        // while the pull RPC was awaiting the network. Defer the page, do
-        // not create a permanent restore conflict for a transient edit.
-        if (outbox.pending(limit: 1).isNotEmpty) {
-          lastRestoreFailureKind = 'upload_pending';
+        // An upload may have become pending, conflicted or blocked while
+        // the RPC was in flight; protect the entire cursor until resolved.
+        if (outbox.hasUnacknowledgedOperations()) {
+          lastRestoreFailureKind = 'upload_unresolved';
           return;
         }
         final applied = importer.applyPage(
