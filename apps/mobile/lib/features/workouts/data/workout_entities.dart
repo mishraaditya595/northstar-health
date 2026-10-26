@@ -248,3 +248,51 @@ class WorkoutSyncOutboxEntity {
     this.errorCode,
   });
 }
+
+/// One durable cursor per verified Supabase owner and account-partitioned
+/// ObjectBox Store. Persisted in the same transaction as imported data.
+@Entity()
+class WorkoutRestoreCursorEntity {
+  @Id()
+  int id = 0;
+  @Unique()
+  String ownerAccountId;
+  String? cursorEpoch;
+  int nextCursor;
+  String? blockedCode;
+  int? blockedAtMs;
+
+  WorkoutRestoreCursorEntity({
+    this.id = 0,
+    required this.ownerAccountId,
+    this.cursorEpoch,
+    this.nextCursor = 0,
+    this.blockedCode,
+    this.blockedAtMs,
+  });
+}
+
+/// Per-workout remote identity/revision, including tombstones for unseen IDs.
+/// Do not confuse the server CAS revision with WorkoutSessionEntity.revision.
+@Entity()
+class WorkoutRemoteStateEntity {
+  @Id()
+  int id = 0;
+  @Unique()
+  String workoutUuid;
+  String ownerAccountId;
+  int serverRevision;
+  int serverChangeSeq;
+  int localRevisionAtImport;
+  bool deleted;
+
+  WorkoutRemoteStateEntity({
+    this.id = 0,
+    required this.workoutUuid,
+    required this.ownerAccountId,
+    required this.serverRevision,
+    required this.serverChangeSeq,
+    required this.localRevisionAtImport,
+    this.deleted = false,
+  });
+}
