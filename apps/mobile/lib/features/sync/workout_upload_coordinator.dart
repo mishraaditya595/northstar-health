@@ -366,6 +366,13 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
         // A sign-out/dispose/token expiry during the RPC cannot mutate the
         // old owner's ObjectBox Store, even if a test transport ignores auth.
         if (!_isAuthorized) return;
+        // A locally completed/edited workout may have entered the outbox
+        // while the pull RPC was awaiting the network. Defer the page, do
+        // not create a permanent restore conflict for a transient edit.
+        if (outbox.pending(limit: 1).isNotEmpty) {
+          lastRestoreFailureKind = 'upload_pending';
+          return;
+        }
         final applied = importer.applyPage(
           page,
           afterSeq: cursor.nextCursor,
