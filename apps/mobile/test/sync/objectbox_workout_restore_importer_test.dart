@@ -513,4 +513,82 @@ void main() {
       oldDir.deleteSync(recursive: true);
     }
   });
+
+  test('newer remote correction replaces child rows without duplicates', () {
+    importer.applyPage(feed(), afterSeq: 0, requestedEpoch: null);
+    final updated = importer.applyPage(
+      feed(
+        after: 1,
+        requestedEpoch: epochA,
+        seq: 2,
+        revision: 2,
+        name: 'Rows after correction',
+      ),
+      afterSeq: 1,
+      requestedEpoch: epochA,
+    );
+    expect(updated.imported, 1);
+    expect(store.box<WorkoutSessionEntity>().getAll().single.name,
+        'Rows after correction');
+    expect(store.box<WorkoutSessionEntity>().getAll().single.revision, 2);
+    expect(store.box<WorkoutExerciseEntity>().count(), 1);
+    expect(store.box<WorkoutSetEntity>().count(), 1);
+    expect(store.box<WorkoutRemoteStateEntity>().getAll().single.serverRevision,
+        2);
+    expect(importer.readCursor().nextCursor, 2);
+    expect(ObjectBoxWorkoutOutbox(store).backfillCompleted(), 0);
+  });
+
+  test('second change collision rolls back the first change in the page', () {
+    // The server validates each workout independently; exercise UUIDs can
+    // legitimately collide across workouts, but the local Box index cannot.
+    final raw = <String, dynamic>{
+      'schema_version': 1,
+      'cursor_epoch': epochA,
+      'cursor_reset': false,
+      'next_cursor': 2,
+      'has_more': false,
+      'changes': [
+        {
+          'workout_id': workout,
+          'server_revision': 1,
+          'change_seq': 1,
+          'deleted': false,
+          'payload': dto(),
+        },
+        {
+          'workout_id': workoutB,
+          'server_revision': 1,
+          'change_seq': 2,
+          'deleted': false,
+          'payload': dto(id: workoutB),
+        },
+      ],
+    };
+    final page = WorkoutRestorePage.decode(
+      raw, afterSeq: 0, requestedEpoch: null, limit: 100,
+    );
+    expect(
+      () => importer.applyPage(page, afterSeq: 0, requestedEpoch: null),
+      throwsA(isA<RestoreImportException>()
+          .having((e) => e.code, 'code', 'exercise_uuid_collision')),
+    );
+    expect(store.box<WorkoutSessionEntity>().count(), 0);
+    expect(store.box<WorkoutExerciseEntity>().count(), 0);
+    expect(store.box<WorkoutSetEntity>().count(), 0);
+    expect(store.box<WorkoutRemoteStateEntity>().count(), 0);
+    expect(importer.readCursor().nextCursor, 0);
+    expect(importer.readCursor().blockedCode, 'exercise_uuid_collision');
+  });
+
+  test('account changing immediately before commit rolls back all writes', () {
+    expect(() => importer.applyPage(
+      feed(), afterSeq: 0, requestedEpoch: null,
+      beforeCommitForTest: () => activeOwner = accountB,
+    ), throwsA(isA<RestoreImportException>().having(
+      (e) => e.code, 'code', 'account_changed')));
+    expect(store.box<WorkoutSessionEntity>().count(), 0);
+    expect(store.box<WorkoutRestoreCursorEntity>().count(), 0);
+    activeOwner = accountA;
+  });
 }
