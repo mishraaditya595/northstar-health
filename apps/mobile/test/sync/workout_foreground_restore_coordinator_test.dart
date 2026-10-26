@@ -328,15 +328,15 @@ void main() {
     store.box<WorkoutSessionEntity>().put(WorkoutSessionEntity(
       uuid: workout,
       name: 'Unsynced old local session',
-      status: 'completed',
+      status: 'inProgress',
       startedAtMs: started,
-      completedAtMs: started + 3600000,
+      completedAtMs: null,
       originalOffsetMinutes: 0,
       updatedAtMs: started,
     ));
     pull.handler = (_, _) async => page();
     await worker.drain();
-    expect(importer.readCursor().blockedCode, 'untracked_local_workout');
+    expect(importer.readCursor().blockedCode, 'local_workout_conflict');
     await worker.drain();
     expect(pull.requests, hasLength(1));
     expect(store.box<WorkoutSessionEntity>().getAll().single.name,
