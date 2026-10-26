@@ -17,10 +17,28 @@ cd apps/mobile
 flutter pub get --enforce-lockfile
 dart format --output=none --set-exit-if-changed lib test
 flutter analyze
-flutter test
+flutter test   # needs the native ObjectBox library below
 ```
 
-These checks need no backend. **Running the app** needs a Supabase project because sign-in is mandatory: create your own free one by following [docs/CONTRIBUTOR_SUPABASE_SETUP.md](docs/CONTRIBUTOR_SUPABASE_SETUP.md). Never use, request or share the maintainer's keys.
+### Native ObjectBox library for tests
+
+Tests that open a real ObjectBox store need ObjectBox's native host library, which `flutter pub get` does **not** install. Without it those tests fail to load the library. Install the pinned **v5.3.2** build once (details in [docs/OBJECTBOX.md](docs/OBJECTBOX.md)):
+
+- **macOS:** from the repository root, run `bash scripts/test_objectbox_macos.sh`. It downloads and checksum-verifies the library, runs `flutter test`, and removes the library afterwards. Use it instead of a plain `flutter test`.
+- **Linux x64:** install the same verified library CI uses, then run `flutter test` normally:
+
+  ```sh
+  curl --fail --location -o /tmp/objectbox-linux-x64.tar.gz \
+    https://github.com/objectbox/objectbox-c/releases/download/v5.3.2/objectbox-linux-x64.tar.gz
+  echo '6dbb5450c36dd11ee9074f16ecc61e79b45ff43c2082934601f3166b39c8a613  /tmp/objectbox-linux-x64.tar.gz' | sha256sum --check
+  mkdir -p /tmp/objectbox-native && tar -xzf /tmp/objectbox-linux-x64.tar.gz -C /tmp/objectbox-native
+  sudo install -m 755 "$(find /tmp/objectbox-native -type f -name libobjectbox.so -print -quit)" /usr/local/lib/libobjectbox.so
+  sudo ldconfig
+  ```
+
+- **Windows and other platforms:** not documented yet. Use WSL (Linux steps), or rely on CI and say "ObjectBox tests not run locally" in your PR.
+
+Formatting and analysis need neither ObjectBox nor a backend. **Running the app** needs a Supabase project because sign-in is mandatory: create your own free one by following [docs/CONTRIBUTOR_SUPABASE_SETUP.md](docs/CONTRIBUTOR_SUPABASE_SETUP.md). Never use, request or share the maintainer's keys.
 
 Other gates:
 

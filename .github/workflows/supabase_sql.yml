@@ -1,8 +1,10 @@
 name: Supabase SQL and RLS
 
 # Runs on every PR so the `database` check can be required in branch rules.
-# The job itself is skipped (which counts as passing) unless supabase/ or this
-# workflow changed.
+# The job itself is skipped (which counts as passing) only when path detection
+# succeeded and found no change under supabase/ or this workflow. If detection
+# fails, the full job runs (fail closed) so a required check never passes
+# without validation.
 on:
   pull_request:
   push:
@@ -39,7 +41,11 @@ jobs:
 
   database:
     needs: changes
-    if: github.event_name == 'push' || needs.changes.outputs.supabase == 'true'
+    if: >-
+      !cancelled() &&
+      (github.event_name == 'push' ||
+       needs.changes.result != 'success' ||
+       needs.changes.outputs.supabase == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

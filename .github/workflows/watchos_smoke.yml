@@ -1,8 +1,9 @@
 name: WatchOS standalone build proof (manual)
 
 # Runs on every PR so the `watch` check can be required in branch rules.
-# The macOS job is skipped (which counts as passing) unless apps/watch_os/ or
-# this workflow changed, or the workflow was started manually.
+# The macOS job is skipped (which counts as passing) only when path detection
+# succeeded and found no change under apps/watch_os/ or this workflow. A manual
+# run, or failed detection, runs the full build (fail closed).
 on:
   workflow_dispatch:
   pull_request:
@@ -37,9 +38,9 @@ jobs:
   watch:
     needs: changes
     if: >-
-      always() &&
-      (github.event_name == 'workflow_dispatch' ||
-       (needs.changes.result == 'success' && needs.changes.outputs.watch == 'true'))
+      !cancelled() &&
+      (needs.changes.result != 'success' ||
+       needs.changes.outputs.watch == 'true')
     runs-on: macos-15
     timeout-minutes: 35
     steps:
