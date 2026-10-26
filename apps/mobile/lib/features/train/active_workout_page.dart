@@ -15,6 +15,7 @@ import '../workouts/domain/workout_models.dart';
 import '../progress/workout_history_state.dart';
 import '../workouts/domain/workout_repository.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
+import '../sync/workout_upload_coordinator.dart';
 import 'previous_sets.dart';
 import 'active_workout_state.dart';
 import 'rest_timer_card.dart';
@@ -54,6 +55,8 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
         // Re-query this account's ObjectBox blocked receipts after the
         // finish transaction commits, before navigating back to Today.
         ref.invalidate(blockedWorkoutCountProvider);
+        // Wake foreground uploader after the local ObjectBox commit.
+        ref.read(workoutUploadKickProvider)?.call();
       }
       if (completedWorkoutUuid != null &&
           mounted &&

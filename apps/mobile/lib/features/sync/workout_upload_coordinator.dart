@@ -1,0 +1,345 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../account/account_auth_controller.dart';
+import '../account/account_auth_provider.dart';
+import '../workouts/data/objectbox_workout_outbox.dart';
+
+/// Supabase RPC authorization is decided by the server JWT + RLS. The mobile
+/// binary only contains its public publishable key, never privileged tokens.
+abstract class WorkoutUploadTransport {
+  Future<Map<String, dynamic>> send(
+    WorkoutSyncOperation operation, {
+    required int expectedServerRevision,
+  });
+}
+
+class SupabaseWorkoutUploadTransport implements WorkoutUploadTransport {
+  SupabaseWorkoutUploadTransport(this.client, this.accountId);
+
+  final SupabaseClient client;
+  final String accountId;
+
+  /// Same guard used immediately before the actual RPC. Pure for tests;
+  /// never substitutes for the server's auth.uid() and RLS checks.
+  static bool matchesSession({
+    required String? sessionUserId,
+    required bool anonymous,
+    required int? expiresAtSeconds,
+    required String accountId,
+    required int nowSeconds,
+  }) =>
+      sessionUserId != null &&
+      sessionUserId.toLowerCase() == accountId.toLowerCase() &&
+      !anonymous &&
+      expiresAtSeconds != null &&
+      expiresAtSeconds > nowSeconds;
+
+  @override
+  Future<Map<String, dynamic>> send(
+    WorkoutSyncOperation operation, {
+    required int expectedServerRevision,
+  }) async {
+    final session = client.auth.currentSession;
+    if (!matchesSession(
+      sessionUserId: session?.user.id,
+      anonymous: session?.user.isAnonymous ?? true,
+      expiresAtSeconds: session?.expiresAt,
+      accountId: accountId,
+      nowSeconds: DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000,
+    )) {
+      throw const AuthException('Cloud session unavailable');
+    }
+    // Do not accept a caller-supplied owner ID; the server derives auth.uid().
+    final data = await client.rpc(
+      'sync_workout',
+      params: {
+        'p_operation_id': operation.operationUuid,
+        'p_workout_id': operation.sessionUuid,
+        'p_expected_revision': expectedServerRevision,
+        'p_action': operation.action,
+        'p_payload': jsonDecode(operation.payloadJson),
+      },
+    );
+    if (data is! Map) {
+      throw const FormatException('Unexpected sync response');
+    }
+    return Map<String, dynamic>.from(data);
+  }
+}
+
+/// Optional trigger in isolated widget tests; production overrides it.
+final workoutUploadKickProvider = Provider<void Function()?>((ref) => null);
+
+/// Testable transport factory; no real Supabase accounts are created in tests.
+final workoutUploadTransportProvider =
+    Provider<WorkoutUploadTransport Function(String)>(
+      (ref) =>
+          (owner) =>
+              SupabaseWorkoutUploadTransport(Supabase.instance.client, owner),
+    );
+
+final workoutUploadCoordinatorProvider = Provider<WorkoutUploadCoordinator>((
+  ref,
+) {
+  final auth = ref.watch(accountAuthControllerProvider);
+  final owner = auth?.userId;
+  if (auth == null || owner == null) {
+    throw StateError('Workout uploads require a bound account');
+  }
+  final coordinator = WorkoutUploadCoordinator(
+    accountId: owner,
+    auth: auth,
+    outbox: ref.watch(workoutOutboxProvider),
+    transport: ref.watch(workoutUploadTransportProvider)(owner),
+    onQueueChanged: () => ref.invalidate(blockedWorkoutCountProvider),
+  );
+  ref.onDispose(coordinator.dispose);
+  // Never perform ObjectBox writes or RPCs while Riverpod builds a provider.
+  scheduleMicrotask(coordinator.start);
+  return coordinator;
+});
+
+/// Foreground-only automatic upload on first launch, auth refresh, app
+/// resume and periodic online retry. OS background execution is not implied.
+class WorkoutUploadCoordinator with WidgetsBindingObserver {
+  WorkoutUploadCoordinator({
+    required this.accountId,
+    required this.auth,
+    required this.outbox,
+    required this.transport,
+    DateTime Function()? clock,
+    this.onQueueChanged,
+    this.pollInterval = const Duration(seconds: 45),
+  }) : _clock = clock ?? DateTime.now;
+
+  final String accountId;
+  final AccountAuthController auth;
+  final ObjectBoxWorkoutOutbox outbox;
+  final WorkoutUploadTransport transport;
+  final void Function()? onQueueChanged;
+  final DateTime Function() _clock;
+  final Duration pollInterval;
+
+  Timer? _poller;
+  bool _running = false;
+  bool _disposed = false;
+  bool _started = false;
+  bool _backfillChecked = false;
+  bool _rerunRequested = false;
+  bool _foreground = true;
+
+  /// Stable non-sensitive diagnostic category, never a raw exception/payload.
+  String? lastFailureKind;
+
+  bool get isUploading => _running;
+  bool get isStopped => _disposed;
+
+  bool get _isAuthorized =>
+      !_disposed &&
+      _foreground &&
+      auth.userId == accountId &&
+      auth.cloudBackupReady;
+
+  void start() {
+    if (_started || _disposed) return;
+    _started = true;
+    WidgetsBinding.instance.addObserver(this);
+    auth.addListener(kick);
+    _poller = Timer.periodic(pollInterval, (_) => kick());
+    kick();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    if (_foreground) kick();
+  }
+
+  void kick() {
+    if (!_isAuthorized) return;
+    if (_running) {
+      // A newly completed workout or resumed session must not lose its kick
+      // just because the previous RPC is awaiting a network response.
+      _rerunRequested = true;
+      return;
+    }
+    unawaited(drain());
+  }
+
+  /// Serialized, per-account drain. Testing can call this without any timers.
+  /// A process/account switch can stop this worker while the RPC is in flight:
+  /// check disposal and identity before *every* subsequent ObjectBox write.
+  Future<void> drain() async {
+    if (!_isAuthorized) return;
+    if (_running) {
+      _rerunRequested = true;
+      return;
+    }
+    _running = true;
+    try {
+      do {
+        _rerunRequested = false;
+        await _drainBatch();
+      } while (_rerunRequested && _isAuthorized);
+    } finally {
+      _running = false;
+    }
+  }
+
+  Future<void> _drainBatch() async {
+    // One invalid historical record must never prevent uploads of newly
+    // completed workouts. We attempt backfill once per bound app session.
+    if (!_backfillChecked) {
+      try {
+        if (outbox.backfillCompleted() > 0) onQueueChanged?.call();
+      } catch (_) {
+        lastFailureKind = 'backfill_failed';
+      } finally {
+        _backfillChecked = true;
+      }
+    }
+    try {
+      for (var sent = 0; sent < 25 && _isAuthorized; sent++) {
+        final reserved = outbox.reserveNext(
+          nowMs: _clock().toUtc().millisecondsSinceEpoch,
+          onBlocked: onQueueChanged,
+        );
+        if (reserved == null) break;
+        final operation = reserved.operation;
+        if (!_isCompletedSnapshot(operation)) {
+          if (_isAuthorized) {
+            outbox.markBlocked(
+              operationUuid: operation.operationUuid,
+              localRevision: operation.localRevision,
+              code: 'invalid_snapshot',
+            );
+            onQueueChanged?.call();
+            lastFailureKind = 'invalid_local_snapshot';
+          }
+          continue;
+        }
+        try {
+          final result = await transport
+              .send(
+                operation,
+                expectedServerRevision: reserved.expectedServerRevision,
+              )
+              .timeout(const Duration(seconds: 20));
+          if (!_isAuthorized) break;
+          if (result['result'] == 'conflict') {
+            outbox.markConflict(
+              operationUuid: operation.operationUuid,
+              localRevision: operation.localRevision,
+            );
+            onQueueChanged?.call();
+            lastFailureKind = 'revision_conflict';
+            continue;
+          }
+          final revision = result['revision'];
+          final cursor = result['change_seq'];
+          if (result['result'] != 'applied' ||
+              revision is! int ||
+              revision != reserved.expectedServerRevision + 1 ||
+              cursor is! int ||
+              cursor <= 0 ||
+              result['processing'] != 'processed' ||
+              result['replay'] is! bool) {
+            // The server may have applied the operation, but no local
+            // acknowledgement is safe without the complete response.
+            lastFailureKind = 'invalid_server_ack';
+            break;
+          }
+          final acknowledged = outbox.acknowledge(
+            operationUuid: operation.operationUuid,
+            localRevision: operation.localRevision,
+            serverRevision: revision,
+            serverChangeSeq: cursor,
+          );
+          if (!acknowledged) {
+            lastFailureKind = 'ack_persist_failed';
+          } else if (lastFailureKind != 'backfill_failed') {
+            lastFailureKind = null;
+          }
+          if (!acknowledged) break;
+        } on PostgrestException catch (error) {
+          if (!_isAuthorized) break;
+          if (error.code == '22023') {
+            // Terminal malformed payload; keep a local-only blocked receipt.
+            outbox.markBlocked(
+              operationUuid: operation.operationUuid,
+              localRevision: operation.localRevision,
+              code: 'server_validation',
+            );
+            onQueueChanged?.call();
+            lastFailureKind = 'server_validation';
+            continue;
+          }
+          // Auth errors, unavailable network, rate limits and 5xx leave the
+          // operation pending. It is retried after persisted backoff.
+          lastFailureKind = 'rpc_unavailable';
+          break;
+        } on AuthException {
+          lastFailureKind = 'auth_unavailable';
+          break;
+        } on FormatException {
+          // An uncertain response is never treated as a successful ACK.
+          lastFailureKind = 'invalid_rpc_response';
+          break;
+        } on TimeoutException {
+          lastFailureKind = 'rpc_timeout';
+          break;
+        } catch (_) {
+          // Neither a payload nor raw exception is exposed in diagnostics.
+          lastFailureKind = 'rpc_unexpected_failure';
+          break;
+        }
+      }
+    } catch (_) {
+      // Do not expose a raw ObjectBox exception or account data.
+      lastFailureKind = 'local_queue_failure';
+    }
+  }
+
+  static bool _isCompletedSnapshot(WorkoutSyncOperation op) {
+    if (op.action != 'upsert') return false;
+    try {
+      final decoded = jsonDecode(op.payloadJson);
+      return decoded is Map<String, dynamic> &&
+          decoded['schema_version'] == 1 &&
+          decoded['status'] == 'completed' &&
+          decoded['origin'] == 'northstar_phone' &&
+          decoded['workout_id'] == op.sessionUuid;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    _poller?.cancel();
+    if (_started) {
+      WidgetsBinding.instance.removeObserver(this);
+      auth.removeListener(kick);
+    }
+  }
+}
+
+/// Keep the coordinator alive only as long as the authenticated account UI.
+/// This widget is never mounted for locked, anonymous or guest sessions.
+class AccountWorkoutUploadHost extends ConsumerWidget {
+  const AccountWorkoutUploadHost({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(workoutUploadCoordinatorProvider);
+    return child;
+  }
+}

@@ -36,6 +36,18 @@ class WorkoutSyncOperation {
   final int createdAtMs;
 }
 
+/// Immutable request captured before a network call; the retry uses the
+/// same operation UUID and the same server expected revision.
+class ReservedWorkoutUpload {
+  const ReservedWorkoutUpload({
+    required this.operation,
+    required this.expectedServerRevision,
+  });
+
+  final WorkoutSyncOperation operation;
+  final int expectedServerRevision;
+}
+
 class ObjectBoxWorkoutOutbox {
   ObjectBoxWorkoutOutbox(Store store, {UuidFactory? uuidFactory})
     : _store = store,
@@ -310,6 +322,191 @@ class ObjectBoxWorkoutOutbox {
     WorkoutSyncOutboxEntity_.sessionUuid,
     workoutUuid.toLowerCase(),
   ).any((op) => op.state == 'blocked');
+
+  /// Reconcile already completed, account-bound sessions created before
+  /// this outbox existed. Only completed native phone logs are eligible.
+  /// Does not touch prior root/guest stores or upload anything itself.
+  int backfillCompleted() => _store.runInTransaction(TxMode.write, () {
+    final query = _sessions
+        .query(WorkoutSessionEntity_.status.equals('completed'))
+        .build();
+    try {
+      var added = 0;
+      for (final session in query.find()) {
+        if (session.deletedAtMs != null ||
+            session.completedAtMs == null ||
+            session.origin != 'northstar_phone') {
+          continue;
+        }
+        try {
+          if (_find(
+            _operations,
+            WorkoutSyncOutboxEntity_.sessionUuid,
+            session.uuid.toLowerCase(),
+          ).isNotEmpty) {
+            continue;
+          }
+          // A malformed historical session must never starve a newer
+          // completed session already waiting in the same owner's outbox.
+          // Only predictable, per-session validation errors are skipped.
+          enqueueCompletedInTransaction(session.uuid);
+          added++;
+        } on StateError {
+          continue;
+        } on FormatException {
+          continue;
+        }
+      }
+      return added;
+    } finally {
+      query.close();
+    }
+  });
+
+  /// Durable dequeue/reservation in an account-specific transaction.
+  /// A pending attempt is never deleted. We record the attempt *before*
+  /// networking so a process crash repeats the same operation after backoff.
+  /// Previous revisions of the same workout must be acknowledged first.
+  ReservedWorkoutUpload? reserveNext({
+    required int nowMs,
+    void Function()? onBlocked,
+  }) {
+    var blockedAny = false;
+    final reserved = _store.runInTransaction(TxMode.write, () {
+      final query = _operations
+          .query(WorkoutSyncOutboxEntity_.state.equals('pending'))
+          .order(WorkoutSyncOutboxEntity_.createdAtMs)
+          .order(WorkoutSyncOutboxEntity_.localRevision)
+          .order(WorkoutSyncOutboxEntity_.sessionUuid)
+          .order(WorkoutSyncOutboxEntity_.operationUuid)
+          .build();
+      try {
+        query.limit = 500;
+        for (final op in query.find()) {
+          if (op.action != 'upsert' ||
+              op.payloadJson.isEmpty ||
+              op.localRevision < 1) {
+            // Corrupt legacy operations never reach the network.
+            _transition(op, 'blocked', 'invalid_queue');
+            blockedAny = true;
+            continue;
+          }
+          final lastAttempt = op.attemptedAtMs;
+          if (lastAttempt != null &&
+              lastAttempt <= nowMs &&
+              nowMs < lastAttempt + retryDelayMs(op.attempts)) {
+            continue;
+          }
+          final sameWorkout = _find(
+            _operations,
+            WorkoutSyncOutboxEntity_.sessionUuid,
+            op.sessionUuid,
+          );
+          final predecessors = sameWorkout
+              .where((other) => other.localRevision < op.localRevision)
+              .toList();
+          // Never send a later edit past a pending, rejected or conflicting
+          // earlier revision, or a lower revision after a newer ACK.
+          if (predecessors.any((prev) => prev.state != 'acknowledged') ||
+              sameWorkout.any(
+                (other) =>
+                    other.localRevision > op.localRevision &&
+                    other.state == 'acknowledged',
+              )) {
+            continue;
+          }
+          final acknowledgements =
+              predecessors
+                  .where(
+                    (other) =>
+                        other.state == 'acknowledged' &&
+                        other.serverRevision != null,
+                  )
+                  .toList()
+                ..sort((a, b) => b.localRevision.compareTo(a.localRevision));
+          final expected = acknowledgements.isEmpty
+              ? 0
+              : acknowledgements.first.serverRevision!;
+          op.attemptedAtMs = nowMs;
+          op.attempts++;
+          _operations.put(op);
+          return ReservedWorkoutUpload(
+            operation: WorkoutSyncOperation(
+              operationUuid: op.operationUuid,
+              sessionUuid: op.sessionUuid,
+              localRevision: op.localRevision,
+              action: op.action,
+              payloadJson: op.payloadJson,
+              createdAtMs: op.createdAtMs,
+            ),
+            expectedServerRevision: expected,
+          );
+        }
+        return null;
+      } finally {
+        query.close();
+      }
+    });
+    // Notify after commit, never inside ObjectBox's write transaction.
+    if (blockedAny) onBlocked?.call();
+    return reserved;
+  }
+
+  /// Exponential retry delay after a potentially failed/uncertain request.
+  /// Bounded: 5 seconds, 10 seconds, ... up to 10 minutes.
+  static int retryDelayMs(int attempts) {
+    if (attempts <= 0) return 0;
+    final exponent = attempts > 8 ? 8 : attempts - 1;
+    final milliseconds = 5000 * (1 << exponent);
+    return milliseconds > 600000 ? 600000 : milliseconds;
+  }
+
+  bool markConflict({
+    required String operationUuid,
+    required int localRevision,
+  }) => _finalize(
+    operationUuid: operationUuid,
+    localRevision: localRevision,
+    state: 'conflict',
+    reason: 'revision_conflict',
+  );
+
+  bool markBlocked({
+    required String operationUuid,
+    required int localRevision,
+    required String code,
+  }) => _finalize(
+    operationUuid: operationUuid,
+    localRevision: localRevision,
+    state: 'blocked',
+    reason: code,
+  );
+
+  bool _finalize({
+    required String operationUuid,
+    required int localRevision,
+    required String state,
+    required String reason,
+  }) => _store.runInTransaction(TxMode.write, () {
+    final rows = _find(
+      _operations,
+      WorkoutSyncOutboxEntity_.operationUuid,
+      operationUuid,
+    );
+    if (rows.length != 1) return false;
+    final row = rows.single;
+    if (row.localRevision != localRevision || row.state != 'pending') {
+      return false;
+    }
+    _transition(row, state, reason);
+    return true;
+  });
+
+  void _transition(WorkoutSyncOutboxEntity op, String state, String code) {
+    op.state = state;
+    op.errorCode = code;
+    _operations.put(op);
+  }
 
   /// Designed for P2-04 worker integration; a late ACK cannot accidentally
   /// acknowledge a newer operation or discard its snapshot.
