@@ -70,6 +70,17 @@ jobs:
       - name: Resolve from committed lockfile
         working-directory: apps/mobile
         run: flutter pub get --enforce-lockfile
+      # Temporary pinned formatter capture; removed immediately after update.
+      - name: Temporary P2-06 formatted test capture
+        working-directory: apps/mobile
+        run: |
+          dart format test/sync/workout_foreground_restore_coordinator_test.dart
+          python3 - <<'PY'
+          import json
+          path='test/sync/workout_foreground_restore_coordinator_test.dart'
+          print('RESTORE22_FMT:' + json.dumps({'content':open(path).read()}))
+          PY
+          exit 1
       - name: Format
         working-directory: apps/mobile
         run: dart format --output=none --set-exit-if-changed lib test
