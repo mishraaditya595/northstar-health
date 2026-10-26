@@ -539,8 +539,8 @@ class ObjectBoxWorkoutRestoreImporter {
   }
 }
 
-/// Opt-in repository factory for a *later* single-owner foreground pull
-/// coordinator. Merely obtaining this provider starts no RPC or importer.
+/// Owner-bound repository factory mounted by the authenticated foreground
+/// sync coordinator. Constructing it does not start any RPC or import.
 final workoutRestoreImporterProvider =
     Provider<
       ObjectBoxWorkoutRestoreImporter Function(String, String? Function())
