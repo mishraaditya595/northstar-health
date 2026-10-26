@@ -41,3 +41,6 @@ apps/watch_os/NorthStarWatch.xcodeproj/
 
 # Test-only ObjectBox macOS native library; downloaded and removed by script.
 apps/mobile/libobjectbox.dylib
+
+# Contributor-local Supabase public settings (see docs/CONTRIBUTOR_SUPABASE_SETUP.md)
+apps/mobile/supabase.local.json

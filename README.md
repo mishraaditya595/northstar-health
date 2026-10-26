@@ -83,8 +83,9 @@ flutter pub get
 dart format --output=none --set-exit-if-changed lib test
 flutter analyze
 flutter test
-flutter run
 ```
+
+**Running the app needs a Supabase backend** because sign-in is mandatory. Create your own free project and follow [Run NorthStar against your own Supabase project](docs/CONTRIBUTOR_SUPABASE_SETUP.md), then run `flutter run --dart-define-from-file=supabase.local.json`.
 
 To build the Wear OS app, follow [apps/wear_os/README.md](apps/wear_os/README.md). To generate and inspect the watchOS target on macOS, follow [apps/watch_os/README.md](apps/watch_os/README.md). Both target official native SDKs; experiment with Flutter watch rendering under `experiments/` separately. Never assume a watch app is distributed simply because source code exists in the monorepo.
 
