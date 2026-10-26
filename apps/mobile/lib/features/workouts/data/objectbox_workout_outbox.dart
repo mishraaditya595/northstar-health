@@ -342,10 +342,10 @@ class ObjectBoxWorkoutOutbox {
         }
         try {
           if (_find(
-            _operations,
-            WorkoutSyncOutboxEntity_.sessionUuid,
-            session.uuid.toLowerCase(),
-          ).isNotEmpty ||
+                _operations,
+                WorkoutSyncOutboxEntity_.sessionUuid,
+                session.uuid.toLowerCase(),
+              ).isNotEmpty ||
               _find(
                 _remote,
                 WorkoutRemoteStateEntity_.workoutUuid,
