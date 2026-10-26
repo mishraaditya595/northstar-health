@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../account/account_auth_controller.dart';
 import '../account/account_auth_provider.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
+import 'cloud_session_guard.dart';
 
 /// Supabase RPC authorization is decided by the server JWT + RLS. The mobile
 /// binary only contains its public publishable key, never privileged tokens.
@@ -24,28 +25,13 @@ class SupabaseWorkoutUploadTransport implements WorkoutUploadTransport {
   final SupabaseClient client;
   final String accountId;
 
-  /// Same guard used immediately before the actual RPC. Pure for tests;
-  /// never substitutes for the server's auth.uid() and RLS checks.
-  static bool matchesSession({
-    required String? sessionUserId,
-    required bool anonymous,
-    required int? expiresAtSeconds,
-    required String accountId,
-    required int nowSeconds,
-  }) =>
-      sessionUserId != null &&
-      sessionUserId.toLowerCase() == accountId.toLowerCase() &&
-      !anonymous &&
-      expiresAtSeconds != null &&
-      expiresAtSeconds > nowSeconds;
-
   @override
   Future<Map<String, dynamic>> send(
     WorkoutSyncOperation operation, {
     required int expectedServerRevision,
   }) async {
     final session = client.auth.currentSession;
-    if (!matchesSession(
+    if (!matchesCloudWorkoutSession(
       sessionUserId: session?.user.id,
       anonymous: session?.user.isAnonymous ?? true,
       expiresAtSeconds: session?.expiresAt,

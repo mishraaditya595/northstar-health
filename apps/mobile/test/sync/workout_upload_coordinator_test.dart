@@ -7,9 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:northstar_health/core/ids/uuid_factory.dart';
 import 'package:northstar_health/core/storage/objectbox_store_provider.dart';
-import 'package:northstar_health/features/account/account_auth_provider.dart';
-import 'package:northstar_health/features/sync/workout_upload_coordinator.dart';
 import 'package:northstar_health/features/account/account_auth_controller.dart';
+import 'package:northstar_health/features/account/account_auth_provider.dart';
+import 'package:northstar_health/features/sync/cloud_session_guard.dart';
+import 'package:northstar_health/features/sync/workout_upload_coordinator.dart';
 import 'package:northstar_health/features/workouts/data/objectbox_workout_outbox.dart';
 import 'package:northstar_health/features/workouts/data/workout_entities.dart';
 import 'package:northstar_health/objectbox.g.dart';
@@ -573,14 +574,13 @@ void main() {
 
   test('transport checks session owner, expiry and anonymous status', () async {
     final seconds = DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
-    bool allowed(String? id, bool anon, int? exp) =>
-        SupabaseWorkoutUploadTransport.matchesSession(
-          sessionUserId: id,
-          anonymous: anon,
-          expiresAtSeconds: exp,
-          accountId: accountA,
-          nowSeconds: seconds,
-        );
+    bool allowed(String? id, bool anon, int? exp) => matchesCloudWorkoutSession(
+      sessionUserId: id,
+      anonymous: anon,
+      expiresAtSeconds: exp,
+      accountId: accountA,
+      nowSeconds: seconds,
+    );
     expect(allowed(accountA, false, seconds + 300), true);
     expect(allowed(accountB, false, seconds + 300), false);
     expect(allowed(accountA, true, seconds + 300), false);
