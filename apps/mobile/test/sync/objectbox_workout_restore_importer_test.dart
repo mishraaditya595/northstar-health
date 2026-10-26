@@ -448,8 +448,13 @@ void main() {
     expect(importer.readCursor().blockedCode, 'invalid_timestamp');
     expect(
       () => importer.applyPage(feed(), afterSeq: 0, requestedEpoch: null),
-      throwsA(isA<RestoreImportException>()
-          .having((e) => e.code, 'code', 'restore_blocked')),
+      throwsA(
+        isA<RestoreImportException>().having(
+          (e) => e.code,
+          'code',
+          'restore_blocked',
+        ),
+      ),
     );
     expect(importer.readCursor().blockedCode, 'invalid_timestamp');
     expect(importer.clearBlocked(afterSeq: 0, requestedEpoch: epochA), false);
@@ -644,71 +649,113 @@ void main() {
     expect(reserved.operation.localRevision, 2);
   });
 
-  test('tombstone-only metadata prevents historical reupload after restart', () {
-    importer.applyPage(feed(tombstone: true),
-        afterSeq: 0, requestedEpoch: null);
-    store.close();
-    store = Store(getObjectBoxModel(), directory: dir.path);
-    bind();
-    // Simulate a stale legacy row found during a subsequent backfill.
-    final now = DateTime.utc(2026, 10, 25).millisecondsSinceEpoch;
-    store.box<WorkoutSessionEntity>().put(
-      WorkoutSessionEntity(
-        uuid: workout,
-        name: 'Legacy local row',
-        status: 'completed',
-        completedAtMs: now + 3600000,
-        startedAtMs: now,
-        originalOffsetMinutes: 0,
-        updatedAtMs: now,
-      ),
-    );
-    final outbox = ObjectBoxWorkoutOutbox(store);
-    expect(outbox.backfillCompleted(), 0);
-    expect(outbox.pending(), isEmpty);
-    expect(store.box<WorkoutRemoteStateEntity>().getAll().single.deleted, true);
-  });
+  test(
+    'tombstone-only metadata prevents historical reupload after restart',
+    () {
+      importer.applyPage(
+        feed(tombstone: true),
+        afterSeq: 0,
+        requestedEpoch: null,
+      );
+      store.close();
+      store = Store(getObjectBoxModel(), directory: dir.path);
+      bind();
+      // Simulate a stale legacy row found during a subsequent backfill.
+      final now = DateTime.utc(2026, 10, 25).millisecondsSinceEpoch;
+      store.box<WorkoutSessionEntity>().put(
+        WorkoutSessionEntity(
+          uuid: workout,
+          name: 'Legacy local row',
+          status: 'completed',
+          completedAtMs: now + 3600000,
+          startedAtMs: now,
+          originalOffsetMinutes: 0,
+          updatedAtMs: now,
+        ),
+      );
+      final outbox = ObjectBoxWorkoutOutbox(store);
+      expect(outbox.backfillCompleted(), 0);
+      expect(outbox.pending(), isEmpty);
+      expect(
+        store.box<WorkoutRemoteStateEntity>().getAll().single.deleted,
+        true,
+      );
+    },
+  );
 
-  test('a durable import blocker survives retries until explicitly cleared', () {
-    importer.applyPage(feed(tombstone: true),
-        afterSeq: 0, requestedEpoch: null);
-    final resurrection = feed(
-      after: 1, requestedEpoch: epochA, seq: 2, revision: 2,
-    );
-    expect(
-      () => importer.applyPage(
-        resurrection, afterSeq: 1, requestedEpoch: epochA,
-      ),
-      throwsA(isA<RestoreImportException>().having(
-        (e) => e.code, 'code', 'tombstone_resurrection')),
-    );
-    final first = importer.readCursor();
-    expect(first.blockedCode, 'tombstone_resurrection');
-    expect(
-      () => importer.applyPage(
-        resurrection, afterSeq: 1, requestedEpoch: epochA,
-      ),
-      throwsA(isA<RestoreImportException>().having(
-        (e) => e.code, 'code', 'restore_blocked')),
-    );
-    expect(importer.readCursor().blockedCode, first.blockedCode);
-    expect(importer.readCursor().nextCursor, 1);
-    expect(importer.recordBlocked(
-      afterSeq: 1, requestedEpoch: epochA, code: 'invalid_timestamp',
-    ), false);
-    expect(importer.clearBlocked(afterSeq: 0, requestedEpoch: epochA), false);
-    expect(importer.clearBlocked(afterSeq: 1, requestedEpoch: epochA), true);
-    expect(importer.readCursor().blockedCode, isNull);
-  });
+  test(
+    'a durable import blocker survives retries until explicitly cleared',
+    () {
+      importer.applyPage(
+        feed(tombstone: true),
+        afterSeq: 0,
+        requestedEpoch: null,
+      );
+      final resurrection = feed(
+        after: 1,
+        requestedEpoch: epochA,
+        seq: 2,
+        revision: 2,
+      );
+      expect(
+        () => importer.applyPage(
+          resurrection,
+          afterSeq: 1,
+          requestedEpoch: epochA,
+        ),
+        throwsA(
+          isA<RestoreImportException>().having(
+            (e) => e.code,
+            'code',
+            'tombstone_resurrection',
+          ),
+        ),
+      );
+      final first = importer.readCursor();
+      expect(first.blockedCode, 'tombstone_resurrection');
+      expect(
+        () => importer.applyPage(
+          resurrection,
+          afterSeq: 1,
+          requestedEpoch: epochA,
+        ),
+        throwsA(
+          isA<RestoreImportException>().having(
+            (e) => e.code,
+            'code',
+            'restore_blocked',
+          ),
+        ),
+      );
+      expect(importer.readCursor().blockedCode, first.blockedCode);
+      expect(importer.readCursor().nextCursor, 1);
+      expect(
+        importer.recordBlocked(
+          afterSeq: 1,
+          requestedEpoch: epochA,
+          code: 'invalid_timestamp',
+        ),
+        false,
+      );
+      expect(importer.clearBlocked(afterSeq: 0, requestedEpoch: epochA), false);
+      expect(importer.clearBlocked(afterSeq: 1, requestedEpoch: epochA), true);
+      expect(importer.readCursor().blockedCode, isNull);
+    },
+  );
 
   test('replaying the same old cursor reset is a no-op after epoch switch', () {
     importer.applyPage(feed(), afterSeq: 0, requestedEpoch: null);
     final reset = feed(
-      after: 1, requestedEpoch: epochA, epoch: epochB, reset: true,
+      after: 1,
+      requestedEpoch: epochA,
+      epoch: epochB,
+      reset: true,
     );
     importer.applyPage(reset, afterSeq: 1, requestedEpoch: epochA);
     final replay = importer.applyPage(
-      reset, afterSeq: 1, requestedEpoch: epochA,
+      reset,
+      afterSeq: 1,
+      requestedEpoch: epochA,
     );
     expect(replay.alreadyApplied, true);
     expect(replay.cursor.epoch, epochB);
@@ -716,22 +763,37 @@ void main() {
     expect(store.box<WorkoutSessionEntity>().count(), 1);
   });
 
-  test('same remote revision with a newer sequence blocks without rewriting', () {
-    importer.applyPage(feed(), afterSeq: 0, requestedEpoch: null);
-    final oldRevision = store.box<WorkoutSessionEntity>().getAll().single.revision;
-    expect(
-      () => importer.applyPage(
-        feed(after: 1, requestedEpoch: epochA, seq: 2, revision: 1),
-        afterSeq: 1, requestedEpoch: epochA,
-      ),
-      throwsA(isA<RestoreImportException>().having(
-        (e) => e.code, 'code', 'duplicate_remote_sequence')),
-    );
-    expect(store.box<WorkoutSessionEntity>().getAll().single.revision,
-        oldRevision);
-    expect(importer.readCursor().nextCursor, 1);
-    expect(importer.readCursor().blockedCode, 'duplicate_remote_sequence');
-  });
+  test(
+    'same remote revision with a newer sequence blocks without rewriting',
+    () {
+      importer.applyPage(feed(), afterSeq: 0, requestedEpoch: null);
+      final oldRevision = store
+          .box<WorkoutSessionEntity>()
+          .getAll()
+          .single
+          .revision;
+      expect(
+        () => importer.applyPage(
+          feed(after: 1, requestedEpoch: epochA, seq: 2, revision: 1),
+          afterSeq: 1,
+          requestedEpoch: epochA,
+        ),
+        throwsA(
+          isA<RestoreImportException>().having(
+            (e) => e.code,
+            'code',
+            'duplicate_remote_sequence',
+          ),
+        ),
+      );
+      expect(
+        store.box<WorkoutSessionEntity>().getAll().single.revision,
+        oldRevision,
+      );
+      expect(importer.readCursor().nextCursor, 1);
+      expect(importer.readCursor().blockedCode, 'duplicate_remote_sequence');
+    },
+  );
 
   test('empty hasMore page is rejected even at the importer boundary', () {
     final invalid = WorkoutRestorePage(
@@ -743,8 +805,13 @@ void main() {
     );
     expect(
       () => importer.applyPage(invalid, afterSeq: 0, requestedEpoch: null),
-      throwsA(isA<RestoreImportException>().having(
-        (e) => e.code, 'code', 'invalid_page_cursor')),
+      throwsA(
+        isA<RestoreImportException>().having(
+          (e) => e.code,
+          'code',
+          'invalid_page_cursor',
+        ),
+      ),
     );
     expect(importer.readCursor().nextCursor, 0);
     expect(importer.readCursor().blockedCode, 'invalid_page_cursor');
@@ -758,21 +825,36 @@ void main() {
       activeAccountId: () => activeOwner,
       clock: () => fixed,
     );
-    expect(importer.recordBlocked(
-      afterSeq: 0, requestedEpoch: null, code: 'invalid_timestamp',
-    ), true);
+    expect(
+      importer.recordBlocked(
+        afterSeq: 0,
+        requestedEpoch: null,
+        code: 'invalid_timestamp',
+      ),
+      true,
+    );
     final blocked = store.box<WorkoutRestoreCursorEntity>().getAll().single;
     expect(blocked.blockedAtMs, fixed.millisecondsSinceEpoch);
     expect(importer.clearBlocked(afterSeq: 0, requestedEpoch: null), true);
     importer.applyPage(feed(), afterSeq: 0, requestedEpoch: null);
-    expect(store.box<WorkoutSessionEntity>().getAll().single.updatedAtMs,
-        fixed.millisecondsSinceEpoch);
-    importer.applyPage(
-      feed(after: 1, requestedEpoch: epochA, seq: 2,
-          revision: 2, tombstone: true),
-      afterSeq: 1, requestedEpoch: epochA,
+    expect(
+      store.box<WorkoutSessionEntity>().getAll().single.updatedAtMs,
+      fixed.millisecondsSinceEpoch,
     );
-    expect(store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs,
-        fixed.millisecondsSinceEpoch);
+    importer.applyPage(
+      feed(
+        after: 1,
+        requestedEpoch: epochA,
+        seq: 2,
+        revision: 2,
+        tombstone: true,
+      ),
+      afterSeq: 1,
+      requestedEpoch: epochA,
+    );
+    expect(
+      store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs,
+      fixed.millisecondsSinceEpoch,
+    );
   });
 }
