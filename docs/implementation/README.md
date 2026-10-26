@@ -23,6 +23,8 @@ The [roadmap](../ROADMAP.md) defines product milestones. Each note records actua
 
 - [P2-05 Server progress aggregation](phase-2/p2-05-server-progress.md) — PR #17 (**merged 2026-10-26**), server-derived day-level workout aggregates, nullable weighted-volume semantics, authenticated read API and SQL regressions. No Flutter UI / raw physiological data.
 
-- [P2-06 Restore feed and conflict handling](phase-2/p2-06-restore-and-conflicts.md) — **implementation started**, read-only owner-isolated paginated server change feed and pgTAP tests. Safe mobile import, reconciliation, deletion and conflict UX remain open.
+- [P2-06 Restore feed and conflict handling](phase-2/p2-06-restore-and-conflicts.md) — PR #18 **merged**, owner-isolated paginated server change feed with a rollback epoch and pgTAP tests. Safe mobile import, reconciliation, deletion and conflict UX remain open.
+
+- [P2-06 Flutter restore transport and strict decoder](phase-2/p2-06-mobile-restore-transport.md) — **draft first mobile slice**, authenticated read-only RPC, validated epoch/pagination and completed workout DTOs; deliberately not yet mounted until a safe ObjectBox importer exists.
 
 Authoritative policy: [ADR-0003](../adr/0003-data-cloud-health.md) **as superseded for auth/cloud workout scope** by [ADR-0005](../adr/0005-mandatory-auth-and-workout-sync.md), [ObjectBox](../OBJECTBOX.md), and [Cloud Sync](../CLOUD_SYNC.md).

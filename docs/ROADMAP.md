@@ -32,7 +32,7 @@ ObjectBox schema and generated model committed; domain models and repository bou
 | P2-03 — Durable completed-workout outbox | #15 | **Merged** | Device rollback/restart QA |
 | P2-04 — Automatic authenticated foreground uploader | #16 | **Merged** | Live JWT/RLS and network interruption tests |
 | P2-05 — Server-side workout progress | [#17](https://github.com/mishraaditya595/northstar-health/pull/17) | **Merged 2026-10-26** | Hosted migration drift, independent security review, live Auth/RLS, controlled deployment |
-| P2-06 — Multi-device restore and conflicts | [Draft implementation](implementation/phase-2/p2-06-restore-and-conflicts.md) | **In progress — server restore feed slice** | Owner change feed, guarded ObjectBox import, conflict and dependency recovery |
+| P2-06 — Multi-device restore and conflicts | [Server feed](implementation/phase-2/p2-06-restore-and-conflicts.md) · [Mobile decoder](implementation/phase-2/p2-06-mobile-restore-transport.md) | **In progress — server feed merged (#18); Flutter transport and strict decoder in draft PR** | Crash-atomic ObjectBox importer, durable cursor/epoch, conflict/dependency recovery and device E2E |
 | P2-07 — Account, progress/sync status, export and deletion UI | — | Planned | Explicit sync failure recovery and data rights |
 | P2-08 — End-to-end validation and release readiness | — | Planned | iOS/Android physical-device, performance, CI/CD gates |
 
