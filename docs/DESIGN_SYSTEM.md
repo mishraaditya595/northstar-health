@@ -46,7 +46,7 @@ All of these live in `apps/mobile/lib/core/design/`. Look comes from `NorthstarT
 | Tab/page title, theme switch, avatar | `PageHeader` | `page_header.dart` |
 | Sub-page back control | `NsBackButton` (in `AppBar`) | `page_header.dart` |
 | Row with glyph, title, subtitle | `NsListCard` | `page_header.dart` |
-| Status pill | `NsTag` | `page_header.dart` |
+| Status pill (`warning: true` for attention states, prototype amber) | `NsTag` | `page_header.dart` |
 | Tinted note or hint | `InsightCard` | `page_header.dart` |
 | Section title with right label | `SectionHeading` | `section.dart` |
 | Headline number card with optional trend | `StatTile` + `NsTrend` | `stats.dart` |
