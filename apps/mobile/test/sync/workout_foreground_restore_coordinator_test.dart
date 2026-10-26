@@ -465,6 +465,165 @@ void main() {
     );
   });
 
+
+  test('repeated cursor reset halts a pass without a durable blocker',
+      () async {
+    pull.handler = (_, _) async => page(
+      cursorReset: true,
+      cursorEpoch: newEpoch,
+      nextCursor: 0,
+      changes: const [],
+    );
+    await worker.drain();
+    expect(pull.requests, [(0, null, 100), (0, newEpoch, 100)]);
+    expect(worker.lastRestoreFailureKind, 'repeated_cursor_reset');
+    expect(importer.readCursor().epoch, newEpoch);
+    expect(importer.readCursor().nextCursor, 0);
+    expect(importer.readCursor().blockedCode, isNull);
+  });
+
+  test('concurrent already-applied page reports no progress, not data loss',
+      () async {
+    final first = page(
+      nextCursor: 100,
+      hasMore: true,
+      changes: [for (var i = 1; i <= 100; i++) change(i)],
+    );
+    pull.handler = (_, _) async {
+      // Simulates a second foreground reader committing while the first
+      // request is outstanding. The stale page is replayed harmlessly.
+      importer.applyPage(first, afterSeq: 0, requestedEpoch: null);
+      return first;
+    };
+    await worker.drain();
+    expect(worker.lastRestoreFailureKind, 'restore_no_progress');
+    expect(importer.readCursor().nextCursor, 100);
+    expect(importer.readCursor().blockedCode, isNull);
+    expect(store.box<WorkoutSessionEntity>().count(), 100);
+    expect(pull.requests, hasLength(1));
+  });
+
+  test('four-page budget schedules the fifth page in a serialized pass',
+      () async {
+    pull.handler = (after, _) async {
+      final next = after + 100 >= 401 ? 401 : after + 100;
+      return page(
+        nextCursor: next,
+        hasMore: next < 401,
+        changes: [for (var i = after + 1; i <= next; i++) change(i)],
+      );
+    };
+    await worker.drain();
+    expect(pull.requests.map((request) => request.$1),
+        [0, 100, 200, 300, 400]);
+    expect(importer.readCursor().nextCursor, 401);
+    expect(store.box<WorkoutSessionEntity>().count(), 401);
+    expect(notifications, 5);
+    expect(worker.lastRestoreFailureKind, isNull);
+  });
+
+  test('restarts midway through paging from committed epoch and cursor',
+      () async {
+    pull.handler = (after, _) async {
+      if (after == 0) {
+        return page(
+          nextCursor: 100,
+          hasMore: true,
+          changes: [for (var i = 1; i <= 100; i++) change(i)],
+        );
+      }
+      throw StateError('offline on second page');
+    };
+    await worker.drain();
+    expect(importer.readCursor().nextCursor, 100);
+    expect(importer.readCursor().epoch, epoch);
+    expect(store.box<WorkoutSessionEntity>().count(), 100);
+    expect(worker.lastRestoreFailureKind, 'restore_unavailable');
+
+    worker.dispose();
+    store.close();
+    store = Store(getObjectBoxModel(), directory: dir.path);
+    outbox = ObjectBoxWorkoutOutbox(store);
+    importer = ObjectBoxWorkoutRestoreImporter(
+      store, accountId: accountA, activeAccountId: () => auth.userId,
+    );
+    makeWorker();
+    pull.requests.clear();
+    pull.handler = (after, requestedEpoch) async {
+      expect(after, 100);
+      expect(requestedEpoch, epoch);
+      return page(nextCursor: 101, changes: [change(101)]);
+    };
+    await worker.drain();
+    expect(pull.requests, [(100, epoch, 100)]);
+    expect(importer.readCursor().nextCursor, 101);
+    expect(store.box<WorkoutSessionEntity>().count(), 101);
+    expect(notifications, 2);
+  });
+
+  test('device importing its own upload ACK does not bump local revision',
+      () async {
+    final started = DateTime.utc(2026, 10, 25, 9).millisecondsSinceEpoch;
+    store.box<WorkoutSessionEntity>().put(WorkoutSessionEntity(
+      uuid: workout,
+      name: 'Restored workout',
+      revision: 1,
+      status: 'completed',
+      origin: 'northstar_phone',
+      startedAtMs: started,
+      completedAtMs: started + 3600000,
+      originalOffsetMinutes: 330,
+      updatedAtMs: started,
+    ));
+    store.box<WorkoutSyncOutboxEntity>().put(WorkoutSyncOutboxEntity(
+      operationUuid: operation,
+      sessionUuid: workout,
+      localRevision: 1,
+      action: 'upsert',
+      payloadJson:
+          '{"schema_version":1,"workout_id":"$workout","status":"completed","origin":"northstar_phone"}',
+      createdAtMs: 10,
+    ));
+    pull.handler = (_, _) async =>
+        page(changes: [change(1, id: workout)]);
+    await worker.drain();
+    final ack = store.box<WorkoutSyncOutboxEntity>().getAll().single;
+    expect(ack.state, 'acknowledged');
+    expect(ack.serverRevision, 1);
+    expect(pull.requests, hasLength(1));
+    final local = store.box<WorkoutSessionEntity>().getAll().single;
+    expect(local.revision, 1);
+    expect(local.name, 'Restored workout');
+    expect(store.box<WorkoutRemoteStateEntity>().getAll().single.serverRevision, 1);
+    expect(store.box<WorkoutSyncOutboxEntity>().count(), 1);
+  });
+
+  test('real Riverpod history provider refreshes after imported workout',
+      () async {
+    pull.handler = (after, _) async =>
+        after == 0 ? page() : page(nextCursor: after, changes: const []);
+    final container = ProviderContainer(overrides: [
+      objectBoxStoreProvider.overrideWithValue(store),
+      accountAuthControllerProvider.overrideWithValue(auth),
+      workoutUploadTransportProvider.overrideWithValue((_) => push),
+      workoutRestoreTransportProvider.overrideWithValue((_) => pull),
+    ]);
+    final subscription = container.listen(
+      completedWorkoutHistoryProvider, (_, _) {}, fireImmediately: true,
+    );
+    try {
+      final initially = await container.read(completedWorkoutHistoryProvider.future);
+      expect(initially.sessions, isEmpty);
+      final mounted = container.read(workoutUploadCoordinatorProvider);
+      await mounted.drain();
+      final refreshed = await container.read(completedWorkoutHistoryProvider.future);
+      expect(refreshed.sessions.map((row) => row.uuid), [workout]);
+    } finally {
+      subscription.close();
+      container.dispose();
+    }
+  });
+
   testWidgets('authenticated account host starts restore and resumes pull', (
     tester,
   ) async {
