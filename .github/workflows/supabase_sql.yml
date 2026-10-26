@@ -1,10 +1,10 @@
 name: Supabase SQL and RLS
 
+# Runs on every PR so the `database` check can be required in branch rules.
+# The job itself is skipped (which counts as passing) unless supabase/ or this
+# workflow changed.
 on:
   pull_request:
-    paths:
-      - "supabase/**"
-      - ".github/workflows/supabase_sql.yml"
   push:
     branches: [main]
     paths:
@@ -14,8 +14,32 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      supabase: ${{ steps.filter.outputs.supabase }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            supabase:
+              - "supabase/**"
+              - ".github/workflows/supabase_sql.yml"
+
   database:
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.supabase == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

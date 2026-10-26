@@ -1,8 +1,15 @@
-# Request independent code review for high-risk boundaries.
-# Replace placeholder ownership with real GitHub users/teams before enabling required reviews.
-# Path rules are an inventory, not auto-requested reviewers without assigned owners.
-# /apps/mobile/
-# /apps/watch_os/
-# /apps/wear_os/
-# /contracts/
-# /supabase/
+# The maintainer reviews every change. Branch rules require a code owner
+# review, so no pull request merges without @mishraaditya595's approval.
+* @mishraaditya595
+
+# High-risk boundaries (listed explicitly so new owners can be added per area).
+/supabase/                          @mishraaditya595
+/contracts/                         @mishraaditya595
+/apps/mobile/lib/features/sync/     @mishraaditya595
+/apps/mobile/lib/features/account/  @mishraaditya595
+/apps/mobile/lib/core/storage/      @mishraaditya595
+/apps/mobile/lib/objectbox-model.json @mishraaditya595
+/.github/                           @mishraaditya595
+/AGENTS.md                          @mishraaditya595
+/CLAUDE.md                          @mishraaditya595
+/LICENSE                            @mishraaditya595
