@@ -76,11 +76,7 @@ class ObjectBoxWorkoutRestoreImporter {
     }
   }
 
-  T? _one<T>(
-    Box<T> box,
-    QueryStringProperty<T> property,
-    String key,
-  ) {
+  T? _one<T>(Box<T> box, QueryStringProperty<T> property, String key) {
     final query = box.query(property.equals(key)).build();
     try {
       return query.findFirst();
@@ -142,7 +138,8 @@ class ObjectBoxWorkoutRestoreImporter {
           state?.cursorEpoch != requestedEpoch) {
         return false;
       }
-      final row = state ?? WorkoutRestoreCursorEntity(ownerAccountId: accountId);
+      final row =
+          state ?? WorkoutRestoreCursorEntity(ownerAccountId: accountId);
       row.blockedCode = code;
       row.blockedAtMs = DateTime.now().toUtc().millisecondsSinceEpoch;
       _cursors.put(row);
@@ -186,17 +183,14 @@ class ObjectBoxWorkoutRestoreImporter {
             alreadyApplied: true,
           );
         }
-        if (current.nextCursor != afterSeq ||
-            current.epoch != requestedEpoch) {
+        if (current.nextCursor != afterSeq || current.epoch != requestedEpoch) {
           throw const RestoreImportException('cursor_mismatch');
         }
 
-        final cursor = state ??
-            WorkoutRestoreCursorEntity(ownerAccountId: accountId);
+        final cursor =
+            state ?? WorkoutRestoreCursorEntity(ownerAccountId: accountId);
         if (page.cursorReset) {
-          if (page.nextCursor != 0 ||
-              page.hasMore ||
-              page.changes.isNotEmpty) {
+          if (page.nextCursor != 0 || page.hasMore || page.changes.isNotEmpty) {
             throw const RestoreImportException('invalid_cursor_reset');
           }
           cursor.cursorEpoch = page.cursorEpoch;
@@ -213,8 +207,7 @@ class ObjectBoxWorkoutRestoreImporter {
             alreadyApplied: false,
           );
         }
-        if (requestedEpoch != null &&
-            page.cursorEpoch != requestedEpoch) {
+        if (requestedEpoch != null && page.cursorEpoch != requestedEpoch) {
           throw const RestoreImportException('epoch_mismatch');
         }
         if (page.nextCursor < afterSeq ||
@@ -283,21 +276,24 @@ class ObjectBoxWorkoutRestoreImporter {
   bool _applyChange(RemoteWorkoutChange change, String epoch) {
     final local = _one(_sessions, WorkoutSessionEntity_.uuid, change.workoutId);
     final remote = _one(
-      _remote, WorkoutRemoteStateEntity_.workoutUuid, change.workoutId,
+      _remote,
+      WorkoutRemoteStateEntity_.workoutUuid,
+      change.workoutId,
     );
     if (remote != null && remote.ownerAccountId != accountId) {
       throw const RestoreImportException('owner_store_mismatch');
     }
     final operations = _matching(
-      _outbox, WorkoutSyncOutboxEntity_.sessionUuid, change.workoutId,
+      _outbox,
+      WorkoutSyncOutboxEntity_.sessionUuid,
+      change.workoutId,
     );
     if (operations.any((op) => op.state != 'acknowledged')) {
       throw const RestoreImportException('local_outbox_unresolved');
     }
-    final acknowledged = operations
-        .where((op) => op.state == 'acknowledged')
-        .toList()
-      ..sort((a, b) => b.localRevision.compareTo(a.localRevision));
+    final acknowledged =
+        operations.where((op) => op.state == 'acknowledged').toList()
+          ..sort((a, b) => b.localRevision.compareTo(a.localRevision));
     final latestAck = acknowledged.isEmpty ? null : acknowledged.first;
 
     if (remote != null && remote.deleted && !change.deleted) {
@@ -328,15 +324,16 @@ class ObjectBoxWorkoutRestoreImporter {
           local.completedAtMs == null) {
         throw const RestoreImportException('local_workout_conflict');
       }
-      final knownRevision = remote?.localRevisionAtImport ??
-          latestAck?.localRevision;
+      final knownRevision =
+          remote?.localRevisionAtImport ?? latestAck?.localRevision;
       if (knownRevision == null) {
         throw const RestoreImportException('untracked_local_workout');
       }
       if (local.revision != knownRevision) {
         throw const RestoreImportException('local_revision_changed');
       }
-      if (remote == null && latestAck != null &&
+      if (remote == null &&
+          latestAck != null &&
           latestAck.serverRevision != null &&
           change.serverRevision < latestAck.serverRevision!) {
         throw const RestoreImportException('server_revision_regressed');
@@ -363,14 +360,16 @@ class ObjectBoxWorkoutRestoreImporter {
       final snapshot = change.snapshot!;
       // An unchanged local ACK is already an exact uploaded snapshot;
       // avoid re-materializing and changing its optimistic local revision.
-      final unchangedAck = remote == null &&
+      final unchangedAck =
+          remote == null &&
           local != null &&
           latestAck?.serverRevision == change.serverRevision;
       if (!unchangedAck) {
         localRevision = _materialize(snapshot, local);
       }
     }
-    final metadata = remote ??
+    final metadata =
+        remote ??
         WorkoutRemoteStateEntity(
           ownerAccountId: accountId,
           workoutUuid: change.workoutId,
@@ -395,12 +394,16 @@ class ObjectBoxWorkoutRestoreImporter {
     // Global Unique IDs on exercises and sets must not be stolen from a
     // different local workout. Check first, then write everything atomically.
     final oldExercises = _matching(
-      _exercises, WorkoutExerciseEntity_.sessionUuid, snapshot.uuid,
+      _exercises,
+      WorkoutExerciseEntity_.sessionUuid,
+      snapshot.uuid,
     );
     final oldIds = oldExercises.map((e) => e.uuid).toSet();
     for (final exercise in snapshot.exercises) {
       final prior = _one(
-        _exercises, WorkoutExerciseEntity_.uuid, exercise.uuid,
+        _exercises,
+        WorkoutExerciseEntity_.uuid,
+        exercise.uuid,
       );
       if (prior != null && prior.sessionUuid != snapshot.uuid) {
         throw const RestoreImportException('exercise_uuid_collision');
@@ -408,21 +411,23 @@ class ObjectBoxWorkoutRestoreImporter {
     }
     for (final set in snapshot.sets) {
       final prior = _one(_sets, WorkoutSetEntity_.uuid, set.uuid);
-      if (prior != null &&
-          !oldIds.contains(prior.exerciseUuid)) {
+      if (prior != null && !oldIds.contains(prior.exerciseUuid)) {
         throw const RestoreImportException('set_uuid_collision');
       }
     }
     for (final exercise in oldExercises) {
       for (final set in _matching(
-        _sets, WorkoutSetEntity_.exerciseUuid, exercise.uuid,
+        _sets,
+        WorkoutSetEntity_.exerciseUuid,
+        exercise.uuid,
       )) {
         _sets.remove(set.id);
       }
       _exercises.remove(exercise.id);
     }
     final now = DateTime.now().toUtc().millisecondsSinceEpoch;
-    final session = existing ??
+    final session =
+        existing ??
         WorkoutSessionEntity(
           uuid: snapshot.uuid,
           name: snapshot.name,
@@ -442,29 +447,33 @@ class ObjectBoxWorkoutRestoreImporter {
     session.revision = existing == null ? 1 : existing.revision + 1;
     _sessions.put(session);
     for (final ex in snapshot.exercises) {
-      _exercises.put(WorkoutExerciseEntity(
-        uuid: ex.uuid,
-        sessionUuid: snapshot.uuid,
-        nameSnapshot: ex.nameSnapshot,
-        muscleSnapshot: ex.muscleSnapshot,
-        equipmentSnapshot: ex.equipmentSnapshot,
-        position: ex.position,
-      ));
+      _exercises.put(
+        WorkoutExerciseEntity(
+          uuid: ex.uuid,
+          sessionUuid: snapshot.uuid,
+          nameSnapshot: ex.nameSnapshot,
+          muscleSnapshot: ex.muscleSnapshot,
+          equipmentSnapshot: ex.equipmentSnapshot,
+          position: ex.position,
+        ),
+      );
     }
     for (final set in snapshot.sets) {
-      _sets.put(WorkoutSetEntity(
-        uuid: set.uuid,
-        exerciseUuid: set.exerciseUuid,
-        position: set.position,
-        kind: set.kind.name,
-        status: set.status.name,
-        reps: set.reps,
-        loadGrams: set.loadGrams,
-        inputUnit: set.inputUnit.name,
-        rpe: set.rpe,
-        completedAtMs: set.completedAtUtc?.millisecondsSinceEpoch,
-        updatedAtMs: now,
-      ));
+      _sets.put(
+        WorkoutSetEntity(
+          uuid: set.uuid,
+          exerciseUuid: set.exerciseUuid,
+          position: set.position,
+          kind: set.kind.name,
+          status: set.status.name,
+          reps: set.reps,
+          loadGrams: set.loadGrams,
+          inputUnit: set.inputUnit.name,
+          rpe: set.rpe,
+          completedAtMs: set.completedAtUtc?.millisecondsSinceEpoch,
+          updatedAtMs: now,
+        ),
+      );
     }
     return session.revision;
   }
@@ -473,10 +482,13 @@ class ObjectBoxWorkoutRestoreImporter {
 /// Opt-in repository factory for a *later* single-owner foreground pull
 /// coordinator. Merely obtaining this provider starts no RPC or importer.
 final workoutRestoreImporterProvider =
-    Provider<ObjectBoxWorkoutRestoreImporter Function(String, String? Function())>(
-      (ref) => (owner, activeOwner) => ObjectBoxWorkoutRestoreImporter(
-        ref.watch(objectBoxStoreProvider),
-        accountId: owner,
-        activeAccountId: activeOwner,
-      ),
+    Provider<
+      ObjectBoxWorkoutRestoreImporter Function(String, String? Function())
+    >(
+      (ref) =>
+          (owner, activeOwner) => ObjectBoxWorkoutRestoreImporter(
+            ref.watch(objectBoxStoreProvider),
+            accountId: owner,
+            activeAccountId: activeOwner,
+          ),
     );
