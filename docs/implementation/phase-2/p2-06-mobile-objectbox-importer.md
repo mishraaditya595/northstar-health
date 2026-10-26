@@ -1,6 +1,6 @@
 # P2-06 — Owner-scoped transactional ObjectBox restore importer
 
-**Status:** Implementation under review in [PR #20](https://github.com/mishraaditya595/northstar-health/pull/20). This slice is **NOT** a running automatic restore feature and is **NOT** deployed.
+**Status:** [PR #20](https://github.com/mishraaditya595/northstar-health/pull/20) merged 2026-10-26. Its importer itself performs no RPC. Draft [PR #22](https://github.com/mishraaditya595/northstar-health/pull/22) mounts a serialized foreground coordinator, but **it has not been merged or deployed**.
 
 ## What this slice adds
 
