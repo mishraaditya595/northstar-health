@@ -168,7 +168,9 @@ void main() {
     store = Store(getObjectBoxModel(), directory: dir.path);
     outbox = ObjectBoxWorkoutOutbox(store);
     importer = ObjectBoxWorkoutRestoreImporter(
-      store, accountId: accountA, activeAccountId: () => auth.userId,
+      store,
+      accountId: accountA,
+      activeAccountId: () => auth.userId,
     );
     worker.dispose();
     makeWorker();
@@ -202,8 +204,12 @@ void main() {
   test('new remote epoch resets and refetches from zero safely', () async {
     pull.handler = (after, currentEpoch) async {
       if (currentEpoch == null) {
-        return page(cursorReset: true, cursorEpoch: newEpoch,
-            nextCursor: 0, changes: const []);
+        return page(
+          cursorReset: true,
+          cursorEpoch: newEpoch,
+          nextCursor: 0,
+          changes: const [],
+        );
       }
       expect(currentEpoch, newEpoch);
       expect(after, 0);
@@ -217,14 +223,17 @@ void main() {
   });
 
   test('uploads finish before restore begins; upload ACK is durable', () async {
-    store.box<WorkoutSyncOutboxEntity>().put(WorkoutSyncOutboxEntity(
-      operationUuid: operation,
-      sessionUuid: workout,
-      localRevision: 1,
-      action: 'upsert',
-      payloadJson: '{"schema_version":1,"workout_id":"$workout","status":"completed","origin":"northstar_phone"}',
-      createdAtMs: 10,
-    ));
+    store.box<WorkoutSyncOutboxEntity>().put(
+      WorkoutSyncOutboxEntity(
+        operationUuid: operation,
+        sessionUuid: workout,
+        localRevision: 1,
+        action: 'upsert',
+        payloadJson:
+            '{"schema_version":1,"workout_id":"$workout","status":"completed","origin":"northstar_phone"}',
+        createdAtMs: 10,
+      ),
+    );
     final events = <String>[];
     push.handler = (_, expected) async {
       events.add('upload');
@@ -243,19 +252,24 @@ void main() {
     };
     await worker.drain();
     expect(events, ['upload', 'pull']);
-    expect(store.box<WorkoutSyncOutboxEntity>().getAll().single.state,
-        'acknowledged');
+    expect(
+      store.box<WorkoutSyncOutboxEntity>().getAll().single.state,
+      'acknowledged',
+    );
   });
 
   test('failed upload defers pull without a persistent restore block', () async {
-    store.box<WorkoutSyncOutboxEntity>().put(WorkoutSyncOutboxEntity(
-      operationUuid: operation,
-      sessionUuid: workout,
-      localRevision: 1,
-      action: 'upsert',
-      payloadJson: '{"schema_version":1,"workout_id":"$workout","status":"completed","origin":"northstar_phone"}',
-      createdAtMs: 10,
-    ));
+    store.box<WorkoutSyncOutboxEntity>().put(
+      WorkoutSyncOutboxEntity(
+        operationUuid: operation,
+        sessionUuid: workout,
+        localRevision: 1,
+        action: 'upsert',
+        payloadJson:
+            '{"schema_version":1,"workout_id":"$workout","status":"completed","origin":"northstar_phone"}',
+        createdAtMs: 10,
+      ),
+    );
     push.handler = (_, _) => throw StateError('offline');
     pull.handler = (_, _) async => page();
     await worker.drain();
@@ -264,39 +278,46 @@ void main() {
     expect(importer.readCursor().blockedCode, null);
   });
 
-  test('new local operation during fetch defers import without conflict', () async {
-    final response = Completer<WorkoutRestorePage>();
-    pull.handler = (_, _) => response.future;
-    final ongoing = worker.drain();
-    await Future<void>.delayed(Duration.zero);
-    store.box<WorkoutSyncOutboxEntity>().put(WorkoutSyncOutboxEntity(
-      operationUuid: operation,
-      sessionUuid: workout,
-      localRevision: 1,
-      action: 'upsert',
-      payloadJson: '{}',
-      createdAtMs: 10,
-    ));
-    response.complete(page());
-    await ongoing;
-    expect(store.box<WorkoutSessionEntity>().count(), 0);
-    expect(importer.readCursor().nextCursor, 0);
-    expect(importer.readCursor().blockedCode, null);
-    expect(worker.lastRestoreFailureKind, 'upload_pending');
-  });
+  test(
+    'new local operation during fetch defers import without conflict',
+    () async {
+      final response = Completer<WorkoutRestorePage>();
+      pull.handler = (_, _) => response.future;
+      final ongoing = worker.drain();
+      await Future<void>.delayed(Duration.zero);
+      store.box<WorkoutSyncOutboxEntity>().put(
+        WorkoutSyncOutboxEntity(
+          operationUuid: operation,
+          sessionUuid: workout,
+          localRevision: 1,
+          action: 'upsert',
+          payloadJson: '{}',
+          createdAtMs: 10,
+        ),
+      );
+      response.complete(page());
+      await ongoing;
+      expect(store.box<WorkoutSessionEntity>().count(), 0);
+      expect(importer.readCursor().nextCursor, 0);
+      expect(importer.readCursor().blockedCode, null);
+      expect(worker.lastRestoreFailureKind, 'upload_pending');
+    },
+  );
 
-  test('token expiration and account switch during pull never write old data',
-      () async {
-    final response = Completer<WorkoutRestorePage>();
-    pull.handler = (_, _) => response.future;
-    final ongoing = worker.drain();
-    await Future<void>.delayed(Duration.zero);
-    api.emitSession(accountB);
-    response.complete(page());
-    await ongoing;
-    expect(store.box<WorkoutSessionEntity>().count(), 0);
-    expect(store.box<WorkoutRestoreCursorEntity>().count(), 0);
-  });
+  test(
+    'token expiration and account switch during pull never write old data',
+    () async {
+      final response = Completer<WorkoutRestorePage>();
+      pull.handler = (_, _) => response.future;
+      final ongoing = worker.drain();
+      await Future<void>.delayed(Duration.zero);
+      api.emitSession(accountB);
+      response.complete(page());
+      await ongoing;
+      expect(store.box<WorkoutSessionEntity>().count(), 0);
+      expect(store.box<WorkoutRestoreCursorEntity>().count(), 0);
+    },
+  );
 
   test('offline RPC retry uses unchanged cursor on next drain', () async {
     var attempts = 0;
@@ -315,54 +336,63 @@ void main() {
     expect(worker.lastRestoreFailureKind, null);
   });
 
-  test('malformed remote page blocks and stops further network attempts',
-      () async {
-    pull.handler = (_, _) =>
-        throw const RestoreContractException('invalid_page_cursor');
-    await worker.drain();
-    expect(importer.readCursor().nextCursor, 0);
-    expect(importer.readCursor().blockedCode, 'invalid_page_cursor');
-    await worker.drain();
-    expect(pull.requests, hasLength(1));
-    expect(worker.lastRestoreFailureKind, 'invalid_page_cursor');
-  });
+  test(
+    'malformed remote page blocks and stops further network attempts',
+    () async {
+      pull.handler = (_, _) =>
+          throw const RestoreContractException('invalid_page_cursor');
+      await worker.drain();
+      expect(importer.readCursor().nextCursor, 0);
+      expect(importer.readCursor().blockedCode, 'invalid_page_cursor');
+      await worker.drain();
+      expect(pull.requests, hasLength(1));
+      expect(worker.lastRestoreFailureKind, 'invalid_page_cursor');
+    },
+  );
 
   test('remote collision creates a durable blocker, not retry loop', () async {
     final started = DateTime.utc(2026, 10, 24).millisecondsSinceEpoch;
-    store.box<WorkoutSessionEntity>().put(WorkoutSessionEntity(
-      uuid: workout,
-      name: 'Unsynced old local session',
-      status: 'inProgress',
-      startedAtMs: started,
-      completedAtMs: null,
-      originalOffsetMinutes: 0,
-      updatedAtMs: started,
-    ));
+    store.box<WorkoutSessionEntity>().put(
+      WorkoutSessionEntity(
+        uuid: workout,
+        name: 'Unsynced old local session',
+        status: 'inProgress',
+        startedAtMs: started,
+        completedAtMs: null,
+        originalOffsetMinutes: 0,
+        updatedAtMs: started,
+      ),
+    );
     pull.handler = (_, _) async => page();
     await worker.drain();
     expect(importer.readCursor().blockedCode, 'local_workout_conflict');
     await worker.drain();
     expect(pull.requests, hasLength(1));
-    expect(store.box<WorkoutSessionEntity>().getAll().single.name,
-        'Unsynced old local session');
+    expect(
+      store.box<WorkoutSessionEntity>().getAll().single.name,
+      'Unsynced old local session',
+    );
   });
 
-  testWidgets('authenticated account host starts restore and resumes pull',
-      (tester) async {
+  testWidgets('authenticated account host starts restore and resumes pull', (
+    tester,
+  ) async {
     pull.handler = (after, currentEpoch) async =>
         page(nextCursor: 0, changes: const []);
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        objectBoxStoreProvider.overrideWithValue(store),
-        accountAuthControllerProvider.overrideWithValue(auth),
-        workoutUploadTransportProvider.overrideWithValue((_) => push),
-        workoutRestoreTransportProvider.overrideWithValue((_) => pull),
-      ],
-      child: const Directionality(
-        textDirection: TextDirection.ltr,
-        child: AccountWorkoutUploadHost(child: SizedBox()),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          objectBoxStoreProvider.overrideWithValue(store),
+          accountAuthControllerProvider.overrideWithValue(auth),
+          workoutUploadTransportProvider.overrideWithValue((_) => push),
+          workoutRestoreTransportProvider.overrideWithValue((_) => pull),
+        ],
+        child: const Directionality(
+          textDirection: TextDirection.ltr,
+          child: AccountWorkoutUploadHost(child: SizedBox()),
+        ),
       ),
-    ));
+    );
     await tester.pump();
     expect(pull.requests, [(0, null, 100)]);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
