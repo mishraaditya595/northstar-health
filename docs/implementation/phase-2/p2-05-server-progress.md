@@ -1,6 +1,6 @@
 # P2-05 — Server-side completed workout progress
 
-**Implementation record:** [PR #17](https://github.com/mishraaditya595/northstar-health/pull/17). Check the live GitHub PR and CI status for review/merge state; this document is not an automated status indicator. As of this review, no hosted P2-05 deployment has occurred and live-auth QA remains outstanding.  
+**Implementation record:** [PR #17](https://github.com/mishraaditya595/northstar-health/pull/17), **merged into main on 2026-10-26**. Merge is not a database deployment: hosted P2-05 deployment and live-auth QA remain outstanding.  
 **Owner-approved policy:** [ADR-0005](../../adr/0005-mandatory-auth-and-workout-sync.md). Only account-authenticated, completed NorthStar **phone** workouts are eligible for cloud backup. The server stores no heart rate, sleep, steps, or other physiological health samples.
 
 ## Scope
@@ -18,7 +18,7 @@ P2-05 adds reliable **cross-workout progress** without a separate denormalized c
 **Migration:** `20261026063000_phase2_server_progress_aggregation.sql`.
 
 - Add server-owned `progress_completed_at timestamptz` and `progress_local_day date` on `public.workout_records`.
-- Compute these in a trigger on every insert/update of validated `payload`, `status`, or `deleted_at`. A tombstone clears both; a corrected completion timestamp moves its aggregate from the old day to the new day. Backfill previously committed records without modifying operation UUIDs, server revisions, change cursors, or payloads. The migration uses `SET LOCAL TIMEZONE = 'UTC'` so any legacy timestamp lacking an explicit zone is not interpreted using the deployer's session offset.
+- Compute these in a trigger on every insert/update of validated `payload`, `status`, or `deleted_at`. A tombstone clears both; a corrected completion timestamp moves its aggregate from the old day to the new day. Backfill previously committed records without modifying operation UUIDs, server revisions, change cursors, or payloads. The migration requests `SET LOCAL TIMEZONE = 'UTC'`; however, clean CI replay emitted `25P01` ('SET LOCAL can only be used in transaction blocks'). Until a reviewed deploy-time transaction strategy or additive remedy is verified, **do not assume the UTC session setting took effect for historical zone-free timestamps**.
 - Original local date is **UTC completion instant + the recorded original UTC offset**, not the current device offset or server timezone. This preserves the day originally experienced during travel.
 - Add a partial owner/day index for nondeleted records. P2-01 migration 7 already enforces `status = 'completed'`, so repeating that predicate in the index and read query is redundant.
 - New read-only `public.get_workout_progress(p_start_day date,p_end_day date,p_recent_limit int default 100)` runs as **SECURITY INVOKER**, checks `auth.uid()` and `is_anonymous`, respects existing RLS owner SELECT, and grants EXECUTE only to `authenticated`. It never accepts a `user_id` parameter.
@@ -41,11 +41,11 @@ No speculative 1RM estimate, calorie estimate, normalized exercise catalog ID or
 - Server CAS correction replacing volume and original local day, exact idempotent replay, tombstone removal and derived field cleanup.
 - Two independent synthetic account JWT contexts with no cross-owner progress exposure.
 
-**Verification:** Clean `supabase db reset` must replay all eight migrations, then `supabase test db` must pass both suites. The expanded P2-05 suite now targets **65** assertions (64 existing + 65 new = **129**), including missing counters, three kinds of direct DML denial, UTC output and extreme date input; obtain the latest outcome from PR #17 checks rather than treating a prior pass as current. This is not real multi-client JWT network coverage.
+**Verification:** Clean `supabase db reset` must replay all eight migrations, then `supabase test db` must pass both suites. The expanded P2-05 suite now targets **65** assertions (64 existing + 65 new = **129**), including missing counters, three kinds of direct DML denial, UTC output and extreme date input; the clean Supabase SQL CI passed before merge with 129 assertions; live-auth and device coverage remain outstanding. This is not real multi-client JWT network coverage.
 
 **Development data precheck (26 October 2026):** Read-only aggregate inspection found **0 active completed records**, **0 malformed or zone-free completion timestamps**, and **0 malformed offsets**. The zero malformed counts are not proof that legacy records on other environments are valid; repeat the inspection for each target environment. No records or schema were modified.
 
-**Deployment locking:** The one-transaction backfill `UPDATE` may hold row locks and generate substantial WAL; ordinary `CREATE INDEX` can block writers. Before production, measure row count/size and live write traffic, then choose a maintenance window **or** split the work into verified batched backfill plus a separately managed non-transactional `CREATE INDEX CONCURRENTLY` migration. Don't present this draft as zero-downtime on a populated table.
+**Deployment locking:** The backfill `UPDATE` may hold row locks and generate substantial WAL; ordinary `CREATE INDEX` can block writers. Before production, measure row count/size and live write traffic, then choose a maintenance window **or** split the work into verified batched backfill plus a separately managed non-transactional `CREATE INDEX CONCURRENTLY` migration. Don't present the merged migration as zero-downtime on a populated table.
 
 **Deployment gate:** The connected development Supabase migration history showed only six migrations while GitHub `main` contains seven. Do not deploy P2-05 independently. First reconcile/apply the already-reviewed completed-only seventh P2-01 migration in a controlled dev environment, confirm `supabase_migrations.schema_migrations` matches committed files, then apply P2-05. This PR adds schema SQL to the repo but does not apply it to the connected hosted instance.
 
