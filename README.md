@@ -4,10 +4,7 @@
 
 NorthStar is a proposed privacy-conscious, offline-first health and strength-training app for **Android, iPhone, Android tablets and iPad**, with **Apple Watch and Wear OS** companions planned. Build the Flutter product with a distinct athletic performance aesthetic, not a generic wellness dashboard.
 
-> **Development status — actively implementing workout tracking and authenticated sync.** The Flutter code currently provides fictional demo screens, Riverpod-based theme settings, routing, responsive navigation, quality checks and technical design documents. There is **a functioning local ObjectBox workout/plan database foundation** with
-an exercise catalog, plan editor, and local workout logger/history, but **no shipped Flutter authentication, automatic cloud
-backup, shipping wearable app, Firebase collection, or HealthKit/Health
-Connect connection**. The pictures below are **proposed static UI concepts**, not functioning application screenshots.
+> **Development status — Phase 2 (accounts and completed-workout sync) in progress; not released.** Implemented and merged: the local ObjectBox exercise catalog, plan editor, active workout logger with rest timer, and workout history/progress (Phase 1); mandatory email-code sign-in with account-bound offline storage, a durable completed-workout outbox, an authenticated foreground uploader and server-side progress against a **development** Supabase backend (P2-01 to P2-05). Multi-device restore (P2-06) is in progress. There is **no HealthKit/Health Connect integration, Firebase collection or shipping wearable app**, and nothing is deployed to production. See the [roadmap tracker](docs/ROADMAP.md) for exact status. The pictures below are **proposed static UI concepts**, not application screenshots.
 
 ## UI concept previews
 
@@ -28,8 +25,8 @@ Connect connection**. The pictures below are **proposed static UI concepts**, no
 | Mobile platform | Flutter, iOS / iPadOS / Android and tablet layouts | Fixture app scaffolded |
 | State + dependency injection | Riverpod 3 | Theme state scaffolded |
 | Navigation | go_router, bottom tabs / adaptive side rail | Scaffolded |
-| On-device workout data | **ObjectBox** | Local model, repositories, exercise catalog and training plan editor implemented; live logging pending |
-| User identity + completed-workout sync | **Supabase Auth + PostgreSQL** | P2-01 development schema/RPC under review; Flutter authentication and automatic sync not implemented |
+| On-device workout data | **ObjectBox** | Local model, repositories, exercise catalog, plan editor, live logging and history implemented |
+| User identity + completed-workout sync | **Supabase Auth + PostgreSQL** | Mandatory sign-in, outbox and foreground upload merged against a development backend; restore in progress |
 | Health measurements | **Apple HealthKit and Android Health Connect** | Permissioned read planned; no SDK permissions yet |
 | Workout summary write-back | One app-owned completed workout, opt-in, no duplicates | Planned |
 | Crash/usage telemetry | **Firebase Crashlytics + Analytics** | Chosen, **not installed/collecting**; explicit privacy gate |
@@ -65,7 +62,7 @@ docs/                         # ADRs, security, design, cloud sync, watch and re
 AGENTS.md                     # repository-wide AI coding and review instructions
 ```
 
-**Not a released health product:** local ObjectBox workout logging exists, but Flutter account gating/sync, native Apple Health/Health Connect integrations, Firebase and live watch recording are not shipped. The Supabase P2-01 development backend is not production-ready. Watch source now has native non-recording starter UI; the Xcode watch target must still be embedded in the iOS Runner and validated for companion signing/distribution before release.
+**Not a released health product:** local workout logging, sign-in and completed-workout upload exist in code, but nothing has been released, the Supabase backend is development-only and not production-ready, and native Apple Health/Health Connect integrations, Firebase and live watch recording are not implemented. Watch source now has native non-recording starter UI; the Xcode watch target must still be embedded in the iOS Runner and validated for companion signing/distribution before release.
 
 Read [monorepo boundaries](docs/REPOSITORY_LAYOUT.md), [ADR-0004](docs/adr/0004-production-monorepo.md), [watchOS setup](apps/watch_os/README.md), [Wear OS setup](apps/wear_os/README.md), and the [watch sync contract](contracts/workout_sync/v1/README.md). Also see [AGENTS.md](AGENTS.md), [ADR-0003](docs/adr/0003-data-cloud-health.md) and the [independent review checklist](docs/REVIEW_GUIDE.md).
 
@@ -104,9 +101,13 @@ Visit http://localhost:4173 for the original interactive mobile-only concept (To
 
 Workouts must save locally before confirming success. Supabase updates require account ownership, server-enforced revision checks, idempotent operations and deletion semantics. Watch log delivery requires **two distinct acknowledgments**: durable phone receipt and separately confirmed cloud backup. Apple Watch `HKWorkout` written on-watch must not be duplicated by the phone. Firebase must remain off until consent and sanitization controls are reviewed. Phone/tablet access, low-end-device performance and physical-watch background reliability are release gates.
 
+## Contributing
+
+Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md): it explains what's in scope, how to run the app against [your own Supabase project](docs/CONTRIBUTOR_SUPABASE_SETUP.md), the checks your PR must pass, and the rules for AI-assisted contributions.
+
 ## License
 
-No repository license has been selected. A publicly visible repository is not automatically open-source-licensed.
+NorthStar is licensed under the [Mozilla Public License 2.0](LICENSE). You may use, modify and distribute it, including in larger proprietary works, but modified versions of NorthStar's own files must remain available under MPL-2.0. Contributions are accepted under the same license.
 
 See [Phase 1 implementation notes](docs/implementation/README.md) for the
 repository's current offline feature scope, tests and deferred QA.

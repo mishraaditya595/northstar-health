@@ -2,6 +2,20 @@
 
 Applies to **all AI coding, design, test and review agents**. Read `README.md`, `docs/ARCHITECTURE.md`, `docs/DESIGN_SYSTEM.md`, `docs/adr/0003-data-cloud-health.md`, `docs/adr/0005-mandatory-auth-and-workout-sync.md`,  `docs/OBJECTBOX.md`, `docs/CLOUD_SYNC.md`, `docs/HEALTH_DATA.md`, `docs/SYNC_PROTOCOL.md`, `docs/WEARABLES.md`, `docs/FIREBASE_PRIVACY.md`, `docs/REVIEW_GUIDE.md` before changes.
 
+**External contributors and their agents:** the full reading list above is for maintainer-directed work on data, sync and platform features. For the scopes allowed below, read `README.md`, this file, the nested `AGENTS.md` of the app you touch, `docs/DESIGN_SYSTEM.md` (UI work) and [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## External contributions
+
+These rules apply to every pull request from someone other than the maintainer, including PRs written wholly or partly by an AI agent.
+
+1. **Open scope:** UI and accessibility using the existing component kit, tests for existing behavior, documentation, `apps/wear_os/` and `apps/watch_os/` non-recording UI, and bug fixes with a failing test. Work from an open issue and link it in the PR.
+2. **Maintainer-approved issue required first** (a PR without one will be closed): `supabase/`, `apps/mobile/lib/features/sync/`, `apps/mobile/lib/features/account/`, `apps/mobile/lib/core/storage/`, ObjectBox entities or `objectbox-model.json`, `contracts/`, `.github/workflows/`, `codemagic.yaml`, `docs/adr/`, platform permissions, new dependencies, and anything touching health data, authentication, sync or telemetry.
+3. **Do not modify** `prototypes/performance-v2/`, `LICENSE`, `.github/CODEOWNERS` or the data ownership rules below.
+4. **AI disclosure:** state in the PR whether an AI agent wrote any of it and which one. The human who opens the PR is accountable for it: they must have read the whole diff, run the checks themselves, and be able to answer review questions without relaying them to the agent.
+5. **Honest evidence:** list the checks you actually ran. Contributors without physical devices, watches or a Supabase project write "not run" for those items; never tick a box you did not verify.
+6. **Small and focused:** one issue per PR, no drive-by refactors, formatting churn or renames. Large or speculative PRs will be closed and can be reopened as smaller pieces.
+7. Use synthetic data only. Never commit keys, `supabase.local.json`, real health exports or personal data.
+
 ## Agent workflow
 
 1. Inspect current implementation and tests. Write a focused plan describing the actual data owner, device behavior, security/permissions, recovery tests and changed files.
