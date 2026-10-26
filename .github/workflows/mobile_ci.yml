@@ -30,17 +30,6 @@ jobs:
       - name: Resolve from committed lockfile
         working-directory: apps/mobile
         run: flutter pub get --enforce-lockfile
-      # One-run capture, removed before review.
-      - name: Temporary new-test formatter capture
-        working-directory: apps/mobile
-        run: |
-          dart format test/sync/objectbox_workout_restore_importer_test.dart
-          python3 - <<'PY'
-          import json
-          path='test/sync/objectbox_workout_restore_importer_test.dart'
-          print('FORMATTED_TEST:'+json.dumps({'content':open(path).read()}))
-          PY
-          exit 1
       - name: Format
         working-directory: apps/mobile
         run: dart format --output=none --set-exit-if-changed lib test
