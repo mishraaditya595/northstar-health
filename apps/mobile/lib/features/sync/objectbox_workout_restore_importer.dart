@@ -545,10 +545,14 @@ final workoutRestoreImporterProvider =
     Provider<
       ObjectBoxWorkoutRestoreImporter Function(String, String? Function())
     >(
-      (ref) =>
-          (owner, activeOwner) => ObjectBoxWorkoutRestoreImporter(
-            ref.watch(objectBoxStoreProvider),
-            accountId: owner,
-            activeAccountId: activeOwner,
-          ),
+      (ref) {
+        // Capture the owner-bound Store while Riverpod builds this provider;
+        // never call ref.watch later from the returned callback.
+        final store = ref.watch(objectBoxStoreProvider);
+        return (owner, activeOwner) => ObjectBoxWorkoutRestoreImporter(
+          store,
+          accountId: owner,
+          activeAccountId: activeOwner,
+        );
+      },
     );
