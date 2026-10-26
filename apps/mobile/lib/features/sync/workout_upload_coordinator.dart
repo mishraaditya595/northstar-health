@@ -7,8 +7,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../account/account_auth_controller.dart';
 import '../account/account_auth_provider.dart';
+import '../progress/workout_history_state.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
 import 'cloud_session_guard.dart';
+import 'objectbox_workout_restore_importer.dart';
+import 'workout_restore_feed.dart';
+import 'workout_restore_transport.dart';
 
 /// Supabase RPC authorization is decided by the server JWT + RLS. The mobile
 /// binary only contains its public publishable key, never privileged tokens.
@@ -82,7 +86,13 @@ final workoutUploadCoordinatorProvider = Provider<WorkoutUploadCoordinator>((
     auth: auth,
     outbox: ref.watch(workoutOutboxProvider),
     transport: ref.watch(workoutUploadTransportProvider)(owner),
+    restoreTransport: ref.watch(workoutRestoreTransportProvider)(owner),
+    restoreImporter: ref.watch(workoutRestoreImporterProvider)(
+      owner,
+      () => auth.userId,
+    ),
     onQueueChanged: () => ref.invalidate(blockedWorkoutCountProvider),
+    onRestored: () => ref.invalidate(completedWorkoutHistoryProvider),
   );
   ref.onDispose(coordinator.dispose);
   // Never perform ObjectBox writes or RPCs while Riverpod builds a provider.
@@ -90,14 +100,17 @@ final workoutUploadCoordinatorProvider = Provider<WorkoutUploadCoordinator>((
   return coordinator;
 });
 
-/// Foreground-only automatic upload on first launch, auth refresh, app
-/// resume and periodic online retry. OS background execution is not implied.
+/// Foreground-only serialized upload-then-restore on account entry, refresh,
+/// app resume and bounded periodic retry. OS background work is not implied.
 class WorkoutUploadCoordinator with WidgetsBindingObserver {
   WorkoutUploadCoordinator({
     required this.accountId,
     required this.auth,
     required this.outbox,
     required this.transport,
+    this.restoreTransport,
+    this.restoreImporter,
+    this.onRestored,
     DateTime Function()? clock,
     this.onQueueChanged,
     this.pollInterval = const Duration(seconds: 45),
@@ -107,6 +120,11 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
   final AccountAuthController auth;
   final ObjectBoxWorkoutOutbox outbox;
   final WorkoutUploadTransport transport;
+  /// Both fields must be provided together. Null keeps legacy upload-only
+  /// tests and the uploader's non-restore behavior unchanged.
+  final WorkoutRestoreTransport? restoreTransport;
+  final ObjectBoxWorkoutRestoreImporter? restoreImporter;
+  final void Function()? onRestored;
   final void Function()? onQueueChanged;
   final DateTime Function() _clock;
   final Duration pollInterval;
@@ -122,6 +140,11 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
   /// Stable non-sensitive diagnostic category, never a raw exception/payload.
   String? lastFailureKind;
 
+  /// Stable non-sensitive restore diagnostic; the blockedCode itself remains
+  /// durable in the owner-specific ObjectBox Store.
+  String? lastRestoreFailureKind;
+
+  bool get isRestoring => _running && restoreImporter != null;
   bool get isUploading => _running;
   bool get isStopped => _disposed;
 
@@ -171,6 +194,9 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
       do {
         _rerunRequested = false;
         await _drainBatch();
+        // Serialize pull with the SAME foreground worker as uploads.
+        // No upload RPC can interleave between restore fetch and import.
+        if (_isAuthorized) await _pullBatch();
       } while (_rerunRequested && _isAuthorized);
     } finally {
       _running = false;
@@ -291,6 +317,117 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
     }
   }
 
+  /// Bounded foreground-only pull. The importer itself commits snapshots and
+  /// the cursor atomically; no cursor is advanced on RPC/validation failures.
+  /// This worker never clears a durable blockedCode or skips remote changes.
+  Future<void> _pullBatch() async {
+    final pull = restoreTransport;
+    final importer = restoreImporter;
+    if (pull == null || importer == null || !_isAuthorized) return;
+    // Local pending snapshots take precedence over remote changes. Upload
+    // retry/ACK must finish before the corresponding remote state can safely
+    // be imported. Conflicted/blocked operations remain protected by the
+    // importer's per-workout fail-closed check.
+    try {
+      if (outbox.pending(limit: 1).isNotEmpty) {
+        lastRestoreFailureKind = 'upload_pending';
+        return;
+      }
+    } catch (_) {
+      lastRestoreFailureKind = 'local_queue_failure';
+      return;
+    }
+
+    var resetCount = 0;
+    const maxPagesPerPass = 4;
+    for (var index = 0; index < maxPagesPerPass && _isAuthorized; index++) {
+      WorkoutRestoreCursor cursor;
+      try {
+        cursor = importer.readCursor();
+      } on RestoreImportException catch (error) {
+        if (_isAuthorized) lastRestoreFailureKind = error.code;
+        return;
+      } catch (_) {
+        if (_isAuthorized) lastRestoreFailureKind = 'restore_store_failure';
+        return;
+      }
+      if (cursor.blockedCode != null) {
+        lastRestoreFailureKind = cursor.blockedCode;
+        return;
+      }
+      try {
+        final page = await pull
+            .fetchPage(
+              afterSeq: cursor.nextCursor,
+              cursorEpoch: cursor.epoch,
+              limit: 100,
+            )
+            .timeout(const Duration(seconds: 20));
+        // A sign-out/dispose/token expiry during the RPC cannot mutate the
+        // old owner's ObjectBox Store, even if a test transport ignores auth.
+        if (!_isAuthorized) return;
+        final applied = importer.applyPage(
+          page,
+          afterSeq: cursor.nextCursor,
+          requestedEpoch: cursor.epoch,
+        );
+        if (!_isAuthorized) return;
+        if (applied.imported > 0 || applied.tombstones > 0) onRestored?.call();
+        if (page.cursorReset) {
+          resetCount++;
+          // Server should return at most one reset per pass. If it repeatedly
+          // resets a known epoch, do not burn retries or silently clear data.
+          if (resetCount > 1) {
+            lastRestoreFailureKind = 'repeated_cursor_reset';
+            return;
+          }
+          continue; // Persisted zero cursor and new epoch: fetch from zero.
+        }
+        if (!page.hasMore) {
+          lastRestoreFailureKind = null;
+          return;
+        }
+        if (applied.alreadyApplied ||
+            applied.cursor.nextCursor <= cursor.nextCursor) {
+          lastRestoreFailureKind = 'restore_no_progress';
+          return;
+        }
+        if (index == maxPagesPerPass - 1) _rerunRequested = true;
+      } on RestoreContractException catch (error) {
+        if (!_isAuthorized) return;
+        if (!error.request) {
+          try {
+            importer.recordBlocked(
+              afterSeq: cursor.nextCursor,
+              requestedEpoch: cursor.epoch,
+              code: error.code,
+            );
+          } catch (_) {
+            lastRestoreFailureKind = 'restore_store_failure';
+            return;
+          }
+        }
+        lastRestoreFailureKind = error.code;
+        return;
+      } on RestoreImportException catch (error) {
+        if (_isAuthorized) lastRestoreFailureKind = error.code;
+        return;
+      } on AuthException {
+        if (_isAuthorized) lastRestoreFailureKind = 'restore_auth_unavailable';
+        return;
+      } on TimeoutException {
+        if (_isAuthorized) lastRestoreFailureKind = 'restore_timeout';
+        return;
+      } on PostgrestException {
+        if (_isAuthorized) lastRestoreFailureKind = 'restore_rpc_unavailable';
+        return;
+      } catch (_) {
+        if (_isAuthorized) lastRestoreFailureKind = 'restore_unavailable';
+        return;
+      }
+    }
+  }
+
   static bool _isCompletedSnapshot(WorkoutSyncOperation op) {
     if (op.action != 'upsert') return false;
     try {
@@ -316,7 +453,7 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
   }
 }
 
-/// Keep the coordinator alive only as long as the authenticated account UI.
+/// Keep the serialized upload/restore coordinator alive only while authenticated.
 /// This widget is never mounted for locked, anonymous or guest sessions.
 class AccountWorkoutUploadHost extends ConsumerWidget {
   const AccountWorkoutUploadHost({required this.child, super.key});
