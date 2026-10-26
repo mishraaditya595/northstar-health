@@ -8,7 +8,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-Foundation only. Flutter app shows fictional demo screens, Riverpod theme state, go_router routing, adaptive nav. **No** working ObjectBox entities, Supabase, Firebase, HealthKit/Health Connect, or watch recording yet. Never describe these as implemented, and never report Codemagic templates as working builds (they intentionally fail).
+Phase 2 in progress, nothing released. `docs/ROADMAP.md` (Phase 2 milestone tracker) is the source of truth; check it before describing status.
+
+- **Implemented and merged:** ObjectBox workout/plan/exercise storage, plan editor, active workout logger, rest timer, history/progress (Phase 1); mandatory email-code sign-in with account-partitioned ObjectBox, durable completed-workout outbox, authenticated foreground uploader, server-side progress RPC and Supabase migrations with pgTAP tests (P2-01 to P2-05).
+- **In progress:** P2-06 multi-device restore (server feed and mobile transport merged; ObjectBox importer pending).
+- **Not implemented:** HealthKit/Health Connect, Firebase, watch workout recording, iPhone companion embedding, account/sync UI (P2-07), production deployment. Never describe these as implemented, and never report Codemagic templates as working builds (they intentionally fail).
+- The Supabase backend is **development-only**. Running the app needs a Supabase project; see `docs/CONTRIBUTOR_SUPABASE_SETUP.md`.
 
 ## Commands
 
@@ -22,6 +27,7 @@ flutter analyze
 flutter test                                   # all tests
 flutter test test/app_test.dart                # one file
 flutter test --plain-name "<test name>"        # one test
+flutter run --dart-define-from-file=supabase.local.json   # needs your own Supabase project
 flutter build apk --debug --no-pub
 dart run build_runner build --delete-conflicting-outputs   # ObjectBox codegen; commit objectbox.g.dart + objectbox-model.json
 ```
@@ -46,9 +52,9 @@ xcodebuild -project NorthStarWatch.xcodeproj -scheme NorthStarWatch -configurati
 
 ## Architecture
 
-- `apps/mobile/lib/`: `app/` (app shell, router, theme controller), `core/design/` (Performance V2 tokens), `features/<today|train|progress|health>/` feature-first pages. UI renders Riverpod state; platform/storage/network access goes through repositories, never widgets.
+- `apps/mobile/lib/`: `app/` (app shell, router, theme controller), `core/design/` (shared component kit and Performance V2 tokens), `core/storage/` (account-bound ObjectBox), `features/` feature-first modules (`account`, `sync`, `workouts`, `train`, `progress`, `today`, `health`). UI renders Riverpod state; platform/storage/network access goes through repositories, never widgets.
 - `apps/watch_os/` (SwiftUI + XcodeGen) and `apps/wear_os/` (Kotlin/Compose, Gradle) are independent native apps, not Flutter. Watch Swift sources live only in `apps/watch_os/Sources`, not in `apps/mobile/ios`.
 - `contracts/workout_sync/v1/`: language-neutral JSON Schema envelope + fixtures; the only shared wire contract between phone and watches (no shared Dart models).
 - `prototypes/performance-v2/`: original HTML prototype, visual authority alongside `docs/DESIGN_SYSTEM.md`. Do not modify. Run: `cd prototypes/performance-v2 && python3 -m http.server 4173`.
-- `supabase/`, `packages/`, `experiments/`: placeholders/isolation boundaries.
+- `supabase/`: migrations (sync RPC, RLS, progress, restore feed) and pgTAP tests; CI replays all migrations. `packages/`, `experiments/`: placeholders/isolation boundaries.
 - Decisions live in `docs/adr/`; policy/provider/backup-scope/watch-ownership changes need a new numbered ADR.
