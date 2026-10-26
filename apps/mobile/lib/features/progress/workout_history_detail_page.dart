@@ -9,6 +9,7 @@ import '../../core/design/section.dart';
 import '../../core/design/northstar_theme.dart';
 import 'domain/progress_overview.dart';
 import '../../core/units/load_units.dart';
+import '../workouts/data/objectbox_workout_outbox.dart';
 import '../workouts/domain/workout_models.dart';
 import 'domain/workout_history_models.dart';
 import 'workout_history_state.dart';
@@ -57,7 +58,11 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
                   child: Text('This completed workout is unavailable.'),
                 );
               }
-              return _detail(context, chosen);
+              return _detail(
+                context,
+                chosen,
+                ref.watch(workoutSyncFlagsProvider)[chosen.uuid],
+              );
             },
           ),
         ),
@@ -65,7 +70,11 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
     );
   }
 
-  Widget _detail(BuildContext context, WorkoutSessionRecord session) {
+  Widget _detail(
+    BuildContext context,
+    WorkoutSessionRecord session,
+    WorkoutSyncFlag? syncFlag,
+  ) {
     final finished = session.completedAtUtc!;
     final day = originalLocalDay(session);
     final sets = session.sets
@@ -92,13 +101,17 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
         42 + MediaQuery.paddingOf(context).bottom,
       ),
       children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: NsTag(
-            'started at '
-            '${started.hour.toString().padLeft(2, '0')}:'
-            '${started.minute.toString().padLeft(2, '0')}',
-          ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            NsTag(
+              'started at '
+              '${started.hour.toString().padLeft(2, '0')}:'
+              '${started.minute.toString().padLeft(2, '0')}',
+            ),
+            if (syncFlag != null) NsTag(syncFlag.label, warning: true),
+          ],
         ),
         const SizedBox(height: 10),
         Text(

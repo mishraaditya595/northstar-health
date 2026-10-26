@@ -110,8 +110,8 @@ class SupabaseWorkoutRestoreTransport implements WorkoutRestoreTransport {
   }
 }
 
-/// Factory is deliberately NOT mounted by the account app shell until
-/// guarded, crash-atomic ObjectBox import and durable cursor+epoch exist.
+/// The account-bound foreground coordinator mounts this factory together
+/// with the merged atomic importer. It is never mounted for a guest account.
 final workoutRestoreTransportProvider =
     Provider<WorkoutRestoreTransport Function(String)>(
       (ref) =>

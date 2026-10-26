@@ -59,7 +59,8 @@ class ObjectBoxWorkoutRestoreImporter {
        _sessions = _store.box<WorkoutSessionEntity>(),
        _exercises = _store.box<WorkoutExerciseEntity>(),
        _sets = _store.box<WorkoutSetEntity>(),
-       _outbox = _store.box<WorkoutSyncOutboxEntity>();
+       _outbox = _store.box<WorkoutSyncOutboxEntity>(),
+       _skips = _store.box<WorkoutRestoreSkipEntity>();
 
   final Store _store;
   final String accountId;
@@ -71,6 +72,7 @@ class ObjectBoxWorkoutRestoreImporter {
   final Box<WorkoutExerciseEntity> _exercises;
   final Box<WorkoutSetEntity> _sets;
   final Box<WorkoutSyncOutboxEntity> _outbox;
+  final Box<WorkoutRestoreSkipEntity> _skips;
 
   void _checkAccount() {
     final current = activeAccountId();
@@ -347,8 +349,35 @@ class ObjectBoxWorkoutRestoreImporter {
       WorkoutSyncOutboxEntity_.sessionUuid,
       change.workoutId,
     );
-    if (operations.any((op) => op.state != 'acknowledged')) {
+    if (operations.any((op) => op.state == 'pending')) {
       throw const RestoreImportException('local_outbox_unresolved');
+    }
+    if (operations.any((op) => op.state != 'acknowledged')) {
+      // A conflicted/blocked local upload keeps its copy. Record the skipped
+      // remote change so one workout never stops the rest of the feed.
+      final existing = _one(
+        _skips,
+        WorkoutRestoreSkipEntity_.workoutUuid,
+        change.workoutId,
+      );
+      if (existing != null && existing.ownerAccountId != accountId) {
+        throw const RestoreImportException('owner_store_mismatch');
+      }
+      final skip =
+          existing ??
+          WorkoutRestoreSkipEntity(
+            workoutUuid: change.workoutId,
+            ownerAccountId: accountId,
+            serverChangeSeq: change.changeSeq,
+            cursorEpoch: epoch,
+            skippedAtMs: 0,
+          );
+      skip.serverChangeSeq = change.changeSeq;
+      skip.cursorEpoch = epoch;
+      skip.deleted = change.deleted;
+      skip.skippedAtMs = _clock().toUtc().millisecondsSinceEpoch;
+      _skips.put(skip);
+      return false;
     }
     final acknowledged =
         operations.where((op) => op.state == 'acknowledged').toList()
@@ -539,16 +568,18 @@ class ObjectBoxWorkoutRestoreImporter {
   }
 }
 
-/// Opt-in repository factory for a *later* single-owner foreground pull
-/// coordinator. Merely obtaining this provider starts no RPC or importer.
+/// Owner-bound repository factory mounted by the authenticated foreground
+/// sync coordinator. Constructing it does not start any RPC or import.
 final workoutRestoreImporterProvider =
     Provider<
       ObjectBoxWorkoutRestoreImporter Function(String, String? Function())
-    >(
-      (ref) =>
-          (owner, activeOwner) => ObjectBoxWorkoutRestoreImporter(
-            ref.watch(objectBoxStoreProvider),
-            accountId: owner,
-            activeAccountId: activeOwner,
-          ),
-    );
+    >((ref) {
+      // Capture the owner-bound Store while Riverpod builds this provider;
+      // never call ref.watch later from the returned callback.
+      final store = ref.watch(objectBoxStoreProvider);
+      return (owner, activeOwner) => ObjectBoxWorkoutRestoreImporter(
+        store,
+        accountId: owner,
+        activeAccountId: activeOwner,
+      );
+    });

@@ -26,6 +26,10 @@ class NorthstarPalette {
   static const heroDark = Color(0xFF101A14);
   static const heroLight = Color(0xFF152A20);
   static const heroBorder = Color(0xFF334C39);
+  static const amberDark = Color(0xFFFFD18B);
+  static const amberLight = Color(0xFF896123);
+  static const amberSoftDark = Color(0xFF473625);
+  static const amberSoftLight = Color(0xFFFFF2DB);
 }
 
 class NorthstarTheme {

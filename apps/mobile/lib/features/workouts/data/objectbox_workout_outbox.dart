@@ -15,6 +15,27 @@ final workoutOutboxProvider = Provider<ObjectBoxWorkoutOutbox>(
 /// its bound ObjectBox store. Standalone previews need no native Store.
 final blockedWorkoutCountProvider = Provider<int>((ref) => 0);
 
+/// Workouts whose cloud copy differs from this phone. Absent means synced.
+enum WorkoutSyncFlag {
+  /// Waiting to upload; Sync now or the next retry can clear it.
+  notSynced('Not synced'),
+
+  /// Changed on another device (conflict or skipped remote change). The
+  /// local copy is kept; retrying cannot clear it, only a reviewed resolution.
+  needsReview('Needs review'),
+
+  /// Can never be uploaded as it is (blocked); stays on this phone only.
+  localOnly('Local only');
+
+  const WorkoutSyncFlag(this.label);
+  final String label;
+}
+
+/// Presentation-only, overridden in account scope like the blocked count.
+final workoutSyncFlagsProvider = Provider<Map<String, WorkoutSyncFlag>>(
+  (ref) => const {},
+);
+
 /// These are durable queued *local* operations, not network acknowledgements.
 /// A server worker in a later PR must send them in localRevision order and
 /// supply the server's latest acknowledged revision to each RPC call.
@@ -305,6 +326,44 @@ class ObjectBoxWorkoutOutbox {
         } finally {
           query.close();
         }
+      });
+
+  /// Per-workout sync state for UI tags. Most severe wins:
+  /// local only > needs review > not synced.
+  Map<String, WorkoutSyncFlag> syncFlags() =>
+      _store.runInTransaction(TxMode.read, () {
+        final flags = <String, WorkoutSyncFlag>{};
+        void mark(String workout, WorkoutSyncFlag flag) {
+          final current = flags[workout];
+          if (current == null || flag.index > current.index) {
+            flags[workout] = flag;
+          }
+        }
+
+        final query = _operations
+            .query(
+              WorkoutSyncOutboxEntity_.state.oneOf([
+                'pending',
+                'conflict',
+                'blocked',
+              ]),
+            )
+            .build();
+        try {
+          for (final op in query.find()) {
+            mark(op.sessionUuid, switch (op.state) {
+              'blocked' => WorkoutSyncFlag.localOnly,
+              'conflict' => WorkoutSyncFlag.needsReview,
+              _ => WorkoutSyncFlag.notSynced,
+            });
+          }
+        } finally {
+          query.close();
+        }
+        for (final skip in _store.box<WorkoutRestoreSkipEntity>().getAll()) {
+          mark(skip.workoutUuid, WorkoutSyncFlag.needsReview);
+        }
+        return flags;
       });
 
   /// A local-only blocked record stays durable and never reaches the RPC.

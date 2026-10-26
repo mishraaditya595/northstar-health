@@ -298,3 +298,29 @@ class WorkoutRemoteStateEntity {
     this.deleted = false,
   });
 }
+
+/// A remote change deliberately not imported because this phone still has a
+/// conflicted or blocked upload for the same workout. The local copy is kept;
+/// a later reviewed resolution re-fetches the server version. Never uploaded.
+@Entity()
+class WorkoutRestoreSkipEntity {
+  @Id()
+  int id = 0;
+  @Unique()
+  String workoutUuid;
+  String ownerAccountId;
+  int serverChangeSeq;
+  String cursorEpoch;
+  bool deleted;
+  int skippedAtMs;
+
+  WorkoutRestoreSkipEntity({
+    this.id = 0,
+    required this.workoutUuid,
+    required this.ownerAccountId,
+    required this.serverChangeSeq,
+    required this.cursorEpoch,
+    this.deleted = false,
+    required this.skippedAtMs,
+  });
+}

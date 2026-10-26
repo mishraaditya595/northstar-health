@@ -225,6 +225,43 @@ void main() {
     expect(find.textContaining('8 reps'), findsOneWidget);
   });
 
+  testWidgets('unsynced and local-only workouts are tagged', (tester) async {
+    tallView(tester);
+    writeWorkout('wk', startedAtUtc: DateTime.utc(2026, 10, 22, 10));
+    writeWorkout('old', startedAtUtc: DateTime.utc(2026, 10, 21, 10));
+    writeWorkout('ok', startedAtUtc: DateTime.utc(2026, 10, 20, 10));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          objectBoxStoreProvider.overrideWithValue(store),
+          workoutHistoryRepositoryProvider.overrideWithValue(
+            _ImmediateHistoryRepository(store),
+          ),
+          progressNowProvider.overrideWithValue(DateTime.utc(2026, 10, 24, 12)),
+          workoutSyncFlagsProvider.overrideWithValue({
+            'wk': WorkoutSyncFlag.notSynced,
+            'old': WorkoutSyncFlag.localOnly,
+            'ok': WorkoutSyncFlag.needsReview,
+          }),
+        ],
+        child: MaterialApp.router(
+          theme: NorthstarTheme.build(Brightness.light),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Not synced'), findsOneWidget);
+    expect(find.text('Local only'), findsOneWidget);
+    expect(find.text('Needs review'), findsOneWidget);
+    await tester.ensureVisible(find.text('View details').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('View details').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Workout details'), findsOneWidget);
+    expect(find.text('Not synced'), findsOneWidget);
+  });
+
   testWidgets('the month arrows browse history and stop at this month', (
     tester,
   ) async {

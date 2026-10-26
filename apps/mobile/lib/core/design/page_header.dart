@@ -190,11 +190,13 @@ class NsListCard extends StatelessWidget {
   }
 }
 
-/// Prototype `.tag` pill.
+/// Prototype `.tag` pill. [warning] uses the prototype amber tokens for
+/// states that need attention (for example a workout not synced).
 class NsTag extends StatelessWidget {
-  const NsTag(this.label, {super.key});
+  const NsTag(this.label, {this.warning = false, super.key});
 
   final String label;
+  final bool warning;
 
   @override
   Widget build(BuildContext context) {
@@ -203,9 +205,13 @@ class NsTag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: dark
-            ? NorthstarPalette.forestSoftDark
-            : NorthstarPalette.forestSoftLight,
+        color: warning
+            ? (dark
+                  ? NorthstarPalette.amberSoftDark
+                  : NorthstarPalette.amberSoftLight)
+            : (dark
+                  ? NorthstarPalette.forestSoftDark
+                  : NorthstarPalette.forestSoftLight),
         borderRadius: BorderRadius.circular(99),
       ),
       child: Text(
@@ -213,7 +219,11 @@ class NsTag extends StatelessWidget {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w800,
-          color: dark ? NorthstarPalette.lime : const Color(0xFF253F2C),
+          color: warning
+              ? (dark
+                    ? NorthstarPalette.amberDark
+                    : NorthstarPalette.amberLight)
+              : (dark ? NorthstarPalette.lime : const Color(0xFF253F2C)),
         ),
       ),
     );

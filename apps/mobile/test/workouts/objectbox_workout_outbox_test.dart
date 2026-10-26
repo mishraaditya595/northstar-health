@@ -14,6 +14,7 @@ import 'package:northstar_health/features/workouts/domain/workout_models.dart';
 import 'package:northstar_health/objectbox.g.dart';
 
 import 'fixtures/objectbox_pre_outbox.g.dart' as pre_outbox;
+import 'fixtures/objectbox_pre_restore_skip.g.dart' as pre_restore_skip;
 
 const workoutId = '00000000-0000-4000-8000-000000000101';
 const exerciseId = '00000000-0000-4000-8000-000000000201';
@@ -195,6 +196,43 @@ void main() {
     expect(outbox.pending(), isEmpty);
     expect(outbox.blockedCount(), 1);
     expect(outbox.isBlocked(active.uuid), true);
+  });
+
+  test('sync flags mark unsynced and local-only workouts', () {
+    final box = store.box<WorkoutSyncOutboxEntity>();
+    var n = 0;
+    void op(String session, String state) => box.put(
+      WorkoutSyncOutboxEntity(
+        operationUuid: 'op-${n++}',
+        sessionUuid: session,
+        localRevision: n,
+        action: 'upsert',
+        payloadJson: '{}',
+        state: state,
+        createdAtMs: n,
+      ),
+    );
+    op('synced', 'acknowledged');
+    op('pending', 'pending');
+    op('conflict', 'acknowledged');
+    op('conflict', 'conflict');
+    op('blocked', 'pending');
+    op('blocked', 'blocked');
+    store.box<WorkoutRestoreSkipEntity>().put(
+      WorkoutRestoreSkipEntity(
+        workoutUuid: 'skipped',
+        ownerAccountId: 'owner',
+        serverChangeSeq: 4,
+        cursorEpoch: 'epoch',
+        skippedAtMs: 1,
+      ),
+    );
+    expect(outbox.syncFlags(), {
+      'pending': WorkoutSyncFlag.notSynced,
+      'conflict': WorkoutSyncFlag.needsReview,
+      'blocked': WorkoutSyncFlag.localOnly,
+      'skipped': WorkoutSyncFlag.needsReview,
+    });
   });
 
   test('server rejects early set timestamp locally without losing finish', () {
@@ -536,6 +574,50 @@ void main() {
           workoutId,
         );
         expect(upgraded.box<WorkoutSyncOutboxEntity>().count(), 0);
+      } finally {
+        upgraded.close();
+      }
+    } finally {
+      upgradeDir.deleteSync(recursive: true);
+    }
+  });
+
+  test('pre-skip (PR #22 18aa4e4) DB upgrades and keeps restore state', () {
+    final upgradeDir = Directory.systemTemp.createTempSync(
+      'northstar-skip-upgrade-',
+    );
+    try {
+      final old = Store(
+        pre_restore_skip.getObjectBoxModel(),
+        directory: upgradeDir.path,
+      );
+      old.box<WorkoutRestoreCursorEntity>().put(
+        WorkoutRestoreCursorEntity(
+          ownerAccountId: 'owner',
+          cursorEpoch: 'epoch',
+          nextCursor: 7,
+        ),
+      );
+      old.close();
+      final upgraded = Store(getObjectBoxModel(), directory: upgradeDir.path);
+      try {
+        expect(
+          upgraded.box<WorkoutRestoreCursorEntity>().getAll().single.nextCursor,
+          7,
+        );
+        expect(upgraded.box<WorkoutRestoreSkipEntity>().count(), 0);
+        upgraded.box<WorkoutRestoreSkipEntity>().put(
+          WorkoutRestoreSkipEntity(
+            workoutUuid: workoutId,
+            ownerAccountId: 'owner',
+            serverChangeSeq: 8,
+            cursorEpoch: 'epoch',
+            skippedAtMs: 1,
+          ),
+        );
+        expect(ObjectBoxWorkoutOutbox(upgraded).syncFlags(), {
+          workoutId: WorkoutSyncFlag.needsReview,
+        });
       } finally {
         upgraded.close();
       }

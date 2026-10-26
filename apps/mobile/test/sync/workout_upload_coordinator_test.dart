@@ -11,6 +11,8 @@ import 'package:northstar_health/features/account/account_auth_controller.dart';
 import 'package:northstar_health/features/account/account_auth_provider.dart';
 import 'package:northstar_health/features/sync/cloud_session_guard.dart';
 import 'package:northstar_health/features/sync/workout_upload_coordinator.dart';
+import 'package:northstar_health/features/sync/workout_restore_transport.dart';
+import 'package:northstar_health/features/sync/workout_restore_feed.dart';
 import 'package:northstar_health/features/workouts/data/objectbox_workout_outbox.dart';
 import 'package:northstar_health/features/workouts/data/workout_entities.dart';
 import 'package:northstar_health/objectbox.g.dart';
@@ -59,6 +61,23 @@ class FakeTransport implements WorkoutUploadTransport {
       'processing': 'processed',
     };
   }
+}
+
+/// The existing upload-host test is deliberately offline; injecting a
+/// read-only fake avoids requiring an initialized Supabase singleton.
+class EmptyRestoreTransport implements WorkoutRestoreTransport {
+  @override
+  Future<WorkoutRestorePage> fetchPage({
+    required int afterSeq,
+    required String? cursorEpoch,
+    int limit = 100,
+  }) async => WorkoutRestorePage(
+    cursorEpoch: cursorEpoch ?? '00000000-0000-4000-8000-000000000901',
+    cursorReset: false,
+    nextCursor: afterSeq,
+    hasMore: false,
+    changes: const [],
+  );
 }
 
 class MalformedFirstOperationId implements UuidFactory {
@@ -628,6 +647,9 @@ void main() {
         objectBoxStoreProvider.overrideWithValue(store),
         accountAuthControllerProvider.overrideWithValue(auth),
         workoutUploadTransportProvider.overrideWithValue((_) => transport),
+        workoutRestoreTransportProvider.overrideWithValue(
+          (_) => EmptyRestoreTransport(),
+        ),
       ],
     );
     await tester.pumpWidget(

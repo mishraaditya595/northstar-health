@@ -25,8 +25,10 @@ The [roadmap](../ROADMAP.md) defines product milestones. Each note records actua
 
 - [P2-06 Restore feed and conflict handling](phase-2/p2-06-restore-and-conflicts.md) — PR #18 **merged**, owner-isolated paginated server change feed with a rollback epoch and pgTAP tests. Safe mobile import, reconciliation, deletion and conflict UX remain open.
 
-- [P2-06 Flutter restore transport and strict decoder](phase-2/p2-06-mobile-restore-transport.md) — PR #19 (**merged**), authenticated read-only RPC, validated epoch/pagination and completed workout DTOs; deliberately not yet mounted.
+- [P2-06 Flutter restore transport and strict decoder](phase-2/p2-06-mobile-restore-transport.md) — PR #19 (**merged**), authenticated read-only RPC, validated epoch/pagination and completed workout DTOs; draft PR #22 integrates them with the foreground worker.
 
 Authoritative policy: [ADR-0003](../adr/0003-data-cloud-health.md) **as superseded for auth/cloud workout scope** by [ADR-0005](../adr/0005-mandatory-auth-and-workout-sync.md), [ObjectBox](../OBJECTBOX.md), and [Cloud Sync](../CLOUD_SYNC.md).
 
-- [P2-06 Transactional ObjectBox restore importer](phase-2/p2-06-mobile-objectbox-importer.md) — PR #20 (**draft**), versioned owner cursor and remote tombstones, atomic page import and native schema/restart/rollback tests; no foreground pull worker yet.
+- [P2-06 Transactional ObjectBox restore importer](phase-2/p2-06-mobile-objectbox-importer.md) — PR #20 (**merged**), versioned owner cursor and remote tombstones, atomic page import and host-native schema/restart/rollback tests; the foreground pull coordinator is under review in draft PR #22.
+
+- [P2-06 Foreground restore coordinator](phase-2/p2-06-foreground-restore-coordinator.md) — PR #22 (**draft**), foreground serialized upload/pull, paged restore, epoch recovery and host-native tests; not yet released.

@@ -9,6 +9,7 @@ import '../../core/design/section.dart';
 import '../../core/units/load_units.dart';
 
 import '../../core/design/stats.dart';
+import '../workouts/data/objectbox_workout_outbox.dart';
 import '../workouts/domain/workout_models.dart';
 import 'domain/progress_overview.dart';
 import 'muscle_map.dart';
@@ -392,6 +393,7 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
             _SessionSummaryCard(
               session: session,
               unit: displayUnit,
+              syncFlag: ref.watch(workoutSyncFlagsProvider)[session.uuid],
               onOpen: () => context.push('/progress/workouts/${session.uuid}'),
             ),
             const SizedBox(height: 12),
@@ -499,11 +501,13 @@ class _SessionSummaryCard extends StatelessWidget {
     required this.session,
     required this.unit,
     required this.onOpen,
+    this.syncFlag,
   });
 
   final WorkoutSessionRecord session;
   final LoadUnit unit;
   final VoidCallback onOpen;
+  final WorkoutSyncFlag? syncFlag;
 
   @override
   Widget build(BuildContext context) {
@@ -523,11 +527,20 @@ class _SessionSummaryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                session.name,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+              // Wrap, not Row: the tag moves under the name at large text.
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    session.name,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  if (syncFlag != null) NsTag(syncFlag!.label, warning: true),
+                ],
               ),
               const SizedBox(height: 2),
               Text(

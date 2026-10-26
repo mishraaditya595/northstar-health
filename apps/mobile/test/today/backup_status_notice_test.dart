@@ -52,6 +52,62 @@ void main() {
     expect(find.textContaining('No upload will be attempted'), findsOneWidget);
   });
 
+  testWidgets('unsynced workouts offer Sync now', (tester) async {
+    final api = FakeAuthApi()..sessionId = accountA;
+    final bound = FakeBoundAccountStore()..saved = accountA;
+    final auth = controller(api, bound);
+    addTearDown(auth.dispose);
+    await auth.restore();
+    var syncs = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: BackupStatusNotice(
+            controller: auth,
+            unsyncedCount: 1,
+            onSyncNow: () => syncs++,
+          ),
+        ),
+      ),
+    );
+    expect(
+      find.textContaining('1 completed workout not synced yet'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Sync now'));
+    expect(syncs, 1);
+    // Sync cannot run while the session is expired; do not offer it.
+    api.emitRefreshError();
+    await tester.pump();
+    expect(find.text('Sync now'), findsNothing);
+  });
+
+  testWidgets('conflicts are explained without a Sync now action', (
+    tester,
+  ) async {
+    final api = FakeAuthApi()..sessionId = accountA;
+    final bound = FakeBoundAccountStore()..saved = accountA;
+    final auth = controller(api, bound);
+    addTearDown(auth.dispose);
+    await auth.restore();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: BackupStatusNotice(
+            controller: auth,
+            reviewCount: 2,
+            onSyncNow: () {},
+          ),
+        ),
+      ),
+    );
+    expect(
+      find.textContaining('2 completed workouts changed on another device'),
+      findsOneWidget,
+    );
+    expect(find.text('Sync now'), findsNothing);
+  });
+
   testWidgets('standalone previews do not require an account', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(

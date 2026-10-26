@@ -7,6 +7,7 @@ import '../../core/design/northstar_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 import '../account/account_auth_provider.dart';
+import '../sync/workout_upload_coordinator.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
 import 'backup_status_notice.dart';
 
@@ -39,6 +40,12 @@ class _TodayPageState extends ConsumerState<TodayPage> {
     if (auth.error != null && mounted) showNsMessage(context, auth.error!);
   }
 
+  int _count(WorkoutSyncFlag flag) => ref
+      .watch(workoutSyncFlagsProvider)
+      .values
+      .where((value) => value == flag)
+      .length;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -66,6 +73,9 @@ class _TodayPageState extends ConsumerState<TodayPage> {
         BackupStatusNotice(
           controller: ref.watch(accountAuthControllerProvider),
           blockedCount: ref.watch(blockedWorkoutCountProvider),
+          unsyncedCount: _count(WorkoutSyncFlag.notSynced),
+          reviewCount: _count(WorkoutSyncFlag.needsReview),
+          onSyncNow: ref.watch(workoutUploadKickProvider),
         ),
         const SizedBox(height: 24),
         _Hero(
