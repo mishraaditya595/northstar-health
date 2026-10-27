@@ -342,7 +342,8 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
     // Pending uploads finish (or back off) before any remote state is read;
     // they clear on their own. Conflicted/blocked uploads never clear here,
     // so they do not defer the feed: the importer skips and records only
-    // that workout's remote change and keeps the local copy.
+    // that workout's remote change and keeps the local copy. The same holds
+    // for dependency_paused successors waiting behind such a predecessor.
     try {
       if (outbox.pending(limit: 1).isNotEmpty) {
         lastRestoreFailureKind = 'upload_unresolved';

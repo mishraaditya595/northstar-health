@@ -288,6 +288,8 @@ class ObjectBoxWorkoutOutbox {
 
   /// Snapshot reads are durable across restarts. Do not dequeue upon send;
   /// only a positively matched server ACK can mark a row acknowledged.
+  /// Sendable rows only: dependency_paused rows are excluded because each
+  /// waits on a lower revision that is itself pending, conflicted or blocked.
   List<WorkoutSyncOperation> pending({int limit = 100}) =>
       _store.runInTransaction(TxMode.read, () {
         if (limit < 1 || limit > 500) {
@@ -441,7 +443,11 @@ class ObjectBoxWorkoutOutbox {
   ///
   /// A successor with an unresolved lower local revision is durably marked
   /// dependency_paused, without incrementing attempts or deleting payloads.
-  /// It automatically returns to pending when its predecessor is ACKed.
+  /// [acknowledge] returns it to pending in the predecessor's ACK commit.
+  ///
+  /// ponytail: every reservation rescans from offset 0 with two extra
+  /// queries per row, O(queue) in one write transaction. Add a persisted
+  /// cursor or state/time index if large-backlog profiling shows jank.
   ReservedWorkoutUpload? reserveNext({
     required int nowMs,
     void Function()? onBlocked,
@@ -674,6 +680,26 @@ class ObjectBoxWorkoutOutbox {
     op.serverRevision = serverRevision;
     op.serverChangeSeq = serverChangeSeq;
     _operations.put(op);
+    // Resume successors in the same commit, so dependency_paused always means
+    // an unacknowledged predecessor. Restore treats paused rows as resolved
+    // only because that predecessor is itself pending, conflicted or blocked.
+    final sameWorkout = _find(
+      _operations,
+      WorkoutSyncOutboxEntity_.sessionUuid,
+      op.sessionUuid,
+    );
+    for (final next in sameWorkout) {
+      if (next.state == 'dependency_paused' &&
+          sameWorkout.every(
+            (prev) =>
+                prev.localRevision >= next.localRevision ||
+                prev.state == 'acknowledged',
+          )) {
+        next.state = 'pending';
+        next.errorCode = null;
+        _operations.put(next);
+      }
+    }
     return true;
   });
 }

@@ -131,6 +131,114 @@ void main() {
     },
   );
 
+  test('real ACK of a backed-off predecessor resumes its successor', () {
+    final box = store.box<WorkoutSyncOutboxEntity>();
+    box.putMany([
+      operation(id: 1, workout: 60),
+      operation(id: 2, workout: 60, revision: 2),
+    ]);
+    expect(outbox.reserveNext(nowMs: 1000)?.operation.localRevision, 1);
+    // Predecessor is in backoff; the successor pauses instead of sending.
+    expect(outbox.reserveNext(nowMs: 1001), isNull);
+    expect(box.getAll().last.state, 'dependency_paused');
+    expect(outbox.pending(), hasLength(1));
+    expect(
+      outbox.acknowledge(
+        operationUuid: uuid(1000001),
+        localRevision: 1,
+        serverRevision: 3,
+        serverChangeSeq: 4,
+      ),
+      true,
+    );
+    // Resumed in the ACK commit, before any later reservation.
+    final resumed = box.getAll().last;
+    expect(resumed.state, 'pending');
+    expect(resumed.errorCode, isNull);
+    expect(resumed.attempts, 0);
+    expect(outbox.pending().single.operationUuid, uuid(1000002));
+    final next = outbox.reserveNext(nowMs: 1002);
+    expect(next?.operation.operationUuid, uuid(1000002));
+    expect(next!.expectedServerRevision, 3);
+  });
+
+  test('ACK does not resume a successor still behind another revision', () {
+    final box = store.box<WorkoutSyncOutboxEntity>();
+    box.putMany([
+      operation(id: 1, workout: 61),
+      operation(id: 2, workout: 61, revision: 2),
+      operation(id: 3, workout: 61, revision: 3),
+    ]);
+    outbox.reserveNext(nowMs: 1000);
+    expect(outbox.reserveNext(nowMs: 1001), isNull);
+    outbox.acknowledge(
+      operationUuid: uuid(1000001),
+      localRevision: 1,
+      serverRevision: 1,
+      serverChangeSeq: 1,
+    );
+    final rows = box.getAll();
+    expect(rows[1].state, 'pending');
+    expect(rows[2].state, 'dependency_paused');
+  });
+
+  test('resumed successor uses a newer imported remote CAS baseline', () {
+    final box = store.box<WorkoutSyncOutboxEntity>();
+    box.putMany([
+      operation(id: 1, workout: 62),
+      operation(id: 2, workout: 62, revision: 2),
+    ]);
+    outbox.reserveNext(nowMs: 1000);
+    expect(outbox.reserveNext(nowMs: 1001), isNull);
+    store.box<WorkoutRemoteStateEntity>().put(
+      WorkoutRemoteStateEntity(
+        workoutUuid: uuid(62),
+        ownerAccountId: uuid(900),
+        serverRevision: 9,
+        serverChangeSeq: 9,
+        cursorEpoch: uuid(901),
+        localRevisionAtImport: 1,
+      ),
+    );
+    outbox.acknowledge(
+      operationUuid: uuid(1000001),
+      localRevision: 1,
+      serverRevision: 3,
+      serverChangeSeq: 4,
+    );
+    final next = outbox.reserveNext(nowMs: 1002);
+    expect(next?.operation.operationUuid, uuid(1000002));
+    expect(next!.expectedServerRevision, 9);
+  });
+
+  test('mixed paused and blocked first window shifts to the eligible row', () {
+    final box = store.box<WorkoutSyncOutboxEntity>();
+    box.putMany([
+      for (var i = 1; i <= 500; i++)
+        if (i % 5 < 2)
+          operation(id: i, payload: '')
+        else ...[
+          operation(id: 10000 + i, workout: i, state: 'conflict'),
+          operation(id: i, workout: i, revision: 2),
+        ],
+      operation(id: 501),
+    ]);
+    final reserved = outbox.reserveNext(nowMs: 5000);
+    expect(reserved?.operation.operationUuid, uuid(1000501));
+    final rows = box.getAll();
+    expect(rows.where((row) => row.state == 'blocked'), hasLength(200));
+    expect(
+      rows.where((row) => row.state == 'dependency_paused'),
+      hasLength(300),
+    );
+    // Second pass: 501 is cooling down and every paused row stays untouched.
+    expect(outbox.reserveNext(nowMs: 5001), isNull);
+    expect(
+      box.getAll().where((row) => row.state == 'dependency_paused'),
+      hasLength(300),
+    );
+  });
+
   test(
     'corrupt first 500 are blocked without skipping the shifted next row',
     () {
