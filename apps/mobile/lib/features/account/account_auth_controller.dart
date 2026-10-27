@@ -82,7 +82,8 @@ abstract class ConfirmedDeletionCleanupStore {
   Future<void> clear();
 }
 
-class SecureConfirmedDeletionCleanupStore implements ConfirmedDeletionCleanupStore {
+class SecureConfirmedDeletionCleanupStore
+    implements ConfirmedDeletionCleanupStore {
   SecureConfirmedDeletionCleanupStore({required String projectHost})
     : _key = 'northstar.confirmed_deletion_cleanup.v1.$projectHost';
 
@@ -440,7 +441,8 @@ class AccountAuthController extends ChangeNotifier {
       }
     } catch (_) {
       _notice = null;
-      _error = 'Cloud account deleted. Local cleanup is not complete. '
+      _error =
+          'Cloud account deleted. Local cleanup is not complete. '
           'Data stays locked; retry removal or restart the app.';
     } finally {
       _busy = false;
@@ -516,7 +518,8 @@ class AccountAuthController extends ChangeNotifier {
       _deletionCodeSent = false;
       _deletionEmail = null;
       _deletionOwner = null;
-      _error = 'Your verified session expired or changed. '
+      _error =
+          'Your verified session expired or changed. '
           'Request a new deletion code after signing in again.';
       notifyListeners();
       return;
@@ -602,14 +605,17 @@ class AccountAuthController extends ChangeNotifier {
           _recoveryOwner = null;
           _userId = owner;
           _scheduleSessionExpiry();
-          _error = 'Deletion was refused. Your account and local workouts '
+          _error =
+              'Deletion was refused. Your account and local workouts '
               'are unchanged. Request a new verification code to retry.';
         } catch (_) {
-          _error = 'Deletion was refused, but local access could not be '
+          _error =
+              'Deletion was refused, but local access could not be '
               'restored securely. Recover the original account to unlock.';
         }
       } else {
-        _error = 'Deletion was refused and your session has changed. '
+        _error =
+            'Deletion was refused and your session has changed. '
             'Recover the original account to unlock local workouts.';
       }
     } catch (_) {
@@ -617,10 +623,10 @@ class AccountAuthController extends ChangeNotifier {
       // receipt is permitted to authorize local file erasure.
       _error = serverConfirmed
           ? 'Cloud deletion confirmed, but local cleanup could not be '
-              'secured. Data stays locked; contact support.'
+                'secured. Data stays locked; contact support.'
           : 'Account deletion could not be confirmed. This device is '
-              'locked. Recover ONLY the original account if it still exists; '
-              'otherwise contact support. Recovery never creates an account.';
+                'locked. Recover ONLY the original account if it still exists; '
+                'otherwise contact support. Recovery never creates an account.';
     } finally {
       _busy = false;
       notifyListeners();
