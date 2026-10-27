@@ -34,7 +34,7 @@ ObjectBox schema and generated model committed; domain models and repository bou
 | P2-05 — Server-side workout progress | [#17](https://github.com/mishraaditya595/northstar-health/pull/17) | **Merged 2026-10-26** | Hosted migration drift, independent security review, live Auth/RLS, controlled deployment |
 | P2-06 — Multi-device restore and conflicts | [#24](https://github.com/mishraaditya595/northstar-health/pull/24) and prior #18–#23 | **Merged 2026-10-27** (not deployed/released) | Hosted signed-JWT, two-device and physical-device E2E are P2-08 gates |
 | P2-07 — Account, progress/sync status, export and deletion UI | [Implementation plan](implementation/phase-2/p2-07-account-status-data-rights.md) | **P2-07a account/sync UI (#25); P2-07b cloud JSON export (#27) implemented in code; account deletion not implemented** | Owner-scoped JSON file export and authenticated permanent account deletion, with data-rights tests |
-| P2-08 — End-to-end validation and release readiness | — | Planned | iOS/Android physical-device, performance, CI/CD gates |
+| P2-08 — End-to-end validation and release readiness | [Workout export validation matrix](implementation/phase-2/p2-08-workout-export-release-validation.md) | Planned / not run | iOS/Android physical-device, measured export memory and all-history access, hosted signed-JWT RLS, performance, CI/CD gates |
 
 This is the repository's authoritative **implementation milestone tracker**; "merged" does **not** mean released or deployed. Phase 2 is complete only after the remaining release and data-rights gates pass.
 
