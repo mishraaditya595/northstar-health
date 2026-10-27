@@ -1,10 +1,10 @@
 # P2-07 — Account status, export and deletion milestones
 
-**Status:** P2-07a implemented in draft PR (not merged or deployed). Phase 2 is not released.
+**Status:** P2-07a account/sync status UI (#25) implemented. JSON export and permanent account deletion remain unimplemented. Phase 2 is not released.
 
-## P2-07a: account and sync status UI (this PR)
+## P2-07a: account and sync status UI (#25)
 
-- Today opens a dedicated Account screen via an account icon, instead of
+- Today opens a dedicated Account screen with an AppBar/back navigation via an account icon, instead of
   offering sign-out as its only account action.
 - Display the current **device** cloud-session state and counts of distinct
   unresolved workout uploads, conflict/skipped workouts and local-only
