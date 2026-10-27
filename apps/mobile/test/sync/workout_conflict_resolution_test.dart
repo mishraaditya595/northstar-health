@@ -261,6 +261,46 @@ void main() {
     expect(store.box<WorkoutRestoreSkipEntity>().count(), 1);
   });
 
+  test('newer restore skip makes a fetched conflict preview stale', () {
+    seed();
+    conflict();
+    store.box<WorkoutRestoreSkipEntity>().put(
+      WorkoutRestoreSkipEntity(
+        workoutUuid: workout,
+        ownerAccountId: accountA,
+        serverChangeSeq: 9,
+        cursorEpoch: epoch,
+        skippedAtMs: started,
+      ),
+    );
+    expect(
+      () => importer.resolveReviewedWorkout(
+        workoutUuid: workout,
+        expectedLocalRevision: 1,
+        review: review(revision: 3, seq: 7),
+        action: WorkoutResolutionAction.useCloud,
+      ),
+      throwsA(
+        isA<RestoreImportException>().having(
+          (error) => error.code,
+          'code',
+          'resolution_stale_skip',
+        ),
+      ),
+    );
+    expect(store.box<WorkoutRestoreSkipEntity>().getAll().single.serverChangeSeq, 9);
+    expect(store.box<WorkoutSyncOutboxEntity>().getAll().single.state, 'conflict');
+    expect(store.box<WorkoutSessionEntity>().getAll().single.name, 'Local strength');
+    importer.resolveReviewedWorkout(
+      workoutUuid: workout,
+      expectedLocalRevision: 1,
+      review: review(revision: 4, seq: 10),
+      action: WorkoutResolutionAction.useCloud,
+    );
+    expect(store.box<WorkoutRestoreSkipEntity>().count(), 0);
+    expect(importer.readConflictCandidates(), isEmpty);
+  });
+
   test('remote tombstone is sticky: cannot retry upload', () {
     seed();
     conflict();
