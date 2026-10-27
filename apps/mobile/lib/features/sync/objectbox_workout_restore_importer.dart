@@ -51,12 +51,16 @@ class WorkoutConflictCandidate {
     required this.localRevision,
     required this.deletedLocally,
     required this.hasLocalWorkout,
+    required this.exerciseCount,
+    required this.setCount,
   });
   final String workoutUuid;
   final String name;
   final int localRevision;
   final bool deletedLocally;
   final bool hasLocalWorkout;
+  final int exerciseCount;
+  final int setCount;
 }
 
 /// Injected per-account importer; *not* an app background service.
@@ -411,7 +415,8 @@ class ObjectBoxWorkoutRestoreImporter {
       // older change must not block the entire account or overwrite review.
       if (change.changeSeq <= remote.serverChangeSeq) {
         if (change.changeSeq == remote.serverChangeSeq &&
-            change.serverRevision != remote.serverRevision) {
+            (change.serverRevision != remote.serverRevision ||
+                change.deleted != remote.deleted)) {
           throw const RestoreImportException('remote_sequence_inconsistent');
         }
         return false;
@@ -562,6 +567,23 @@ class ObjectBoxWorkoutRestoreImporter {
         final results = <WorkoutConflictCandidate>[];
         for (final id in ids) {
           final session = _one(_sessions, WorkoutSessionEntity_.uuid, id);
+          final exercises = session == null
+              ? <WorkoutExerciseEntity>[]
+              : _matching(
+                  _exercises,
+                  WorkoutExerciseEntity_.sessionUuid,
+                  session.uuid,
+                );
+          final setCount = exercises.fold<int>(
+            0,
+            (sum, exercise) =>
+                sum +
+                _matching(
+                  _sets,
+                  WorkoutSetEntity_.exerciseUuid,
+                  exercise.uuid,
+                ).length,
+          );
           results.add(
             WorkoutConflictCandidate(
               workoutUuid: id,
@@ -571,6 +593,8 @@ class ObjectBoxWorkoutRestoreImporter {
               localRevision: session?.revision ?? 0,
               deletedLocally: session?.deletedAtMs != null,
               hasLocalWorkout: session != null,
+              exerciseCount: exercises.length,
+              setCount: setCount,
             ),
           );
         }
@@ -602,6 +626,12 @@ class ObjectBoxWorkoutRestoreImporter {
     final local = _one(_sessions, WorkoutSessionEntity_.uuid, workoutUuid);
     if ((local?.revision ?? 0) != expectedLocalRevision) {
       throw const RestoreImportException('resolution_local_changed');
+    }
+    if (local != null &&
+        (local.origin != 'northstar_phone' ||
+            local.status != 'completed' ||
+            local.completedAtMs == null)) {
+      throw const RestoreImportException('resolution_not_phone_history');
     }
     final oldRemote = _one(
       _remote,
