@@ -38,10 +38,7 @@ void main() {
     await tester.tap(find.byTooltip('Account and backup'));
     await tester.pumpAndSettle();
     expect(
-      find.descendant(
-        of: find.byType(AppBar),
-        matching: find.text('Account'),
-      ),
+      find.descendant(of: find.byType(AppBar), matching: find.text('Account')),
       findsOneWidget,
     );
     expect(find.byType(BackButton), findsOneWidget);
