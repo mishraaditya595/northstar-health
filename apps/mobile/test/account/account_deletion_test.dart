@@ -57,7 +57,7 @@ void main() {
       await deletion;
       expect(api.serverDeleted, true);
       expect(api.signedOut, true);
-      expect(auth.notice, contains('Account deletion confirmed'));
+      expect(auth.notice, contains('Account deleted and local workout data erased'));
       expect(auth.error, isNull);
       expect(auth.userId, isNull);
     },
@@ -291,6 +291,134 @@ void main() {
     expect(api.serverDeleted, true);
     expect(recovery.saved, isNull);
     expect(auth.deletionRecoveryPending, false);
+  });
+
+
+  test('confirmed deletion removes only the original owner files', () async {
+    final api = FakeAuthApi()..sessionId = accountA;
+    final bound = FakeBoundAccountStore()..saved = accountA;
+    final recovery = FakeDeletionRecoveryStore();
+    final cleanup = FakeConfirmedDeletionCleanupStore();
+    final cleaner = FakeLocalAccountDataCleaner();
+    final auth = controller(
+      api, bound, recovery: recovery, cleanup: cleanup, cleaner: cleaner,
+    );
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+    await auth.restore();
+    await auth.requestDeletionCode();
+    await auth.confirmAccountDeletion('123456');
+    expect(api.serverDeleted, true);
+    expect(cleaner.erased, [accountA]);
+    expect(cleaner.lastWaitForUnmount, true);
+    expect(cleanup.saved, isNull);
+    expect(recovery.saved, isNull);
+    expect(bound.saved, isNull);
+    expect(auth.userId, isNull);
+    expect(auth.error, isNull);
+  });
+
+  test('confirmed cleanup failure persists for next launch and retries', () async {
+    final api = FakeAuthApi()..sessionId = accountA;
+    final bound = FakeBoundAccountStore()..saved = accountA;
+    final cleanup = FakeConfirmedDeletionCleanupStore();
+    final cleaner = FakeLocalAccountDataCleaner()..failErase = true;
+    final auth = controller(api, bound, cleanup: cleanup, cleaner: cleaner);
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+    await auth.restore();
+    await auth.requestDeletionCode();
+    await auth.confirmAccountDeletion('123456');
+    expect(api.serverDeleted, true);
+    expect(cleaner.erased, isEmpty);
+    expect(cleanup.saved, accountA);
+    expect(auth.confirmedLocalCleanupPending, true);
+    expect(auth.error, contains('not complete'));
+
+    final afterRestart = controller(api, bound, cleanup: cleanup, cleaner: cleaner);
+    addTearDown(afterRestart.dispose);
+    await afterRestart.restore();
+    expect(afterRestart.userId, isNull);
+    expect(afterRestart.confirmedLocalCleanupPending, true);
+    cleaner.failErase = false;
+    await afterRestart.retryConfirmedLocalCleanup();
+    expect(cleaner.erased, [accountA]);
+    expect(cleanup.saved, isNull);
+    expect(afterRestart.confirmedLocalCleanupPending, false);
+  });
+
+  test('uncertain server result never authorizes local file erasure', () async {
+    final api = FakeAuthApi()
+      ..sessionId = accountA
+      ..commitThenLoseReceipt = true;
+    final cleaner = FakeLocalAccountDataCleaner();
+    final cleanup = FakeConfirmedDeletionCleanupStore();
+    final auth = controller(
+      api, FakeBoundAccountStore()..saved = accountA,
+      cleaner: cleaner, cleanup: cleanup,
+    );
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+    await auth.restore();
+    await auth.requestDeletionCode();
+    await auth.confirmAccountDeletion('123456');
+    expect(api.serverDeleted, true);
+    expect(cleaner.erased, isEmpty);
+    expect(cleanup.saved, isNull);
+    expect(auth.confirmedLocalCleanupPending, false);
+    expect(auth.deletionRecoveryPending, true);
+  });
+
+  test('explicit 400/401/403 server refusal restores the verified owner', () async {
+    for (final status in [400, 401, 403]) {
+      final api = FakeAuthApi()
+        ..sessionId = accountA
+        ..deleteRefusalStatus = status;
+      final bound = FakeBoundAccountStore()..saved = accountA;
+      final recovery = FakeDeletionRecoveryStore();
+      final cleaner = FakeLocalAccountDataCleaner();
+      final auth = controller(api, bound, recovery: recovery, cleaner: cleaner);
+      await auth.restore();
+      await auth.requestDeletionCode();
+      await auth.confirmAccountDeletion('123456');
+      expect(auth.userId, accountA, reason: 'HTTP $status');
+      expect(bound.saved, accountA);
+      expect(recovery.saved, isNull);
+      expect(api.serverDeleted, false);
+      expect(cleaner.erased, isEmpty);
+      expect(auth.error, contains('Deletion was refused'));
+      auth.dispose();
+      await api.dispose();
+    }
+  });
+
+  test('expired session after code delivery resets challenge with message', () async {
+    final api = FakeAuthApi()..sessionId = accountA;
+    final auth = controller(api, FakeBoundAccountStore()..saved = accountA);
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+    await auth.restore();
+    await auth.requestDeletionCode();
+    expect(auth.deletionCodeSent, true);
+    api.expired = true;
+    await auth.confirmAccountDeletion('123456');
+    expect(auth.deletionCodeSent, false);
+    expect(auth.error, contains('session expired'));
+    expect(api.deleteRequestedFor, isNull);
+  });
+
+  test('email OTP rate limit gives wait guidance instead of connectivity advice', () async {
+    final api = FakeAuthApi()
+      ..sessionId = accountA
+      ..rateLimited = true;
+    final auth = controller(api, FakeBoundAccountStore()..saved = accountA);
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+    await auth.restore();
+    await auth.requestDeletionCode();
+    expect(auth.deletionCodeSent, false);
+    expect(auth.error, contains('Too many email codes'));
+    expect(auth.error, isNot(contains('connection')));
   });
 
   test('missing verified Auth email prevents deletion code delivery', () async {
