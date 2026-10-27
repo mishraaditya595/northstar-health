@@ -264,24 +264,27 @@ void main() {
     expect(auth.deletionRecoveryPending, true);
   });
 
-  test('explicit recovery exit erases only the original local partition', () async {
-    final api = FakeAuthApi()..sessionId = accountA;
-    // Simulate a crash between binding-write and pending-guard cleanup.
-    final bound = FakeBoundAccountStore()..saved = accountA;
-    final recovery = FakeDeletionRecoveryStore()..saved = accountA;
-    final cleaner = FakeLocalAccountDataCleaner();
-    final auth = controller(api, bound, recovery: recovery, cleaner: cleaner);
-    addTearDown(auth.dispose);
-    addTearDown(api.dispose);
-    await auth.restore();
-    await auth.leaveDeletionRecovery();
-    expect(auth.userId, isNull);
-    expect(bound.saved, isNull);
-    expect(cleaner.erased, [accountA]);
-    expect(recovery.saved, isNull);
-    expect(auth.deletionRecoveryPending, false);
-    expect(api.signedOut, true);
-  });
+  test(
+    'explicit recovery exit erases only the original local partition',
+    () async {
+      final api = FakeAuthApi()..sessionId = accountA;
+      // Simulate a crash between binding-write and pending-guard cleanup.
+      final bound = FakeBoundAccountStore()..saved = accountA;
+      final recovery = FakeDeletionRecoveryStore()..saved = accountA;
+      final cleaner = FakeLocalAccountDataCleaner();
+      final auth = controller(api, bound, recovery: recovery, cleaner: cleaner);
+      addTearDown(auth.dispose);
+      addTearDown(api.dispose);
+      await auth.restore();
+      await auth.leaveDeletionRecovery();
+      expect(auth.userId, isNull);
+      expect(bound.saved, isNull);
+      expect(cleaner.erased, [accountA]);
+      expect(recovery.saved, isNull);
+      expect(auth.deletionRecoveryPending, false);
+      expect(api.signedOut, true);
+    },
+  );
 
   test('confirmed deletion clears pending recovery marker', () async {
     final api = FakeAuthApi()..sessionId = accountA;
@@ -398,63 +401,60 @@ void main() {
     },
   );
 
-  test(
-    'marker-write AND local-erase failure remains locked after relaunch '
-    'until explicit local discard succeeds',
-    () async {
-      final api = FakeAuthApi()..sessionId = accountA;
-      final bound = FakeBoundAccountStore()..saved = accountA;
-      final recovery = FakeDeletionRecoveryStore();
-      final cleanup = FakeConfirmedDeletionCleanupStore()..failWrite = true;
-      final cleaner = FakeLocalAccountDataCleaner()..failErase = true;
-      final auth = controller(
-        api,
-        bound,
-        recovery: recovery,
-        cleanup: cleanup,
-        cleaner: cleaner,
-      );
-      addTearDown(auth.dispose);
-      addTearDown(api.dispose);
-      await auth.restore();
-      await auth.requestDeletionCode();
-      await auth.confirmAccountDeletion('123456');
+  test('marker-write AND local-erase failure remains locked after relaunch '
+      'until explicit local discard succeeds', () async {
+    final api = FakeAuthApi()..sessionId = accountA;
+    final bound = FakeBoundAccountStore()..saved = accountA;
+    final recovery = FakeDeletionRecoveryStore();
+    final cleanup = FakeConfirmedDeletionCleanupStore()..failWrite = true;
+    final cleaner = FakeLocalAccountDataCleaner()..failErase = true;
+    final auth = controller(
+      api,
+      bound,
+      recovery: recovery,
+      cleanup: cleanup,
+      cleaner: cleaner,
+    );
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+    await auth.restore();
+    await auth.requestDeletionCode();
+    await auth.confirmAccountDeletion('123456');
 
-      expect(api.serverDeleted, true);
-      expect(cleaner.erased, isEmpty);
-      expect(auth.userId, isNull);
-      expect(auth.confirmedLocalCleanupPending, true);
-      expect(recovery.saved, accountA);
-      expect(cleanup.saved, isNull);
+    expect(api.serverDeleted, true);
+    expect(cleaner.erased, isEmpty);
+    expect(auth.userId, isNull);
+    expect(auth.confirmedLocalCleanupPending, true);
+    expect(recovery.saved, accountA);
+    expect(cleanup.saved, isNull);
 
-      final relaunched = controller(
-        api,
-        bound,
-        recovery: recovery,
-        cleanup: cleanup,
-        cleaner: cleaner,
-      );
-      addTearDown(relaunched.dispose);
-      await relaunched.restore();
-      expect(relaunched.userId, isNull);
-      expect(relaunched.confirmedLocalCleanupPending, false);
-      expect(relaunched.deletionRecoveryPending, true);
-      expect(cleaner.erased, isEmpty); // Never auto-erase uncertain state.
+    final relaunched = controller(
+      api,
+      bound,
+      recovery: recovery,
+      cleanup: cleanup,
+      cleaner: cleaner,
+    );
+    addTearDown(relaunched.dispose);
+    await relaunched.restore();
+    expect(relaunched.userId, isNull);
+    expect(relaunched.confirmedLocalCleanupPending, false);
+    expect(relaunched.deletionRecoveryPending, true);
+    expect(cleaner.erased, isEmpty); // Never auto-erase uncertain state.
 
-      await relaunched.leaveDeletionRecovery();
-      expect(relaunched.deletionRecoveryPending, true);
-      expect(recovery.saved, accountA);
-      expect(cleaner.erased, isEmpty);
-      expect(relaunched.error, contains('Could not erase local workouts'));
+    await relaunched.leaveDeletionRecovery();
+    expect(relaunched.deletionRecoveryPending, true);
+    expect(recovery.saved, accountA);
+    expect(cleaner.erased, isEmpty);
+    expect(relaunched.error, contains('Could not erase local workouts'));
 
-      cleaner.failErase = false;
-      await relaunched.leaveDeletionRecovery();
-      expect(cleaner.erased, [accountA]);
-      expect(recovery.saved, isNull);
-      expect(bound.saved, isNull);
-      expect(relaunched.deletionRecoveryPending, false);
-    },
-  );
+    cleaner.failErase = false;
+    await relaunched.leaveDeletionRecovery();
+    expect(cleaner.erased, [accountA]);
+    expect(recovery.saved, isNull);
+    expect(bound.saved, isNull);
+    expect(relaunched.deletionRecoveryPending, false);
+  });
 
   test('uncertain server result never authorizes local file erasure', () async {
     final api = FakeAuthApi()
