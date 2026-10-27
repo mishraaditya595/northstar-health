@@ -344,6 +344,7 @@ class ObjectBoxWorkoutOutbox {
             .query(
               WorkoutSyncOutboxEntity_.state.oneOf([
                 'pending',
+                'dependency_paused',
                 'conflict',
                 'blocked',
               ]),
@@ -432,9 +433,15 @@ class ObjectBoxWorkoutOutbox {
   });
 
   /// Durable dequeue/reservation in an account-specific transaction.
-  /// A pending attempt is never deleted. We record the attempt *before*
-  /// networking so a process crash repeats the same operation after backoff.
-  /// Previous revisions of the same workout must be acknowledged first.
+  ///
+  /// Scan *all* candidate operations through fixed 500-row ObjectBox windows;
+  /// the former first-500 cap permanently starved eligible later workouts
+  /// when the first 500 were on cooldown or waiting for dependencies.
+  /// Memory use is bounded per window. No network, state or cursor is lost.
+  ///
+  /// A successor with an unresolved lower local revision is durably marked
+  /// dependency_paused, without incrementing attempts or deleting payloads.
+  /// It automatically returns to pending when its predecessor is ACKed.
   ReservedWorkoutUpload? reserveNext({
     required int nowMs,
     void Function()? onBlocked,
@@ -442,112 +449,148 @@ class ObjectBoxWorkoutOutbox {
     var blockedAny = false;
     final reserved = _store.runInTransaction(TxMode.write, () {
       final query = _operations
-          .query(WorkoutSyncOutboxEntity_.state.equals('pending'))
+          .query(
+            WorkoutSyncOutboxEntity_.state.oneOf([
+              'pending',
+              'dependency_paused',
+            ]),
+          )
           .order(WorkoutSyncOutboxEntity_.createdAtMs)
           .order(WorkoutSyncOutboxEntity_.localRevision)
           .order(WorkoutSyncOutboxEntity_.sessionUuid)
           .order(WorkoutSyncOutboxEntity_.operationUuid)
           .build();
       try {
-        query.limit = 500;
-        for (final op in query.find()) {
-          if (op.action != 'upsert' ||
-              op.payloadJson.isEmpty ||
-              op.localRevision < 1) {
-            // Corrupt legacy operations never reach the network.
-            _transition(op, 'blocked', 'invalid_queue');
-            blockedAny = true;
-            continue;
-          }
-          final lastAttempt = op.attemptedAtMs;
-          if (lastAttempt != null &&
-              lastAttempt <= nowMs &&
-              nowMs < lastAttempt + retryDelayMs(op.attempts)) {
-            continue;
-          }
-          final sameWorkout = _find(
-            _operations,
-            WorkoutSyncOutboxEntity_.sessionUuid,
-            op.sessionUuid,
-          );
-          final predecessors = sameWorkout
-              .where((other) => other.localRevision < op.localRevision)
-              .toList();
-          // Never send a later edit past a pending, rejected or conflicting
-          // earlier revision, or a lower revision after a newer ACK.
-          if (predecessors.any((prev) => prev.state != 'acknowledged') ||
-              sameWorkout.any(
-                (other) =>
-                    other.localRevision > op.localRevision &&
-                    other.state == 'acknowledged',
-              )) {
-            continue;
-          }
-          final acknowledgements =
-              predecessors
-                  .where(
-                    (other) =>
-                        other.state == 'acknowledged' &&
-                        other.serverRevision != null,
-                  )
-                  .toList()
-                ..sort((a, b) => b.localRevision.compareTo(a.localRevision));
-          final remote = _find(
-            _remote,
-            WorkoutRemoteStateEntity_.workoutUuid,
-            op.sessionUuid,
-          );
-          if (remote.length > 1) {
-            _transition(op, 'blocked', 'invalid_remote_state');
-            blockedAny = true;
-            continue;
-          }
-          final tracked = remote.isEmpty ? null : remote.single;
-          if (tracked != null &&
-              (tracked.deleted ||
-                  op.localRevision <= tracked.localRevisionAtImport)) {
-            // Never resurrect a remote tombstone or upload a revision that
-            // was already imported at a later local watermark.
-            _transition(
-              op,
-              'blocked',
-              tracked.deleted ? 'remote_tombstone' : 'stale_local_revision',
+        const windowSize = 500;
+        query.limit = windowSize;
+        var offset = 0;
+        while (true) {
+          query.offset = offset;
+          final window = query.find();
+          if (window.isEmpty) return null;
+          var permanentlyRemoved = 0;
+          for (final op in window) {
+            if (op.action != 'upsert' ||
+                op.payloadJson.isEmpty ||
+                op.localRevision < 1) {
+              // Invalid legacy operation can never be retried.
+              _transition(op, 'blocked', 'invalid_queue');
+              blockedAny = true;
+              permanentlyRemoved++;
+              continue;
+            }
+            final sameWorkout = _find(
+              _operations,
+              WorkoutSyncOutboxEntity_.sessionUuid,
+              op.sessionUuid,
             );
-            blockedAny = true;
-            continue;
+            final predecessors = sameWorkout
+                .where((other) => other.localRevision < op.localRevision)
+                .toList();
+            // Durable dependency marker; a conflicted/blocked predecessor
+            // must never be bypassed. A pending predecessor also blocks the
+            // successor until it is ACKed, including after a process restart.
+            if (predecessors.any((prev) => prev.state != 'acknowledged')) {
+              if (op.state != 'dependency_paused' ||
+                  op.errorCode != 'predecessor_unresolved') {
+                _transition(
+                  op,
+                  'dependency_paused',
+                  'predecessor_unresolved',
+                );
+              }
+              continue;
+            }
+            if (sameWorkout.any(
+              (other) =>
+                  other.localRevision > op.localRevision &&
+                  other.state == 'acknowledged',
+            )) {
+              // A lower revision must not overwrite a later ACK. This is a
+              // deterministic queue inconsistency, not a retryable delay.
+              _transition(op, 'blocked', 'later_revision_acknowledged');
+              blockedAny = true;
+              permanentlyRemoved++;
+              continue;
+            }
+            if (op.state == 'dependency_paused') {
+              op.state = 'pending';
+              op.errorCode = null;
+              _operations.put(op);
+            }
+            final lastAttempt = op.attemptedAtMs;
+            if (lastAttempt != null &&
+                lastAttempt <= nowMs &&
+                nowMs < lastAttempt + retryDelayMs(op.attempts)) {
+              continue;
+            }
+            final acknowledgements =
+                predecessors
+                    .where(
+                      (other) =>
+                          other.state == 'acknowledged' &&
+                          other.serverRevision != null,
+                    )
+                    .toList()
+                  ..sort((a, b) => b.localRevision.compareTo(a.localRevision));
+            final remote = _find(
+              _remote,
+              WorkoutRemoteStateEntity_.workoutUuid,
+              op.sessionUuid,
+            );
+            if (remote.length > 1) {
+              _transition(op, 'blocked', 'invalid_remote_state');
+              blockedAny = true;
+              permanentlyRemoved++;
+              continue;
+            }
+            final tracked = remote.isEmpty ? null : remote.single;
+            if (tracked != null &&
+                (tracked.deleted ||
+                    op.localRevision <= tracked.localRevisionAtImport)) {
+              _transition(
+                op,
+                'blocked',
+                tracked.deleted ? 'remote_tombstone' : 'stale_local_revision',
+              );
+              blockedAny = true;
+              permanentlyRemoved++;
+              continue;
+            }
+            final lastAckRevision = acknowledgements.isEmpty
+                ? 0
+                : acknowledgements.first.serverRevision!;
+            // A restored workout may have no local ACK at all; its remote CAS
+            // baseline is authoritative. A newer local ACK takes precedence.
+            final remoteRevision = tracked?.serverRevision ?? 0;
+            final expected = remoteRevision > lastAckRevision
+                ? remoteRevision
+                : lastAckRevision;
+            op.attemptedAtMs = nowMs;
+            op.attempts++;
+            _operations.put(op);
+            return ReservedWorkoutUpload(
+              operation: WorkoutSyncOperation(
+                operationUuid: op.operationUuid,
+                sessionUuid: op.sessionUuid,
+                localRevision: op.localRevision,
+                action: op.action,
+                payloadJson: op.payloadJson,
+                createdAtMs: op.createdAtMs,
+              ),
+              expectedServerRevision: expected,
+            );
           }
-          final lastAckRevision = acknowledgements.isEmpty
-              ? 0
-              : acknowledgements.first.serverRevision!;
-          // A restored workout may have no local ACK at all; its imported
-          // server CAS baseline is authoritative. An ACK newer than that
-          // baseline still wins for a subsequent local operation.
-          final remoteRevision = tracked?.serverRevision ?? 0;
-          final expected = remoteRevision > lastAckRevision
-              ? remoteRevision
-              : lastAckRevision;
-          op.attemptedAtMs = nowMs;
-          op.attempts++;
-          _operations.put(op);
-          return ReservedWorkoutUpload(
-            operation: WorkoutSyncOperation(
-              operationUuid: op.operationUuid,
-              sessionUuid: op.sessionUuid,
-              localRevision: op.localRevision,
-              action: op.action,
-              payloadJson: op.payloadJson,
-              createdAtMs: op.createdAtMs,
-            ),
-            expectedServerRevision: expected,
-          );
+          // Blocking invalid rows removes them from the query. Adjust the
+          // offset so the first item shifted into that slot is not skipped.
+          offset += window.length - permanentlyRemoved;
+          if (window.length < windowSize) return null;
         }
-        return null;
       } finally {
         query.close();
       }
     });
-    // Notify after commit, never inside ObjectBox's write transaction.
-    if (blockedAny) onBlocked?.call();
+    if (blockedAny) onBlocked?.call(); // Notify only after commit.
     return reserved;
   }
 
