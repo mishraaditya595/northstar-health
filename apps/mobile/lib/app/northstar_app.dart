@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/design/northstar_theme.dart';
 import '../features/health/health_page.dart';
+import '../features/sync/workout_conflict_review_page.dart';
 import '../features/progress/progress_page.dart';
 import '../features/progress/workout_history_detail_page.dart';
 import '../features/today/today_page.dart';
@@ -53,6 +54,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/today',
             pageBuilder: (_, state) => _tabPage(state, const TodayPage()),
+          ),
+          GoRoute(
+            path: '/today/sync/review',
+            builder: (_, _) => const WorkoutConflictReviewPage(),
           ),
           GoRoute(
             path: '/train',
