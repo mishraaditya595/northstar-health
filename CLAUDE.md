@@ -10,9 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Phase 2 in progress, nothing released. `docs/ROADMAP.md` (Phase 2 milestone tracker) is the source of truth; check it before describing status.
 
-- **Implemented and merged:** ObjectBox workout/plan/exercise storage, plan editor, active workout logger, rest timer, history/progress (Phase 1); mandatory email-code sign-in with account-partitioned ObjectBox, durable completed-workout outbox, authenticated foreground uploader, server-side progress RPC and Supabase migrations with pgTAP tests (P2-01 to P2-05).
-- **Implemented and merged:** P2-06 multi-device restore and reviewed conflict recovery (#18–#24); hosted/device release gates remain P2-08.
-- **In progress:** P2-07a account/sync visibility in a draft PR. Authenticated JSON export and permanent account deletion remain unimplemented.
+- **Implemented:** ObjectBox workout/plan/exercise storage, plan editor, active workout logger, rest timer and history/progress (Phase 1); mandatory email-code sign-in, account-partitioned ObjectBox, durable completed-workout outbox, authenticated foreground uploader, server-side progress RPC (P2-01–P2-05), multi-device restore and reviewed conflict recovery (#18–#24).
+- **P2-07:** Account/sync status UI (#25); authenticated JSON export and permanent account deletion remain unimplemented. P2-08 hosted and physical-device release gates remain open.
 - **Not implemented:** HealthKit/Health Connect, Firebase, watch workout recording, iPhone companion embedding, P2-07 export/account deletion, production deployment. Never describe these as implemented, and never report Codemagic templates as working builds (they intentionally fail).
 - The Supabase backend is **development-only**. Running the app needs a Supabase project; see `docs/CONTRIBUTOR_SUPABASE_SETUP.md`.
 
