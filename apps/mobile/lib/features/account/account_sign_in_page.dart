@@ -69,6 +69,8 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                           Text(
                             auth.codeSent
                                 ? 'VERIFY YOUR EMAIL'
+                                : auth.confirmedLocalCleanupPending
+                                ? 'FINISH DATA REMOVAL'
                                 : auth.deletionRecoveryPending
                                 ? 'RECOVER ORIGINAL ACCOUNT'
                                 : 'SHOW UP. GET STRONG.',
@@ -80,6 +82,9 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                           Text(
                             auth.codeSent
                                 ? 'Enter the six-digit sign-in code sent to your email.'
+                                : auth.confirmedLocalCleanupPending
+                                ? 'Cloud deletion was confirmed. Local data '
+                                      'removal must finish before sign-in.'
                                 : auth.deletionRecoveryPending
                                 ? 'A deletion result was uncertain. Only the '
                                       'original account can be recovered if it '
@@ -92,7 +97,7 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                           if (!auth.codeSent) ...[
                             NsTextField(
                               controller: _email,
-                              enabled: !auth.busy,
+                              enabled: !auth.busy && !auth.confirmedLocalCleanupPending,
                               keyboardType: TextInputType.emailAddress,
                               autofillHints: const [AutofillHints.email],
                               autocorrect: false,
@@ -101,7 +106,7 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                             ),
                             const SizedBox(height: 14),
                             FilledButton(
-                              onPressed: auth.busy
+                              onPressed: auth.busy || auth.confirmedLocalCleanupPending
                                   ? null
                                   : () => auth.requestCode(_email.text),
                               child: Text(
@@ -172,6 +177,20 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                               child: const Text(
                                 'Use a different account instead',
                               ),
+                            ),
+                          ],
+                          if (auth.confirmedLocalCleanupPending) ...[
+                            const Text(
+                              'The account is deleted. Local workouts remain '
+                              'locked until the cleanup finishes.',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 14),
+                            FilledButton(
+                              onPressed: auth.busy
+                                  ? null
+                                  : auth.retryConfirmedLocalCleanup,
+                              child: const Text('Retry local data removal'),
                             ),
                           ],
                           if (auth.busy) ...[
