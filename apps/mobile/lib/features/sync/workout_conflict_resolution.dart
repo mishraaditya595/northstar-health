@@ -42,6 +42,9 @@ class WorkoutConflictResolutionService {
       expectedLocalRevision: candidate.localRevision,
       review: remote,
       action: action,
+      expectedHasSkip: candidate.skippedChangeSeq != null,
+      expectedSkipEpoch: candidate.skippedEpoch,
+      expectedSkipChangeSeq: candidate.skippedChangeSeq,
     );
   }
 }
