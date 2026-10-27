@@ -619,8 +619,6 @@ class ObjectBoxWorkoutRestoreImporter {
           final canDismissMissing =
               session == null &&
               skip != null &&
-              (baseline == null ||
-                  (baseline.cursorEpoch != _cursorEntity()?.cursorEpoch)) &&
               operations.every((op) => op.state == 'superseded');
           final exercises = session == null
               ? <WorkoutExerciseEntity>[]
@@ -762,9 +760,11 @@ class ObjectBoxWorkoutRestoreImporter {
     }
     if (oldRemote != null &&
         oldRemote.cursorEpoch == review.cursorEpoch &&
-        (remoteChange == null ||
-            remoteChange.serverRevision < oldRemote.serverRevision ||
-            remoteChange.changeSeq < oldRemote.serverChangeSeq)) {
+        ((remoteChange == null &&
+                action != WorkoutResolutionAction.dismissMissing) ||
+            (remoteChange != null &&
+                (remoteChange.serverRevision < oldRemote.serverRevision ||
+                    remoteChange.changeSeq < oldRemote.serverChangeSeq)))) {
       throw const RestoreImportException('resolution_stale_server');
     }
     final localOnlyAllowed =
@@ -786,7 +786,6 @@ class ObjectBoxWorkoutRestoreImporter {
         skip != null &&
         local == null &&
         remoteChange == null &&
-        (oldRemote == null || oldRemote.cursorEpoch != review.cursorEpoch) &&
         operations.every((op) => op.state == 'superseded');
     if (action == WorkoutResolutionAction.dismissMissing &&
         !canDismissMissing) {
@@ -832,8 +831,9 @@ class ObjectBoxWorkoutRestoreImporter {
     var importedRevision = before;
     if (action == WorkoutResolutionAction.dismissMissing) {
       // No local workout, current cloud record or unresolved upload exists.
-      // An old-epoch baseline is obsolete after explicit reviewed dismissal;
-      // leave the account restore cursor untouched.
+      // An orphaned baseline is no longer a current cloud record after
+      // the reviewed authenticated lookup, regardless of its saved epoch.
+      // Leave the account restore cursor untouched.
       if (oldRemote != null) _remote.remove(oldRemote.id);
     } else if (action == WorkoutResolutionAction.useCloud) {
       if (remoteChange!.deleted) {
