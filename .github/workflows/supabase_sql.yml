@@ -69,6 +69,13 @@ jobs:
           version: "2.81.3"
       - name: Start clean local database
         run: |
+          # setup-cli forces a GHCR-only mirror. Remove that override to let
+          # the pinned CLI fall back across ECR, GHCR and Docker Hub if one
+          # registry is rate-limited. GHCR remains authenticated when chosen.
+          unset SUPABASE_INTERNAL_IMAGE_REGISTRY
+          # Without pipefail, tee masks a failed supabase db start and makes
+          # this step falsely pass while the later db reset mysteriously fails.
+          set -o pipefail
           supabase --version
           # Supabase CLI retries image pulls internally, but GHCR can still
           # temporarily throttle shared GitHub-hosted runner IPs. Retry ONLY
@@ -91,7 +98,9 @@ jobs:
             sleep "$seconds"
           done
       - name: Reset and replay all migrations from scratch
-        run: supabase db reset
+        run: |
+          unset SUPABASE_INTERNAL_IMAGE_REGISTRY
+          supabase db reset
       - name: Execute pgTAP SQL tests
         run: supabase test db
       - name: Install pinned Deno for Edge Function verification
