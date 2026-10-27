@@ -8,6 +8,7 @@ import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 import '../account/account_auth_provider.dart';
 import '../sync/workout_upload_coordinator.dart';
+import '../sync/workout_conflict_resolution.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
 import 'backup_status_notice.dart';
 
@@ -75,6 +76,7 @@ class _TodayPageState extends ConsumerState<TodayPage> {
           blockedCount: ref.watch(blockedWorkoutCountProvider),
           unsyncedCount: _count(WorkoutSyncFlag.notSynced),
           reviewCount: _count(WorkoutSyncFlag.needsReview),
+          restoreBlocked: ref.watch(workoutRestoreBlockedCodeProvider) != null,
           onSyncNow: ref.watch(workoutUploadKickProvider),
           onReview: () => context.push('/today/sync/review'),
         ),
