@@ -43,6 +43,11 @@ void main() {
     );
     expect(find.byType(BackButton), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Sign out of this device'), 180);
+    await tester.ensureVisible(
+      find.widgetWithText(OutlinedButton, 'Sign out of this device'),
+    );
+    await tester.drag(find.byType(ListView).last, const Offset(0, -160));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Sign out of this device'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Cancel'));
@@ -50,6 +55,11 @@ void main() {
     expect(auth.userId, accountA);
 
     await tester.scrollUntilVisible(find.text('Sign out of this device'), 180);
+    await tester.ensureVisible(
+      find.widgetWithText(OutlinedButton, 'Sign out of this device'),
+    );
+    await tester.drag(find.byType(ListView).last, const Offset(0, -160));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Sign out of this device'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
