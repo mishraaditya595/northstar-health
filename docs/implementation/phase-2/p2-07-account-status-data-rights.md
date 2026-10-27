@@ -36,7 +36,10 @@ Required by ADR-0005 before release. Implementation and review requirements:
    account as defence in depth, checks response owner IDs, and rechecks the
    auth session before/after every network call. Hosted JWT/RLS adversarial
    tests are still a P2-08 release gate.
-2. Page by workout UUID (strict request cap 100 rows), filter by the initial
+2. Page by workout UUID with **explicit ascending PostgreSQL UUID order**
+   (verified on the actual Dart PostgREST HTTP builder; its implicit default
+   produced descending order and was unsafe for a `gt` keyset). Enforce a
+   strict request cap of 100 rows and filter by the initial
    highest owner change sequence (including tombstones) and re-read the same
    maximum at the end. Stop only on an empty page (not a short page): a
    lower PostgREST server-side row cap must not silently truncate exports.
