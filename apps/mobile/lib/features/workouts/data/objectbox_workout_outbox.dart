@@ -619,7 +619,10 @@ class ObjectBoxWorkoutOutbox {
             // Durable dependency marker; a conflicted/blocked predecessor
             // must never be bypassed. A pending predecessor also blocks the
             // successor until it is ACKed, including after a process restart.
-            if (predecessors.any((prev) => prev.state != 'acknowledged')) {
+            if (predecessors.any(
+              (prev) =>
+                  prev.state != 'acknowledged' && prev.state != 'superseded',
+            )) {
               if (op.state != 'dependency_paused' ||
                   op.errorCode != 'predecessor_unresolved') {
                 _transition(op, 'dependency_paused', 'predecessor_unresolved');
@@ -828,7 +831,8 @@ class ObjectBoxWorkoutOutbox {
           sameWorkout.every(
             (prev) =>
                 prev.localRevision >= next.localRevision ||
-                prev.state == 'acknowledged',
+                prev.state == 'acknowledged' ||
+                prev.state == 'superseded',
           )) {
         next.state = 'pending';
         next.errorCode = null;
