@@ -33,4 +33,6 @@ Authoritative policy: [ADR-0003](../adr/0003-data-cloud-health.md) **as supersed
 
 - [P2-06 Foreground restore coordinator](phase-2/p2-06-foreground-restore-coordinator.md) — PR #22 (**merged**), foreground serialized upload/pull, paged restore, epoch recovery, skip records and host-native tests; not yet released.
 
-- [P2-06 Fair upload queue and durable dependencies](phase-2/p2-06-fair-upload-queue.md) — PR #23 (**draft**), bounded ObjectBox-window scan beyond 500 and persisted dependency-paused upload revisions; independent review/device tests outstanding.
+- [P2-06 Fair upload queue and durable dependencies](phase-2/p2-06-fair-upload-queue.md) — PR #23 (**merged**), bounded ObjectBox-window scan beyond 500 and persisted dependency-paused upload revisions; device release tests outstanding.
+
+- [P2-06 Completed workout deletion and tombstones](phase-2/p2-06-completed-workout-deletion.md) — PR #24 (**draft**), atomic local delete command, durable cloud deletion queue and tombstone replay regression tests; not yet deployed.
