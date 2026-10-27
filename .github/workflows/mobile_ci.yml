@@ -70,17 +70,6 @@ jobs:
       - name: Resolve from committed lockfile
         working-directory: apps/mobile
         run: flutter pub get --enforce-lockfile
-      # One-run Dart style capture; removed after applying pinned formatter.
-      - name: Temporary ACK-redaction formatter capture
-        working-directory: apps/mobile
-        run: |
-          dart format lib/features/sync/objectbox_workout_restore_importer.dart lib/features/workouts/data/objectbox_workout_outbox.dart test/sync/workout_delete_sync_test.dart
-          python3 - <<'PY'
-          import json
-          for path in ('lib/features/sync/objectbox_workout_restore_importer.dart', 'lib/features/workouts/data/objectbox_workout_outbox.dart', 'test/sync/workout_delete_sync_test.dart'):
-              print('DELETE24_ACK_FMT:' + json.dumps({'path': path, 'content': open(path).read()}))
-          PY
-          exit 1
       - name: Format
         working-directory: apps/mobile
         run: dart format --output=none --set-exit-if-changed lib test
