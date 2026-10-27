@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:northstar_health/core/ids/uuid_factory.dart';
 import 'package:northstar_health/features/sync/objectbox_workout_restore_importer.dart';
 import 'package:northstar_health/features/sync/workout_restore_feed.dart';
 import 'package:northstar_health/features/workouts/data/objectbox_workout_outbox.dart';
@@ -14,6 +15,12 @@ const epoch = '00000000-0000-4000-8000-000000006702';
 const ex = '00000000-0000-4000-8000-000000006703';
 const setId = '00000000-0000-4000-8000-000000006704';
 final started = DateTime.utc(2026, 10, 26, 10).millisecondsSinceEpoch;
+
+const reviewedDeleteUuid = '00000000-0000-4000-8000-000000006799';
+class FixedReviewedIds implements UuidFactory {
+  @override
+  String newId() => reviewedDeleteUuid;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -442,6 +449,133 @@ void main() {
       );
     },
   );
+
+  test('unsent blocked upload can be kept locally with details intact', () {
+    seed();
+    store.runInTransaction(TxMode.write, () {
+      outbox.enqueueCompletedInTransaction(workout);
+    });
+    final op = store.box<WorkoutSyncOutboxEntity>().getAll().single;
+    op.state = 'blocked';
+    op.errorCode = 'invalid_snapshot';
+    store.box<WorkoutSyncOutboxEntity>().put(op);
+    final candidate = importer.readConflictCandidates().single;
+    expect(candidate.canKeepLocalOnly, true);
+    importer.resolveReviewedWorkout(
+      workoutUuid: workout,
+      expectedLocalRevision: candidate.localRevision,
+      review: review(missing: true),
+      action: WorkoutResolutionAction.keepLocalOnly,
+    );
+    expect(importer.readConflictCandidates(), isEmpty);
+    expect(store.box<WorkoutExerciseEntity>().count(), 1);
+    expect(store.box<WorkoutSetEntity>().count(), 1);
+    expect(store.box<WorkoutSyncOutboxEntity>().getAll().single.state, 'superseded');
+    expect(outbox.blockedCount(), 0);
+    expect(outbox.backfillCompleted(), 0);
+  });
+
+  test('cannot keep locally if cloud copy or upload attempt is possible', () {
+    seed();
+    conflict();
+    expect(importer.readConflictCandidates().single.canKeepLocalOnly, false);
+    expect(
+      () => importer.resolveReviewedWorkout(
+        workoutUuid: workout,
+        expectedLocalRevision: 1,
+        review: review(),
+        action: WorkoutResolutionAction.keepLocalOnly,
+      ),
+      throwsA(
+        isA<RestoreImportException>().having(
+          (error) => error.code,
+          'code',
+          'resolution_cannot_keep_local',
+        ),
+      ),
+    );
+    expect(store.box<WorkoutSyncOutboxEntity>().getAll().single.state, 'conflict');
+  });
+
+  test('blocked cursor permits independent review but needs explicit retry', () {
+    seed();
+    conflict();
+    expect(
+      importer.recordBlocked(
+        afterSeq: 0,
+        requestedEpoch: null,
+        code: 'duplicate_remote_sequence',
+      ),
+      true,
+    );
+    importer.resolveReviewedWorkout(
+      workoutUuid: workout,
+      expectedLocalRevision: 1,
+      review: review(),
+      action: WorkoutResolutionAction.useCloud,
+    );
+    expect(importer.readConflictCandidates(), isEmpty);
+    expect(importer.readCursor().blockedCode, 'duplicate_remote_sequence');
+    expect(importer.clearBlocked(afterSeq: 0, requestedEpoch: null), true);
+    expect(importer.readCursor().blockedCode, isNull);
+    expect(importer.clearBlocked(afterSeq: 0, requestedEpoch: null), false);
+  });
+
+  test('an older sequence with lower revision cannot replay silently', () {
+    seed();
+    conflict();
+    importer.resolveReviewedWorkout(
+      workoutUuid: workout,
+      expectedLocalRevision: 1,
+      review: review(),
+      action: WorkoutResolutionAction.useCloud,
+    );
+    expect(
+      () => importer.applyPage(
+        WorkoutRestorePage(
+          cursorEpoch: epoch,
+          cursorReset: false,
+          nextCursor: 5,
+          hasMore: false,
+          changes: [review(revision: 2, seq: 5).change!],
+        ),
+        afterSeq: 0,
+        requestedEpoch: null,
+      ),
+      throwsA(
+        isA<RestoreImportException>().having(
+          (error) => error.code,
+          'code',
+          'server_revision_regressed',
+        ),
+      ),
+    );
+    expect(store.box<WorkoutSessionEntity>().getAll().single.name, 'Cloud strength');
+  });
+
+  test('recovery delete UUID comes from injected factory', () {
+    seed();
+    conflict();
+    outbox.deleteCompletedWorkout(
+      sessionUuid: workout,
+      expectedLocalRevision: 1,
+    );
+    importer = ObjectBoxWorkoutRestoreImporter(
+      store,
+      accountId: accountA,
+      activeAccountId: () => activeOwner,
+      uuidFactory: FixedReviewedIds(),
+    );
+    importer.resolveReviewedWorkout(
+      workoutUuid: workout,
+      expectedLocalRevision: 2,
+      review: review(),
+      action: WorkoutResolutionAction.finishDeletion,
+    );
+    final pending = outbox.pending().single;
+    expect(pending.operationUuid, reviewedDeleteUuid);
+    expect(pending.action, 'delete');
+  });
 
   test('account switch prevents local mutation of reviewed server state', () {
     seed();
