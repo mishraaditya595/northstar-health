@@ -174,7 +174,8 @@ class ObjectBoxWorkoutOutbox {
     DateTime Function()? clock,
   }) {
     final normalized = _requireUuid(sessionUuid);
-    if (expectedLocalRevision < 1) throw ArgumentError.value(expectedLocalRevision);
+    if (expectedLocalRevision < 1)
+      throw ArgumentError.value(expectedLocalRevision);
     final nowMs = (clock ?? DateTime.now)().toUtc().millisecondsSinceEpoch;
     return _store.runInTransaction(TxMode.write, () {
       final rows = _find(_sessions, WorkoutSessionEntity_.uuid, sessionUuid);
@@ -189,7 +190,11 @@ class ObjectBoxWorkoutOutbox {
           session.origin != 'northstar_phone') {
         throw StateError('only_completed_phone_workouts_can_be_deleted');
       }
-      final remote = _find(_remote, WorkoutRemoteStateEntity_.workoutUuid, normalized);
+      final remote = _find(
+        _remote,
+        WorkoutRemoteStateEntity_.workoutUuid,
+        normalized,
+      );
       if (remote.any((row) => row.deleted)) {
         throw StateError('remote_workout_already_deleted');
       }
@@ -208,11 +213,15 @@ class ObjectBoxWorkoutOutbox {
       // Keep only the minimal session identity/revision necessary for
       // idempotent retries and the importer's resurrection guard.
       final exercises = _find(
-        _exercises, WorkoutExerciseEntity_.sessionUuid, session.uuid,
+        _exercises,
+        WorkoutExerciseEntity_.sessionUuid,
+        session.uuid,
       );
       for (final exercise in exercises) {
         for (final set in _find(
-          _sets, WorkoutSetEntity_.exerciseUuid, exercise.uuid,
+          _sets,
+          WorkoutSetEntity_.exerciseUuid,
+          exercise.uuid,
         )) {
           _sets.remove(set.id);
         }
@@ -224,14 +233,16 @@ class ObjectBoxWorkoutOutbox {
       session.name = 'Deleted workout';
       session.planUuid = null;
       _sessions.put(session);
-      _operations.put(WorkoutSyncOutboxEntity(
-        operationUuid: _requireUuid(_ids.newId()),
-        sessionUuid: normalized,
-        localRevision: session.revision,
-        action: 'delete',
-        payloadJson: 'null',
-        createdAtMs: nowMs,
-      ));
+      _operations.put(
+        WorkoutSyncOutboxEntity(
+          operationUuid: _requireUuid(_ids.newId()),
+          sessionUuid: normalized,
+          localRevision: session.revision,
+          action: 'delete',
+          payloadJson: 'null',
+          createdAtMs: nowMs,
+        ),
+      );
       return true;
     });
   }
