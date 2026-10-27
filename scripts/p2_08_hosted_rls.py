@@ -23,6 +23,19 @@ class AuditFailure(Exception):
     pass
 
 
+class _RejectRedirects(urllib.request.HTTPRedirectHandler):
+    """Do not resend a bearer token or API key to any redirect destination."""
+
+    def http_error_301(self, request, fp, code, message, headers):
+        # Reject even malformed 3xx responses without a Location header.
+        raise AuditFailure("unexpected_redirect")
+
+    http_error_302 = http_error_301
+    http_error_303 = http_error_301
+    http_error_307 = http_error_301
+    http_error_308 = http_error_301
+
+
 @dataclass(frozen=True)
 class Reply:
     status: int
@@ -50,6 +63,9 @@ def _requester(url: str, key: str) -> Callable[..., Reply]:
              and not parsed.username and not parsed.password
              and not parsed.query and not parsed.fragment,
              "hosted_https_url_required")
+    # A fresh opener with explicit redirect rejection; urllib's default
+    # redirect handler is unsafe for requests carrying credentials.
+    opener = urllib.request.build_opener(_RejectRedirects())
 
     def call(method: str, path: str, token: str | None = None,
              query: dict[str, str] | None = None,
@@ -67,7 +83,7 @@ def _requester(url: str, key: str) -> Callable[..., Reply]:
         req = urllib.request.Request(target, data=body, headers=headers,
                                      method=method)
         try:
-            with urllib.request.urlopen(req, timeout=20) as response:
+            with opener.open(req, timeout=20) as response:
                 return Reply(response.status, json.loads(
                     response.read(2 * 1024 * 1024).decode("utf-8")))
         except urllib.error.HTTPError as error:
@@ -75,7 +91,7 @@ def _requester(url: str, key: str) -> Callable[..., Reply]:
             # include personal identifiers or authorization metadata.
             return Reply(error.code, None)
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError,
-                UnicodeDecodeError, ValueError) as error:
+                UnicodeDecodeError, ValueError):
             raise AuditFailure("network_or_invalid_response") from None
     return call
 
@@ -187,7 +203,7 @@ def run_audit(call: Callable[..., Reply], token_a: str, token_b: str,
                      and isinstance(feed.get("changes"), list)
                      and isinstance(feed.get("cursor_epoch"), str),
                      "restore_feed_invalid_" + str(index))
-            _uuid(feed["cursor_epoch"], "restore_epoch")
+            _uuid(feed["cursor_epoch"], "restore_epoch_" + str(index))
             if epoch is not None:
                 _require(epoch == feed["cursor_epoch"],
                          "restore_epoch_rotated_during_audit")
@@ -203,7 +219,9 @@ def run_audit(call: Callable[..., Reply], token_a: str, token_b: str,
             next_cursor = feed.get("next_cursor")
             _require(type(next_cursor) is int and next_cursor >= cursor,
                      "restore_cursor_invalid_" + str(index))
-            if feed.get("has_more") is False:
+            _require(type(feed.get("has_more")) is bool,
+                     "restore_has_more_invalid_" + str(index))
+            if feed["has_more"] is False:
                 break
             _require(next_cursor > cursor and len(changes) > 0,
                      "restore_cursor_not_progressing_" + str(index))
