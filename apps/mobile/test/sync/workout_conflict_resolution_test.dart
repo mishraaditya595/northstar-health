@@ -746,6 +746,42 @@ void main() {
     },
   );
 
+  test('orphan skip with stale same-epoch baseline can be dismissed', () {
+    store.box<WorkoutRemoteStateEntity>().put(
+      WorkoutRemoteStateEntity(
+        workoutUuid: workout,
+        ownerAccountId: accountA,
+        serverRevision: 4,
+        serverChangeSeq: 12,
+        cursorEpoch: epoch,
+        localRevisionAtImport: 0,
+      ),
+    );
+    store.box<WorkoutRestoreSkipEntity>().put(
+      WorkoutRestoreSkipEntity(
+        workoutUuid: workout,
+        ownerAccountId: accountA,
+        serverChangeSeq: 13,
+        cursorEpoch: epoch,
+        skippedAtMs: started,
+      ),
+    );
+    final candidate = importer.readConflictCandidates().single;
+    expect(candidate.canDismissMissing, true);
+    importer.resolveReviewedWorkout(
+      workoutUuid: workout,
+      expectedLocalRevision: 0,
+      review: review(missing: true),
+      action: WorkoutResolutionAction.dismissMissing,
+      expectedHasSkip: true,
+      expectedSkipEpoch: candidate.skippedEpoch,
+      expectedSkipChangeSeq: candidate.skippedChangeSeq,
+    );
+    expect(store.box<WorkoutRestoreSkipEntity>().count(), 0);
+    expect(store.box<WorkoutRemoteStateEntity>().count(), 0);
+    expect(store.box<WorkoutSessionEntity>().count(), 0);
+  });
+
   test('dismiss cannot drop a skip advanced after review was opened', () {
     store.box<WorkoutRestoreSkipEntity>().put(
       WorkoutRestoreSkipEntity(
