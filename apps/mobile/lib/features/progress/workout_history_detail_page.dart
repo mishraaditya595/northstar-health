@@ -327,7 +327,7 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
         context,
         outcome == CompletedWorkoutDeleteResult.cloudDeleteQueued
             ? 'Workout removed locally. Cloud deletion queued.'
-            : 'Workout removed locally. No cloud deletion needed.',
+            : 'Workout removed locally. No cloud deletion was queued.',
       );
       Navigator.of(context).maybePop();
     }
