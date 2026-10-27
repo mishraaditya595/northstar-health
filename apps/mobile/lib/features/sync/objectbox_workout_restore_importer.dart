@@ -416,8 +416,7 @@ class ObjectBoxWorkoutRestoreImporter {
       // tombstone revision advanced before the network call, whereas the
       // previously imported metadata still holds the earlier local version.
       // Trust a matching *durable server ACK*, never an unacknowledged edit.
-      final knownRevision =
-          latestAck?.serverRevision == change.serverRevision
+      final knownRevision = latestAck?.serverRevision == change.serverRevision
           ? latestAck!.localRevision
           : (remote?.localRevisionAtImport ?? latestAck?.localRevision);
       if (knownRevision == null) {
@@ -448,10 +447,14 @@ class ObjectBoxWorkoutRestoreImporter {
         // signed-in device, not merely hide them from the Progress query.
         // Keep minimal UUID/revision metadata to guard against resurrection.
         for (final exercise in _matching(
-          _exercises, WorkoutExerciseEntity_.sessionUuid, local.uuid,
+          _exercises,
+          WorkoutExerciseEntity_.sessionUuid,
+          local.uuid,
         )) {
           for (final set in _matching(
-            _sets, WorkoutSetEntity_.exerciseUuid, exercise.uuid,
+            _sets,
+            WorkoutSetEntity_.exerciseUuid,
+            exercise.uuid,
           )) {
             _sets.remove(set.id);
           }
