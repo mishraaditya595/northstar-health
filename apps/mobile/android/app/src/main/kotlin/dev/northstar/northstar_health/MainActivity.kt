@@ -8,9 +8,20 @@ import android.provider.DocumentsContract
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.util.UUID
 
 class MainActivity : FlutterActivity() {
+    companion object {
+        // Activity recreation shares this lock and count while a SAF writer
+        // survives rotation. A new process starts at zero and recovers the
+        // last durable marker before another export can begin.
+        private val exportStateLock = Any()
+        private var activeWrites = 0
+    }
+
     private var pendingExport: MethodChannel.Result? = null
+    private var writeInProgress = false
+    @Volatile private var startupCleanupRunning = false
     private var pendingJson: String? = null
     private val exportRequest = 7411
     private val exportPrefs by lazy {
@@ -24,12 +35,32 @@ class MainActivity : FlutterActivity() {
         // finished write. Delete only the exact previously selected export
         // URI. Some providers revoke grants across process death; deletion is
         // best-effort, never an assertion that all providers can clean up.
-        val stale = exportPrefs.getString(pendingUriKey, null)
-        if (stale != null) {
-            Thread {
-                tryDeleteDocument(Uri.parse(stale))
-                exportPrefs.edit().remove(pendingUriKey).commit()
-            }.start()
+        synchronized(exportStateLock) {
+            // Another Activity may be recreated while its writer is still
+            // running. Such a marker is active, not stale; don't delete it.
+            if (activeWrites == 0) {
+                val stale = exportPrefs.getString(pendingUriKey, null)
+                if (stale != null) {
+                    startupCleanupRunning = true
+                    Thread {
+                        // Marker format is unique-token|URI. Plain URI is
+                        // supported for recovery from earlier app builds.
+                        val uri = stale.substringAfter('|', stale)
+                        try {
+                            tryDeleteDocument(Uri.parse(uri))
+                        } finally {
+                            synchronized(exportStateLock) {
+                                // Compare-and-clear: never erase the marker
+                                // belonging to a newer file/export.
+                                if (exportPrefs.getString(pendingUriKey, null) == stale) {
+                                    exportPrefs.edit().remove(pendingUriKey).commit()
+                                }
+                                startupCleanupRunning = false
+                            }
+                        }
+                    }.start()
+                }
+            }
         }
     }
 
@@ -55,7 +86,11 @@ class MainActivity : FlutterActivity() {
             val args = call.arguments as? Map<*, *>
             val filename = args?.get("name") as? String
             val json = args?.get("json") as? String
-            if (pendingExport != null || filename != "northstar-workouts.json" ||
+            val recoveryBusy = synchronized(exportStateLock) {
+                activeWrites > 0 || startupCleanupRunning
+            }
+            if (pendingExport != null || recoveryBusy ||
+                filename != "northstar-workouts.json" ||
                 json == null || !json.startsWith("{") || !json.endsWith("}")) {
                 result.error("export_unavailable", "Cannot start document export", null)
                 return@setMethodCallHandler
@@ -102,7 +137,18 @@ class MainActivity : FlutterActivity() {
 
         // Record a recoverable cleanup marker before any byte is written.
         // commit() is intentional: apply() is not durable on process death.
-        if (!exportPrefs.edit().putString(pendingUriKey, uri.toString()).commit()) {
+        val marker = "${UUID.randomUUID()}|${uri}"
+        val secured = synchronized(exportStateLock) {
+            if (activeWrites != 0 || startupCleanupRunning ||
+                !exportPrefs.edit().putString(pendingUriKey, marker).commit()) {
+                false
+            } else {
+                activeWrites++
+                writeInProgress = true
+                true
+            }
+        }
+        if (!secured) {
             pendingExport = null
             Thread { tryDeleteDocument(uri) }.start()
             callback.error("write_unavailable", "Could not secure export write", null)
@@ -126,12 +172,28 @@ class MainActivity : FlutterActivity() {
                 // Do not leave the cleanup marker after a successful export.
                 // If killed before this point, startup tries deleting the
                 // potentially empty/partial file.
-                exportPrefs.edit().remove(pendingUriKey).commit()
+                synchronized(exportStateLock) {
+                    // Another Activity can never own this marker. Guard its
+                    // cleanup even if the Activity has been recreated.
+                    if (exportPrefs.getString(pendingUriKey, null) == marker) {
+                        exportPrefs.edit().remove(pendingUriKey).commit()
+                    }
+                    activeWrites--
+                }
                 runOnUiThread {
+                    writeInProgress = false
                     if (pendingExport === callback) {
                         pendingExport = null
-                        if (saved) callback.success("saved")
-                        else callback.error("write_failed", "Could not write export file", null)
+                        try {
+                            // The writer, not onDestroy(), owns the result.
+                            // The reply may be undeliverable if Flutter's
+                            // engine was destroyed; don't invent a failure
+                            // while a write might have succeeded.
+                            if (saved) callback.success("saved")
+                            else callback.error("write_failed", "Could not write export file", null)
+                        } catch (_: IllegalStateException) {
+                            // Flutter messenger was detached during teardown.
+                        }
                     }
                 }
             }
@@ -140,8 +202,13 @@ class MainActivity : FlutterActivity() {
 
     override fun onDestroy() {
         pendingJson = null
-        pendingExport?.error("activity_closed", "Document picker closed", null)
-        pendingExport = null
+        if (!writeInProgress) {
+            // A picker that hasn't returned cannot complete after teardown.
+            // A write already in progress MUST keep its result until the
+            // background writer finishes; do not report a false failure.
+            pendingExport?.error("activity_closed", "Document picker closed", null)
+            pendingExport = null
+        }
         super.onDestroy()
     }
 }
