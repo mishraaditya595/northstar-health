@@ -177,7 +177,8 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                                         cancelLabel: 'Keep recovering',
                                       );
                                       if (leave == true) {
-                                        await auth.leaveDeletionRecoveryKeepingData();
+                                        await auth
+                                            .leaveDeletionRecoveryKeepingData();
                                       }
                                     },
                               child: const Text(
@@ -207,7 +208,8 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                                         cancelLabel: 'Keep recovering',
                                       );
                                       if (leave == true) {
-                                        await auth.leaveDeletionRecoveryErasingData();
+                                        await auth
+                                            .leaveDeletionRecoveryErasingData();
                                       }
                                     },
                               child: const Text('Erase local data and leave'),
