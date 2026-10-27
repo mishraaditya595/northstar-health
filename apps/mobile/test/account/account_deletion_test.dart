@@ -259,9 +259,10 @@ void main() {
     expect(auth.deletionRecoveryPending, true);
   });
 
-  test('leaving recovery never reassigns or opens old local workouts', () async {
+  test('leaving recovery clears residual binding before guard', () async {
     final api = FakeAuthApi()..sessionId = accountA;
-    final bound = FakeBoundAccountStore();
+    // Simulate a crash between binding-write and pending-guard cleanup.
+    final bound = FakeBoundAccountStore()..saved = accountA;
     final recovery = FakeDeletionRecoveryStore()..saved = accountA;
     final auth = controller(api, bound, recovery: recovery);
     addTearDown(auth.dispose);
