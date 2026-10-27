@@ -14,7 +14,8 @@ import 'workout_export_file_writer.dart';
 import 'workout_history_export.dart';
 
 /// P2-07: a truthful device-local sync dashboard and account access surface.
-/// Does not claim cloud completion, delete a server account or export raw data.
+/// Shows device-local sync state; exports selected cloud workout history
+/// only on explicit user action. Never deletes a server account.
 class AccountSyncPage extends ConsumerStatefulWidget {
   const AccountSyncPage({super.key});
 
@@ -44,9 +45,18 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
       if (mounted && auth.userId == owner) {
         showNsMessage(
           context,
-          error.code == 'history_changed_retry'
-              ? 'Cloud history changed during export. Please retry.'
-              : 'Unable to export cloud history. Please retry.',
+          switch (error.code) {
+            'history_changed_retry' =>
+              'Cloud history changed during export. Please retry.',
+            'export_too_large' =>
+              'This history is too large for safe export on this device. '
+                  'A larger export method is not available yet.',
+            'invalid_row' || 'invalid_order' || 'invalid_payload' ||
+            'invalid_revision' || 'invalid_head' || 'page_too_large' =>
+              'Cloud history contains unsupported or invalid data. '
+                  'Please contact support.',
+            _ => 'Unable to export cloud history. Please retry.',
+          },
         );
       }
     } catch (_) {
@@ -171,7 +181,7 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
                           runSpacing: 8,
                           children: [
                             FilledButton.icon(
-                              onPressed: online && kick != null
+                              onPressed: online && kick != null && !_exporting
                                   ? () {
                                       if (!auth.cloudBackupReady) {
                                         showNsMessage(
