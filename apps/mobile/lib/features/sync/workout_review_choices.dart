@@ -115,9 +115,17 @@ class WorkoutReviewDeletionHint extends StatelessWidget {
         remote.change != null) {
       return const SizedBox.shrink();
     }
-    return const Text(
-      'This workout was previously deleted in the cloud, possibly from '
-      'another device. Retrying will upload it again.',
+    // Put spacing inside the hint so hidden hints leave no empty gap.
+    return const Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: 12),
+        Text(
+          'This workout was previously deleted in the cloud, possibly from '
+          'another device. Retrying will upload it again.',
+        ),
+      ],
     );
   }
 }
