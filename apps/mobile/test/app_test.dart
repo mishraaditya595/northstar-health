@@ -11,7 +11,14 @@ import 'support/fake_account_auth.dart';
 Widget signedInApp([AccountAuthController? auth]) => ProviderScope(
   overrides: [
     accountAuthControllerProvider.overrideWithValue(
-      auth ?? AccountAuthController(FakeAuthApi(), FakeBoundAccountStore()),
+      auth ??
+          AccountAuthController(
+            FakeAuthApi(),
+            FakeBoundAccountStore(),
+            FakeDeletionRecoveryStore(),
+            cleanupStore: FakeConfirmedDeletionCleanupStore(),
+            localCleaner: FakeLocalAccountDataCleaner(),
+          ),
     ),
   ],
   child: const NorthstarApp(),
@@ -29,6 +36,9 @@ void main() {
     final auth = AccountAuthController(
       FakeAuthApi()..sessionId = accountA,
       bound,
+      FakeDeletionRecoveryStore(),
+      cleanupStore: FakeConfirmedDeletionCleanupStore(),
+      localCleaner: FakeLocalAccountDataCleaner(),
     );
     addTearDown(auth.dispose);
     await auth.restore();
@@ -76,6 +86,9 @@ void main() {
     final auth = AccountAuthController(
       FakeAuthApi()..sessionId = accountA,
       FakeBoundAccountStore()..saved = accountA,
+      FakeDeletionRecoveryStore(),
+      cleanupStore: FakeConfirmedDeletionCleanupStore(),
+      localCleaner: FakeLocalAccountDataCleaner(),
     );
     addTearDown(auth.dispose);
     await auth.restore();

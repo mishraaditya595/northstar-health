@@ -1,6 +1,6 @@
 # P2-07 — Account status, export and deletion milestones
 
-**Status:** P2-07a account/sync status UI (#25) merged. P2-07b cloud-history JSON export (#27) is implemented in code; account deletion remains unimplemented. Phase 2 is not released.
+**Status:** P2-07a account/sync status UI (#25) merged. P2-07b cloud-history JSON export (#27) is implemented in code; P2-07c account deletion is implemented in draft PR #29 but has **not** been deployed or security-accepted. Phase 2 is not released.
 
 ## P2-07a: account and sync status UI (#25)
 
@@ -89,10 +89,22 @@ Required by ADR-0005 before release. Implementation and review requirements:
    The concrete, **unrun** hardware and hosted verification matrix is
    [P2-08 workout export release validation](p2-08-workout-export-release-validation.md).
 
-## P2-07c: irreversible account deletion (not yet implemented)
+## P2-07c: irreversible account deletion (draft PR #29, not deployed)
 
-**Do not expose a working deletion button until an audited server workflow
-exists.** It must:
+Implementation uses an OTP verified against the *same* Supabase account to
+create a genuinely new Auth session. The read-only
+`public.authorize_account_deletion()` checks its `auth.sessions.created_at`
+against a five-minute window, so simply refreshing a JWT is insufficient.
+The server-only `delete-account` Edge Function verifies the caller again and
+uses `auth.admin.deleteUser` with a server-held privileged key; existing
+cascade FKs remove completed history, receipts, tombstones and owner cursors.
+The phone clears its secure bound-account identity before asking the server,
+unmounting its upload/restore worker and locking the original local partition.
+After an exact server success receipt, the app attempts a durable confirmed-cleanup marker and erases the original owner's ObjectBox directory after Store unmount (retry on launch if the marker was saved). If this marker write fails, the verified response still permits immediate erase; if that also fails, the persisted uncertain-recovery marker remains locked. **Owner decision, 2026-10-27 (ADR-0007):** uncertain recovery offers **Use another account (keep old data locked)** (clear binding, then recovery marker; leave original owner files untouched and never transfer them) and **Erase local data and leave** (clear binding, erase original owner files, then recovery marker; failed erase retains recovery). Both are separately confirmed with **Keep recovering** cancellation. An original account that still exists can subsequently reopen its own local files only with a successful sign-in to the same verified Auth UUID. No uncertain result triggers automatic local erasure; explicit separate user consent is required to erase while the server outcome is unknown. Only that UUID's directory is eligible; uncertain server results lock without erasing. Explicit handler 4xx refusals can rebind only if the same verified owner remains active.
+
+The following requirements are **implemented in code, not yet demonstrated
+against a hosted project or physical device**. See
+[Account deletion runbook](../../../supabase/ACCOUNT_DELETION_RUNBOOK.md). The two recovery exit options amend ADR-0005 item 4 under [owner-approved ADR-0007](../../adr/0007-account-deletion-recovery-exit-choices.md).
 
 - Require online, **freshly reverified** non-anonymous authentication and an
   unmistakable confirmation that server workout history and tombstones are
@@ -103,12 +115,19 @@ exists.** It must:
   records, receipts, owner cursors and auth identity with server-side
   authorization; never place service_role keys or privileged deletions in
   Flutter. Define recovery for uncertain network responses.
-- Lock or safely purge only that owner's local ObjectBox partition after
-  a verified server deletion receipt; preserve strict account isolation and
-  never reassign local data to another user.
-- Document retention/legal policy and a production runbook, test idempotent
-  retries, stolen/replayed auth, mid-request account switches, second-device
-  stale sessions, offline failure, and partially completed server cleanup.
+- Lock only the original owner's local ObjectBox partition before the
+  irreversible network operation. Never purge local records on an uncertain
+  response. A successful server deletion durably records a local cleanup
+  task, unmounts ObjectBox, and deletes only that owner's local workouts,
+  plans and outbox; failed deletion is retried at next launch or from the
+  locked account screen. No partition may ever be reassigned to another user.
+- Run the newly committed synthetic controller and SQL session-age tests.
+  Hosted end-to-end proof is still required for stale/replayed tokens,
+  mid-request account switches, second-device stale JWTs, network ambiguity,
+  cascade cleanup, Storage-object deletion blockers and retention/legal policy.
+  An uncertain result always keeps local access locked and never claims a
+  successful rollback. The server deletion is a single Auth admin hard-delete
+  with FK cascades, not a multi-table client cleanup.
 
 ## P2-08 release QA remains mandatory
 

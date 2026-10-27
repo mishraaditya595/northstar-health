@@ -6,3 +6,9 @@ major_version = 17
 
 [db.migrations]
 enabled = true
+
+# The gateway may use publishable keys which are not legacy signed JWTs.
+# This endpoint validates the caller with Auth.getUser and the SQL session
+# creation-time gate before touching the admin API. NEVER accept anonymous.
+[functions.delete-account]
+verify_jwt = false

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/design/dialogs.dart';
 import '../../core/design/inputs.dart';
 import 'account_auth_controller.dart';
 
@@ -68,6 +69,10 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                           Text(
                             auth.codeSent
                                 ? 'VERIFY YOUR EMAIL'
+                                : auth.confirmedLocalCleanupPending
+                                ? 'FINISH DATA REMOVAL'
+                                : auth.deletionRecoveryPending
+                                ? 'RECOVER ORIGINAL ACCOUNT'
                                 : 'SHOW UP. GET STRONG.',
                             style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontWeight: FontWeight.w800),
@@ -77,6 +82,14 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                           Text(
                             auth.codeSent
                                 ? 'Enter the six-digit sign-in code sent to your email.'
+                                : auth.confirmedLocalCleanupPending
+                                ? 'Cloud deletion was confirmed. Local data '
+                                      'removal must finish before sign-in.'
+                                : auth.deletionRecoveryPending
+                                ? 'A deletion result was uncertain. Only the '
+                                      'original account can be recovered if it '
+                                      'still exists. Recovery does NOT create '
+                                      'a new account or unlock another user’s data.'
                                 : 'Create your account or sign in to start tracking.',
                             textAlign: TextAlign.center,
                           ),
@@ -84,7 +97,9 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                           if (!auth.codeSent) ...[
                             NsTextField(
                               controller: _email,
-                              enabled: !auth.busy,
+                              enabled:
+                                  !auth.busy &&
+                                  !auth.confirmedLocalCleanupPending,
                               keyboardType: TextInputType.emailAddress,
                               autofillHints: const [AutofillHints.email],
                               autocorrect: false,
@@ -93,10 +108,15 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                             ),
                             const SizedBox(height: 14),
                             FilledButton(
-                              onPressed: auth.busy
+                              onPressed:
+                                  auth.busy || auth.confirmedLocalCleanupPending
                                   ? null
                                   : () => auth.requestCode(_email.text),
-                              child: const Text('Send sign-in code'),
+                              child: Text(
+                                auth.deletionRecoveryPending
+                                    ? 'Send recovery code'
+                                    : 'Send sign-in code',
+                              ),
                             ),
                           ] else ...[
                             NsTextField(
@@ -117,7 +137,11 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                               onPressed: auth.busy
                                   ? null
                                   : () => auth.verifyCode(_otp.text),
-                              child: const Text('Verify and continue'),
+                              child: Text(
+                                auth.deletionRecoveryPending
+                                    ? 'Verify original account'
+                                    : 'Verify and continue',
+                              ),
                             ),
                             TextButton(
                               onPressed: auth.busy
@@ -130,9 +154,88 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                               child: const Text('Use a different email'),
                             ),
                           ],
+                          if (auth.deletionRecoveryPending &&
+                              !auth.confirmedLocalCleanupPending) ...[
+                            const SizedBox(height: 14),
+                            OutlinedButton(
+                              onPressed: auth.busy
+                                  ? null
+                                  : () async {
+                                      final leave = await showNsConfirm(
+                                        context,
+                                        title: 'Use another account and keep local data?',
+                                        message:
+                                            'Old workouts, unfinished sessions, '
+                                            'plans and pending uploads will remain '
+                                            'on this device, locked to the original '
+                                            'account. They will not be transferred '
+                                            'to another account. If the original '
+                                            'account still exists, signing back '
+                                            'into that same account can reopen '
+                                            'its local data.',
+                                        confirmLabel: 'Use another account',
+                                        cancelLabel: 'Keep recovering',
+                                      );
+                                      if (leave == true) {
+                                        await auth
+                                            .leaveDeletionRecoveryKeepingData();
+                                      }
+                                    },
+                              child: const Text(
+                                'Use another account (keep old data locked)',
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: auth.busy
+                                  ? null
+                                  : () async {
+                                      final leave = await showNsConfirm(
+                                        context,
+                                        title: 'Erase local data and leave recovery?',
+                                        message:
+                                            'Your cloud account may still exist if '
+                                            'deletion was not confirmed. This will '
+                                            'permanently erase this device’s '
+                                            'original workouts, unfinished sessions, '
+                                            'custom plans and pending uploads, '
+                                            'including items never backed up. '
+                                            'It does not delete cloud data. '
+                                            'Only choose this if you no longer '
+                                            'need any local workout data.',
+                                        confirmLabel:
+                                            'Erase local data and leave',
+                                        cancelLabel: 'Keep recovering',
+                                      );
+                                      if (leave == true) {
+                                        await auth
+                                            .leaveDeletionRecoveryErasingData();
+                                      }
+                                    },
+                              child: const Text('Erase local data and leave'),
+                            ),
+                          ],
+                          if (auth.confirmedLocalCleanupPending) ...[
+                            const Text(
+                              'The account is deleted. Local workouts remain '
+                              'locked until the cleanup finishes.',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 14),
+                            FilledButton(
+                              onPressed: auth.busy
+                                  ? null
+                                  : auth.retryConfirmedLocalCleanup,
+                              child: const Text('Retry local data removal'),
+                            ),
+                          ],
                           if (auth.busy) ...[
                             const SizedBox(height: 16),
                             const Center(child: CircularProgressIndicator()),
+                          ],
+                          if (auth.notice != null) ...[
+                            const SizedBox(height: 16),
+                            Text(auth.notice!, textAlign: TextAlign.center),
                           ],
                           if (auth.error != null) ...[
                             const SizedBox(height: 16),
