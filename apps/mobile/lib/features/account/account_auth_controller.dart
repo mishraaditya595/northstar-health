@@ -734,25 +734,34 @@ class AccountAuthController extends ChangeNotifier {
     }
   }
 
-  /// Explicitly discard this device's old local data and leave recovery.
-  /// The server result may be uncertain: the UI MUST warn that this choice
-  /// permanently erases unsynced workouts, even if the cloud account exists.
-  /// No data is erased on an uncertain result without this explicit consent.
-  Future<void> leaveDeletionRecovery() async {
+  /// Leave uncertain deletion recovery without touching the original
+  /// owner's local ObjectBox data. A subsequent verified sign-in with the
+  /// same Auth UUID can reopen that separate owner partition. Other users
+  /// cannot access it. The UI must obtain explicit confirmation first.
+  Future<void> leaveDeletionRecoveryKeepingData() =>
+      _leaveDeletionRecovery(eraseLocalData: false);
+
+  /// Irreversibly discard the original owner's local data by explicit user
+  /// choice, even if the server deletion did not commit. A failed erase
+  /// retains the secure recovery marker and cannot unlock normal sign-in.
+  Future<void> leaveDeletionRecoveryErasingData() =>
+      _leaveDeletionRecovery(eraseLocalData: true);
+
+  Future<void> _leaveDeletionRecovery({required bool eraseLocalData}) async {
     if (_busy || _recoveryOwner == null || _userId != null) return;
     final originalOwner = _recoveryOwner!;
     _busy = true;
     _error = null;
     notifyListeners();
     try {
-      // On a crash after a verified server receipt but failed cleanup-marker
-      // write, the only durable proof may be the *uncertain* recovery guard.
-      // Never infer deletion from that guard. The owner's explicit choice to
-      // discard local data safely resolves this corner case on restart.
-      // Clear any residual grant BEFORE touching the owner's files; on a
-      // cleanup failure retain the recovery marker and block normal sign-in.
+      // A crash after recovering the owner's binding may leave both protected
+      // keys set. In BOTH paths clear the binding before clearing the guard;
+      // in the erase path never clear the guard unless filesystem removal
+      // succeeds. The keep path must never invoke the filesystem cleaner.
       await _binding.clear();
-      await _localCleaner.erase(originalOwner);
+      if (eraseLocalData) {
+        await _localCleaner.erase(originalOwner);
+      }
       await _recoveryStore.clear();
       _recoveryOwner = null;
       _codeSent = false;
@@ -764,9 +773,11 @@ class AccountAuthController extends ChangeNotifier {
         // No active local binding remains.
       }
     } catch (_) {
-      _error =
-          'Could not erase local workouts or finish recovery securely. '
-          'Data is still locked; retry or contact support.';
+      _error = eraseLocalData
+          ? 'Could not erase local workouts or finish recovery securely. '
+                'Data is still locked; retry or contact support.'
+          : 'Could not leave recovery securely. Old local data remains '
+                'locked; retry or contact support.';
     } finally {
       _busy = false;
       notifyListeners();
