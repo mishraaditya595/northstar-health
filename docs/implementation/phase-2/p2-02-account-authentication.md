@@ -1,7 +1,7 @@
 # Phase 2 / P2-02 — Mandatory Flutter authentication and account-local gate
 
-**Status:** PR implementation under review; not deployed or released.
-**Authoritative policy:** [ADR-0005](../../adr/0005-mandatory-auth-and-workout-sync.md). P2-01's Supabase RPC and RLS remain unchanged. Only **completed** phone workouts will synchronize in P2-03/P2-04; in-progress, paused and discarded logs remain local.
+**Status:** PR #14 merged into main. This is the original P2-02 implementation record, **not** a statement of current deployment or P2-08 acceptance.
+**Authoritative policy:** [ADR-0005](../../adr/0005-mandatory-auth-and-workout-sync.md). P2-01's Supabase RPC and RLS remain unchanged. Only **completed** phone workouts synchronize via the subsequently merged P2-03/P2-04; in-progress, paused and discarded logs remain local.
 
 ## Implemented in this milestone
 
@@ -34,12 +34,12 @@ iOS needs no Keychain Sharing entitlement (no shared access group). Android decl
 
 - **No cloud sync implementation yet:** logging repositories/outbox, sync queue, server upload and remote restore are P2-03 onward. P2-01 restricts the server to completed workouts only.
 - The authentication gate does not migrate any existing root ObjectBox workout: there is no production guest data according to ADR-0005. If beta users have data, investigate before release, never silently assign it.
-- **P2-03 gate:** the controller does not yet listen to `onAuthStateChange`, so a revocation while the app runs is not observed. Before any upload, add that listener and an explicit "session expired, backup paused" state.
+- **Historical P2-02 handoff:** at the time of this slice, the controller lacked an `onAuthStateChange` listener and a backup-paused state. Later P2-03/P2-04 worker authorization gates were merged. **Do not treat that history as evidence of live revocation coverage**: session/revocation behavior remains a hosted P2-08 verification item.
 - Online revocation/account deletion and refreshed server sessions must be reconciled before privileged cloud operations. Prior offline trust is limited to the already bound account's local partition, not remote access; full device-loss/revocation policy needs release review.
 - A cloud-down OTP attempt cannot establish a *new* offline account; correct behavior is blocked with retry.
 - Pending local changes and account switching need additional UX/guarding in P2-03 and later. Sign-out asks for confirmation and says local workouts, including an unfinished session, stay on the device.
 - iOS Keychain items survive an uninstall, so a reinstall restores the binding and session; a first-run reset is a release gate.
-- Account deletion, data export, privacy policy links, legal retention obligations, native smoke tests, iOS signing and final device secure storage validation remain release gates.
+- Account deletion and cloud JSON export are now implemented in merged P2-07b/c (#27/#29); hosted security, all-history export, legal retention/disclosure, native smoke tests, iOS signing and device secure-storage verification remain release gates.
 - CI must confirm Dart formatting, `flutter analyze`, `flutter test`, `flutter pub get --enforce-lockfile` and Android build; ensure auto-resolved dependency lockfile is committed. Do not merge without an independent review.
 
 ## Rollback
