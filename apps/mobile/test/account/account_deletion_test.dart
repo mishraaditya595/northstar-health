@@ -57,7 +57,10 @@ void main() {
       await deletion;
       expect(api.serverDeleted, true);
       expect(api.signedOut, true);
-      expect(auth.notice, contains('Account deleted and local workout data erased'));
+      expect(
+        auth.notice,
+        contains('Account deleted and local workout data erased'),
+      );
       expect(auth.error, isNull);
       expect(auth.userId, isNull);
     },
@@ -293,7 +296,6 @@ void main() {
     expect(auth.deletionRecoveryPending, false);
   });
 
-
   test('confirmed deletion removes only the original owner files', () async {
     final api = FakeAuthApi()..sessionId = accountA;
     final bound = FakeBoundAccountStore()..saved = accountA;
@@ -301,7 +303,11 @@ void main() {
     final cleanup = FakeConfirmedDeletionCleanupStore();
     final cleaner = FakeLocalAccountDataCleaner();
     final auth = controller(
-      api, bound, recovery: recovery, cleanup: cleanup, cleaner: cleaner,
+      api,
+      bound,
+      recovery: recovery,
+      cleanup: cleanup,
+      cleaner: cleaner,
     );
     addTearDown(auth.dispose);
     addTearDown(api.dispose);
@@ -318,34 +324,42 @@ void main() {
     expect(auth.error, isNull);
   });
 
-  test('confirmed cleanup failure persists for next launch and retries', () async {
-    final api = FakeAuthApi()..sessionId = accountA;
-    final bound = FakeBoundAccountStore()..saved = accountA;
-    final cleanup = FakeConfirmedDeletionCleanupStore();
-    final cleaner = FakeLocalAccountDataCleaner()..failErase = true;
-    final auth = controller(api, bound, cleanup: cleanup, cleaner: cleaner);
-    addTearDown(auth.dispose);
-    addTearDown(api.dispose);
-    await auth.restore();
-    await auth.requestDeletionCode();
-    await auth.confirmAccountDeletion('123456');
-    expect(api.serverDeleted, true);
-    expect(cleaner.erased, isEmpty);
-    expect(cleanup.saved, accountA);
-    expect(auth.confirmedLocalCleanupPending, true);
-    expect(auth.error, contains('not complete'));
+  test(
+    'confirmed cleanup failure persists for next launch and retries',
+    () async {
+      final api = FakeAuthApi()..sessionId = accountA;
+      final bound = FakeBoundAccountStore()..saved = accountA;
+      final cleanup = FakeConfirmedDeletionCleanupStore();
+      final cleaner = FakeLocalAccountDataCleaner()..failErase = true;
+      final auth = controller(api, bound, cleanup: cleanup, cleaner: cleaner);
+      addTearDown(auth.dispose);
+      addTearDown(api.dispose);
+      await auth.restore();
+      await auth.requestDeletionCode();
+      await auth.confirmAccountDeletion('123456');
+      expect(api.serverDeleted, true);
+      expect(cleaner.erased, isEmpty);
+      expect(cleanup.saved, accountA);
+      expect(auth.confirmedLocalCleanupPending, true);
+      expect(auth.error, contains('not complete'));
 
-    final afterRestart = controller(api, bound, cleanup: cleanup, cleaner: cleaner);
-    addTearDown(afterRestart.dispose);
-    await afterRestart.restore();
-    expect(afterRestart.userId, isNull);
-    expect(afterRestart.confirmedLocalCleanupPending, true);
-    cleaner.failErase = false;
-    await afterRestart.retryConfirmedLocalCleanup();
-    expect(cleaner.erased, [accountA]);
-    expect(cleanup.saved, isNull);
-    expect(afterRestart.confirmedLocalCleanupPending, false);
-  });
+      final afterRestart = controller(
+        api,
+        bound,
+        cleanup: cleanup,
+        cleaner: cleaner,
+      );
+      addTearDown(afterRestart.dispose);
+      await afterRestart.restore();
+      expect(afterRestart.userId, isNull);
+      expect(afterRestart.confirmedLocalCleanupPending, true);
+      cleaner.failErase = false;
+      await afterRestart.retryConfirmedLocalCleanup();
+      expect(cleaner.erased, [accountA]);
+      expect(cleanup.saved, isNull);
+      expect(afterRestart.confirmedLocalCleanupPending, false);
+    },
+  );
 
   test('uncertain server result never authorizes local file erasure', () async {
     final api = FakeAuthApi()
@@ -354,8 +368,10 @@ void main() {
     final cleaner = FakeLocalAccountDataCleaner();
     final cleanup = FakeConfirmedDeletionCleanupStore();
     final auth = controller(
-      api, FakeBoundAccountStore()..saved = accountA,
-      cleaner: cleaner, cleanup: cleanup,
+      api,
+      FakeBoundAccountStore()..saved = accountA,
+      cleaner: cleaner,
+      cleanup: cleanup,
     );
     addTearDown(auth.dispose);
     addTearDown(api.dispose);
