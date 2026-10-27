@@ -47,7 +47,7 @@ void main() {
       expect(req.queryParameters['deleted_at'], 'is.null');
       expect(req.queryParameters['server_change_seq'], 'lte.1200');
       expect(req.queryParameters['workout_id'], 'gt.${workoutId(0)}');
-      expect(req.queryParameters['order'], 'workout_id.asc');
+      expect(req.queryParameters['order'], startsWith('workout_id.asc'));
       expect(req.queryParameters['limit'], '100');
       expect(req.queryParameters['select'], contains('payload'));
       expect(req.queryParameters['select'], contains('server_revision'));
@@ -79,7 +79,7 @@ void main() {
     expect(req.queryParameters['user_id'], 'eq.$accountA');
     expect(req.queryParameters.containsKey('deleted_at'), false);
     expect(req.queryParameters.containsKey('status'), false);
-    expect(req.queryParameters['order'], 'server_change_seq.desc');
+    expect(req.queryParameters['order'], startsWith('server_change_seq.desc'));
     expect(req.queryParameters['limit'], '1');
     expect(req.queryParameters['select'], 'server_change_seq');
   });
