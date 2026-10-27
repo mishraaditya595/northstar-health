@@ -97,7 +97,9 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                           if (!auth.codeSent) ...[
                             NsTextField(
                               controller: _email,
-                              enabled: !auth.busy && !auth.confirmedLocalCleanupPending,
+                              enabled:
+                                  !auth.busy &&
+                                  !auth.confirmedLocalCleanupPending,
                               keyboardType: TextInputType.emailAddress,
                               autofillHints: const [AutofillHints.email],
                               autocorrect: false,
@@ -106,7 +108,8 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                             ),
                             const SizedBox(height: 14),
                             FilledButton(
-                              onPressed: auth.busy || auth.confirmedLocalCleanupPending
+                              onPressed:
+                                  auth.busy || auth.confirmedLocalCleanupPending
                                   ? null
                                   : () => auth.requestCode(_email.text),
                               child: Text(
