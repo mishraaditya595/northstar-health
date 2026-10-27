@@ -62,11 +62,11 @@ final workoutConflictResolutionProvider =
       );
     });
 
-final workoutRestoreCursorProvider = Provider<WorkoutRestoreCursor?>((ref) {
-  final auth = ref.watch(accountAuthControllerProvider);
-  if (auth?.userId == null) return null;
-  return ref.watch(workoutConflictResolutionProvider).cursor;
-});
+/// Standalone UI and isolated widget tests have no native Store. The
+/// authenticated account scope overrides this with its bound importer.
+final workoutRestoreCursorProvider = Provider<WorkoutRestoreCursor?>(
+  (ref) => null,
+);
 
 final workoutRestoreBlockedCodeProvider = Provider<String?>(
   (ref) => ref.watch(workoutRestoreCursorProvider)?.blockedCode,
