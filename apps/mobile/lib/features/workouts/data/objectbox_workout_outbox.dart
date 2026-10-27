@@ -493,11 +493,7 @@ class ObjectBoxWorkoutOutbox {
             if (predecessors.any((prev) => prev.state != 'acknowledged')) {
               if (op.state != 'dependency_paused' ||
                   op.errorCode != 'predecessor_unresolved') {
-                _transition(
-                  op,
-                  'dependency_paused',
-                  'predecessor_unresolved',
-                );
+                _transition(op, 'dependency_paused', 'predecessor_unresolved');
               }
               continue;
             }
