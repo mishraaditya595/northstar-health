@@ -60,11 +60,15 @@ Required by ADR-0005 before release. Implementation and review requirements:
    never report success with truncated data. The Dart JSON buffer, channel
    copy and native picker can hold multiple representations simultaneously.
    **No low-memory device peak-RSS figure has been measured yet**; this is a
-   release blocker. Native Android streams writing on a background thread
+   **P2-08 release gate, not a P2-07b merge gate**. Native Android streams writing on a background thread
    using truncate mode, with best-effort DocumentsContract deletion for failed,
-   abandoned or incomplete files; providers can deny deletion. Native iOS
-   atomic write uses complete file protection and stale temporary export folders
-   are purged on launch. Both pickers require physical-device QA. Streaming
+   abandoned or incomplete files; providers can deny deletion. In-flight writes
+   own their completion across Activity teardown, rather than falsely
+   reporting failure while a background write is still active. A process-wide
+   cleanup lock, unique generation marker and compare-and-clear protect new
+   exports from stale startup cleanup. Native iOS
+   atomic write uses complete file protection (without redundant after-write
+   protection changes) and stale temporary export folders are purged on launch. Both pickers require physical-device QA. Streaming
    large-account exports beyond 4 MiB remain follow-up work before the
    all-history requirement can be considered satisfied at arbitrary scale.
    The user-selected destination is outside NorthStar's control; warn that
@@ -82,6 +86,8 @@ Required by ADR-0005 before release. Implementation and review requirements:
    hosted signed JWT/RLS tests, simultaneous second-device changes, Drive/SAF
    denial of delete, app kill/restart cleanup, iOS picker presentation failure,
    and Android low-memory (including peak RSS) remain release gates.
+   The concrete, **unrun** hardware and hosted verification matrix is
+   [P2-08 workout export release validation](p2-08-workout-export-release-validation.md).
 
 ## P2-07c: irreversible account deletion (not yet implemented)
 
