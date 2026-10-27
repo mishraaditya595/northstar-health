@@ -61,10 +61,12 @@ void main() {
     expect(api.deleteRequestedFor, isNull);
     expect(auth.deletionCodeSent, true);
 
-    await scrollTo(tester, 'Cancel account deletion');
+    final cancel = find.widgetWithText(TextButton, 'Cancel account deletion');
+    await tester.scrollUntilVisible(cancel, 150);
+    await tester.ensureVisible(cancel);
     expect(find.text('Verify and permanently delete'), findsOneWidget);
     expect(api.deleteRequestedFor, isNull);
-    await tester.tap(find.text('Cancel account deletion'));
+    await tester.tap(cancel);
     await tester.pumpAndSettle();
     expect(auth.deletionCodeSent, false);
     expect(bound.saved, accountA);
