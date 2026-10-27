@@ -199,7 +199,10 @@ void main() {
       find.textContaining('Some completed workouts still need backup'),
       findsNothing,
     );
-    expect(find.textContaining('All workouts, unfinished sessions'), findsOneWidget);
+    expect(
+      find.textContaining('All workouts, unfinished sessions'),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(auth.userId, accountA);
@@ -219,9 +222,7 @@ void main() {
     await auth.restore();
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          accountAuthControllerProvider.overrideWithValue(auth),
-        ],
+        overrides: [accountAuthControllerProvider.overrideWithValue(auth)],
         child: MaterialApp(
           theme: NorthstarTheme.build(Brightness.light),
           home: const AccountSyncPage(),
@@ -236,10 +237,7 @@ void main() {
     expect(auth.userId, accountA);
     expect(binding.saved, accountA);
     expect(api.signedOut, false);
-    expect(
-      find.textContaining('Could not finish signing out'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Could not finish signing out'), findsOneWidget);
   });
 
   testWidgets('sign out is disabled while the secure clear is in flight', (
@@ -256,9 +254,7 @@ void main() {
     await auth.restore();
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          accountAuthControllerProvider.overrideWithValue(auth),
-        ],
+        overrides: [accountAuthControllerProvider.overrideWithValue(auth)],
         child: MaterialApp(
           theme: NorthstarTheme.build(Brightness.light),
           home: const AccountSyncPage(),
@@ -269,18 +265,22 @@ void main() {
     await tester.tap(find.text('Sign out of this device'));
     await tester.pumpAndSettle();
     expect(
-      tester.widget<OutlinedButton>(
-        find.widgetWithText(OutlinedButton, 'Sign out of this device'),
-      ).onPressed,
+      tester
+          .widget<OutlinedButton>(
+            find.widgetWithText(OutlinedButton, 'Sign out of this device'),
+          )
+          .onPressed,
       isNull,
     );
     await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
     await tester.pump();
     expect(auth.busy, true);
     expect(
-      tester.widget<OutlinedButton>(
-        find.widgetWithText(OutlinedButton, 'Sign out of this device'),
-      ).onPressed,
+      tester
+          .widget<OutlinedButton>(
+            find.widgetWithText(OutlinedButton, 'Sign out of this device'),
+          )
+          .onPressed,
       isNull,
     );
     hold.complete();
@@ -327,9 +327,11 @@ void main() {
     );
     await tester.scrollUntilVisible(find.text('Review sync issues'), 180);
     expect(
-      tester.widget<OutlinedButton>(
-        find.widgetWithText(OutlinedButton, 'Review sync issues'),
-      ).onPressed,
+      tester
+          .widget<OutlinedButton>(
+            find.widgetWithText(OutlinedButton, 'Review sync issues'),
+          )
+          .onPressed,
       isNotNull,
     );
     await tester.tap(find.text('Review sync issues'));
@@ -343,9 +345,7 @@ void main() {
     addTearDown(auth.dispose);
     addTearDown(api.dispose);
     await auth.restore();
-    Map<String, WorkoutSyncFlag> flags = {
-      'w1': WorkoutSyncFlag.notSynced,
-    };
+    Map<String, WorkoutSyncFlag> flags = {'w1': WorkoutSyncFlag.notSynced};
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
