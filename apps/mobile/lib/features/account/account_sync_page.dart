@@ -432,7 +432,10 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
                     child: const Text('Cancel account deletion'),
                   ),
                 ],
-                if (auth.error != null) ...[
+                if (auth.error != null &&
+                    (auth.deletionCodeSent ||
+                        auth.error!.toLowerCase().contains('deletion') ||
+                        auth.error!.contains('session expired'))) ...[
                   const SizedBox(height: 8),
                   Text(
                     auth.error!,
