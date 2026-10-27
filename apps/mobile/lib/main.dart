@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/design/northstar_theme.dart';
 import 'features/account/account_auth_controller.dart';
 import 'features/account/account_gate.dart';
+import 'features/account/account_local_cleanup.dart';
 
 /// Only public client settings are provided at build time. Never accept or
 /// embed service_role / secret keys, database passwords or personal tokens.
@@ -53,6 +54,8 @@ class _AuthBootstrapState extends State<_AuthBootstrap> {
       SupabaseAccountAuthApi(Supabase.instance.client),
       SecureBoundAccountStore(projectHost: uri.host),
       SecureDeletionRecoveryStore(projectHost: uri.host),
+      cleanupStore: SecureConfirmedDeletionCleanupStore(projectHost: uri.host),
+      localCleaner: NativeAccountDataCleaner(projectHost: uri.host),
     );
     await controller.restore();
     _controller = controller;
