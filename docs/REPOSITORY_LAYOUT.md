@@ -8,7 +8,7 @@
 | `apps/watch_os/` | Swift/watch team | SwiftUI sources + XcodeGen watch **proof target**; future real embedded iPhone companion target |
 | `apps/wear_os/` | Kotlin/watch team | Gradle/Compose watch app artifact |
 | `contracts/workout_sync/v1/` | Shared protocol reviewers | JSON Schema + fictional positive/negative fixtures |
-| `supabase/` | Cloud/data reviewers | Later migrations, RLS, idempotent workout-only backup |
+| `supabase/` | Cloud/data reviewers | Versioned sync/progress/restore/deletion migrations, RLS, workout-only backup and server-only Auth deletion function |
 | `packages/` | Dart domain team | Only actual reusable Dart packages; currently none |
 | `experiments/` | Research agents | FlutterWear/FlutterWatch proof-of-concepts, excluded from release |
 | `prototypes/` | Design team | HTML reference, unchanged |
@@ -16,7 +16,7 @@
 
 ## Bootstrapping and verification
 
-The base PR branch moves all existing Flutter `lib`, `test`, pubspec and analyzer configuration into `apps/mobile/`. `flutter create --platforms=android,ios --project-name=northstar_health --org=dev.northstar .` **must be run from `apps/mobile`** for first native runner generation only. Commit generated iOS/Android files and `pubspec.lock`, verify bundle IDs before publishing. Thereafter normal CI **must not regenerate project files**.
+The bootstrap PR moved Flutter sources and configuration into `apps/mobile/` and committed native Android/iOS runners and `pubspec.lock`. Normal CI **must not regenerate project files**. If re-creating a platform runner is unavoidable, do so deliberately with a pinned Flutter SDK from `apps/mobile`, inspect the generated diff and preserve approved bundle identifiers/signing. Release builds still require native/device QA.
 
 Wear OS uses native Gradle/JDK 17 and a committed official Gradle Wrapper. watchOS uses XcodeGen for a **temporary watch-only proof target**, but this does **not satisfy** Apple Watch companion packaging: Xcode must associate target and embedding with Flutter Runner's iOS application, with agreed bundle IDs and signing. This must be configured and tested on macOS, with no Swift source duplication; see [watchOS README](../apps/watch_os/README.md).
 
