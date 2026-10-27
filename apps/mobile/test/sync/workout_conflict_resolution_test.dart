@@ -288,9 +288,18 @@ void main() {
         ),
       ),
     );
-    expect(store.box<WorkoutRestoreSkipEntity>().getAll().single.serverChangeSeq, 9);
-    expect(store.box<WorkoutSyncOutboxEntity>().getAll().single.state, 'conflict');
-    expect(store.box<WorkoutSessionEntity>().getAll().single.name, 'Local strength');
+    expect(
+      store.box<WorkoutRestoreSkipEntity>().getAll().single.serverChangeSeq,
+      9,
+    );
+    expect(
+      store.box<WorkoutSyncOutboxEntity>().getAll().single.state,
+      'conflict',
+    );
+    expect(
+      store.box<WorkoutSessionEntity>().getAll().single.name,
+      'Local strength',
+    );
     importer.resolveReviewedWorkout(
       workoutUuid: workout,
       expectedLocalRevision: 1,
