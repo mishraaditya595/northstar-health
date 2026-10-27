@@ -151,10 +151,14 @@ class _FakeHttpsHandler(urllib.request.HTTPSHandler):
         self.requests.append(request)
         headers = {"Location": self.location} if self.location else {}
         # HTTPErrorProcessor dispatches redirects/4xx as a real opener would.
-        return urllib.response.addinfourl(
+        response = urllib.response.addinfourl(
             io.BytesIO(b'{"error":"confidential"}'), headers,
             request.full_url, code=self.status,
         )
+        # addinfourl lacks the HTTPResponse.msg attribute expected by
+        # urllib's real HTTPErrorProcessor.
+        response.msg = "synthetic response"
+        return response
 
 
 class HostedReadAuditTests(unittest.TestCase):
