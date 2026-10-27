@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(18);
+select plan(19);
 insert into auth.users(id,email) values
 ('00000000-0000-4000-8000-0000000000e1','lookup-a@example.invalid'),
 ('00000000-0000-4000-8000-0000000000e2','lookup-b@example.invalid');
