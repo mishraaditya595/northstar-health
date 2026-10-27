@@ -106,4 +106,3 @@ CompletedWorkoutHistoryExporter makeExporter(
   maxExportBytes: maxExportBytes,
   now: () => DateTime.utc(2026, 10, 27, 10),
 );
-
