@@ -2,9 +2,21 @@ import Flutter
 import UIKit
 
 @main
-@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate, UIDocumentPickerDelegate {
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate, UIDocumentPickerDelegate, UIAdaptivePresentationControllerDelegate {
   private var exportResult: FlutterResult?
   private var exportDirectory: URL?
+
+  private func purgeAbandonedExports() {
+    let temporary = FileManager.default.temporaryDirectory
+    guard let entries = try? FileManager.default.contentsOfDirectory(
+      at: temporary, includingPropertiesForKeys: [.isDirectoryKey]
+    ) else { return }
+    for entry in entries where entry.lastPathComponent.hasPrefix("northstar-export-") {
+      // Only directories owned by this export workflow, never ObjectBox or
+      // other temporary data. Cleanup is best effort if files are locked.
+      try? FileManager.default.removeItem(at: entry)
+    }
+  }
 
   private func clearExport() {
     if let directory = exportDirectory {
@@ -18,6 +30,11 @@ import UIKit
     let callback = exportResult
     clearExport()
     callback?(state)
+  }
+
+  func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+    // A sheet can be dismissed without documentPickerWasCancelled firing.
+    if exportResult != nil { finishExport("cancelled") }
   }
 
   func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
@@ -48,7 +65,7 @@ import UIKit
     do {
       try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
       exportDirectory = parent
-      try bytes.write(to: file, options: [.atomic])
+      try bytes.write(to: file, options: [.atomic, .completeFileProtection])
       try FileManager.default.setAttributes(
         [.protectionKey: FileProtectionType.complete],
         ofItemAtPath: file.path
@@ -63,8 +80,15 @@ import UIKit
       while let displayed = presenter.presentedViewController { presenter = displayed }
       let picker = UIDocumentPickerViewController(forExporting: [file], asCopy: true)
       picker.delegate = self
+      picker.presentationController?.delegate = self
       exportResult = result
-      presenter.present(picker, animated: true)
+      presenter.present(picker, animated: true) { [weak self, weak picker] in
+        // UIKit may fail to present when a scene becomes inactive or another
+        // controller takes ownership. Do not strand the Flutter completion.
+        if picker?.presentingViewController == nil, self?.exportResult != nil {
+          self?.finishExport("cancelled")
+        }
+      }
     } catch {
       clearExport()
       result(FlutterError(code: "export_failed", message: "Could not open document picker", details: nil))
@@ -94,6 +118,7 @@ import UIKit
       // Avoid reporting paths, user records, or exception contents.
       return false
     }
+    purgeAbandonedExports()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
