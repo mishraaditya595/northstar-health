@@ -424,6 +424,9 @@ class ObjectBoxWorkoutRestoreImporter {
       // ahead of the shared cursor. The later page replay of that SAME or an
       // older change must not block the entire account or overwrite review.
       if (change.changeSeq <= remote.serverChangeSeq) {
+        if (change.serverRevision < remote.serverRevision) {
+          throw const RestoreImportException('server_revision_regressed');
+        }
         if (change.changeSeq == remote.serverChangeSeq &&
             (change.serverRevision != remote.serverRevision ||
                 change.deleted != remote.deleted)) {
