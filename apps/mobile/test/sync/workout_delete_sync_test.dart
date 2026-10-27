@@ -179,37 +179,40 @@ void main() {
   );
 
   for (final reason in ['invalid_snapshot', 'payload_too_large']) {
-    test('never-sent $reason delete stays local and clears blocked warning', () {
-      seed();
-      final session = store.box<WorkoutSessionEntity>().getAll().single;
-      session.name = '';
-      store.box<WorkoutSessionEntity>().put(session);
-      store.runInTransaction(TxMode.write, () {
-        outbox.enqueueCompletedInTransaction(workout);
-      });
-      final op = store.box<WorkoutSyncOutboxEntity>().getAll().single;
-      expect(op.state, 'blocked');
-      expect(op.attempts, 0);
-      op.errorCode = reason;
-      store.box<WorkoutSyncOutboxEntity>().put(op);
-      expect(outbox.blockedCount(), 1);
-      expect(
-        outbox.deleteCompletedWorkout(
-          sessionUuid: workout.toUpperCase(),
-          expectedLocalRevision: 1,
-        ),
-        CompletedWorkoutDeleteResult.localOnly,
-      );
-      final done = store.box<WorkoutSyncOutboxEntity>().getAll().single;
-      expect(done.state, 'superseded');
-      expect(done.payloadJson, 'null');
-      expect(outbox.blockedCount(), 0);
-      expect(outbox.syncFlags().containsKey(workout), false);
-      expect(outbox.reserveNext(nowMs: finish + 10000000), isNull);
-      reopen();
-      expect(outbox.blockedCount(), 0);
-      expect(outbox.backfillCompleted(), 0);
-    });
+    test(
+      'never-sent $reason delete stays local and clears blocked warning',
+      () {
+        seed();
+        final session = store.box<WorkoutSessionEntity>().getAll().single;
+        session.name = '';
+        store.box<WorkoutSessionEntity>().put(session);
+        store.runInTransaction(TxMode.write, () {
+          outbox.enqueueCompletedInTransaction(workout);
+        });
+        final op = store.box<WorkoutSyncOutboxEntity>().getAll().single;
+        expect(op.state, 'blocked');
+        expect(op.attempts, 0);
+        op.errorCode = reason;
+        store.box<WorkoutSyncOutboxEntity>().put(op);
+        expect(outbox.blockedCount(), 1);
+        expect(
+          outbox.deleteCompletedWorkout(
+            sessionUuid: workout.toUpperCase(),
+            expectedLocalRevision: 1,
+          ),
+          CompletedWorkoutDeleteResult.localOnly,
+        );
+        final done = store.box<WorkoutSyncOutboxEntity>().getAll().single;
+        expect(done.state, 'superseded');
+        expect(done.payloadJson, 'null');
+        expect(outbox.blockedCount(), 0);
+        expect(outbox.syncFlags().containsKey(workout), false);
+        expect(outbox.reserveNext(nowMs: finish + 10000000), isNull);
+        reopen();
+        expect(outbox.blockedCount(), 0);
+        expect(outbox.backfillCompleted(), 0);
+      },
+    );
   }
 
   test('previously attempted blocked upload still requires cloud deletion', () {
