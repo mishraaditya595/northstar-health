@@ -68,3 +68,5 @@ jobs:
           deno-version: v2.9.8
       - name: Type-check deletion Edge Function
         run: deno check supabase/functions/delete-account/index.ts
+      - name: Verify irreversible deletion endpoint with stubbed Auth clients
+        run: deno test supabase/functions/delete-account/index_test.ts
