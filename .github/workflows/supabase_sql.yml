@@ -62,3 +62,9 @@ jobs:
         run: supabase db reset
       - name: Execute pgTAP SQL tests
         run: supabase test db
+      - name: Install pinned Deno for Edge Function verification
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.8
+      - name: Type-check deletion Edge Function
+        run: deno check supabase/functions/delete-account/index.ts
