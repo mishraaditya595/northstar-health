@@ -11,11 +11,12 @@ import 'support/fake_account_auth.dart';
 Widget signedInApp([AccountAuthController? auth]) => ProviderScope(
   overrides: [
     accountAuthControllerProvider.overrideWithValue(
-      auth ?? AccountAuthController(
-        FakeAuthApi(),
-        FakeBoundAccountStore(),
-        FakeDeletionRecoveryStore(),
-      ),
+      auth ??
+          AccountAuthController(
+            FakeAuthApi(),
+            FakeBoundAccountStore(),
+            FakeDeletionRecoveryStore(),
+          ),
     ),
   ],
   child: const NorthstarApp(),
