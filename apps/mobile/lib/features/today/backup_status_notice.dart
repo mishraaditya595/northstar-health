@@ -11,6 +11,7 @@ class BackupStatusNotice extends StatelessWidget {
     this.unsyncedCount = 0,
     this.reviewCount = 0,
     this.onSyncNow,
+    this.onReview,
     super.key,
   });
 
@@ -20,6 +21,9 @@ class BackupStatusNotice extends StatelessWidget {
 
   /// Conflicted/skipped workouts: retrying cannot fix them, so no action.
   final int reviewCount;
+
+  /// Opens explicit reviewed conflict recovery, not a blind retry.
+  final VoidCallback? onReview;
 
   /// Runs the foreground upload/restore now. Null hides the action.
   final VoidCallback? onSyncNow;
@@ -77,8 +81,10 @@ class BackupStatusNotice extends StatelessWidget {
                           '$reviewCount completed '
                           'workout${reviewCount == 1 ? '' : 's'} changed on '
                           'another device. This phone\'s copy is kept; '
-                          'conflict review is not available yet.',
+                          'review each conflicting version before syncing.',
                     ),
+                    actionLabel: onReview == null ? null : 'Review',
+                    onAction: onReview,
                   ),
                 if ((auth.backupPaused || showUnsynced || reviewCount > 0) &&
                     blockedCount > 0)
