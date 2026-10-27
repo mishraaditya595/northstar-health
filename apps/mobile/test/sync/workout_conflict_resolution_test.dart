@@ -381,7 +381,6 @@ void main() {
     expect(importer.readConflictCandidates(), isEmpty);
   });
 
-
   test(
     'a reviewed live cloud copy cannot resurrect an irreversible delete',
     () {
