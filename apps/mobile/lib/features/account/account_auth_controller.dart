@@ -764,7 +764,8 @@ class AccountAuthController extends ChangeNotifier {
         // No active local binding remains.
       }
     } catch (_) {
-      _error = 'Could not erase local workouts or finish recovery securely. '
+      _error =
+          'Could not erase local workouts or finish recovery securely. '
           'Data is still locked; retry or contact support.';
     } finally {
       _busy = false;
