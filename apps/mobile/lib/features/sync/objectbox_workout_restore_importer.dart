@@ -423,7 +423,8 @@ class ObjectBoxWorkoutRestoreImporter {
     if (remote != null && remote.deleted && !change.deleted) {
       throw const RestoreImportException('tombstone_resurrection');
     }
-    if (remote != null && remote.cursorEpoch != epoch &&
+    if (remote != null &&
+        remote.cursorEpoch != epoch &&
         change.serverRevision < remote.serverRevision) {
       // PITR may roll the server back while the device still has newer
       // acknowledged material. Never silently overwrite that local copy.
@@ -630,7 +631,11 @@ class ObjectBoxWorkoutRestoreImporter {
     )) {
       throw const RestoreImportException('resolution_unknown_operation');
     }
-    final skip = _one(_skips, WorkoutRestoreSkipEntity_.workoutUuid, workoutUuid);
+    final skip = _one(
+      _skips,
+      WorkoutRestoreSkipEntity_.workoutUuid,
+      workoutUuid,
+    );
     if (skip != null && skip.ownerAccountId != accountId) {
       throw const RestoreImportException('owner_store_mismatch');
     }
@@ -641,14 +646,14 @@ class ObjectBoxWorkoutRestoreImporter {
       throw const RestoreImportException('resolution_already_handled');
     }
     final remoteChange = review.change;
-    if (oldRemote != null && oldRemote.cursorEpoch == review.cursorEpoch &&
+    if (oldRemote != null &&
+        oldRemote.cursorEpoch == review.cursorEpoch &&
         (remoteChange == null ||
             remoteChange.serverRevision < oldRemote.serverRevision ||
             remoteChange.changeSeq < oldRemote.serverChangeSeq)) {
       throw const RestoreImportException('resolution_stale_server');
     }
-    if (action == WorkoutResolutionAction.useCloud &&
-        remoteChange == null) {
+    if (action == WorkoutResolutionAction.useCloud && remoteChange == null) {
       throw const RestoreImportException('resolution_cloud_missing');
     }
     if (action == WorkoutResolutionAction.retryLocal &&
@@ -738,7 +743,8 @@ class ObjectBoxWorkoutRestoreImporter {
       final baseline = action == WorkoutResolutionAction.useCloud
           ? importedRevision
           : before;
-      final state = oldRemote ??
+      final state =
+          oldRemote ??
           WorkoutRemoteStateEntity(
             workoutUuid: workoutUuid,
             ownerAccountId: accountId,
