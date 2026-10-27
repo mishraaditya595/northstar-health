@@ -1,6 +1,6 @@
 # P2-06 — Multi-device workout restore and conflict handling
 
-**Status:** server-feed implementation slice ready for independent PR review on `feat/phase2-p06-restore-feed`. **P2-06 as a whole is not feature-complete or deployed.** P2-05 [PR #17](https://github.com/mishraaditya595/northstar-health/pull/17) was merged 2026-10-26.
+**Status:** The server-feed PR #18 and subsequent P2-06 transport/importer/coordinator/fairness/deletion/conflict slices (#19–#24) are **merged in source**. This page preserves the original feed implementation scope, not an unmerged milestone. Hosted Auth/RLS, two-device and native-device P2-08 release validation are still open.
 
 ## What slice 1 implements
 
@@ -33,7 +33,7 @@ The privileged rotation command and recovery checklist live in [Database restore
 - **Hosted migration drift:** the NorthStar-Health development project currently has only the first six P2-01 migrations. Reconcile and apply P2-01's seventh and P2-05's eighth with reviewed rollout/locking before attempting this **ninth** migration. Never silently repair hosted migration history or execute this branch's migration against production.
 - **Verified final-commit CI:** [GitHub Actions SQL run #40301948587](https://github.com/mishraaditya595/northstar-health/actions/runs/40301948587) passed on the squashed implementation commit `9c393cc` with a clean database reset, replay of **all nine migrations**, and **205/205 pgTAP assertions** (64 sync + 65 progress + 76 restore). Coverage includes epoch rotation, a stale cursor 8 when the owner counter is 10, missing/mismatched epoch handling, exact-limit pagination, and account isolation. GitHub Actions ran these checks; no Supabase CLI or Flutter SDK was run locally in the authoring environment.
 - Before release, test using distinct real signed-in Supabase users, verify owner RLS at the network boundary, test SQL concurrency/cursor behavior, offline and interrupted pagination, account switching, ObjectBox model upgrades and physical iOS/Android devices.
-- No automatic merge/deploy from an agent-authored PR. P2-06 is not complete until the safe mobile import and conflict/deletion paths are implemented and tested. This server-feed slice can be reviewed and merged independently without claiming milestone completion.
+- **Historical PR #18 boundary:** that server-feed slice could be merged independently. The required safe mobile importer and reviewed conflict/deletion paths were later merged (#19–#24). This does not imply hosted deployment, independent signed-JWT two-device E2E or production readiness.
 
 ## Rollback
 
