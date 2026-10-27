@@ -424,12 +424,19 @@ class ObjectBoxWorkoutRestoreImporter {
       // ahead of the shared cursor. The later page replay of that SAME or an
       // older change must not block the entire account or overwrite review.
       if (change.changeSeq <= remote.serverChangeSeq) {
-        if (change.serverRevision < remote.serverRevision) {
-          throw const RestoreImportException('server_revision_regressed');
+        // A point lookup may have recorded a newer cloud version while an
+        // older feed page was already in flight. Older sequence + older
+        // revision is normal historical replay: ignore it and let the shared
+        // cursor advance. An older sequence claiming a NEWER revision is
+        // inconsistent and must not silently overwrite the reviewed state.
+        if (change.changeSeq < remote.serverChangeSeq) {
+          if (change.serverRevision > remote.serverRevision) {
+            throw const RestoreImportException('remote_sequence_inconsistent');
+          }
+          return false;
         }
-        if (change.changeSeq == remote.serverChangeSeq &&
-            (change.serverRevision != remote.serverRevision ||
-                change.deleted != remote.deleted)) {
+        if (change.serverRevision != remote.serverRevision ||
+            change.deleted != remote.deleted) {
           throw const RestoreImportException('remote_sequence_inconsistent');
         }
         return false;
