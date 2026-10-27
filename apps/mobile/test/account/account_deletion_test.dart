@@ -302,8 +302,12 @@ void main() {
     await auth.verifyCode('123456');
     expect(auth.userId, accountB);
     expect(bound.saved, accountB);
-    expect(accountStoreRelativePath(accountB, projectHost: 'dev.example.invalid'),
-        isNot(accountStoreRelativePath(accountA, projectHost: 'dev.example.invalid')));
+    expect(
+      accountStoreRelativePath(accountB, projectHost: 'dev.example.invalid'),
+      isNot(
+        accountStoreRelativePath(accountA, projectHost: 'dev.example.invalid'),
+      ),
+    );
     expect(await data.readAsString(), 'synthetic local workout');
 
     await auth.signOut();
@@ -320,25 +324,28 @@ void main() {
     expect(cleaner.erased, isEmpty);
   });
 
-  test('keep path preserves local data and guard if secure marker clear fails', () async {
-    final api = FakeAuthApi()..sessionId = accountA;
-    final bound = FakeBoundAccountStore()..saved = accountA;
-    final recovery = FakeDeletionRecoveryStore()
-      ..saved = accountA
-      ..failClear = true;
-    final cleaner = FakeLocalAccountDataCleaner();
-    final auth = controller(api, bound, recovery: recovery, cleaner: cleaner);
-    addTearDown(auth.dispose);
-    addTearDown(api.dispose);
-    await auth.restore();
-    await auth.leaveDeletionRecoveryKeepingData();
-    expect(bound.saved, isNull);
-    expect(recovery.saved, accountA);
-    expect(auth.deletionRecoveryPending, true);
-    expect(auth.userId, isNull);
-    expect(cleaner.erased, isEmpty);
-    expect(auth.error, contains('Could not leave recovery securely'));
-  });
+  test(
+    'keep path preserves local data and guard if secure marker clear fails',
+    () async {
+      final api = FakeAuthApi()..sessionId = accountA;
+      final bound = FakeBoundAccountStore()..saved = accountA;
+      final recovery = FakeDeletionRecoveryStore()
+        ..saved = accountA
+        ..failClear = true;
+      final cleaner = FakeLocalAccountDataCleaner();
+      final auth = controller(api, bound, recovery: recovery, cleaner: cleaner);
+      addTearDown(auth.dispose);
+      addTearDown(api.dispose);
+      await auth.restore();
+      await auth.leaveDeletionRecoveryKeepingData();
+      expect(bound.saved, isNull);
+      expect(recovery.saved, accountA);
+      expect(auth.deletionRecoveryPending, true);
+      expect(auth.userId, isNull);
+      expect(cleaner.erased, isEmpty);
+      expect(auth.error, contains('Could not leave recovery securely'));
+    },
+  );
 
   test(
     'explicit recovery exit erases only the original local partition',
