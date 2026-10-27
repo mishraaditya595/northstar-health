@@ -97,8 +97,10 @@ class BackupStatusNotice extends StatelessWidget {
                           '$blockedCount completed '
                           'workout${blockedCount == 1 ? '' : 's'} saved locally '
                           'but not backup-compatible. No upload will be '
-                          'attempted for these workouts.',
+                          'attempted for these workouts until reviewed.',
                     ),
+                    actionLabel: onReview == null ? null : 'Review',
+                    onAction: onReview,
                   ),
               ],
             ),
