@@ -10,9 +10,12 @@ import '../workouts/data/objectbox_workout_outbox.dart';
 import 'account_auth_controller.dart';
 import 'account_auth_provider.dart';
 import 'account_sync_overview.dart';
+import 'workout_export_file_writer.dart';
+import 'workout_history_export.dart';
 
 /// P2-07: a truthful device-local sync dashboard and account access surface.
-/// Does not claim cloud completion, delete a server account or export raw data.
+/// Shows device-local sync state; exports selected cloud workout history
+/// only on explicit user action. Never deletes a server account.
 class AccountSyncPage extends ConsumerStatefulWidget {
   const AccountSyncPage({super.key});
 
@@ -22,6 +25,49 @@ class AccountSyncPage extends ConsumerStatefulWidget {
 
 class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
   bool _confirmingSignOut = false;
+  bool _exporting = false;
+
+  Future<void> _exportWorkouts(AccountAuthController auth) async {
+    final owner = auth.userId;
+    if (_exporting || owner == null || !auth.cloudBackupReady) return;
+    setState(() => _exporting = true);
+    try {
+      final data = await ref
+          .read(workoutHistoryExporterProvider)(owner)
+          .exportJson();
+      if (!mounted || auth.userId != owner || !auth.cloudBackupReady) return;
+      final saved = await ref
+          .read(workoutExportFileWriterProvider)
+          .saveJson(data);
+      if (!mounted || auth.userId != owner) return;
+      if (saved) showNsMessage(context, 'Workout history exported.');
+    } on WorkoutExportException catch (error) {
+      if (mounted && auth.userId == owner) {
+        showNsMessage(context, switch (error.code) {
+          'history_changed_retry' =>
+            'Cloud history changed during export. Please retry.',
+          'export_too_large' =>
+            'This history is too large for safe export on this device. '
+                'A larger export method is not available yet.',
+          'invalid_row' ||
+          'invalid_order' ||
+          'invalid_payload' ||
+          'invalid_revision' ||
+          'invalid_head' ||
+          'page_too_large' =>
+            'Cloud history contains unsupported or invalid data. '
+                'Please contact support.',
+          _ => 'Unable to export cloud history. Please retry.',
+        });
+      }
+    } catch (_) {
+      if (mounted && auth.userId == owner) {
+        showNsMessage(context, 'Unable to export cloud history. Please retry.');
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
 
   Future<void> _signOut(
     BuildContext context,
@@ -136,7 +182,7 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
                           runSpacing: 8,
                           children: [
                             FilledButton.icon(
-                              onPressed: online && kick != null
+                              onPressed: online && kick != null && !_exporting
                                   ? () {
                                       if (!auth.cloudBackupReady) {
                                         showNsMessage(
@@ -256,15 +302,35 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
                   'are not integrated in this build. Signing out never deletes '
                   'either local or cloud records.',
                 ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: online && !auth.busy && !_exporting
+                      ? () => _exportWorkouts(auth)
+                      : null,
+                  icon: const Icon(Icons.file_download_outlined),
+                  label: Text(
+                    _exporting
+                        ? 'Preparing export…'
+                        : 'Export cloud workout history (JSON)',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Exports include completed phone workouts currently in '
+                  'your cloud account. Pending local workouts, custom plans, '
+                  'unfinished sessions and HealthKit/Health Connect data '
+                  'are excluded. Choose the destination in the system '
+                  'document picker; treat the file as private.',
+                ),
                 const SizedBox(height: 10),
                 const Text(
-                  'JSON history export and permanent account deletion are '
-                  'not yet available in this development build. Do not '
-                  'interpret sign-out as account deletion.',
+                  'Permanent account deletion is not yet available in '
+                  'this development build. Sign-out does not delete '
+                  'local or cloud records.',
                 ),
                 const SizedBox(height: 18),
                 OutlinedButton.icon(
-                  onPressed: auth.busy || _confirmingSignOut
+                  onPressed: auth.busy || _confirmingSignOut || _exporting
                       ? null
                       : () => _signOut(context, auth, overview),
                   icon: const Icon(Icons.logout),

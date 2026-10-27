@@ -1,6 +1,6 @@
 # P2-07 — Account status, export and deletion milestones
 
-**Status:** P2-07a account/sync status UI (#25) implemented. JSON export and permanent account deletion remain unimplemented. Phase 2 is not released.
+**Status:** P2-07a account/sync status UI (#25) merged. P2-07b cloud-history JSON export (#27) is implemented in code; account deletion remains unimplemented. Phase 2 is not released.
 
 ## P2-07a: account and sync status UI (#25)
 
@@ -26,24 +26,68 @@
   readings are not backed up under ADR-0005.
 - No new ObjectBox schema, SQL migration, credentials, auth grant or dependency.
 
-## P2-07b: authenticated machine-readable JSON export (not yet implemented)
+## P2-07b: authenticated machine-readable JSON export (#27)
 
-Required by ADR-0005 before release. Deliver separately with:
+Required by ADR-0005 before release. Implementation and review requirements:
 
-1. A read-only owner-verified server export endpoint, scoped to the currently
-   authenticated non-anonymous user. No caller-provided owner ID or service
-   keys on the phone. RLS/grants and malicious cross-owner tests are required.
-2. Stable, bounded pagination and a clearly documented consistency cutoff.
-   Exclude deletion tombstones' payloads, expired receipts, credentials,
-   health-platform data, and other accounts. Preserve UUIDs, UTC timestamps,
-   exercises, sets, reps, grams, nulls, and schema/version metadata.
-3. A device-controlled file export with deliberate user action (not automatic
-   clipboard or analytics logging), clear indication of excluded local-only
-   plans/unfinished sessions, and retry/error handling. Export must be
-   available before any permanent account deletion action. Prevent account
-   switch during pagination/writing from producing a mixed-owner artifact.
-4. Authenticated tests for empty accounts, thousands of pages, concurrent
-   edits/deletions, revoked auth, path/export failure, and per-owner isolation.
+1. Read owner-scoped `public.workout_records` with existing authenticated
+   SELECT + RLS. No new SECURITY DEFINER endpoint, owner parameter in an RPC,
+   schema migration or secret/service key. The client filters by its verified
+   account as defence in depth, checks response owner IDs, and rechecks the
+   auth session before/after every network call. Hosted JWT/RLS adversarial
+   tests are still a P2-08 release gate.
+2. Page by workout UUID with **explicit ascending PostgreSQL UUID order**
+   (verified on the actual Dart PostgREST HTTP builder; its implicit default
+   produced descending order and was unsafe for a `gt` keyset). Enforce a
+   strict request cap of 100 rows and filter by the initial
+   highest owner change sequence (including tombstones) and re-read the same
+   maximum at the end. Stop only on an empty page (not a short page): a
+   lower PostgREST server-side row cap must not silently truncate exports.
+   Any concurrent owner write/delete increases that
+   sequence and aborts the export *before* platform file handoff; no partial
+   document is saved. No durable snapshot is reserved across requests.
+   Database PITR requires epoch rotation per the existing restore runbook.
+   Preserve original DTO UUIDs, UTC timestamp strings, sets, nulls and schema
+   fields; exclude tombstones, expired receipts, credentials, health data,
+   outbox, unfinished workouts, plans and other owners.
+3. Explicit Account-screen action presents Android's system Create Document
+   picker or iOS's UIDocumentPicker. No extra dependency or app-level
+   permanent file is created; iOS writes a protected temporary file deleted
+   on picker completion. No clipboard, analytics logging or in-app automatic
+   saving. Native picker cancellation does not say exported. The JSON is
+   materialized in memory with a temporary conservative 4 MiB *output byte*
+   bound (not a measured heap bound); larger accounts fail explicitly and
+   never report success with truncated data. The Dart JSON buffer, channel
+   copy and native picker can hold multiple representations simultaneously.
+   **No low-memory device peak-RSS figure has been measured yet**; this is a
+   **P2-08 release gate, not a P2-07b merge gate**. Native Android streams writing on a background thread
+   using truncate mode, with best-effort DocumentsContract deletion for failed,
+   abandoned or incomplete files; providers can deny deletion. In-flight writes
+   own their completion across Activity teardown, rather than falsely
+   reporting failure while a background write is still active. A process-wide
+   cleanup lock, unique generation marker and compare-and-clear protect new
+   exports from stale startup cleanup. Native iOS
+   atomic write uses complete file protection (without redundant after-write
+   protection changes) and stale temporary export folders are purged on launch. Both pickers require physical-device QA. Streaming
+   large-account exports beyond 4 MiB remain follow-up work before the
+   all-history requirement can be considered satisfied at arbitrary scale.
+   The user-selected destination is outside NorthStar's control; warn that
+   the exported file is sensitive. Test native delivery on physical iOS
+   and Android before release.
+4. Dart synthetic unit/widget tests cover empty accounts, 1,201 workouts
+   with an additional empty-terminal page, **short server pages**, nulls,
+   changed server watermark, expired/switched auth, wrong-account rows,
+   malformed payloads/UUIDs, out-of-order pages, excessive output, and
+   Dart MethodChannel's mocked native save/cancel/failure responses.
+   Actual SupabaseWorkoutExportReader queries are asserted over mocked HTTP,
+   including owner, status, tombstone exclusion, ordering, cap and high-water
+   query. **These are not Kotlin/Swift native tests**, not real cloud RLS tests,
+   and not proof of platform file-provider behavior. Native export tests,
+   hosted signed JWT/RLS tests, simultaneous second-device changes, Drive/SAF
+   denial of delete, app kill/restart cleanup, iOS picker presentation failure,
+   and Android low-memory (including peak RSS) remain release gates.
+   The concrete, **unrun** hardware and hosted verification matrix is
+   [P2-08 workout export release validation](p2-08-workout-export-release-validation.md).
 
 ## P2-07c: irreversible account deletion (not yet implemented)
 
