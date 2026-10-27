@@ -34,7 +34,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('FINISH DATA REMOVAL'), findsOneWidget);
     expect(find.text('Retry local data removal'), findsOneWidget);
-    expect(find.text('Use a different account instead'), findsNothing);
+    expect(
+      find.text('Erase local workouts and use another account'),
+      findsNothing,
+    );
     final signIn = tester.widget<FilledButton>(
       find.widgetWithText(FilledButton, 'Send sign-in code'),
     );
@@ -55,7 +58,13 @@ void main() {
       final api = FakeAuthApi();
       final bound = FakeBoundAccountStore()..saved = accountA;
       final recovery = FakeDeletionRecoveryStore()..saved = accountA;
-      final auth = controller(api, bound, recovery: recovery);
+      final cleaner = FakeLocalAccountDataCleaner();
+      final auth = controller(
+        api,
+        bound,
+        recovery: recovery,
+        cleaner: cleaner,
+      );
       addTearDown(auth.dispose);
       addTearDown(api.dispose);
       await auth.restore();
@@ -69,19 +78,28 @@ void main() {
       expect(find.text('Send recovery code'), findsOneWidget);
       expect(find.text('Send sign-in code'), findsNothing);
 
-      await tester.tap(find.text('Use a different account instead'));
+      await tester.tap(
+        find.text('Erase local workouts and use another account'),
+      );
       await tester.pumpAndSettle();
-      expect(find.text('Leave account recovery?'), findsOneWidget);
+      expect(
+        find.text('Erase local data and leave recovery?'),
+        findsOneWidget,
+      );
       expect(recovery.saved, accountA);
       await tester.tap(find.text('Keep recovering'));
       await tester.pumpAndSettle();
+      expect(cleaner.erased, isEmpty);
       expect(auth.deletionRecoveryPending, true);
       expect(bound.saved, accountA);
 
-      await tester.tap(find.text('Use a different account instead'));
+      await tester.tap(
+        find.text('Erase local workouts and use another account'),
+      );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Leave recovery'));
+      await tester.tap(find.text('Erase local data and leave'));
       await tester.pumpAndSettle();
+      expect(cleaner.erased, [accountA]);
       expect(recovery.saved, isNull);
       expect(bound.saved, isNull);
       expect(auth.userId, isNull);
