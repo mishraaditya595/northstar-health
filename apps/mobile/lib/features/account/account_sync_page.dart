@@ -82,7 +82,18 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
           final online = auth.cloudBackupReady;
 
           return Scaffold(
-            appBar: AppBar(title: const Text('Account')),
+            appBar: AppBar(
+              leading: BackButton(
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/today');
+                  }
+                },
+              ),
+              title: const Text('Account'),
+            ),
             body: ListView(
               padding: EdgeInsets.fromLTRB(
                 16,
