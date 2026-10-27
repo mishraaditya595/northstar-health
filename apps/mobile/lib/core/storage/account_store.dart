@@ -51,9 +51,18 @@ Future<void> deleteBoundAccountStore(
   required String projectHost,
 }) async {
   final base = await defaultStoreDirectory();
-  final path =
-      '${base.path}/${accountStoreRelativePath(accountId, projectHost: projectHost)}';
-  final directory = Directory(path);
+  await deleteBoundAccountStoreAtRoot(base, accountId, projectHost: projectHost);
+}
+
+/// Pure filesystem boundary, allowing real directory-isolation tests without
+/// opening an ObjectBox database or relying on a native device.
+Future<void> deleteBoundAccountStoreAtRoot(
+  Directory base,
+  String accountId, {
+  required String projectHost,
+}) async {
+  final relative = accountStoreRelativePath(accountId, projectHost: projectHost);
+  final directory = Directory('${base.path}/$relative');
   if (await directory.exists()) {
     await directory.delete(recursive: true);
   }
