@@ -26,6 +26,7 @@ void main() {
             jsonEncode([exportRow(1)]),
             200,
             headers: {'content-type': 'application/json'},
+          request: req,
           );
         }),
       );
@@ -65,6 +66,7 @@ void main() {
           '[{"server_change_seq":142}]',
           200,
           headers: {'content-type': 'application/json'},
+          request: req,
         );
       }),
     );
