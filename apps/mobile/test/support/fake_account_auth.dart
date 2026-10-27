@@ -144,6 +144,9 @@ class FakeAuthApi implements AccountAuthApi {
 
   @override
   Future<void> sendRecoveryCode(String email) async {
+    if (rateLimited) {
+      throw const AuthApiException('Rate limit', statusCode: '429');
+    }
     if (offline || serverDeleted) throw StateError('Original account deleted');
     recoveryCodeSentTo = email;
   }
@@ -187,7 +190,12 @@ class FakeAuthApi implements AccountAuthApi {
   bool get isAnonymous => anonymous;
 
   @override
-  Future<void> sendEmailCode(String email) async => sentTo = email;
+  Future<void> sendEmailCode(String email) async {
+    if (rateLimited) {
+      throw const AuthApiException('Rate limit', statusCode: '429');
+    }
+    sentTo = email;
+  }
 
   @override
   Future<String> verifyEmailCode(String email, String code) async {
