@@ -573,6 +573,9 @@ void main() {
       sessionUuid: workout,
       expectedLocalRevision: 1,
     );
+    // The earlier conflict blocks this successor; reserveNext moves it to
+    // dependency_paused before the reviewed rebase may supersede it.
+    expect(outbox.reserveNext(nowMs: started + 10000000), isNull);
     importer = ObjectBoxWorkoutRestoreImporter(
       store,
       accountId: accountA,
