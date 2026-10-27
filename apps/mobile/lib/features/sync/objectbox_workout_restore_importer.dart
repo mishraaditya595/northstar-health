@@ -443,10 +443,27 @@ class ObjectBoxWorkoutRestoreImporter {
 
     var localRevision = local?.revision ?? 0;
     if (change.deleted) {
-      if (local != null && local.deletedAtMs == null) {
-        local.deletedAtMs = _clock().toUtc().millisecondsSinceEpoch;
+      if (local != null) {
+        // Tombstones must remove the original workout details on *every*
+        // signed-in device, not merely hide them from the Progress query.
+        // Keep minimal UUID/revision metadata to guard against resurrection.
+        for (final exercise in _matching(
+          _exercises, WorkoutExerciseEntity_.sessionUuid, local.uuid,
+        )) {
+          for (final set in _matching(
+            _sets, WorkoutSetEntity_.exerciseUuid, exercise.uuid,
+          )) {
+            _sets.remove(set.id);
+          }
+          _exercises.remove(exercise.id);
+        }
+        if (local.deletedAtMs == null) {
+          local.deletedAtMs = _clock().toUtc().millisecondsSinceEpoch;
+          local.revision++;
+        }
         local.updatedAtMs = local.deletedAtMs!;
-        local.revision++;
+        local.name = 'Deleted workout';
+        local.planUuid = null;
         _sessions.put(local);
         localRevision = local.revision;
       }
