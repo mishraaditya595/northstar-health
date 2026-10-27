@@ -9,12 +9,23 @@ the final release record. Never merge/deploy automatically.
 ## Current hosted inventory (read-only observation, 27 October 2026)
 
 The connected **NorthStar-Health** Supabase project returned:
+
+**Inventory provenance:** live read-only Supabase integration calls to
+`list_migrations`, `list_edge_functions`, `list_tables` (public and
+northstar_private schemas), `execute_sql` (SELECT-only aggregate counts over
+`auth.users`, `public.workout_records` and
+`public.workout_sync_operations`, plus `current_setting('TimeZone')`),
+and `get_advisors` (security and performance), queried on **27 October
+2026**. The expected 11 migration files were enumerated from the GitHub
+`main` repository tree. No admin user listing, database writes, or
+deployment calls were used.
+
 - **6 of 11** ordered SQL migrations installed, through
   `20261025071009_phase2_tombstone_delete_retry_guard`; **5 missing**.
 - **No** deployed Edge Functions (`delete-account` is absent).
 - **0** Auth users, **0** `workout_records`, **0** sync receipts and **0**
   rows requiring cleanup by the completed-only migration at the moment checked.
-- Public workout tables had RLS enabled. Supabase's read-only security advisor reported two **INFO** \`rls_enabled_no_policy\` notices for deny-all \`workout_sync_operations\` and private owner cursors ([advisory explanation](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)); performance advisor reported no findings. These are not independent proof of RLS safety. The SQL session timezone was UTC;
+- Public workout tables had RLS enabled. Supabase's read-only security advisor reported two **INFO** `rls_enabled_no_policy` notices for deny-all `workout_sync_operations` and private owner cursors ([advisory explanation](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)); performance advisor reported no findings. These are not independent proof of RLS safety. The SQL session timezone was UTC;
   this **does not prove** transaction-local UTC semantics of the pending
   P2-05 migration's historical backfill.
 
@@ -45,6 +56,12 @@ exposure or data loss is an unconditional stop.
 the **real hosted REST API** with a publishable key and two verified, nonanonymous
 Supabase Auth access tokens. It **never writes or deletes** data, accounts or
 migrations, and never prints response bodies, tokens or owner/workout UUIDs.
+A dedicated urllib opener rejects **all HTTP 301/302/303/307/308
+redirects** with `unexpected_redirect`, without attempting the destination
+URL; it never forwards bearer tokens or the publishable key to a redirect
+target. Offline tests simulate off-host HTTPS and HTTP redirects as well as
+the regular HTTPError path.
+
 The audit checks:
 
 - `GET /auth/v1/user` verifies **two distinct** nonanonymous owner UUIDs.
@@ -82,16 +99,22 @@ only expendable synthetic data (environment variables are not committed):
 export NS_P2_08_DISPOSABLE_ACK=nonproduction-disposable-only
 export NS_P2_08_URL='https://YOUR-TEST-PROJECT.supabase.co'
 export NS_P2_08_PUBLISHABLE_KEY='YOUR_PUBLIC_KEY'
-export NS_P2_08_JWT_A='VERIFIED_A_ACCESS_TOKEN'
-export NS_P2_08_JWT_B='VERIFIED_B_ACCESS_TOKEN'
+printf 'A verified JWT (hidden): '; IFS= read -rs NS_P2_08_JWT_A; printf '\\n'
+printf 'B verified JWT (hidden): '; IFS= read -rs NS_P2_08_JWT_B; printf '\\n'
+export NS_P2_08_JWT_A NS_P2_08_JWT_B
 export NS_P2_08_WORKOUT_A='A_COMPLETED_WORKOUT_UUID'
 export NS_P2_08_WORKOUT_B='B_COMPLETED_WORKOUT_UUID'
 python3 scripts/p2_08_hosted_rls.py
 unset NS_P2_08_JWT_A NS_P2_08_JWT_B
 ```
 
-Avoid shell history or terminal recording of real tokens. Prefer process-scoped
-secret injection or secure local credential tooling. The sample commands are
+The interactive `read -rs` commands suppress terminal echo and avoid
+including either JWT value in the command line or shell history. The
+credentials will still briefly exist in the invoking process environment
+and can be exposed to privileged local process inspection: use a trusted
+isolated testing workstation, close session recordings and `unset` both
+values after execution. Prefer process-scoped secure secret injection when
+available; do not supply token literals on a shell command line. The sample commands are
 placeholders, **not** working credentials. Failure returns nonzero; no assertion
 is reported as successful if one fixture is missing.
 
