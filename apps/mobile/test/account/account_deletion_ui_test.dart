@@ -139,7 +139,12 @@ void main() {
     expect(api.deleteRequestedFor, isNull);
     // Use the real UI action, rather than invoking the controller directly.
     // A single text match avoids duplicate ancestor TextButton finders.
-    final cancel = find.text('Cancel account deletion').last;
+    final cancel = find.text('Cancel account deletion');
+    await tester.scrollUntilVisible(
+      cancel,
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.ensureVisible(cancel);
     await tester.pumpAndSettle();
     await tester.tap(cancel);
