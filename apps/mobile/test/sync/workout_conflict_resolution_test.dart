@@ -124,41 +124,48 @@ void main() {
     dir.deleteSync(recursive: true);
   });
 
-  test('explicit cloud choice imports and supersedes terminal local upload', () {
-    seed();
-    conflict();
-    final candidate = importer.readConflictCandidates().single;
-    expect(candidate.localRevision, 1);
-    expect(candidate.name, 'Local strength');
-    importer.resolveReviewedWorkout(
-      workoutUuid: workout,
-      expectedLocalRevision: 1,
-      review: review(),
-      action: WorkoutResolutionAction.useCloud,
-    );
-    expect(importer.readConflictCandidates(), isEmpty);
-    expect(store.box<WorkoutSessionEntity>().getAll().single.name,
-        'Cloud strength');
-    expect(store.box<WorkoutSyncOutboxEntity>().getAll().single.state,
-        'superseded');
-    expect(outbox.pending(), isEmpty);
-    expect(outbox.reserveNext(nowMs: started + 10000000), isNull);
-    // The point lookup was ahead of the shared restore cursor. Replay of the
-    // identical change must advance the cursor, not block as a duplicate.
-    importer.applyPage(
-      WorkoutRestorePage(
-        cursorEpoch: epoch,
-        cursorReset: false,
-        nextCursor: 7,
-        hasMore: false,
-        changes: [review().change!],
-      ),
-      afterSeq: 0,
-      requestedEpoch: null,
-    );
-    expect(importer.readCursor().nextCursor, 7);
-    expect(importer.readCursor().blockedCode, isNull);
-  });
+  test(
+    'explicit cloud choice imports and supersedes terminal local upload',
+    () {
+      seed();
+      conflict();
+      final candidate = importer.readConflictCandidates().single;
+      expect(candidate.localRevision, 1);
+      expect(candidate.name, 'Local strength');
+      importer.resolveReviewedWorkout(
+        workoutUuid: workout,
+        expectedLocalRevision: 1,
+        review: review(),
+        action: WorkoutResolutionAction.useCloud,
+      );
+      expect(importer.readConflictCandidates(), isEmpty);
+      expect(
+        store.box<WorkoutSessionEntity>().getAll().single.name,
+        'Cloud strength',
+      );
+      expect(
+        store.box<WorkoutSyncOutboxEntity>().getAll().single.state,
+        'superseded',
+      );
+      expect(outbox.pending(), isEmpty);
+      expect(outbox.reserveNext(nowMs: started + 10000000), isNull);
+      // The point lookup was ahead of the shared restore cursor. Replay of the
+      // identical change must advance the cursor, not block as a duplicate.
+      importer.applyPage(
+        WorkoutRestorePage(
+          cursorEpoch: epoch,
+          cursorReset: false,
+          nextCursor: 7,
+          hasMore: false,
+          changes: [review().change!],
+        ),
+        afterSeq: 0,
+        requestedEpoch: null,
+      );
+      expect(importer.readCursor().nextCursor, 7);
+      expect(importer.readCursor().blockedCode, isNull);
+    },
+  );
 
   test('retry local requeues a new immutable op at fresh server CAS', () {
     seed();
@@ -198,8 +205,10 @@ void main() {
       requestedEpoch: null,
     );
     expect(importer.readCursor().blockedCode, isNull);
-    expect(store.box<WorkoutSessionEntity>().getAll().single.name,
-        'Local strength');
+    expect(
+      store.box<WorkoutSessionEntity>().getAll().single.name,
+      'Local strength',
+    );
   });
 
   test('stale local optimistic revision refuses all writes', () {
@@ -214,10 +223,14 @@ void main() {
       ),
       throwsA(isA<RestoreImportException>()),
     );
-    expect(store.box<WorkoutSessionEntity>().getAll().single.name,
-        'Local strength');
-    expect(store.box<WorkoutSyncOutboxEntity>().getAll().single.state,
-        'conflict');
+    expect(
+      store.box<WorkoutSessionEntity>().getAll().single.name,
+      'Local strength',
+    );
+    expect(
+      store.box<WorkoutSyncOutboxEntity>().getAll().single.state,
+      'conflict',
+    );
   });
 
   test('pending uncertain upload cannot be discarded by a server lookup', () {
@@ -268,11 +281,15 @@ void main() {
     );
     expect(store.box<WorkoutExerciseEntity>().count(), 0);
     expect(store.box<WorkoutSetEntity>().count(), 0);
-    expect(store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs,
-        isNotNull);
+    expect(
+      store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs,
+      isNotNull,
+    );
     expect(importer.readConflictCandidates(), isEmpty);
-    expect(store.box<WorkoutSyncOutboxEntity>().getAll().single.payloadJson,
-        'null');
+    expect(
+      store.box<WorkoutSyncOutboxEntity>().getAll().single.payloadJson,
+      'null',
+    );
   });
 
   test('cloud missing may be retried as new upsert, not invented deletion', () {
@@ -285,8 +302,7 @@ void main() {
       action: WorkoutResolutionAction.retryLocal,
     );
     expect(
-      outbox.reserveNext(nowMs: started + 10000000)!
-          .expectedServerRevision,
+      outbox.reserveNext(nowMs: started + 10000000)!.expectedServerRevision,
       0,
     );
   });
@@ -316,25 +332,30 @@ void main() {
     expect(importer.readConflictCandidates(), isEmpty);
   });
 
-  test('deleted workout with absent server row resolves without network work', () {
-    seed();
-    conflict();
-    outbox.deleteCompletedWorkout(
-      sessionUuid: workout,
-      expectedLocalRevision: 1,
-    );
-    outbox.reserveNext(nowMs: started + 10000000);
-    importer.resolveReviewedWorkout(
-      workoutUuid: workout,
-      expectedLocalRevision: 2,
-      review: review(missing: true),
-      action: WorkoutResolutionAction.finishDeletion,
-    );
-    expect(outbox.pending(), isEmpty);
-    expect(importer.readConflictCandidates(), isEmpty);
-    expect(store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs,
-        isNotNull);
-  });
+  test(
+    'deleted workout with absent server row resolves without network work',
+    () {
+      seed();
+      conflict();
+      outbox.deleteCompletedWorkout(
+        sessionUuid: workout,
+        expectedLocalRevision: 1,
+      );
+      outbox.reserveNext(nowMs: started + 10000000);
+      importer.resolveReviewedWorkout(
+        workoutUuid: workout,
+        expectedLocalRevision: 2,
+        review: review(missing: true),
+        action: WorkoutResolutionAction.finishDeletion,
+      );
+      expect(outbox.pending(), isEmpty);
+      expect(importer.readConflictCandidates(), isEmpty);
+      expect(
+        store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs,
+        isNotNull,
+      );
+    },
+  );
 
   test('account switch prevents local mutation of reviewed server state', () {
     seed();
@@ -349,7 +370,9 @@ void main() {
       ),
       throwsA(isA<RestoreImportException>()),
     );
-    expect(store.box<WorkoutSyncOutboxEntity>().getAll().single.state,
-        'conflict');
+    expect(
+      store.box<WorkoutSyncOutboxEntity>().getAll().single.state,
+      'conflict',
+    );
   });
 }
