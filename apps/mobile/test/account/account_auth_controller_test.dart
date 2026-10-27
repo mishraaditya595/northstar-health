@@ -26,6 +26,30 @@ void main() {
     },
   );
 
+  test(
+    'JWT expiry notifies account listeners without an SDK auth event',
+    () async {
+      final api = FakeAuthApi()
+        ..sessionId = accountA
+        ..sessionExpiresAtSeconds =
+            DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000 + 1;
+      final bound = FakeBoundAccountStore()..saved = accountA;
+      final auth = controller(api, bound);
+      addTearDown(auth.dispose);
+      addTearDown(api.dispose);
+      await auth.restore();
+      expect(auth.cloudBackupReady, true);
+      var changes = 0;
+      auth.addListener(() => changes++);
+      await Future<void>.delayed(const Duration(milliseconds: 1500));
+      expect(auth.cloudBackupReady, false);
+      expect(changes, greaterThan(0));
+      expect(auth.backupPaused, true);
+      expect(auth.userId, accountA);
+      expect(bound.saved, accountA);
+    },
+  );
+
   test('unexpected account change locks old partition immediately', () async {
     final api = FakeAuthApi()..sessionId = accountA;
     final bound = FakeBoundAccountStore()..saved = accountA;

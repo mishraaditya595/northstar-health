@@ -73,6 +73,11 @@ abstract class AccountAuthApi {
 
   /// A presently unexpired, non-anonymous session; null pauses cloud upload.
   String? get cloudSessionUserId;
+
+  /// Token deadline (UTC Unix seconds). Null for APIs without a deadline.
+  /// Used only to refresh UI state, never to grant cloud access.
+  int? get cloudSessionExpiresAtSeconds => null;
+
   Stream<String?> get cloudIdentityChanges;
 
   Future<void> sendEmailCode(String email);
@@ -104,6 +109,10 @@ class SupabaseAccountAuthApi implements AccountAuthApi {
     }
     return session.user.id;
   }
+
+  @override
+  int? get cloudSessionExpiresAtSeconds =>
+      _client.auth.currentSession?.expiresAt;
 
   @override
   Stream<String?> get cloudIdentityChanges =>
@@ -150,7 +159,31 @@ class AccountAuthController extends ChangeNotifier {
   final AccountAuthApi _api;
   final BoundAccountStore _binding;
   late final StreamSubscription<String?> _authSubscription;
+  Timer? _sessionExpiryTimer;
   bool _refreshFailed = false;
+
+  void _scheduleSessionExpiry() {
+    _sessionExpiryTimer?.cancel();
+    _sessionExpiryTimer = null;
+    final expiresAt = _api.cloudSessionExpiresAtSeconds;
+    if (_userId == null ||
+        expiresAt == null ||
+        _accountIdOrNull(_api.cloudSessionUserId) != _userId) {
+      return;
+    }
+    final deadline = DateTime.fromMillisecondsSinceEpoch(
+      expiresAt * 1000,
+      isUtc: true,
+    );
+    final remaining = deadline.difference(DateTime.now().toUtc());
+    if (remaining <= Duration.zero) return;
+    // Refresh the disabled state at the actual JWT deadline even when the
+    // SDK does not send an auth event. Transport still rechecks every RPC.
+    _sessionExpiryTimer = Timer(remaining, () {
+      _sessionExpiryTimer = null;
+      notifyListeners();
+    });
+  }
 
   void _onIdentityChange(String? accountId) {
     // Look at the restored session's owner even if its JWT has expired.
@@ -163,6 +196,7 @@ class AccountAuthController extends ChangeNotifier {
       _userId = null;
     }
     if (accountId != null) _refreshFailed = false;
+    _scheduleSessionExpiry();
     notifyListeners();
   }
 
@@ -202,6 +236,7 @@ class AccountAuthController extends ChangeNotifier {
             (!_api.isAnonymous && _accountIdOrNull(active) == bound))) {
       _userId = bound;
     }
+    _scheduleSessionExpiry();
     notifyListeners();
   }
 
@@ -273,6 +308,7 @@ class AccountAuthController extends ChangeNotifier {
         return;
       }
       _userId = identity;
+      _scheduleSessionExpiry();
       _codeSent = false;
       _pendingEmail = null;
     } catch (_) {
@@ -301,6 +337,8 @@ class AccountAuthController extends ChangeNotifier {
       return;
     }
     _userId = null;
+    _sessionExpiryTimer?.cancel();
+    _sessionExpiryTimer = null;
     _codeSent = false;
     _pendingEmail = null;
     notifyListeners();
@@ -318,6 +356,7 @@ class AccountAuthController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _sessionExpiryTimer?.cancel();
     _authSubscription.cancel();
     super.dispose();
   }

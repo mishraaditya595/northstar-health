@@ -24,23 +24,6 @@ class _TodayPageState extends ConsumerState<TodayPage> {
 
   void _later() => showNsMessage(context, 'Available in a later phase.');
 
-  Future<void> _signOut() async {
-    final yes = await showNsConfirm(
-      context,
-      title: 'Sign out?',
-      message:
-          'Your workouts stay on this device, including any unfinished '
-          'session, and come back when you sign in to this account again.',
-      confirmLabel: 'Sign out',
-    );
-    if (!yes) return;
-    final auth = ref.read(accountAuthControllerProvider);
-    if (auth == null) return;
-    await auth.signOut();
-    // A failed sign-out keeps the account open, so say so.
-    if (auth.error != null && mounted) showNsMessage(context, auth.error!);
-  }
-
   int _count(WorkoutSyncFlag flag) => ref
       .watch(workoutSyncFlagsProvider)
       .values
@@ -65,9 +48,9 @@ class _TodayPageState extends ConsumerState<TodayPage> {
           eyebrow: 'FICTIONAL DEMO DATA · 23 OCT 2026',
           actions: [
             SquareButton(
-              tooltip: 'Sign out of NorthStar',
-              onPressed: _signOut,
-              child: const Icon(Icons.logout_rounded, size: 20),
+              tooltip: 'Account and backup',
+              onPressed: () => context.push('/today/account'),
+              child: const Icon(Icons.manage_accounts_outlined, size: 20),
             ),
           ],
         ),

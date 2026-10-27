@@ -35,18 +35,60 @@ void main() {
     await tester.pumpWidget(signedInApp(auth));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Sign out of NorthStar'));
+    await tester.tap(find.byTooltip('Account and backup'));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: find.text('Account')),
+      findsOneWidget,
+    );
+    expect(find.byType(BackButton), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Sign out of this device'), 180);
+    await tester.ensureVisible(
+      find.widgetWithText(OutlinedButton, 'Sign out of this device'),
+    );
+    await tester.drag(find.byType(ListView).last, const Offset(0, -160));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sign out of this device'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(auth.userId, accountA);
 
-    await tester.tap(find.byTooltip('Sign out of NorthStar'));
+    await tester.scrollUntilVisible(find.text('Sign out of this device'), 180);
+    await tester.ensureVisible(
+      find.widgetWithText(OutlinedButton, 'Sign out of this device'),
+    );
+    await tester.drag(find.byType(ListView).last, const Offset(0, -160));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sign out of this device'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
     await tester.pumpAndSettle();
     expect(auth.userId, isNull);
     expect(bound.saved, isNull);
+  });
+
+  testWidgets('Account back button returns to Today', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final auth = AccountAuthController(
+      FakeAuthApi()..sessionId = accountA,
+      FakeBoundAccountStore()..saved = accountA,
+    );
+    addTearDown(auth.dispose);
+    await auth.restore();
+    await tester.pumpWidget(signedInApp(auth));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Account and backup'));
+    await tester.pumpAndSettle();
+    expect(find.byType(BackButton), findsOneWidget);
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.text('Full Body A'), findsOneWidget);
+    expect(find.text('Cloud session ready'), findsNothing);
   });
 
   testWidgets('Today shows fictional metrics and four tabs', (tester) async {

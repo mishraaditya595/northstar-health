@@ -4,7 +4,7 @@
 
 NorthStar is a proposed privacy-conscious, offline-first health and strength-training app for **Android, iPhone, Android tablets and iPad**, with **Apple Watch and Wear OS** companions planned. Build the Flutter product with a distinct athletic performance aesthetic, not a generic wellness dashboard.
 
-> **Development status — Phase 2 (accounts and completed-workout sync) in progress; not released.** Implemented and merged: the local ObjectBox exercise catalog, plan editor, active workout logger with rest timer, and workout history/progress (Phase 1); mandatory email-code sign-in with account-bound offline storage, a durable completed-workout outbox, an authenticated foreground uploader and server-side progress against a **development** Supabase backend (P2-01 to P2-05). Multi-device restore (P2-06) is in progress. There is **no HealthKit/Health Connect integration, Firebase collection or shipping wearable app**, and nothing is deployed to production. See the [roadmap tracker](docs/ROADMAP.md) for exact status. The pictures below are **proposed static UI concepts**, not application screenshots.
+> **Development status — Phase 2 (accounts and completed-workout sync) in progress; not released.** Implemented and merged: the local ObjectBox exercise catalog, plan editor, active workout logger with rest timer, and workout history/progress (Phase 1); mandatory email-code sign-in with account-bound offline storage, a durable completed-workout outbox, an authenticated foreground uploader and server-side progress against a **development** Supabase backend (P2-01 to P2-05). P2-06 multi-device restore, workout deletion and reviewed conflict recovery are merged (not necessarily hosted). P2-07 account/sync status UI (#25) provides local status, manual sync and reviewed recovery; JSON export and permanent account deletion are not implemented. There is **no HealthKit/Health Connect integration, Firebase collection or shipping wearable app**, and nothing is deployed to production. See the [roadmap tracker](docs/ROADMAP.md) for exact status. The pictures below are **proposed static UI concepts**, not application screenshots.
 
 ## UI concept previews
 
@@ -26,7 +26,7 @@ NorthStar is a proposed privacy-conscious, offline-first health and strength-tra
 | State + dependency injection | Riverpod 3 | Theme state scaffolded |
 | Navigation | go_router, bottom tabs / adaptive side rail | Scaffolded |
 | On-device workout data | **ObjectBox** | Local model, repositories, exercise catalog, plan editor, live logging and history implemented |
-| User identity + completed-workout sync | **Supabase Auth + PostgreSQL** | Mandatory sign-in, outbox and foreground upload merged against a development backend; restore in progress |
+| User identity + completed-workout sync | **Supabase Auth + PostgreSQL** | Mandatory sign-in, outbox, foreground upload and completed-workout restore/recovery (#18–#24); P2-07 account/sync UI (#25) |
 | Health measurements | **Apple HealthKit and Android Health Connect** | Permissioned read planned; no SDK permissions yet |
 | Workout summary write-back | One app-owned completed workout, opt-in, no duplicates | Planned |
 | Crash/usage telemetry | **Firebase Crashlytics + Analytics** | Chosen, **not installed/collecting**; explicit privacy gate |
