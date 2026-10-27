@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/design/dialogs.dart';
+import '../../core/design/inputs.dart';
 import '../../core/design/page_header.dart';
 import '../sync/workout_conflict_resolution.dart';
 import '../sync/workout_upload_coordinator.dart';
@@ -15,7 +17,8 @@ import 'workout_history_export.dart';
 
 /// P2-07: a truthful device-local sync dashboard and account access surface.
 /// Shows device-local sync state; exports selected cloud workout history
-/// only on explicit user action. Never deletes a server account.
+/// only on explicit user action. Delete requires a second verified OTP and
+/// server-only hard deletion; this screen never handles privileged secrets.
 class AccountSyncPage extends ConsumerStatefulWidget {
   const AccountSyncPage({super.key});
 
@@ -26,6 +29,54 @@ class AccountSyncPage extends ConsumerStatefulWidget {
 class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
   bool _confirmingSignOut = false;
   bool _exporting = false;
+  final _deletionCode = TextEditingController();
+
+  @override
+  void dispose() {
+    _deletionCode.dispose();
+    super.dispose();
+  }
+
+  Future<void> _beginDeletion(
+    AccountAuthController auth,
+    AccountSyncOverview overview,
+  ) async {
+    if (auth.busy || _exporting || !auth.cloudBackupReady) return;
+    final warning = overview.hasUnresolvedLocalChanges
+        ? 'This device has workouts waiting for backup, requiring review, '
+              'or stored only locally. They will NOT be included in the '
+              'cloud export, and they cannot be recovered from the server. '
+        : '';
+    final accepted = await showNsConfirm(
+      context,
+      title: 'Permanently delete your account?',
+      message: '${warning}This permanently deletes your signed-in account, '
+          'cloud workout history, deletion tombstones and sync receipts. '
+          'Other devices will lose access. Local workouts and plans remain '
+          'locked to this account on this device; they will not be moved '
+          'to any other account. Export your cloud workout history FIRST, '
+          'and be aware the current export has a 4 MiB limit. '
+          'You must verify a new email code before deletion.',
+      confirmLabel: 'Send deletion code',
+    );
+    if (!accepted || !mounted || !auth.cloudBackupReady) return;
+    await auth.requestDeletionCode();
+  }
+
+  Future<void> _confirmDeletion(AccountAuthController auth) async {
+    if (auth.busy || _exporting || !auth.deletionCodeSent) return;
+    final accepted = await showNsConfirm(
+      context,
+      title: 'Delete permanently?',
+      message: 'This cannot be undone. The verified account and its cloud '
+          'history will be deleted. This device will immediately lock its '
+          'local owner partition, even if the network result is uncertain. '
+          'A successful delete cannot be reversed.',
+      confirmLabel: 'Delete permanently',
+    );
+    if (!accepted || !mounted || !auth.deletionCodeSent) return;
+    await auth.confirmAccountDeletion(_deletionCode.text);
+  }
 
   Future<void> _exportWorkouts(AccountAuthController auth) async {
     final owner = auth.userId;
@@ -324,13 +375,57 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  'Permanent account deletion is not yet available in '
-                  'this development build. Sign-out does not delete '
-                  'local or cloud records.',
+                  'Deleting an account permanently removes its cloud history '
+                  'and disables sign-in on other devices. Any unfinished or '
+                  'unsynced workouts and custom plans on this device are NOT '
+                  'part of the cloud export. Local history is locked and '
+                  'cannot be reassigned to a different account.',
                 ),
+                const SizedBox(height: 12),
+                if (!auth.deletionCodeSent)
+                  OutlinedButton.icon(
+                    onPressed: online && !auth.busy && !_exporting &&
+                            !_confirmingSignOut
+                        ? () => _beginDeletion(auth, overview)
+                        : null,
+                    icon: const Icon(Icons.person_remove_outlined),
+                    label: const Text('Permanently delete account'),
+                  )
+                else ...[
+                  NsTextField(
+                    controller: _deletionCode,
+                    label: 'Six-digit deletion code',
+                    enabled: !auth.busy && !_exporting,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(6),
+                    ],
+                    onSubmitted: (_) => _confirmDeletion(auth),
+                  ),
+                  const SizedBox(height: 8),
+                  FilledButton(
+                    onPressed: auth.busy || _exporting
+                        ? null
+                        : () => _confirmDeletion(auth),
+                    child: const Text('Verify and permanently delete'),
+                  ),
+                  TextButton(
+                    onPressed: auth.busy ? null : auth.cancelDeletion,
+                    child: const Text('Cancel account deletion'),
+                  ),
+                ],
+                if (auth.error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    auth.error!,
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                ],
                 const SizedBox(height: 18),
                 OutlinedButton.icon(
-                  onPressed: auth.busy || _confirmingSignOut || _exporting
+                  onPressed: auth.busy || auth.deletionCodeSent ||
+                          _confirmingSignOut || _exporting
                       ? null
                       : () => _signOut(context, auth, overview),
                   icon: const Icon(Icons.logout),
