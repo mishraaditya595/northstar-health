@@ -27,7 +27,8 @@ class FakeDeletionRecoveryStore implements DeletionRecoveryStore {
   }
 }
 
-class FakeConfirmedDeletionCleanupStore implements ConfirmedDeletionCleanupStore {
+class FakeConfirmedDeletionCleanupStore
+    implements ConfirmedDeletionCleanupStore {
   String? saved;
   bool failWrite = false;
   bool failClear = false;
