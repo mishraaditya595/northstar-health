@@ -42,7 +42,6 @@ Future<Store> openBoundAccountStore(
   return openStore(directory: path);
 }
 
- 
 /// Erases only the confirmed-deleted owner's ObjectBox directory. The caller
 /// must first unmount and close that owner's Store. This never creates a Store
 /// or touches another owner's files. A missing directory is already erased.
@@ -51,7 +50,11 @@ Future<void> deleteBoundAccountStore(
   required String projectHost,
 }) async {
   final base = await defaultStoreDirectory();
-  await deleteBoundAccountStoreAtRoot(base, accountId, projectHost: projectHost);
+  await deleteBoundAccountStoreAtRoot(
+    base,
+    accountId,
+    projectHost: projectHost,
+  );
 }
 
 /// Pure filesystem boundary, allowing real directory-isolation tests without
@@ -61,7 +64,10 @@ Future<void> deleteBoundAccountStoreAtRoot(
   String accountId, {
   required String projectHost,
 }) async {
-  final relative = accountStoreRelativePath(accountId, projectHost: projectHost);
+  final relative = accountStoreRelativePath(
+    accountId,
+    projectHost: projectHost,
+  );
   final directory = Directory('${base.path}/$relative');
   if (await directory.exists()) {
     await directory.delete(recursive: true);
