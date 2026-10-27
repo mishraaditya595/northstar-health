@@ -42,7 +42,12 @@ class RestoreApplyResult {
   final bool alreadyApplied;
 }
 
-enum WorkoutResolutionAction { useCloud, retryLocal, finishDeletion }
+enum WorkoutResolutionAction {
+  useCloud,
+  retryLocal,
+  finishDeletion,
+  keepLocalOnly,
+}
 
 class WorkoutConflictCandidate {
   const WorkoutConflictCandidate({
@@ -53,6 +58,7 @@ class WorkoutConflictCandidate {
     required this.hasLocalWorkout,
     required this.exerciseCount,
     required this.setCount,
+    required this.canKeepLocalOnly,
   });
   final String workoutUuid;
   final String name;
@@ -61,6 +67,7 @@ class WorkoutConflictCandidate {
   final bool hasLocalWorkout;
   final int exerciseCount;
   final int setCount;
+  final bool canKeepLocalOnly;
 }
 
 /// Injected per-account importer; *not* an app background service.
@@ -75,8 +82,10 @@ class ObjectBoxWorkoutRestoreImporter {
     required String accountId,
     required this.activeAccountId,
     DateTime Function()? clock,
+    UuidFactory? uuidFactory,
   }) : accountId = validAccountId(accountId),
        _clock = clock ?? DateTime.now,
+       _ids = uuidFactory ?? SecureUuidFactory(),
        _cursors = _store.box<WorkoutRestoreCursorEntity>(),
        _remote = _store.box<WorkoutRemoteStateEntity>(),
        _sessions = _store.box<WorkoutSessionEntity>(),
@@ -89,6 +98,7 @@ class ObjectBoxWorkoutRestoreImporter {
   final String accountId;
   final String? Function() activeAccountId;
   final DateTime Function() _clock;
+  final UuidFactory _ids;
   final Box<WorkoutRestoreCursorEntity> _cursors;
   final Box<WorkoutRemoteStateEntity> _remote;
   final Box<WorkoutSessionEntity> _sessions;
@@ -571,6 +581,24 @@ class ObjectBoxWorkoutRestoreImporter {
         final results = <WorkoutConflictCandidate>[];
         for (final id in ids) {
           final session = _one(_sessions, WorkoutSessionEntity_.uuid, id);
+          final operations = _matching(
+            _outbox,
+            WorkoutSyncOutboxEntity_.sessionUuid,
+            id,
+          );
+          final baseline = _one(
+            _remote,
+            WorkoutRemoteStateEntity_.workoutUuid,
+            id,
+          );
+          final skip = _one(_skips, WorkoutRestoreSkipEntity_.workoutUuid, id);
+          if (baseline != null && baseline.ownerAccountId != accountId) {
+            throw const RestoreImportException('owner_store_mismatch');
+          }
+          final keepLocalOnly =
+              baseline == null &&
+              skip == null &&
+              ObjectBoxWorkoutOutbox.entirelyUnsentLocalValidations(operations);
           final exercises = session == null
               ? <WorkoutExerciseEntity>[]
               : _matching(
@@ -599,6 +627,7 @@ class ObjectBoxWorkoutRestoreImporter {
               hasLocalWorkout: session != null,
               exerciseCount: exercises.length,
               setCount: setCount,
+              canKeepLocalOnly: keepLocalOnly,
             ),
           );
         }
@@ -619,9 +648,11 @@ class ObjectBoxWorkoutRestoreImporter {
   }) => _store.runInTransaction(TxMode.write, () {
     _checkAccount();
     final cursor = _cursorEntity();
-    if (cursor?.blockedCode != null ||
-        (cursor?.cursorEpoch != null &&
-            cursor!.cursorEpoch != review.cursorEpoch)) {
+    // A blocked page cursor must not prevent an independent, owner-checked
+    // per-workout reviewed resolution. The cursor itself remains blocked
+    // until an explicit retry; no shared sequence is skipped here.
+    if (cursor?.cursorEpoch != null &&
+        cursor!.cursorEpoch != review.cursorEpoch) {
       throw const RestoreImportException('resolution_epoch_changed');
     }
     if (review.change != null && review.change!.workoutId != workoutUuid) {
@@ -697,6 +728,17 @@ class ObjectBoxWorkoutRestoreImporter {
             remoteChange.changeSeq < oldRemote.serverChangeSeq)) {
       throw const RestoreImportException('resolution_stale_server');
     }
+    final localOnlyAllowed = action == WorkoutResolutionAction.keepLocalOnly &&
+        local != null &&
+        local.deletedAtMs == null &&
+        remoteChange == null &&
+        oldRemote == null &&
+        skip == null &&
+        ObjectBoxWorkoutOutbox.entirelyUnsentLocalValidations(operations);
+    if (action == WorkoutResolutionAction.keepLocalOnly &&
+        !localOnlyAllowed) {
+      throw const RestoreImportException('resolution_cannot_keep_local');
+    }
     if (action == WorkoutResolutionAction.useCloud && remoteChange == null) {
       throw const RestoreImportException('resolution_cloud_missing');
     }
@@ -761,6 +803,9 @@ class ObjectBoxWorkoutRestoreImporter {
       } else {
         importedRevision = _materialize(remoteChange.snapshot!, local);
       }
+    } else if (action == WorkoutResolutionAction.keepLocalOnly) {
+      // Preserve full workout details and the terminal superseded marker,
+      // preventing future automatic backfill of this UUID.
     } else if (action == WorkoutResolutionAction.retryLocal) {
       local!.revision++;
       local.updatedAtMs = _clock().toUtc().millisecondsSinceEpoch;
@@ -781,7 +826,7 @@ class ObjectBoxWorkoutRestoreImporter {
       _sessions.put(local);
       _outbox.put(
         WorkoutSyncOutboxEntity(
-          operationUuid: SecureUuidFactory().newId(),
+          operationUuid: _ids.newId(),
           sessionUuid: workoutUuid,
           localRevision: local.revision,
           action: 'delete',
