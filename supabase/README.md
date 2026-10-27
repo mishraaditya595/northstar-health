@@ -1,3 +1,22 @@
+## P2-07c — server-only permanent account deletion (draft #29)
+
+This review branch adds `20261027180000_p2_07c_recent_account_session_gate.sql`,
+the server-only `functions/delete-account/index.ts`, and
+`tests/account_deletion_gate.test.sql`. The SQL gate grants authenticated
+callers a boolean check of a newly issued, email-verified
+`auth.sessions.created_at` (at most 5 minutes old), without granting direct
+session-table access. The Edge Function requires a bearer JWT verified via Auth
+and a matching explicit owner and destructive confirmation, then uses a
+**server-only** `SUPABASE_SERVICE_ROLE_KEY` to issue Auth hard deletion,
+cascading workout records, tombstones, operation receipts and owner cursors.
+
+**Not deployed.** No hosted users were deleted and hosted signed-JWT,
+second-device/stale-JWT, storage-owner failure, mobile OTP UX, and legal
+retention checks are not claimed as complete. Follow
+[ACCOUNT_DELETION_RUNBOOK.md](ACCOUNT_DELETION_RUNBOOK.md) before any
+release. The provisional 4 MiB history export limit remains a P2-08 release
+gate. An AI agent may implement and review but **may not merge** this PR.
+
 # NorthStar Supabase — development backend
 
 **Status:** Six of seven committed P2-01 migrations are recorded on the **development** Supabase project; the final completed-only migration must be reconciled before P2-05 can be applied there. P2-01 Supabase groundwork, P2-02 authentication, P2-03 outbox and P2-04 authenticated foreground uploader are merged in PRs #13–#16. P2-05 server progress aggregation [PR #17](https://github.com/mishraaditya595/northstar-health/pull/17) **merged on 2026-10-26**, but is not deployed to the hosted project; P2-06 restore feed is merged in PR #18 and reviewed conflict point-lookup is in [draft PR #24](https://github.com/mishraaditya595/northstar-health/pull/24); production rollout still needs live Auth/RLS E2E and physical-device QA. See [ADR-0005](../docs/adr/0005-mandatory-auth-and-workout-sync.md) and [Cloud Sync Contract](../docs/CLOUD_SYNC.md).
