@@ -48,8 +48,21 @@ jobs:
        needs.changes.outputs.supabase == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
+      - name: Authenticate Docker pulls from GitHub Container Registry
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          # Reduce anonymous GHCR throttling on hosted runners. Retain a
+          # fallback for environments where packages:read is unavailable.
+          if ! printf '%s' "$GHCR_TOKEN" | docker login ghcr.io \
+            --username "$GITHUB_ACTOR" --password-stdin; then
+            echo "::warning::GHCR login unavailable; trying public image pulls."
+          fi
       - name: Install pinned Supabase CLI
         uses: supabase/setup-cli@v1
         with:
@@ -57,7 +70,26 @@ jobs:
       - name: Start clean local database
         run: |
           supabase --version
-          supabase db start
+          # Supabase CLI retries image pulls internally, but GHCR can still
+          # temporarily throttle shared GitHub-hosted runner IPs. Retry ONLY
+          # quota failures; a real database/startup error must fail promptly.
+          for attempt in 1 2 3 4; do
+            if supabase db start 2>&1 | tee "$RUNNER_TEMP/supabase-db-start.log"; then
+              exit 0
+            fi
+            if ! grep -Eiq 'toomanyrequests|429 Too Many Requests|rate limit exceeded' \
+              "$RUNNER_TEMP/supabase-db-start.log"; then
+              echo "::error::Supabase startup failed for a non-rate-limit reason."
+              exit 1
+            fi
+            if [ "$attempt" -eq 4 ]; then
+              echo "::error::GHCR rate limit persisted after four startup attempts."
+              exit 1
+            fi
+            seconds=$((attempt * 20))
+            echo "::warning::Transient GHCR throttling (attempt $attempt/4); retrying after ${seconds}s."
+            sleep "$seconds"
+          done
       - name: Reset and replay all migrations from scratch
         run: supabase db reset
       - name: Execute pgTAP SQL tests
