@@ -110,10 +110,12 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
               final auth = ref.watch(accountAuthControllerProvider);
               final owner = auth?.userId;
               if (owner == null) return null;
-              return ref.watch(workoutRestoreImporterProvider)(
-                owner,
-                () => auth?.userId,
-              ).readCursor();
+              return ref
+                  .watch(workoutRestoreImporterProvider)(
+                    owner,
+                    () => auth?.userId,
+                  )
+                  .readCursor();
             }),
             blockedWorkoutCountProvider.overrideWith(
               (ref) => ref.watch(workoutOutboxProvider).blockedCount(),
