@@ -20,7 +20,8 @@ const workout = '00000000-0000-4000-8000-000000002101';
 
 class OfflineUpload implements WorkoutUploadTransport {
   @override
-  Future<Map<String, dynamic>> send(WorkoutSyncOperation operation, {
+  Future<Map<String, dynamic>> send(
+    WorkoutSyncOperation operation, {
     required int expectedServerRevision,
   }) => throw StateError('No network in widget test');
 }
@@ -43,15 +44,17 @@ void main() {
     dir = Directory.systemTemp.createTempSync('northstar-delete-ui-');
     store = Store(getObjectBoxModel(), directory: dir.path);
     final time = DateTime.utc(2026, 10, 24, 9).millisecondsSinceEpoch;
-    store.box<WorkoutSessionEntity>().put(WorkoutSessionEntity(
-      uuid: workout,
-      name: 'Back training',
-      status: 'completed',
-      startedAtMs: time,
-      completedAtMs: time + 1800000,
-      originalOffsetMinutes: 330,
-      updatedAtMs: time,
-    ));
+    store.box<WorkoutSessionEntity>().put(
+      WorkoutSessionEntity(
+        uuid: workout,
+        name: 'Back training',
+        status: 'completed',
+        startedAtMs: time,
+        completedAtMs: time + 1800000,
+        originalOffsetMinutes: 330,
+        updatedAtMs: time,
+      ),
+    );
     api = FakeAuthApi();
     auth = controller(api, FakeBoundAccountStore());
     worker = WorkoutUploadCoordinator(
@@ -77,17 +80,21 @@ void main() {
     tester.view.physicalSize = const Size(800, 1450);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        objectBoxStoreProvider.overrideWithValue(store),
-        workoutHistoryRepositoryProvider.overrideWithValue(ImmediateHistory(store)),
-        workoutUploadCoordinatorProvider.overrideWithValue(worker),
-      ],
-      child: MaterialApp(
-        theme: NorthstarTheme.build(Brightness.light),
-        home: const WorkoutHistoryDetailPage(sessionUuid: workout),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          objectBoxStoreProvider.overrideWithValue(store),
+          workoutHistoryRepositoryProvider.overrideWithValue(
+            ImmediateHistory(store),
+          ),
+          workoutUploadCoordinatorProvider.overrideWithValue(worker),
+        ],
+        child: MaterialApp(
+          theme: NorthstarTheme.build(Brightness.light),
+          home: const WorkoutHistoryDetailPage(sessionUuid: workout),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Delete workout'));
     await tester.tap(find.text('Delete workout'));
@@ -96,14 +103,23 @@ void main() {
     expect(store.box<WorkoutSyncOutboxEntity>().count(), 0);
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
-    expect(store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs, isNull);
+    expect(
+      store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs,
+      isNull,
+    );
     await tester.tap(find.text('Delete workout'));
     await tester.pumpAndSettle();
     // The dialog adds a second matching label to the page's button.
     await tester.tap(find.text('Delete workout').last);
     await tester.pumpAndSettle();
-    expect(store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs, isNotNull);
-    expect(store.box<WorkoutSyncOutboxEntity>().getAll().single.action, 'delete');
+    expect(
+      store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs,
+      isNotNull,
+    );
+    expect(
+      store.box<WorkoutSyncOutboxEntity>().getAll().single.action,
+      'delete',
+    );
     expect(find.text('This completed workout is unavailable.'), findsOneWidget);
   });
 }
