@@ -468,7 +468,6 @@ class WorkoutRestorePage {
   }
 }
 
-
 /// Versioned, owner-scoped point lookup for an explicitly reviewed conflict.
 /// A missing row is different from a tombstone and must never be synthesized
 /// into a new upsert/deletion without the user's choice.
@@ -482,11 +481,7 @@ class WorkoutRemoteReview {
 
   static WorkoutRemoteReview decode(Object? raw, String workoutId) {
     final id = _id(workoutId);
-    final body = _map(raw, const {
-      'schema_version',
-      'cursor_epoch',
-      'change',
-    });
+    final body = _map(raw, const {'schema_version', 'cursor_epoch', 'change'});
     if (body['schema_version'] != 1) _invalid('invalid_schema_version');
     final epoch = _id(body['cursor_epoch']);
     final row = body['change'];
