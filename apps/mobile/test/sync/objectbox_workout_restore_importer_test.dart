@@ -857,4 +857,74 @@ void main() {
       fixed.millisecondsSinceEpoch,
     );
   });
+
+  WorkoutSyncOutboxEntity op(int n, int revision, {String state = 'pending'}) =>
+      WorkoutSyncOutboxEntity(
+        operationUuid: '00000000-0000-4000-8000-00000000080$n',
+        sessionUuid: workout,
+        localRevision: revision,
+        action: 'upsert',
+        payloadJson: '{}',
+        createdAtMs: n,
+        state: state,
+      );
+
+  test('ACKed predecessor echo defers a resumed successor, never skips', () {
+    final outbox = ObjectBoxWorkoutOutbox(store);
+    store.box<WorkoutSyncOutboxEntity>().putMany([op(1, 1), op(2, 2)]);
+    outbox.reserveNext(nowMs: 1000);
+    expect(outbox.reserveNext(nowMs: 1001), isNull); // rev 2 paused.
+    outbox.acknowledge(
+      operationUuid: '00000000-0000-4000-8000-000000000801',
+      localRevision: 1,
+      serverRevision: 1,
+      serverChangeSeq: 1,
+    );
+    // The coordinator's pending() gate now defers the pull.
+    expect(outbox.pending(), isNotEmpty);
+    expect(
+      () => importer.applyPage(feed(), afterSeq: 0, requestedEpoch: null),
+      throwsA(
+        isA<RestoreImportException>().having(
+          (e) => e.code,
+          'code',
+          'local_outbox_unresolved',
+        ),
+      ),
+    );
+    expect(store.box<WorkoutRestoreSkipEntity>().count(), 0);
+  });
+
+  test('paused successor of a conflict skips only that workout', () {
+    final outbox = ObjectBoxWorkoutOutbox(store);
+    store.box<WorkoutSyncOutboxEntity>().putMany([
+      op(1, 1, state: 'conflict'),
+      op(2, 2),
+    ]);
+    expect(outbox.reserveNext(nowMs: 1000), isNull); // rev 2 paused.
+    // Nothing sendable remains, so the coordinator lets the pull proceed.
+    expect(outbox.pending(), isEmpty);
+    final skipped = importer.applyPage(
+      feed(),
+      afterSeq: 0,
+      requestedEpoch: null,
+    );
+    expect(skipped.imported, 0);
+    expect(skipped.cursor.nextCursor, 1);
+    expect(
+      store.box<WorkoutRestoreSkipEntity>().getAll().single.workoutUuid,
+      workout,
+    );
+    expect(outbox.syncFlags()[workout], WorkoutSyncFlag.needsReview);
+    final other = importer.applyPage(
+      feed(after: 1, requestedEpoch: epochA, seq: 2, id: workoutB),
+      afterSeq: 1,
+      requestedEpoch: epochA,
+    );
+    expect(other.imported, 1);
+    expect(
+      store.box<WorkoutSyncOutboxEntity>().getAll().last.state,
+      'dependency_paused',
+    );
+  });
 }
