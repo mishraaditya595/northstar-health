@@ -731,15 +731,15 @@ class ObjectBoxWorkoutRestoreImporter {
             remoteChange.changeSeq < oldRemote.serverChangeSeq)) {
       throw const RestoreImportException('resolution_stale_server');
     }
-    final localOnlyAllowed = action == WorkoutResolutionAction.keepLocalOnly &&
+    final localOnlyAllowed =
+        action == WorkoutResolutionAction.keepLocalOnly &&
         local != null &&
         local.deletedAtMs == null &&
         remoteChange == null &&
         oldRemote == null &&
         skip == null &&
         ObjectBoxWorkoutOutbox.entirelyUnsentLocalValidations(operations);
-    if (action == WorkoutResolutionAction.keepLocalOnly &&
-        !localOnlyAllowed) {
+    if (action == WorkoutResolutionAction.keepLocalOnly && !localOnlyAllowed) {
       throw const RestoreImportException('resolution_cannot_keep_local');
     }
     if (action == WorkoutResolutionAction.useCloud && remoteChange == null) {
