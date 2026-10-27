@@ -112,8 +112,11 @@ void main() {
   testWidgets('local tombstone never offers cloud resurrection', (
     tester,
   ) async {
-    await showChoices(tester, local: candidate(deleted: true),
-        cloud: review(present: true));
+    await showChoices(
+      tester,
+      local: candidate(deleted: true),
+      cloud: review(present: true),
+    );
     expect(find.text('Use cloud copy'), findsNothing);
     expect(find.text('Complete deletion'), findsOneWidget);
   });
@@ -167,8 +170,10 @@ void main() {
         ),
       ),
     );
-    expect(find.text('No workouts currently need conflict review.'),
-        findsOneWidget);
+    expect(
+      find.text('No workouts currently need conflict review.'),
+      findsOneWidget,
+    );
     await auth.signOut();
     await tester.pumpAndSettle();
     expect(find.textContaining('Signed out'), findsOneWidget);
