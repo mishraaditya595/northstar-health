@@ -14,6 +14,8 @@
 
 ## P2-08 immediate release blockers
 
+**P2-08 work started, not passed:** The [hosted preflight and release execution plan](implementation/phase-2/p2-08-hosted-release-plan.md) adds a read-only, two-signed-user security audit and synthetic CI tests. The connected development project was observed with 6/11 migrations and no Edge Functions on 27 October 2026; no deployment or real-account audit has been performed. The read-only audit is only a subset of hosted release acceptance.
+
 - **Hosted database rollout:** reconcile migration history with the **11 committed migrations** (including the P2-07c fresh Auth-session gate) and verify UTC backfill semantics and transaction/index impact before deploying to a data-bearing project. The repository does not prove hosted application.
 - **Real-account security:** independently test signed user JWTs and RLS against a nonproduction hosted project: cross-user SELECT/RPC restrictions, two-device upload/restore/revisions/tombstones, stale/deleted-user JWT paths, fresh-session deletion gate, Auth hard-delete cascades and network-uncertain recovery. Synthetic pgTAP and mocked HTTP are necessary but not substitutes.
 - **JSON export rights:** the current **4 MiB in-memory output limit** can block all-history export. Measure Android/iOS low-memory behavior and native SAF/UIDocumentPicker lifecycle; implement/validate a bounded-memory larger-history path (or a justified device-tested ceiling that satisfies the all-history requirement) before release. Verify complete and correct synthetic exports.
