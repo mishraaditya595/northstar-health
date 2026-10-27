@@ -33,7 +33,13 @@ abstract class WorkoutRestoreTransport {
   });
 }
 
-class SupabaseWorkoutRestoreTransport implements WorkoutRestoreTransport {
+/// Separate from the paged feed; normal restore mocks need no point lookup.
+abstract class WorkoutConflictTransport {
+  Future<WorkoutRemoteReview> fetchWorkout(String workoutUuid);
+}
+
+class SupabaseWorkoutRestoreTransport
+    implements WorkoutRestoreTransport, WorkoutConflictTransport {
   SupabaseWorkoutRestoreTransport({
     required this.accountId,
     required this.readSession,
@@ -78,6 +84,17 @@ class SupabaseWorkoutRestoreTransport implements WorkoutRestoreTransport {
   }
 
   @override
+  Future<WorkoutRemoteReview> fetchWorkout(String workoutUuid) async {
+    final id = WorkoutRemoteReview.validateWorkoutId(workoutUuid);
+    if (!_authorized) throw const AuthException('Cloud session unavailable');
+    final data = await invokeRpc('get_workout_for_resolution', {
+      'p_workout_id': id,
+    });
+    if (!_authorized) throw const AuthException('Cloud session unavailable');
+    return WorkoutRemoteReview.decode(data, id);
+  }
+
+  @override
   Future<WorkoutRestorePage> fetchPage({
     required int afterSeq,
     required String? cursorEpoch,
@@ -114,6 +131,15 @@ class SupabaseWorkoutRestoreTransport implements WorkoutRestoreTransport {
 /// with the merged atomic importer. It is never mounted for a guest account.
 final workoutRestoreTransportProvider =
     Provider<WorkoutRestoreTransport Function(String)>(
+      (ref) =>
+          (owner) => SupabaseWorkoutRestoreTransport.fromClient(
+            Supabase.instance.client,
+            owner,
+          ),
+    );
+
+final workoutConflictTransportProvider =
+    Provider<WorkoutConflictTransport Function(String)>(
       (ref) =>
           (owner) => SupabaseWorkoutRestoreTransport.fromClient(
             Supabase.instance.client,
