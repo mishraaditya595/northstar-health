@@ -238,7 +238,7 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
         );
         if (reserved == null) break;
         final operation = reserved.operation;
-        if (!_isCompletedSnapshot(operation)) {
+        if (!_isValidUploadOperation(operation)) {
           if (_isAuthorized) {
             outbox.markBlocked(
               operationUuid: operation.operationUuid,
@@ -451,7 +451,11 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
     }
   }
 
-  static bool _isCompletedSnapshot(WorkoutSyncOperation op) {
+  static bool _isValidUploadOperation(WorkoutSyncOperation op) {
+    // PostgreSQL requires a SQL NULL payload for a delete, not an empty
+    // object, absent key, or JSON string. The immutable queued 'null'
+    // serializes to a real null through jsonDecode in the transport.
+    if (op.action == 'delete') return op.payloadJson == 'null';
     if (op.action != 'upsert') return false;
     try {
       final decoded = jsonDecode(op.payloadJson);
