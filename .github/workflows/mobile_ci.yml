@@ -70,6 +70,17 @@ jobs:
       - name: Resolve from committed lockfile
         working-directory: apps/mobile
         run: flutter pub get --enforce-lockfile
+      # One-run pinned formatter capture; removed before final checks.
+      - name: Temporary P2-06 deletion Dart formatter capture
+        working-directory: apps/mobile
+        run: |
+          dart format lib/features/progress/workout_history_detail_page.dart lib/features/sync/objectbox_workout_restore_importer.dart lib/features/workouts/data/objectbox_workout_outbox.dart test/progress/workout_delete_widget_test.dart test/sync/workout_delete_sync_test.dart
+          python3 - <<'PY'
+          import json
+          for path in ('lib/features/progress/workout_history_detail_page.dart', 'lib/features/sync/objectbox_workout_restore_importer.dart', 'lib/features/workouts/data/objectbox_workout_outbox.dart', 'test/progress/workout_delete_widget_test.dart', 'test/sync/workout_delete_sync_test.dart'):
+              print('DELETE24_FMT:' + json.dumps({'path': path, 'content': open(path).read()}))
+          PY
+          exit 1
       - name: Format
         working-directory: apps/mobile
         run: dart format --output=none --set-exit-if-changed lib test
