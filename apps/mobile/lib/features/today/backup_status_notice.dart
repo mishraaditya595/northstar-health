@@ -58,7 +58,8 @@ class BackupStatusNotice extends StatelessWidget {
                   InsightCard(
                     icon: Icons.cloud_off_outlined,
                     text: const TextSpan(
-                      text: 'Cloud restore paused after a data conflict. '
+                      text:
+                          'Cloud restore paused after a data conflict. '
                           'Workouts on this device remain safe. Review or '
                           'retry the saved restore position.',
                     ),
