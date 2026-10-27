@@ -62,11 +62,15 @@ final workoutConflictResolutionProvider =
       );
     });
 
-final workoutRestoreBlockedCodeProvider = Provider<String?>((ref) {
+final workoutRestoreCursorProvider = Provider<WorkoutRestoreCursor?>((ref) {
   final auth = ref.watch(accountAuthControllerProvider);
   if (auth?.userId == null) return null;
-  return ref.watch(workoutConflictResolutionProvider).cursor.blockedCode;
+  return ref.watch(workoutConflictResolutionProvider).cursor;
 });
+
+final workoutRestoreBlockedCodeProvider = Provider<String?>(
+  (ref) => ref.watch(workoutRestoreCursorProvider)?.blockedCode,
+);
 
 final workoutConflictCandidatesProvider =
     Provider<List<WorkoutConflictCandidate>>(
