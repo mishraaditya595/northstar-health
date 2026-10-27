@@ -76,6 +76,7 @@ class WorkoutConflictCandidate {
   final bool canDismissMissing;
   final String? skippedEpoch;
   final int? skippedChangeSeq;
+
   /// Whether the skipped remote change was a cloud deletion marker.
   final bool skippedDeletion;
 }
