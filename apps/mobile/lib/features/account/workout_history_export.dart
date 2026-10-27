@@ -68,7 +68,9 @@ class SupabaseWorkoutExportReader implements WorkoutExportReader {
         .isFilter('deleted_at', null)
         .lte('server_change_seq', throughSeq);
     final filtered = afterId == null ? base : base.gt('workout_id', afterId);
-    final data = await filtered.order('workout_id', ascending: true).limit(limit);
+    final data = await filtered
+        .order('workout_id', ascending: true)
+        .limit(limit);
     return data.map((row) => Map<String, dynamic>.from(row)).toList();
   }
 }
