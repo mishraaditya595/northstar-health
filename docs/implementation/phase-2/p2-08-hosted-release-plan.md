@@ -14,7 +14,7 @@ The connected **NorthStar-Health** Supabase project returned:
 - **No** deployed Edge Functions (`delete-account` is absent).
 - **0** Auth users, **0** `workout_records`, **0** sync receipts and **0**
   rows requiring cleanup by the completed-only migration at the moment checked.
-- Public workout tables had RLS enabled. The SQL session timezone was UTC;
+- Public workout tables had RLS enabled. Supabase's read-only security advisor reported two **INFO** \`rls_enabled_no_policy\` notices for deny-all \`workout_sync_operations\` and private owner cursors ([advisory explanation](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)); performance advisor reported no findings. These are not independent proof of RLS safety. The SQL session timezone was UTC;
   this **does not prove** transaction-local UTC semantics of the pending
   P2-05 migration's historical backfill.
 
