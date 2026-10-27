@@ -43,21 +43,22 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
       if (saved) showNsMessage(context, 'Workout history exported.');
     } on WorkoutExportException catch (error) {
       if (mounted && auth.userId == owner) {
-        showNsMessage(
-          context,
-          switch (error.code) {
-            'history_changed_retry' =>
-              'Cloud history changed during export. Please retry.',
-            'export_too_large' =>
-              'This history is too large for safe export on this device. '
-                  'A larger export method is not available yet.',
-            'invalid_row' || 'invalid_order' || 'invalid_payload' ||
-            'invalid_revision' || 'invalid_head' || 'page_too_large' =>
-              'Cloud history contains unsupported or invalid data. '
-                  'Please contact support.',
-            _ => 'Unable to export cloud history. Please retry.',
-          },
-        );
+        showNsMessage(context, switch (error.code) {
+          'history_changed_retry' =>
+            'Cloud history changed during export. Please retry.',
+          'export_too_large' =>
+            'This history is too large for safe export on this device. '
+                'A larger export method is not available yet.',
+          'invalid_row' ||
+          'invalid_order' ||
+          'invalid_payload' ||
+          'invalid_revision' ||
+          'invalid_head' ||
+          'page_too_large' =>
+            'Cloud history contains unsupported or invalid data. '
+                'Please contact support.',
+          _ => 'Unable to export cloud history. Please retry.',
+        });
       }
     } catch (_) {
       if (mounted && auth.userId == owner) {
