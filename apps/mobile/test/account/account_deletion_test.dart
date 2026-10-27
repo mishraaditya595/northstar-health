@@ -70,7 +70,8 @@ void main() {
         ..sessionId = accountA
         ..failDeletionTransport = true;
       final bound = FakeBoundAccountStore()..saved = accountA;
-      final auth = controller(api, bound);
+      final recovery = FakeDeletionRecoveryStore();
+      final auth = controller(api, bound, recovery: recovery);
       addTearDown(auth.dispose);
       addTearDown(api.dispose);
       await auth.restore();
@@ -80,12 +81,14 @@ void main() {
       expect(api.deleteRequestedFor, accountA);
       expect(auth.userId, isNull);
       expect(bound.saved, isNull);
+      expect(recovery.saved, accountA);
       expect(auth.error, contains('could not be confirmed'));
-      final reopened = controller(api, bound);
+      final reopened = controller(api, bound, recovery: recovery);
       addTearDown(reopened.dispose);
       await reopened.restore();
       expect(reopened.userId, isNull);
       expect(reopened.cloudBackupReady, false);
+      expect(reopened.deletionRecoveryPending, true);
       expect(api.serverDeleted, false);
     },
   );
@@ -162,6 +165,130 @@ void main() {
       }
     },
   );
+
+
+  test('server commits deletion but response is lost: no account recreated', () async {
+    final api = FakeAuthApi()
+      ..sessionId = accountA
+      ..commitThenLoseReceipt = true;
+    final bound = FakeBoundAccountStore()..saved = accountA;
+    final recovery = FakeDeletionRecoveryStore();
+    final auth = controller(api, bound, recovery: recovery);
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+    await auth.restore();
+    await auth.requestDeletionCode();
+    await auth.confirmAccountDeletion('123456');
+    expect(api.serverDeleted, true);
+    expect(auth.userId, isNull);
+    expect(bound.saved, isNull);
+    expect(recovery.saved, accountA);
+    expect(auth.error, contains('could not be confirmed'));
+    final restarted = controller(api, bound, recovery: recovery);
+    addTearDown(restarted.dispose);
+    await restarted.restore();
+    expect(restarted.deletionRecoveryPending, true);
+    await restarted.requestCode('original@example.invalid');
+    expect(api.recoveryCodeSentTo, isNull);
+    expect(api.sentTo, isNull); // Creating accounts is forbidden in recovery.
+    expect(restarted.error, contains('Could not send'));
+    expect(bound.saved, isNull);
+  });
+
+  test('pending recovery only unlocks the exact original Auth UUID', () async {
+    final api = FakeAuthApi()
+      ..sessionId = accountA
+      ..failDeletionTransport = true;
+    final bound = FakeBoundAccountStore()..saved = accountA;
+    final recovery = FakeDeletionRecoveryStore();
+    final auth = controller(api, bound, recovery: recovery);
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+    await auth.restore();
+    await auth.requestDeletionCode();
+    await auth.confirmAccountDeletion('123456');
+    final restarted = controller(api, bound, recovery: recovery);
+    addTearDown(restarted.dispose);
+    await restarted.restore();
+
+    api.verifiedId = accountB;
+    await restarted.requestCode('wrong@example.invalid');
+    expect(api.recoveryCodeSentTo, 'wrong@example.invalid');
+    expect(api.sentTo, isNull);
+    await restarted.verifyCode('123456');
+    expect(restarted.userId, isNull);
+    expect(bound.saved, isNull);
+    expect(recovery.saved, accountA);
+    expect(restarted.error, contains('original account'));
+
+    api.verifiedId = accountA;
+    await restarted.requestCode('original@example.invalid');
+    await restarted.verifyCode('123456');
+    expect(restarted.userId, accountA);
+    expect(bound.saved, accountA);
+    expect(recovery.saved, isNull);
+    expect(restarted.deletionRecoveryPending, false);
+  });
+
+  test('failed recovery marker write prevents destructive request', () async {
+    final api = FakeAuthApi()..sessionId = accountA;
+    final bound = FakeBoundAccountStore()..saved = accountA;
+    final recovery = FakeDeletionRecoveryStore()..failWrite = true;
+    final auth = controller(api, bound, recovery: recovery);
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+    await auth.restore();
+    await auth.requestDeletionCode();
+    await auth.confirmAccountDeletion('123456');
+    expect(api.deleteRequestedFor, isNull);
+    expect(auth.userId, isNull);
+    expect(bound.saved, isNull);
+    expect(auth.error, contains('has not been requested'));
+  });
+
+  test('pending guard overrides even a matching account binding', () async {
+    final api = FakeAuthApi()..sessionId = accountA;
+    final bound = FakeBoundAccountStore()..saved = accountA;
+    final recovery = FakeDeletionRecoveryStore()..saved = accountA;
+    final auth = controller(api, bound, recovery: recovery);
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+    await auth.restore();
+    expect(auth.userId, isNull);
+    expect(auth.cloudBackupReady, false);
+    expect(auth.deletionRecoveryPending, true);
+  });
+
+  test('leaving recovery never reassigns or opens old local workouts', () async {
+    final api = FakeAuthApi()..sessionId = accountA;
+    final bound = FakeBoundAccountStore();
+    final recovery = FakeDeletionRecoveryStore()..saved = accountA;
+    final auth = controller(api, bound, recovery: recovery);
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+    await auth.restore();
+    await auth.leaveDeletionRecovery();
+    expect(auth.userId, isNull);
+    expect(bound.saved, isNull);
+    expect(recovery.saved, isNull);
+    expect(auth.deletionRecoveryPending, false);
+    expect(api.signedOut, true);
+  });
+
+  test('confirmed deletion clears pending recovery marker', () async {
+    final api = FakeAuthApi()..sessionId = accountA;
+    final bound = FakeBoundAccountStore()..saved = accountA;
+    final recovery = FakeDeletionRecoveryStore();
+    final auth = controller(api, bound, recovery: recovery);
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+    await auth.restore();
+    await auth.requestDeletionCode();
+    await auth.confirmAccountDeletion('123456');
+    expect(api.serverDeleted, true);
+    expect(recovery.saved, isNull);
+    expect(auth.deletionRecoveryPending, false);
+  });
 
   test('missing verified Auth email prevents deletion code delivery', () async {
     final api = FakeAuthApi()
