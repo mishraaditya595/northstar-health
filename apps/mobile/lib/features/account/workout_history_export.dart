@@ -41,7 +41,8 @@ class SupabaseWorkoutExportReader implements WorkoutExportReader {
         .order('server_change_seq', ascending: false)
         .limit(1);
     if (rows.isEmpty) return 0;
-    if (rows.length != 1 || rows.first['server_change_seq'] is! int ||
+    if (rows.length != 1 ||
+        rows.first['server_change_seq'] is! int ||
         (rows.first['server_change_seq'] as int) <= 0) {
       throw const WorkoutExportException('invalid_head');
     }
@@ -58,15 +59,15 @@ class SupabaseWorkoutExportReader implements WorkoutExportReader {
     // UUID keyset + fixed high watermark gives deterministic page boundaries.
     final base = client
         .from('workout_records')
-        .select('user_id,workout_id,server_revision,server_change_seq,'
-            'status,deleted_at,payload')
+        .select(
+          'user_id,workout_id,server_revision,server_change_seq,'
+          'status,deleted_at,payload',
+        )
         .eq('user_id', ownerId)
         .eq('status', 'completed')
         .isFilter('deleted_at', null)
         .lte('server_change_seq', throughSeq);
-    final filtered = afterId == null
-        ? base
-        : base.gt('workout_id', afterId);
+    final filtered = afterId == null ? base : base.gt('workout_id', afterId);
     final data = await filtered.order('workout_id').limit(limit);
     return data.map((row) => Map<String, dynamic>.from(row)).toList();
   }
@@ -125,14 +126,16 @@ class CompletedWorkoutHistoryExporter {
       json.write(text);
     }
 
-    add('{"export_schema_version":1,'
-        '"source":"northstar_completed_phone_workouts_cloud",'
-        '"owner_id":${jsonEncode(accountId)},'
-        '"exported_at_utc":${jsonEncode(_now().toUtc().toIso8601String())},'
-        '"cloud_change_seq":$high,'
-        '"excludes":["deleted_workouts","unfinished_sessions",'
-        '"custom_plans","device_preferences","health_measurements"],'
-        '"workouts":[');
+    add(
+      '{"export_schema_version":1,'
+      '"source":"northstar_completed_phone_workouts_cloud",'
+      '"owner_id":${jsonEncode(accountId)},'
+      '"exported_at_utc":${jsonEncode(_now().toUtc().toIso8601String())},'
+      '"cloud_change_seq":$high,'
+      '"excludes":["deleted_workouts","unfinished_sessions",'
+      '"custom_plans","device_preferences","health_measurements"],'
+      '"workouts":[',
+    );
 
     String? lastId;
     var count = 0;
@@ -161,7 +164,8 @@ class CompletedWorkoutHistoryExporter {
           throw const WorkoutExportException('invalid_revision');
         }
         final id = row['workout_id'];
-        if (id is! String || validAccountId(id) != id ||
+        if (id is! String ||
+            validAccountId(id) != id ||
             (lastId != null && id.compareTo(lastId) <= 0)) {
           throw const WorkoutExportException('invalid_order');
         }
@@ -175,12 +179,14 @@ class CompletedWorkoutHistoryExporter {
           throw const WorkoutExportException('invalid_payload');
         }
         if (count != 0) add(',');
-        add(jsonEncode({
-          'workout_id': id,
-          'server_revision': revision,
-          'server_change_seq': seq,
-          'payload': payload,
-        }));
+        add(
+          jsonEncode({
+            'workout_id': id,
+            'server_revision': revision,
+            'server_change_seq': seq,
+            'payload': payload,
+          }),
+        );
         count++;
         lastId = id;
       }
@@ -199,28 +205,28 @@ class CompletedWorkoutHistoryExporter {
 
 final workoutHistoryExporterProvider =
     Provider<CompletedWorkoutHistoryExporter Function(String)>((ref) {
-  final auth = ref.watch(accountAuthControllerProvider);
-  return (owner) {
-    if (auth == null || auth.userId != owner) {
-      throw const WorkoutExportException('session_changed');
-    }
-    final client = Supabase.instance.client;
-    return CompletedWorkoutHistoryExporter(
-      accountId: owner,
-      reader: SupabaseWorkoutExportReader(client, owner),
-      authorized: () {
-        final session = client.auth.currentSession;
-        return auth.userId == owner &&
-            auth.cloudBackupReady &&
-            matchesCloudWorkoutSession(
-              sessionUserId: session?.user.id,
-              anonymous: session?.user.isAnonymous ?? true,
-              expiresAtSeconds: session?.expiresAt,
-              accountId: owner,
-              nowSeconds:
-                  DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000,
-            );
-      },
-    );
-  };
-});
+      final auth = ref.watch(accountAuthControllerProvider);
+      return (owner) {
+        if (auth == null || auth.userId != owner) {
+          throw const WorkoutExportException('session_changed');
+        }
+        final client = Supabase.instance.client;
+        return CompletedWorkoutHistoryExporter(
+          accountId: owner,
+          reader: SupabaseWorkoutExportReader(client, owner),
+          authorized: () {
+            final session = client.auth.currentSession;
+            return auth.userId == owner &&
+                auth.cloudBackupReady &&
+                matchesCloudWorkoutSession(
+                  sessionUserId: session?.user.id,
+                  anonymous: session?.user.isAnonymous ?? true,
+                  expiresAtSeconds: session?.expiresAt,
+                  accountId: owner,
+                  nowSeconds:
+                      DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000,
+                );
+          },
+        );
+      };
+    });
