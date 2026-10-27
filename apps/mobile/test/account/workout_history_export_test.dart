@@ -55,19 +55,22 @@ void main() {
     },
   );
 
-  test('short server pages still export every workout until empty page', () async {
-    final reader = FakeExportReader(
-      List.generate(43, (index) => exportRow(index)),
-    )..serverPageCap = 7;
-    final data = jsonDecode(
-      await makeExporter(reader, pageSize: 100).exportJson(),
-    ) as Map<String, dynamic>;
-    final workouts = data['workouts'] as List<dynamic>;
-    expect(workouts.length, 43);
-    expect(workouts.last['workout_id'], workoutId(42));
-    expect(reader.pageReads, 8); // seven non-empty pages plus empty page
-    expect(reader.highReads, 2);
-  });
+  test(
+    'short server pages still export every workout until empty page',
+    () async {
+      final reader = FakeExportReader(
+        List.generate(43, (index) => exportRow(index)),
+      )..serverPageCap = 7;
+      final data = jsonDecode(
+        await makeExporter(reader, pageSize: 100).exportJson(),
+      ) as Map<String, dynamic>;
+      final workouts = data['workouts'] as List<dynamic>;
+      expect(workouts.length, 43);
+      expect(workouts.last['workout_id'], workoutId(42));
+      expect(reader.pageReads, 8); // seven non-empty pages plus empty page
+      expect(reader.highReads, 2);
+    },
+  );
 
   test('invalid workout UUID is a typed export error', () async {
     final row = exportRow(0)..['workout_id'] = 'not-a-uuid';
@@ -75,7 +78,9 @@ void main() {
       makeExporter(FakeExportReader([row])).exportJson(),
       throwsA(
         isA<WorkoutExportException>().having(
-          (e) => e.code, 'code', 'invalid_order',
+          (e) => e.code,
+          'code',
+          'invalid_order',
         ),
       ),
     );
