@@ -76,6 +76,7 @@ class _TodayPageState extends ConsumerState<TodayPage> {
           unsyncedCount: _count(WorkoutSyncFlag.notSynced),
           reviewCount: _count(WorkoutSyncFlag.needsReview),
           onSyncNow: ref.watch(workoutUploadKickProvider),
+          onReview: () => context.push('/today/sync/review'),
         ),
         const SizedBox(height: 24),
         _Hero(
