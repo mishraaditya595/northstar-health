@@ -68,6 +68,8 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                           Text(
                             auth.codeSent
                                 ? 'VERIFY YOUR EMAIL'
+                                : auth.deletionRecoveryPending
+                                ? 'RECOVER ORIGINAL ACCOUNT'
                                 : 'SHOW UP. GET STRONG.',
                             style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontWeight: FontWeight.w800),
@@ -77,6 +79,11 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                           Text(
                             auth.codeSent
                                 ? 'Enter the six-digit sign-in code sent to your email.'
+                                : auth.deletionRecoveryPending
+                                ? 'A deletion result was uncertain. Only the '
+                                      'original account can be recovered if it '
+                                      'still exists. Recovery does NOT create '
+                                      'a new account or unlock another user’s data.'
                                 : 'Create your account or sign in to start tracking.',
                             textAlign: TextAlign.center,
                           ),
@@ -96,7 +103,11 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                               onPressed: auth.busy
                                   ? null
                                   : () => auth.requestCode(_email.text),
-                              child: const Text('Send sign-in code'),
+                              child: Text(
+                                auth.deletionRecoveryPending
+                                    ? 'Send recovery code'
+                                    : 'Send sign-in code',
+                              ),
                             ),
                           ] else ...[
                             NsTextField(
@@ -117,7 +128,11 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                               onPressed: auth.busy
                                   ? null
                                   : () => auth.verifyCode(_otp.text),
-                              child: const Text('Verify and continue'),
+                              child: Text(
+                                auth.deletionRecoveryPending
+                                    ? 'Verify original account'
+                                    : 'Verify and continue',
+                              ),
                             ),
                             TextButton(
                               onPressed: auth.busy
@@ -128,6 +143,44 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                             TextButton(
                               onPressed: auth.busy ? null : auth.changeEmail,
                               child: const Text('Use a different email'),
+                            ),
+                          ],
+                          if (auth.deletionRecoveryPending && !auth.codeSent) ...[
+                            const SizedBox(height: 14),
+                            TextButton(
+                              onPressed: auth.busy
+                                  ? null
+                                  : () async {
+                                      final leave = await showDialog<bool>(
+                                        context: context,
+                                        builder: (dialogContext) => AlertDialog(
+                                          title: const Text('Leave account recovery?'),
+                                          content: const Text(
+                                            'Your original account may still exist. '
+                                            'Leaving recovery does not erase local '
+                                            'workouts, but they remain locked to '
+                                            'the original account and cannot be '
+                                            'transferred to a new account.',
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(dialogContext, false),
+                                              child: const Text('Keep recovering'),
+                                            ),
+                                            FilledButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(dialogContext, true),
+                                              child: const Text('Leave recovery'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      if (leave == true) {
+                                        await auth.leaveDeletionRecovery();
+                                      }
+                                    },
+                              child: const Text('Use a different account instead'),
                             ),
                           ],
                           if (auth.busy) ...[
