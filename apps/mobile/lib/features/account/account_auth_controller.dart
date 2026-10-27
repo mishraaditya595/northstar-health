@@ -290,10 +290,9 @@ class AccountAuthController extends ChangeNotifier {
     this._api,
     this._binding,
     this._recoveryStore, {
-    required ConfirmedDeletionCleanupStore cleanupStore,
-    required LocalAccountDataCleaner localCleaner,
-  }) : _cleanupStore = cleanupStore,
-       _localCleaner = localCleaner {
+    required this._cleanupStore,
+    required this._localCleaner,
+  }) {
     _authSubscription = _api.cloudIdentityChanges.listen(
       _onIdentityChange,
       onError: (Object _) {
