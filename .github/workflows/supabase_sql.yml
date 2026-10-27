@@ -67,63 +67,52 @@ jobs:
         uses: supabase/setup-cli@v1
         with:
           version: "2.81.3"
-      - name: Start clean local database
+      - name: Start database, replay migrations, and run pgTAP with registry failover
+        shell: bash
         run: |
-          # setup-cli forces a GHCR-only mirror. Remove that override to let
-          # the pinned CLI fall back across ECR, GHCR and Docker Hub if one
-          # registry is rate-limited. GHCR remains authenticated when chosen.
-          unset SUPABASE_INTERNAL_IMAGE_REGISTRY
-          # Without pipefail, tee masks a failed supabase db start and makes
-          # this step falsely pass while the later db reset mysteriously fails.
           set -o pipefail
           supabase --version
-          # Supabase CLI retries image pulls internally, but GHCR can still
-          # temporarily throttle shared GitHub-hosted runner IPs. Retry ONLY
-          # quota failures; a real database/startup error must fail promptly.
-          for attempt in 1 2 3 4; do
-            if supabase db start 2>&1 | tee "$RUNNER_TEMP/supabase-db-start.log"; then
-              exit 0
-            fi
-            if ! grep -Eiq 'toomanyrequests|429 Too Many Requests|rate limit exceeded' \
-              "$RUNNER_TEMP/supabase-db-start.log"; then
-              echo "::error::Supabase startup failed for a non-rate-limit reason."
-              exit 1
-            fi
-            if [ "$attempt" -eq 4 ]; then
-              echo "::error::GHCR rate limit persisted after four startup attempts."
-              exit 1
-            fi
-            seconds=$((attempt * 20))
-            echo "::warning::Transient GHCR throttling (attempt $attempt/4); retrying after ${seconds}s."
-            sleep "$seconds"
-          done
-      - name: Reset and replay all migrations from scratch
-        run: |
-          unset SUPABASE_INTERNAL_IMAGE_REGISTRY
-          supabase db reset
-      - name: Execute pgTAP SQL tests
-        run: |
-          # pgTAP uses its own pg_prove Docker image. setup-cli's GHCR-only
-          # override can throttle here even after db start/reset passed.
-          unset SUPABASE_INTERNAL_IMAGE_REGISTRY
-          set -o pipefail
-          for attempt in 1 2 3 4; do
-            if supabase test db 2>&1 | tee "$RUNNER_TEMP/supabase-test-db.log"; then
-              exit 0
-            fi
-            if ! grep -Eiq 'toomanyrequests|429 Too Many Requests|rate limit exceeded' \
-              "$RUNNER_TEMP/supabase-test-db.log"; then
-              echo "::error::pgTAP SQL test failure (not a registry throttle)."
-              exit 1
-            fi
-            if [ "$attempt" -eq 4 ]; then
-              echo "::error::Container registry rate limit persisted across pgTAP retries."
-              exit 1
-            fi
-            seconds=$((attempt * 20))
-            echo "::warning::pgTAP image pull throttled (attempt $attempt/4); retrying in ${seconds}s."
-            sleep "$seconds"
-          done
+
+          # CLI 2.81.3 does not reliably switch registries when an image
+          # pull is throttled. GitHub-hosted runners can exhaust shared-IP
+          # ECR/GHCR quotas even after repeated pulls to the same registry.
+          # The CLI supports these official Supabase image mirrors. Try
+          # another mirror ONLY on an identifiable registry quota error.
+          # No migration, PostgreSQL, or pgTAP failure is masked/retried.
+          run_supabase() {
+            local stage="$1"
+            shift
+            local registry
+            local log_file="$RUNNER_TEMP/supabase-${stage}.log"
+
+            for registry in docker.io ghcr.io public.ecr.aws; do
+              echo "::group::Supabase ${stage} using ${registry}"
+              if SUPABASE_INTERNAL_IMAGE_REGISTRY="$registry" \
+                supabase "$@" 2>&1 | tee "$log_file"; then
+                echo "::endgroup::"
+                echo "Supabase ${stage} passed using ${registry}."
+                return 0
+              fi
+              echo "::endgroup::"
+
+              if ! grep -Eiq \
+                'toomanyrequests|429 Too Many Requests|rate limit exceeded|Data limit exceeded' \
+                "$log_file"; then
+                echo "::error::Supabase ${stage} failed (not an image-registry quota issue)."
+                return 1
+              fi
+
+              echo "::warning::Supabase ${stage} image pull was rate limited on ${registry}; trying another official mirror."
+              sleep 5
+            done
+
+            echo "::error::All official Supabase image registry mirrors were rate limited during ${stage}."
+            return 1
+          }
+
+          run_supabase start db start
+          run_supabase reset db reset
+          run_supabase pgtap test db
       - name: Install pinned Deno for Edge Function verification
         uses: denoland/setup-deno@v2
         with:
