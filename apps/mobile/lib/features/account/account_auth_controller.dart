@@ -594,6 +594,10 @@ class AccountAuthController extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
+      // A crash after recovery wrote a binding but before the recovery
+      // marker was cleared can leave BOTH keys present. Clear the binding
+      // first: abandoning recovery must never unlock it on next launch.
+      await _binding.clear();
       await _recoveryStore.clear();
       _recoveryOwner = null;
       _codeSent = false;
