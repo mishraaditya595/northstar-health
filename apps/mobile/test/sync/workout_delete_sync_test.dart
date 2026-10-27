@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:northstar_health/core/ids/uuid_factory.dart';
-import 'package:northstar_health/features/account/account_auth_controller.dart';
 import 'package:northstar_health/features/sync/objectbox_workout_restore_importer.dart';
 import 'package:northstar_health/features/sync/workout_restore_feed.dart';
 import 'package:northstar_health/features/sync/workout_restore_transport.dart';
