@@ -188,19 +188,21 @@ void main() {
         ),
       ),
     );
+    // Check the button before scrolling deeper into the now-longer export
+    // section; slivers can recycle offscreen widgets after that scroll.
+    await tester.scrollUntilVisible(find.text('Review sync issues'), 80);
+    final review = tester.widget<OutlinedButton>(
+      find.widgetWithText(OutlinedButton, 'Review sync issues'),
+    );
+    expect(review.onPressed, isNull);
     await tester.scrollUntilVisible(
       find.textContaining('No unresolved sync issue is recorded'),
-      160,
+      -80,
     );
     expect(
       find.textContaining('does not verify that every workout is in the cloud'),
       findsOneWidget,
     );
-    await tester.scrollUntilVisible(find.text('Review sync issues'), 160);
-    final review = tester.widget<OutlinedButton>(
-      find.widgetWithText(OutlinedButton, 'Review sync issues'),
-    );
-    expect(review.onPressed, isNull);
 
     await tester.scrollUntilVisible(find.text('Sign out of this device'), 160);
     await tester.ensureVisible(
