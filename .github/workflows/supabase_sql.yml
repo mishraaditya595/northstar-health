@@ -76,6 +76,9 @@ jobs:
           # CLI 2.81.3 does not reliably switch registries when an image
           # pull is throttled. GitHub-hosted runners can exhaust shared-IP
           # ECR/GHCR quotas even after repeated pulls to the same registry.
+          # Image mirrors are referenced by mutable tags, not pinned digests;
+          # their content can differ if replication lags. Record local digests
+          # after startup for later comparison.
           # The CLI supports these official Supabase image mirrors. Try
           # another mirror ONLY on an identifiable registry quota error.
           # No migration, PostgreSQL, or pgTAP failure is masked/retried.
@@ -84,8 +87,11 @@ jobs:
             shift
             local registry
             local log_file="$RUNNER_TEMP/supabase-${stage}.log"
+            local quota_pattern
 
-            for registry in docker.io ghcr.io public.ecr.aws; do
+            # GHCR was authenticated in the preceding step; Docker Hub is
+            # anonymous here and should only be the last resort.
+            for registry in ghcr.io public.ecr.aws docker.io; do
               echo "::group::Supabase ${stage} using ${registry}"
               if SUPABASE_INTERNAL_IMAGE_REGISTRY="$registry" \
                 supabase "$@" 2>&1 | tee "$log_file"; then
@@ -95,11 +101,24 @@ jobs:
               fi
               echo "::endgroup::"
 
-              if ! grep -Eiq \
-                'toomanyrequests|429 Too Many Requests|rate limit exceeded|Data limit exceeded' \
-                "$log_file"; then
-                echo "::error::Supabase ${stage} failed (not an image-registry quota issue)."
+              # pgTAP output may include application/test text saying "rate
+              # limit exceeded". Never interpret that generic phrase as an
+              # image-pull quota: SQL failures must not be hidden by a retry.
+              if [[ "$stage" == "pgtap" ]]; then
+                quota_pattern='(failed to pull docker image|failed to display json stream|Error response from daemon).*toomanyrequests|image (pull|download).*(429 Too Many Requests|Data limit exceeded)'
+              else
+                quota_pattern='toomanyrequests|429 Too Many Requests|rate limit exceeded|Data limit exceeded'
+              fi
+              if ! grep -Eiq "$quota_pattern" "$log_file"; then
+                echo "::error::Supabase ${stage} failed (no image-registry pull quota identified)."
                 return 1
+              fi
+
+              if [[ "$stage" == "start" ]]; then
+                # A partial startup can leave a named container or network.
+                # Clear it before trying the next registry, without backups.
+                SUPABASE_INTERNAL_IMAGE_REGISTRY="$registry" \
+                  supabase stop --no-backup || true
               fi
 
               echo "::warning::Supabase ${stage} image pull was rate limited on ${registry}; trying another official mirror."
@@ -111,6 +130,7 @@ jobs:
           }
 
           run_supabase start db start
+          docker images --digests
           run_supabase reset db reset
           run_supabase pgtap test db
       - name: Install pinned Deno for Edge Function verification
