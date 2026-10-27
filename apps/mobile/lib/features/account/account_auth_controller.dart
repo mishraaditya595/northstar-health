@@ -647,6 +647,10 @@ class AccountAuthController extends ChangeNotifier {
       }
       _pendingEmail = normalized;
       _codeSent = true;
+    } on AuthApiException catch (error) {
+      _error = error.statusCode == '429'
+          ? 'Too many email codes requested. Wait before trying again.'
+          : 'Could not send a code. Check your connection and retry.';
     } catch (_) {
       _error = 'Could not send a code. Check your connection and retry.';
     } finally {
