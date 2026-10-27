@@ -100,7 +100,7 @@ uses `auth.admin.deleteUser` with a server-held privileged key; existing
 cascade FKs remove completed history, receipts, tombstones and owner cursors.
 The phone clears its secure bound-account identity before asking the server,
 unmounting its upload/restore worker and locking the original local partition.
-It never erases a different account's ObjectBox directory.
+After an exact server success receipt, a durable confirmed-cleanup marker is saved and the original owner's ObjectBox directory is erased after Store unmount (retry on launch if needed). Only that UUID's directory is eligible; uncertain server results lock without erasing. Explicit handler 4xx refusals can rebind only if the same verified owner remains active.
 
 The following requirements are **implemented in code, not yet demonstrated
 against a hosted project or physical device**. See
@@ -117,9 +117,10 @@ against a hosted project or physical device**. See
   Flutter. Define recovery for uncertain network responses.
 - Lock only the original owner's local ObjectBox partition before the
   irreversible network operation. Never purge local records on an uncertain
-  response. A successful server deletion leaves the old local partition
-  inaccessible and never reassigns it to another user. Existing local files
-  are not automatically erased; this is disclosed in the UI.
+  response. A successful server deletion durably records a local cleanup
+  task, unmounts ObjectBox, and deletes only that owner's local workouts,
+  plans and outbox; failed deletion is retried at next launch or from the
+  locked account screen. No partition may ever be reassigned to another user.
 - Run the newly committed synthetic controller and SQL session-age tests.
   Hosted end-to-end proof is still required for stale/replayed tokens,
   mid-request account switches, second-device stale JWTs, network ambiguity,
