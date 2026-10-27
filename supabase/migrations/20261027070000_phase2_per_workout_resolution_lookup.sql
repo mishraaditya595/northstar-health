@@ -16,6 +16,15 @@ begin
   if p_workout_id is null then
     raise exception 'workout ID required' using errcode = '22023';
   end if;
+  -- Snapshot semantics: under PostgreSQL READ COMMITTED, the helper read
+  -- below and the following SELECT of workout_records can observe separate
+  -- statement snapshots. This is a read-only *review*, not an atomic epoch
+  -- + row snapshot or a lock on the server revision. In particular, an epoch
+  -- rotation or concurrent write between these reads must not be treated as
+  -- a reserved CAS baseline. The client validates the epoch against its
+  -- local cursor and uses revision compare-and-swap for every subsequent
+  -- mutation; a conflict requires another fresh review. Do not advance the
+  -- shared restore cursor based on this lookup alone.
   -- This private helper derives auth.uid(); the caller cannot supply owner.
   v_state := northstar_private.current_workout_restore_state();
   select * into v_row from public.workout_records
