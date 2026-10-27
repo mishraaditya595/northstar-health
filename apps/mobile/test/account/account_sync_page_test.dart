@@ -37,9 +37,9 @@ void main() {
             workoutRestoreBlockedCodeProvider.overrideWithValue('invalid_page'),
           ],
           child: MaterialApp(
-          theme: NorthstarTheme.build(Brightness.light),
-          home: const Scaffold(body: AccountSyncPage()),
-        ),
+            theme: NorthstarTheme.build(Brightness.light),
+            home: const Scaffold(body: AccountSyncPage()),
+          ),
         ),
       );
       expect(find.text('Cloud session ready'), findsOneWidget);
@@ -120,10 +120,7 @@ void main() {
         ),
       ),
     );
-    await tester.scrollUntilVisible(
-      find.text('Sign out of this device'),
-      220,
-    );
+    await tester.scrollUntilVisible(find.text('Sign out of this device'), 220);
     await tester.tap(find.text('Sign out of this device'));
     await tester.pumpAndSettle();
     expect(
@@ -136,10 +133,7 @@ void main() {
     expect(auth.userId, accountA);
     expect(api.signedOut, false);
 
-    await tester.scrollUntilVisible(
-      find.text('Sign out of this device'),
-      220,
-    );
+    await tester.scrollUntilVisible(find.text('Sign out of this device'), 220);
     await tester.tap(find.text('Sign out of this device'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Sign out', skipOffstage: false).last);
