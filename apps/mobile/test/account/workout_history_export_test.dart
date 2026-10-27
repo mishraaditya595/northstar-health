@@ -231,7 +231,7 @@ void main() {
   test('out-of-order and duplicated keys fail closed', () async {
     final reader = FakeExportReader([exportRow(2), exportRow(1)]);
     await expectLater(
-      makeExporter(reader, pageSize: 1).exportJson(),
+      makeExporter(reader, pageSize: 5).exportJson(),
       throwsA(
         isA<WorkoutExportException>().having(
           (e) => e.code,
