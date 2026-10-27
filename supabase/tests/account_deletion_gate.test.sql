@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(24);
+select plan(25);
 
 select is(
   has_function_privilege('anon','public.authorize_account_deletion()','EXECUTE'),
@@ -35,6 +35,15 @@ insert into public.workout_records
 values
  ('00000000-0000-4000-8000-0000000000a1','00000000-0000-4000-8000-000000000111',1,1,'completed',1),
  ('00000000-0000-4000-8000-0000000000b2','00000000-0000-4000-8000-000000000222',1,1,'completed',1);
+
+-- Real deleted workout tombstone: no payload or completed/loaded statistics.
+insert into public.workout_records
+ (user_id,workout_id,server_revision,schema_version,status,server_change_seq,
+  deleted_at,payload,completed_working_sets,loaded_working_sets,loaded_volume_gram_reps)
+values
+ ('00000000-0000-4000-8000-0000000000a1','00000000-0000-4000-8000-000000000112',
+  2,1,'completed',2,now(),null,null,null,null);
+
 insert into public.workout_sync_operations
  (user_id,operation_id,workout_id,expected_revision,action,applied_revision,
   applied_change_seq,request_sha256)
@@ -43,7 +52,7 @@ values
  ('00000000-0000-4000-8000-0000000000b2','00000000-0000-4000-8000-000000000223','00000000-0000-4000-8000-000000000222',0,'upsert',1,1,decode(repeat('22',32),'hex'));
 insert into northstar_private.workout_owner_cursors(user_id,last_change_seq)
 values
- ('00000000-0000-4000-8000-0000000000a1',1),
+ ('00000000-0000-4000-8000-0000000000a1',2),
  ('00000000-0000-4000-8000-0000000000b2',1);
 
 create function pg_temp.try_deletion_gate() returns text
@@ -103,7 +112,14 @@ select is(pg_temp.try_deletion_gate(),'28000','sessions dated in the future are 
 reset role;
 select is((select count(*) from public.workout_records where user_id in
  ('00000000-0000-4000-8000-0000000000a1','00000000-0000-4000-8000-0000000000b2')),
- 2::bigint, 'gate cannot alter seeded owner workout rows');
+ 3::bigint, 'gate cannot alter seeded owner workout rows');
+select is(
+ (select count(*) from public.workout_records
+  where user_id='00000000-0000-4000-8000-0000000000a1'
+    and deleted_at is not null and payload is null
+    and completed_working_sets is null and loaded_working_sets is null
+    and loaded_volume_gram_reps is null),
+ 1::bigint, 'synthetic deleted-workout tombstone really exists before cascade');
 select is((select count(*) from public.workout_sync_operations where user_id in
  ('00000000-0000-4000-8000-0000000000a1','00000000-0000-4000-8000-0000000000b2')),
  2::bigint, 'gate cannot alter seeded owner receipt rows');
