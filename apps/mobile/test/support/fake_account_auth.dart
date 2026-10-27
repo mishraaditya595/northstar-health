@@ -27,6 +27,40 @@ class FakeDeletionRecoveryStore implements DeletionRecoveryStore {
   }
 }
 
+class FakeConfirmedDeletionCleanupStore implements ConfirmedDeletionCleanupStore {
+  String? saved;
+  bool failWrite = false;
+  bool failClear = false;
+
+  @override
+  Future<String?> read() async => saved;
+
+  @override
+  Future<void> write(String owner) async {
+    if (failWrite) throw StateError('Secure cleanup marker unavailable');
+    saved = owner;
+  }
+
+  @override
+  Future<void> clear() async {
+    if (failClear) throw StateError('Secure cleanup marker clear failed');
+    saved = null;
+  }
+}
+
+class FakeLocalAccountDataCleaner implements LocalAccountDataCleaner {
+  final List<String> erased = <String>[];
+  bool failErase = false;
+  bool lastWaitForUnmount = false;
+
+  @override
+  Future<void> erase(String owner, {bool waitForUnmount = false}) async {
+    lastWaitForUnmount = waitForUnmount;
+    if (failErase) throw StateError('ObjectBox files still locked');
+    erased.add(owner);
+  }
+}
+
 class FakeBoundAccountStore implements BoundAccountStore {
   String? saved;
   bool failClear = false;
@@ -63,6 +97,8 @@ class FakeAuthApi implements AccountAuthApi {
   bool failDeletionTransport = false;
   bool serverDeleted = false;
   bool commitThenLoseReceipt = false;
+  int? deleteRefusalStatus;
+  bool rateLimited = false;
   String? recoveryCodeSentTo;
   String? deleteRequestedFor;
   String? deletionCodeSentTo;
@@ -114,6 +150,9 @@ class FakeAuthApi implements AccountAuthApi {
 
   @override
   Future<void> sendDeletionCode(String email) async {
+    if (rateLimited) {
+      throw const AuthApiException('Rate limit', statusCode: '429');
+    }
     if (offline || failDeletionRequest) throw StateError('network');
     deletionCodeSentTo = email;
   }
@@ -130,6 +169,9 @@ class FakeAuthApi implements AccountAuthApi {
   @override
   Future<void> deleteAccountOnServer(String accountId) async {
     deleteRequestedFor = accountId;
+    if (deleteRefusalStatus != null) {
+      throw AccountDeletionRejected(deleteRefusalStatus!);
+    }
     if (holdDeletion != null) await holdDeletion!.future;
     if (commitThenLoseReceipt) {
       serverDeleted = true;
@@ -167,5 +209,12 @@ AccountAuthController controller(
   FakeAuthApi api,
   FakeBoundAccountStore bound, {
   FakeDeletionRecoveryStore? recovery,
-}) =>
-    AccountAuthController(api, bound, recovery ?? FakeDeletionRecoveryStore());
+  FakeConfirmedDeletionCleanupStore? cleanup,
+  FakeLocalAccountDataCleaner? cleaner,
+}) => AccountAuthController(
+  api,
+  bound,
+  recovery ?? FakeDeletionRecoveryStore(),
+  cleanupStore: cleanup ?? FakeConfirmedDeletionCleanupStore(),
+  localCleaner: cleaner ?? FakeLocalAccountDataCleaner(),
+);
