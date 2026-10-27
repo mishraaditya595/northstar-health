@@ -167,4 +167,5 @@ AccountAuthController controller(
   FakeAuthApi api,
   FakeBoundAccountStore bound, {
   FakeDeletionRecoveryStore? recovery,
-}) => AccountAuthController(api, bound, recovery ?? FakeDeletionRecoveryStore());
+}) =>
+    AccountAuthController(api, bound, recovery ?? FakeDeletionRecoveryStore());
