@@ -103,6 +103,7 @@ final workoutUploadCoordinatorProvider = Provider<WorkoutUploadCoordinator>((
     },
     onRestored: () {
       ref.invalidate(completedWorkoutHistoryProvider);
+      ref.invalidate(workoutRestoreCursorProvider);
       ref.invalidate(workoutRestoreBlockedCodeProvider);
       ref.invalidate(workoutConflictCandidatesProvider);
     },
