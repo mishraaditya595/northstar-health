@@ -289,15 +289,20 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
     );
     if (!confirmed || !context.mounted) return;
     try {
-      ref.read(workoutOutboxProvider).deleteCompletedWorkout(
-        sessionUuid: session.uuid,
-        expectedLocalRevision: session.revision,
-      );
+      ref
+          .read(workoutOutboxProvider)
+          .deleteCompletedWorkout(
+            sessionUuid: session.uuid,
+            expectedLocalRevision: session.revision,
+          );
       ref.invalidate(completedWorkoutHistoryProvider);
       ref.invalidate(workoutSyncFlagsProvider);
       ref.read(workoutUploadCoordinatorProvider).kick();
       if (context.mounted) {
-        showNsMessage(context, 'Workout removed locally. Cloud deletion queued.');
+        showNsMessage(
+          context,
+          'Workout removed locally. Cloud deletion queued.',
+        );
         Navigator.of(context).maybePop();
       }
     } catch (_) {
