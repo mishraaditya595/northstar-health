@@ -12,46 +12,54 @@ import '../support/fake_account_auth.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('shows account-local counts, paused cursor and does not claim synced',
-      (tester) async {
-    final api = FakeAuthApi()..sessionId = accountA;
-    final auth = controller(api, FakeBoundAccountStore()..saved = accountA);
-    addTearDown(auth.dispose);
-    addTearDown(api.dispose);
-    await auth.restore();
+  testWidgets(
+    'shows account-local counts, paused cursor and does not claim synced',
+    (tester) async {
+      final api = FakeAuthApi()..sessionId = accountA;
+      final auth = controller(api, FakeBoundAccountStore()..saved = accountA);
+      addTearDown(auth.dispose);
+      addTearDown(api.dispose);
+      await auth.restore();
 
-    var kicks = 0;
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          accountAuthControllerProvider.overrideWithValue(auth),
-          workoutUploadKickProvider.overrideWithValue(() => kicks++),
-          workoutSyncFlagsProvider.overrideWithValue(const {
-            'w1': WorkoutSyncFlag.notSynced,
-            'w2': WorkoutSyncFlag.needsReview,
-            'w3': WorkoutSyncFlag.localOnly,
-          }),
-          blockedWorkoutCountProvider.overrideWithValue(2),
-          workoutRestoreBlockedCodeProvider.overrideWithValue('invalid_page'),
-        ],
-        child: const MaterialApp(home: Scaffold(body: AccountSyncPage())),
-      ),
-    );
-    expect(find.text('Cloud session ready'), findsOneWidget);
-    expect(find.text('1 queued for backup'), findsOneWidget);
-    expect(find.text('1 need review'), findsOneWidget);
-    expect(find.text('1 local-only workouts'), findsOneWidget);
-    expect(find.text('Cloud restore paused'), findsOneWidget);
-    expect(find.text('2 blocked upload operations require review '
-        '(operations may share a workout).'), findsOneWidget);
-    await tester.tap(find.text('Sync now'));
-    await tester.pump();
-    expect(kicks, 1);
-    expect(find.textContaining('Sync requested'), findsOneWidget);
-  });
+      var kicks = 0;
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            accountAuthControllerProvider.overrideWithValue(auth),
+            workoutUploadKickProvider.overrideWithValue(() => kicks++),
+            workoutSyncFlagsProvider.overrideWithValue(const {
+              'w1': WorkoutSyncFlag.notSynced,
+              'w2': WorkoutSyncFlag.needsReview,
+              'w3': WorkoutSyncFlag.localOnly,
+            }),
+            blockedWorkoutCountProvider.overrideWithValue(2),
+            workoutRestoreBlockedCodeProvider.overrideWithValue('invalid_page'),
+          ],
+          child: const MaterialApp(home: Scaffold(body: AccountSyncPage())),
+        ),
+      );
+      expect(find.text('Cloud session ready'), findsOneWidget);
+      expect(find.text('1 queued for backup'), findsOneWidget);
+      expect(find.text('1 need review'), findsOneWidget);
+      expect(find.text('1 local-only workouts'), findsOneWidget);
+      expect(find.text('Cloud restore paused'), findsOneWidget);
+      expect(
+        find.text(
+          '2 blocked upload operations require review '
+          '(operations may share a workout).',
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Sync now'));
+      await tester.pump();
+      expect(kicks, 1);
+      expect(find.textContaining('Sync requested'), findsOneWidget);
+    },
+  );
 
-  testWidgets('expired session disables sync and preserves local counts',
-      (tester) async {
+  testWidgets('expired session disables sync and preserves local counts', (
+    tester,
+  ) async {
     final api = FakeAuthApi()
       ..sessionId = accountA
       ..expired = true;
@@ -81,8 +89,9 @@ void main() {
     expect(kicks, 0);
   });
 
-  testWidgets('sign out warns about pending work and keeps local partition',
-      (tester) async {
+  testWidgets('sign out warns about pending work and keeps local partition', (
+    tester,
+  ) async {
     final api = FakeAuthApi()..sessionId = accountA;
     final binding = FakeBoundAccountStore()..saved = accountA;
     final auth = controller(api, binding);
@@ -104,8 +113,10 @@ void main() {
     await tester.ensureVisible(find.text('Sign out of this device'));
     await tester.tap(find.text('Sign out of this device'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Some completed workouts still need backup'),
-        findsOneWidget);
+    expect(
+      find.textContaining('Some completed workouts still need backup'),
+      findsOneWidget,
+    );
     expect(binding.saved, accountA);
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
@@ -119,8 +130,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(auth.userId, isNull);
     expect(binding.saved, isNull);
-    expect(find.text('Signed out. Sign in to review account status.'),
-        findsOneWidget);
+    expect(
+      find.text('Signed out. Sign in to review account status.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('unsigned page never touches a native store', (tester) async {
