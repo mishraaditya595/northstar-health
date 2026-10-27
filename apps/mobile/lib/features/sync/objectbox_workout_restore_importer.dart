@@ -680,6 +680,16 @@ class ObjectBoxWorkoutRestoreImporter {
       throw const RestoreImportException('resolution_already_handled');
     }
     final remoteChange = review.change;
+    // The foreground importer may have skipped a NEWER server change while
+    // the user was reading a conflict preview. Local revision is unchanged
+    // for skips, so the optimistic local check alone is insufficient.
+    // Never clear a newer skip from an older reviewed point lookup.
+    if (skip != null &&
+        (skip.cursorEpoch != review.cursorEpoch ||
+            remoteChange == null ||
+            remoteChange.changeSeq < skip.serverChangeSeq)) {
+      throw const RestoreImportException('resolution_stale_skip');
+    }
     if (oldRemote != null &&
         oldRemote.cursorEpoch == review.cursorEpoch &&
         (remoteChange == null ||
