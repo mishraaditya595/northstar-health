@@ -404,22 +404,32 @@ void main() {
     });
     final queued = outbox.pending().single;
     expect(queued.payloadJson, contains('Private session'));
-    expect(outbox.acknowledge(
-      operationUuid: queued.operationUuid,
-      localRevision: queued.localRevision,
-      serverRevision: 1,
-      serverChangeSeq: 1,
-    ), true);
-    expect(outbox.deleteCompletedWorkout(
-      sessionUuid: workout,
-      expectedLocalRevision: 1,
-    ), true);
+    expect(
+      outbox.acknowledge(
+        operationUuid: queued.operationUuid,
+        localRevision: queued.localRevision,
+        serverRevision: 1,
+        serverChangeSeq: 1,
+      ),
+      true,
+    );
+    expect(
+      outbox.deleteCompletedWorkout(
+        sessionUuid: workout,
+        expectedLocalRevision: 1,
+      ),
+      true,
+    );
     final acknowledged = store.box<WorkoutSyncOutboxEntity>().getAll().first;
     expect(acknowledged.state, 'acknowledged');
     expect(acknowledged.serverRevision, 1);
     expect(acknowledged.payloadJson, 'null');
-    expect(outbox.reserveNext(nowMs: DateTime.now().millisecondsSinceEpoch + 1)!
-        .expectedServerRevision, 1);
+    expect(
+      outbox
+          .reserveNext(nowMs: DateTime.now().millisecondsSinceEpoch + 1)!
+          .expectedServerRevision,
+      1,
+    );
   });
 
   test('remote tombstone deletes completed history on another device', () {
@@ -440,17 +450,19 @@ void main() {
         localRevisionAtImport: 1,
       ),
     );
-    store.box<WorkoutSyncOutboxEntity>().put(WorkoutSyncOutboxEntity(
-      operationUuid: '00000000-0000-4000-8000-000000009901',
-      sessionUuid: workout,
-      localRevision: 1,
-      action: 'upsert',
-      payloadJson: '{"name":"Private session"}',
-      state: 'acknowledged',
-      createdAtMs: start,
-      serverRevision: 1,
-      serverChangeSeq: 1,
-    ));
+    store.box<WorkoutSyncOutboxEntity>().put(
+      WorkoutSyncOutboxEntity(
+        operationUuid: '00000000-0000-4000-8000-000000009901',
+        sessionUuid: workout,
+        localRevision: 1,
+        action: 'upsert',
+        payloadJson: '{"name":"Private session"}',
+        state: 'acknowledged',
+        createdAtMs: start,
+        serverRevision: 1,
+        serverChangeSeq: 1,
+      ),
+    );
     final result = importer.applyPage(
       WorkoutRestorePage(
         cursorEpoch: epoch,
@@ -476,7 +488,10 @@ void main() {
     expect(session.name, 'Deleted workout');
     expect(store.box<WorkoutExerciseEntity>().count(), 0);
     expect(store.box<WorkoutSetEntity>().count(), 0);
-    expect(store.box<WorkoutSyncOutboxEntity>().getAll().single.payloadJson, 'null');
+    expect(
+      store.box<WorkoutSyncOutboxEntity>().getAll().single.payloadJson,
+      'null',
+    );
     expect(store.box<WorkoutRemoteStateEntity>().getAll().single.deleted, true);
   });
 }
