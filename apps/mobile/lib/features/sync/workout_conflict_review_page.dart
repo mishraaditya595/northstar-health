@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/design/dialogs.dart';
 import '../../core/design/page_header.dart';
 import 'objectbox_workout_restore_importer.dart';
 import 'workout_conflict_resolution.dart';
@@ -36,10 +37,10 @@ class _WorkoutConflictReviewPageState
           : remote.change!.deleted
           ? 'deleted (revision ${remote.change!.serverRevision})'
           : '${cloudSnapshot!.name} (${cloudSnapshot.exercises.length} exercises, ${cloudSnapshot.sets.length} sets, revision ${remote.change!.serverRevision})';
-      final action = await showDialog<WorkoutResolutionAction>(
+      final action = await showNsDialog<WorkoutResolutionAction>(
         context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Resolve workout conflict'),
+        builder: (dialogContext) => NsDialog(
+          title: 'Resolve workout conflict',
           content: SingleChildScrollView(
             child: Text(
               'This device: $localSummary.\n'
@@ -95,20 +96,13 @@ class _WorkoutConflictReviewPageState
                 !remote.change!.deleted),
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Conflict reviewed. Any queued sync will retry.'),
-        ),
-      );
+      showNsMessage(context, 'Conflict reviewed. Any queued sync will retry.');
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Could not resolve this workout safely. '
-            'Nothing was overwritten; retry after checking your connection.',
-          ),
-        ),
+      showNsMessage(
+        context,
+        'Could not resolve this workout safely. '
+        'Nothing was overwritten; retry after checking your connection.',
       );
     } finally {
       if (mounted) setState(() => workingUuid = null);
