@@ -15,6 +15,40 @@ Future<void> scrollTo(WidgetTester tester, String label) async {
 }
 
 void main() {
+  testWidgets('confirmed cleanup failure blocks account entry until retry', (
+    tester,
+  ) async {
+    final api = FakeAuthApi()..sessionId = accountA;
+    final bound = FakeBoundAccountStore();
+    final cleanup = FakeConfirmedDeletionCleanupStore()..saved = accountA;
+    final cleaner = FakeLocalAccountDataCleaner()..failErase = true;
+    final auth = controller(api, bound, cleanup: cleanup, cleaner: cleaner);
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+    await auth.restore();
+    expect(auth.confirmedLocalCleanupPending, true);
+
+    await tester.pumpWidget(
+      MaterialApp(home: AccountSignInPage(controller: auth)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('FINISH DATA REMOVAL'), findsOneWidget);
+    expect(find.text('Retry local data removal'), findsOneWidget);
+    expect(find.text('Use a different account instead'), findsNothing);
+    final signIn = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Send sign-in code'),
+    );
+    expect(signIn.onPressed, isNull);
+
+    cleaner.failErase = false;
+    await tester.tap(find.text('Retry local data removal'));
+    await tester.pumpAndSettle();
+    expect(cleaner.erased, [accountA]);
+    expect(cleanup.saved, isNull);
+    expect(auth.confirmedLocalCleanupPending, false);
+    expect(auth.userId, isNull);
+  });
+
   testWidgets(
     'pending deletion shows non-creating recovery and safe leave UI',
     (tester) async {
