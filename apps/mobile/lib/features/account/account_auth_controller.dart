@@ -364,8 +364,9 @@ class AccountAuthController extends ChangeNotifier {
         _deletionEmail == null ||
         _deletionOwner == null ||
         _userId != _deletionOwner ||
-        !cloudBackupReady)
+        !cloudBackupReady) {
       return;
+    }
     if (!RegExp(r'^\d{6}$').hasMatch(code.trim())) {
       _error = 'Enter the six-digit deletion verification code.';
       notifyListeners();
