@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:northstar_health/core/design/northstar_theme.dart';
 import 'package:northstar_health/features/account/account_auth_provider.dart';
 import 'package:northstar_health/features/account/account_sync_page.dart';
+import 'package:northstar_health/features/account/account_sign_in_page.dart';
 import 'package:northstar_health/features/workouts/data/objectbox_workout_outbox.dart';
 
 import '../support/fake_account_auth.dart';
@@ -14,6 +15,45 @@ Future<void> scrollTo(WidgetTester tester, String label) async {
 }
 
 void main() {
+  testWidgets('pending deletion shows non-creating recovery and safe leave UI', (
+    tester,
+  ) async {
+    final api = FakeAuthApi();
+    final bound = FakeBoundAccountStore()..saved = accountA;
+    final recovery = FakeDeletionRecoveryStore()..saved = accountA;
+    final auth = controller(api, bound, recovery: recovery);
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+    await auth.restore();
+    expect(auth.userId, isNull);
+    await tester.pumpWidget(
+      MaterialApp(home: AccountSignInPage(controller: auth)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('RECOVER ORIGINAL ACCOUNT'), findsOneWidget);
+    expect(find.text('Send recovery code'), findsOneWidget);
+    expect(find.text('Send sign-in code'), findsNothing);
+
+    await tester.tap(find.text('Use a different account instead'));
+    await tester.pumpAndSettle();
+    expect(find.text('Leave account recovery?'), findsOneWidget);
+    expect(recovery.saved, accountA);
+    await tester.tap(find.text('Keep recovering'));
+    await tester.pumpAndSettle();
+    expect(auth.deletionRecoveryPending, true);
+    expect(bound.saved, accountA);
+
+    await tester.tap(find.text('Use a different account instead'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Leave recovery'));
+    await tester.pumpAndSettle();
+    expect(recovery.saved, isNull);
+    expect(bound.saved, isNull);
+    expect(auth.userId, isNull);
+    expect(find.text('Send sign-in code'), findsOneWidget);
+  });
+
   testWidgets('delete asks about unsynced data before even sending an OTP', (
     tester,
   ) async {
