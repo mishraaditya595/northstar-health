@@ -23,6 +23,7 @@ type Scenario = {
 
 function caseHarness(s: Scenario = {}) {
   let deletes = 0;
+  const deletionCalls: Array<{ id: string; softDelete: boolean }> = [];
   let adminClients = 0;
   let rpcCalls = 0;
   const makeClient = ((
@@ -36,9 +37,7 @@ function caseHarness(s: Scenario = {}) {
           admin: {
             deleteUser: async (id: string, softDelete: boolean) => {
               deletes++;
-              if (id !== (s.signedInOwner ?? owner) || softDelete !== false) {
-                throw Error("Admin must hard-delete the verified caller only");
-              }
+              deletionCalls.push({ id, softDelete });
               if (s.failAdminTransport) throw Error("transport ambiguity");
               return { error: s.adminError ? { message: "blocked" } : null };
             },
@@ -85,7 +84,7 @@ function caseHarness(s: Scenario = {}) {
   });
   return {
     run: () => handler(request),
-    stats: () => ({ deletes, adminClients, rpcCalls }),
+    stats: () => ({ deletes, deletionCalls, adminClients, rpcCalls }),
   };
 }
 
@@ -110,6 +109,7 @@ for (const [name, scenario, expected] of [
     const response = await h.run();
     expect(response.status === expected, name + ": wrong HTTP status");
     expect(h.stats().deletes === 0, name + ": refused request deleted an account");
+    expect(h.stats().deletionCalls.length === 0, name + ": forbidden admin call arguments");
     expect(h.stats().adminClients === 0, name + ": admin client instantiated on refusal");
     expect(response.headers.get("cache-control") === "no-store", "sensitive response cache");
   });
@@ -121,7 +121,24 @@ Deno.test("successful response is exact receipt for verified owner", async () =>
   expect(response.status === 200, "must confirm successful delete");
   expect(JSON.stringify(await response.json()) === '{"schema_version":1,"deleted":true}', "receipt changed");
   expect(h.stats().deletes === 1 && h.stats().adminClients === 1, "hard delete exactly once");
+  expect(
+    JSON.stringify(h.stats().deletionCalls) === JSON.stringify([{ id: owner, softDelete: false }]),
+    "must call deleteUser(verified caller.id, false), never soft-delete or body-selected owner",
+  );
   expect(h.stats().rpcCalls === 1, "fresh-session proof is mandatory");
+});
+
+Deno.test("verified alternate caller is the exact hard-delete target", async () => {
+  const h = caseHarness({
+    signedInOwner: another,
+    body: { account_id: another, confirm: "DELETE MY ACCOUNT" },
+  });
+  const response = await h.run();
+  expect(response.status === 200, "verified alternate caller accepted");
+  expect(
+    JSON.stringify(h.stats().deletionCalls) === JSON.stringify([{ id: another, softDelete: false }]),
+    "admin deletion must target the independently verified Auth identity",
+  );
 });
 
 Deno.test("admin failure or post-delete transport loss never claims success", async () => {
