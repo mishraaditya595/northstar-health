@@ -17,13 +17,13 @@ void main() {
     var saves = 0;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
-      expect(call.method, 'saveJson');
-      final args = call.arguments as Map<dynamic, dynamic>;
-      expect(args['name'], 'northstar-workouts.json');
-      expect(args['json'], '{"workouts":[]}');
-      saves++;
-      return 'saved';
-    });
+          expect(call.method, 'saveJson');
+          final args = call.arguments as Map<dynamic, dynamic>;
+          expect(args['name'], 'northstar-workouts.json');
+          expect(args['json'], '{"workouts":[]}');
+          saves++;
+          return 'saved';
+        });
     expect(await writer.saveJson('{"workouts":[]}'), true);
     expect(saves, 1);
   });
@@ -37,15 +37,20 @@ void main() {
   test('native write failure has a generic non-sensitive result', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (_) async {
-      throw PlatformException(
-        code: 'write_failed',
-        message: 'private file location must never leak',
-      );
-    });
+          throw PlatformException(
+            code: 'write_failed',
+            message: 'private file location must never leak',
+          );
+        });
     await expectLater(
       writer.saveJson('{}'),
-      throwsA(isA<WorkoutExportException>()
-          .having((e) => e.code, 'code', 'save_failed')),
+      throwsA(
+        isA<WorkoutExportException>().having(
+          (e) => e.code,
+          'code',
+          'save_failed',
+        ),
+      ),
     );
   });
 
