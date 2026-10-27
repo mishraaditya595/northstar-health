@@ -587,10 +587,18 @@ class AccountAuthController extends ChangeNotifier {
     try {
       await _api.deleteAccountOnServer(owner);
       serverConfirmed = true;
-      // This write MUST occur only after an exact successful server receipt.
-      // A lost response keeps the uncertain marker; it never erases files.
-      await _cleanupStore.write(owner);
+      // The exact server receipt is the authorization for local erasure.
+      // Track it in memory BEFORE attempting secure-storage persistence:
+      // failure to write the durable retry marker must NOT strand confirmed
+      // deleted-user data in the uncertain-recovery screen.
       _cleanupOwner = owner;
+      try {
+        await _cleanupStore.write(owner);
+      } catch (_) {
+        // Best-effort immediate local erase is still safe: the server has
+        // confirmed this owner was permanently deleted. If erasure also
+        // fails, retain the locked recovery guard for manual local discard.
+      }
       await retryConfirmedLocalCleanup(waitForUnmount: true);
     } on AccountDeletionRejected catch (_) {
       // 400/401/403 are explicit pre-deletion refusals, unlike 5xx or timeouts.
@@ -726,18 +734,25 @@ class AccountAuthController extends ChangeNotifier {
     }
   }
 
-  /// Explicit abandonment never deletes, opens or reassigns local workouts.
-  /// The UI must show a confirmation warning before invoking this.
+  /// Explicitly discard this device's old local data and leave recovery.
+  /// The server result may be uncertain: the UI MUST warn that this choice
+  /// permanently erases unsynced workouts, even if the cloud account exists.
+  /// No data is erased on an uncertain result without this explicit consent.
   Future<void> leaveDeletionRecovery() async {
     if (_busy || _recoveryOwner == null || _userId != null) return;
+    final originalOwner = _recoveryOwner!;
     _busy = true;
     _error = null;
     notifyListeners();
     try {
-      // A crash after recovery wrote a binding but before the recovery
-      // marker was cleared can leave BOTH keys present. Clear the binding
-      // first: abandoning recovery must never unlock it on next launch.
+      // On a crash after a verified server receipt but failed cleanup-marker
+      // write, the only durable proof may be the *uncertain* recovery guard.
+      // Never infer deletion from that guard. The owner's explicit choice to
+      // discard local data safely resolves this corner case on restart.
+      // Clear any residual grant BEFORE touching the owner's files; on a
+      // cleanup failure retain the recovery marker and block normal sign-in.
       await _binding.clear();
+      await _localCleaner.erase(originalOwner);
       await _recoveryStore.clear();
       _recoveryOwner = null;
       _codeSent = false;
@@ -749,7 +764,8 @@ class AccountAuthController extends ChangeNotifier {
         // No active local binding remains.
       }
     } catch (_) {
-      _error = 'Could not clear the recovery lock securely. Retry or contact support.';
+      _error = 'Could not erase local workouts or finish recovery securely. '
+          'Data is still locked; retry or contact support.';
     } finally {
       _busy = false;
       notifyListeners();
