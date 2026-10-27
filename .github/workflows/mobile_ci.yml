@@ -70,6 +70,17 @@ jobs:
       - name: Resolve from committed lockfile
         working-directory: apps/mobile
         run: flutter pub get --enforce-lockfile
+      # Temporary pinned formatter capture; removed before the final PR.
+      - name: Temporary formatter capture for queue fairness
+        working-directory: apps/mobile
+        run: |
+          dart format lib/features/workouts/data/objectbox_workout_outbox.dart test/sync/workout_upload_fairness_test.dart
+          python3 - <<'PY'
+          import json
+          for path in ('lib/features/workouts/data/objectbox_workout_outbox.dart', 'test/sync/workout_upload_fairness_test.dart'):
+              print('QUEUE23_FORMAT:' + json.dumps({'path': path, 'content': open(path).read()}))
+          PY
+          exit 1
       - name: Format
         working-directory: apps/mobile
         run: dart format --output=none --set-exit-if-changed lib test
