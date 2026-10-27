@@ -84,10 +84,7 @@ void main() {
         find.text('Use another account and keep local data?'),
         findsOneWidget,
       );
-      expect(
-        find.textContaining('locked to the original'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('locked to the original'), findsOneWidget);
       await tester.tap(find.text('Keep recovering'));
       await tester.pumpAndSettle();
       expect(cleaner.erased, isEmpty);
@@ -112,9 +109,7 @@ void main() {
 
       await tester.tap(find.text(eraseLabel));
       await tester.pumpAndSettle();
-      await tester.tap(
-        find.widgetWithText(FilledButton, eraseLabel).last,
-      );
+      await tester.tap(find.widgetWithText(FilledButton, eraseLabel).last);
       await tester.pumpAndSettle();
       expect(cleaner.erased, [accountA]);
       expect(recovery.saved, isNull);
@@ -139,14 +134,9 @@ void main() {
         MaterialApp(home: AccountSignInPage(controller: auth)),
       );
       await tester.pumpAndSettle();
-      await tester.tap(
-        find.text('Use another account (keep old data locked)'),
-      );
+      await tester.tap(find.text('Use another account (keep old data locked)'));
       await tester.pumpAndSettle();
-      expect(
-        find.textContaining('not be transferred'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('not be transferred'), findsOneWidget);
       await tester.tap(find.text('Use another account'));
       await tester.pumpAndSettle();
       expect(auth.deletionRecoveryPending, false);
