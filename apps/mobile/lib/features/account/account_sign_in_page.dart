@@ -155,6 +155,7 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                             ),
                           ],
                           if (auth.deletionRecoveryPending &&
+                              !auth.confirmedLocalCleanupPending &&
                               !auth.codeSent) ...[
                             const SizedBox(height: 14),
                             TextButton(
