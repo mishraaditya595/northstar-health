@@ -99,8 +99,8 @@ only expendable synthetic data (environment variables are not committed):
 export NS_P2_08_DISPOSABLE_ACK=nonproduction-disposable-only
 export NS_P2_08_URL='https://YOUR-TEST-PROJECT.supabase.co'
 export NS_P2_08_PUBLISHABLE_KEY='YOUR_PUBLIC_KEY'
-printf 'A verified JWT (hidden): '; IFS= read -rs NS_P2_08_JWT_A; printf '\\n'
-printf 'B verified JWT (hidden): '; IFS= read -rs NS_P2_08_JWT_B; printf '\\n'
+printf 'A verified JWT (hidden): '; IFS= read -rs NS_P2_08_JWT_A; echo
+printf 'B verified JWT (hidden): '; IFS= read -rs NS_P2_08_JWT_B; echo
 export NS_P2_08_JWT_A NS_P2_08_JWT_B
 export NS_P2_08_WORKOUT_A='A_COMPLETED_WORKOUT_UUID'
 export NS_P2_08_WORKOUT_B='B_COMPLETED_WORKOUT_UUID'
