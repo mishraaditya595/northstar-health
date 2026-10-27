@@ -163,13 +163,19 @@ void main() {
       sessionUuid: workout, expectedLocalRevision: 2,
     ), throwsStateError);
     expect(store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs, isNull);
-    store.box<WorkoutSessionEntity>().removeAll();
-    seed(status: 'inProgress');
+    final sessions = store.box<WorkoutSessionEntity>();
+    final unfinished = sessions.getAll().single;
+    unfinished.status = 'inProgress';
+    unfinished.completedAtMs = null;
+    unfinished.revision = 1;
+    sessions.put(unfinished);
     expect(() => outbox.deleteCompletedWorkout(
       sessionUuid: workout, expectedLocalRevision: 1,
     ), throwsStateError);
-    store.box<WorkoutSessionEntity>().removeAll();
-    seed(origin: 'external_platform');
+    unfinished.status = 'completed';
+    unfinished.completedAtMs = finish;
+    unfinished.origin = 'external_platform';
+    sessions.put(unfinished);
     expect(() => outbox.deleteCompletedWorkout(
       sessionUuid: workout, expectedLocalRevision: 1,
     ), throwsStateError);
