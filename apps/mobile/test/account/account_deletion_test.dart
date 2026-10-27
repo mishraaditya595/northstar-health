@@ -421,6 +421,27 @@ void main() {
     expect(auth.error, isNot(contains('connection')));
   });
 
+  test('rate limiting also gives correct sign-in and recovery guidance', () async {
+    final api = FakeAuthApi()..rateLimited = true;
+    final bound = FakeBoundAccountStore();
+    final recovery = FakeDeletionRecoveryStore();
+    final auth = controller(api, bound, recovery: recovery);
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+    await auth.restore();
+    await auth.requestCode('owner@example.invalid');
+    expect(auth.error, contains('Too many email codes'));
+
+    recovery.saved = accountA;
+    final restarted = controller(api, bound, recovery: recovery);
+    addTearDown(restarted.dispose);
+    await restarted.restore();
+    await restarted.requestCode('owner@example.invalid');
+    expect(restarted.error, contains('Too many email codes'));
+    expect(restarted.deletionRecoveryPending, true);
+    expect(api.sentTo, isNull);
+  });
+
   test('missing verified Auth email prevents deletion code delivery', () async {
     final api = FakeAuthApi()
       ..sessionId = accountA
