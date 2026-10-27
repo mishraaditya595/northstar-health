@@ -421,8 +421,11 @@ class ObjectBoxWorkoutRestoreImporter {
         }
         return false;
       }
-      if (change.serverRevision <= remote.serverRevision) {
+      if (change.serverRevision < remote.serverRevision) {
         throw const RestoreImportException('server_revision_regressed');
+      }
+      if (change.serverRevision == remote.serverRevision) {
+        throw const RestoreImportException('duplicate_remote_sequence');
       }
     }
     if (remote != null && remote.deleted && !change.deleted) {
@@ -521,7 +524,8 @@ class ObjectBoxWorkoutRestoreImporter {
       final unchangedAck =
           local != null &&
           latestAck?.serverRevision == change.serverRevision &&
-          (remote == null || remote.serverRevision == change.serverRevision);
+          latestAck?.serverChangeSeq == change.changeSeq &&
+          latestAck?.localRevision == local.revision;
       if (!unchangedAck) {
         localRevision = _materialize(snapshot, local);
       }
