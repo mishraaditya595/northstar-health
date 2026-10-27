@@ -60,9 +60,9 @@ class WorkoutConflictCandidate {
     required this.exerciseCount,
     required this.setCount,
     required this.canKeepLocalOnly,
-    required this.canDismissMissing,
-    required this.skippedEpoch,
-    required this.skippedChangeSeq,
+    this.canDismissMissing = false,
+    this.skippedEpoch,
+    this.skippedChangeSeq,
   });
   final String workoutUuid;
   final String name;
