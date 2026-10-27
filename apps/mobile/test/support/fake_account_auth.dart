@@ -37,6 +37,15 @@ class FakeAuthApi implements AccountAuthApi {
   bool signedOut = false;
   bool offline = false;
   bool expired = false;
+  bool failDeletionRequest = false;
+  bool failDeletionVerify = false;
+  bool failDeletionTransport = false;
+  bool serverDeleted = false;
+  String? deleteRequestedFor;
+  String? deletionCodeSentTo;
+  Completer<void>? holdDeletion;
+  bool emailAvailable = true;
+  String deletionVerifiedId = accountA;
   int? sessionExpiresAtSeconds;
   final _events = StreamController<String?>.broadcast(sync: true);
 
@@ -69,6 +78,35 @@ class FakeAuthApi implements AccountAuthApi {
 
   @override
   String? get signedInUserId => sessionId;
+
+  @override
+  String? get signedInEmail =>
+      sessionId != null && emailAvailable ? 'owner@example.invalid' : null;
+
+  @override
+  Future<void> sendDeletionCode(String email) async {
+    if (offline || failDeletionRequest) throw StateError('network');
+    deletionCodeSentTo = email;
+  }
+
+  @override
+  Future<String> verifyDeletionCode(String email, String code) async {
+    if (offline || failDeletionVerify || code != '123456') {
+      throw StateError('OTP failed');
+    }
+    emitSession(deletionVerifiedId);
+    return deletionVerifiedId;
+  }
+
+  @override
+  Future<void> deleteAccountOnServer(String accountId) async {
+    deleteRequestedFor = accountId;
+    if (holdDeletion != null) await holdDeletion!.future;
+    if (offline || failDeletionTransport) {
+      throw StateError('deletion status unknown');
+    }
+    serverDeleted = true;
+  }
 
   @override
   bool get isAnonymous => anonymous;
