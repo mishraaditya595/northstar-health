@@ -238,7 +238,14 @@ void main() {
       store.box<WorkoutSyncOutboxEntity>().getAll().first.state,
       'conflict',
     );
-    expect(outbox.pending().map((o) => o.localRevision), [2]);
+    // The dependent snapshot is durable but deliberately no longer
+    // pending until the earlier conflicting revision is reviewed and ACKed.
+    expect(outbox.pending(), isEmpty);
+    final dependent = store.box<WorkoutSyncOutboxEntity>().getAll().last;
+    expect(dependent.localRevision, 2);
+    expect(dependent.state, 'dependency_paused');
+    expect(dependent.errorCode, 'predecessor_unresolved');
+    expect(dependent.attempts, 0);
     await uploader.drain();
     expect(transport.sent, [operationId]);
   });
