@@ -385,78 +385,95 @@ void main() {
     expect(auth.deletionRecoveryPending, true);
   });
 
-  test('explicit 400/401/403 server refusal restores the verified owner', () async {
-    for (final status in [400, 401, 403]) {
-      final api = FakeAuthApi()
-        ..sessionId = accountA
-        ..deleteRefusalStatus = status;
-      final bound = FakeBoundAccountStore()..saved = accountA;
-      final recovery = FakeDeletionRecoveryStore();
-      final cleaner = FakeLocalAccountDataCleaner();
-      final auth = controller(api, bound, recovery: recovery, cleaner: cleaner);
+  test(
+    'explicit 400/401/403 server refusal restores the verified owner',
+    () async {
+      for (final status in [400, 401, 403]) {
+        final api = FakeAuthApi()
+          ..sessionId = accountA
+          ..deleteRefusalStatus = status;
+        final bound = FakeBoundAccountStore()..saved = accountA;
+        final recovery = FakeDeletionRecoveryStore();
+        final cleaner = FakeLocalAccountDataCleaner();
+        final auth = controller(
+          api,
+          bound,
+          recovery: recovery,
+          cleaner: cleaner,
+        );
+        await auth.restore();
+        await auth.requestDeletionCode();
+        await auth.confirmAccountDeletion('123456');
+        expect(auth.userId, accountA, reason: 'HTTP $status');
+        expect(bound.saved, accountA);
+        expect(recovery.saved, isNull);
+        expect(api.serverDeleted, false);
+        expect(cleaner.erased, isEmpty);
+        expect(auth.error, contains('Deletion was refused'));
+        auth.dispose();
+        await api.dispose();
+      }
+    },
+  );
+
+  test(
+    'expired session after code delivery resets challenge with message',
+    () async {
+      final api = FakeAuthApi()..sessionId = accountA;
+      final auth = controller(api, FakeBoundAccountStore()..saved = accountA);
+      addTearDown(auth.dispose);
+      addTearDown(api.dispose);
       await auth.restore();
       await auth.requestDeletionCode();
+      expect(auth.deletionCodeSent, true);
+      api.expired = true;
       await auth.confirmAccountDeletion('123456');
-      expect(auth.userId, accountA, reason: 'HTTP $status');
-      expect(bound.saved, accountA);
-      expect(recovery.saved, isNull);
-      expect(api.serverDeleted, false);
-      expect(cleaner.erased, isEmpty);
-      expect(auth.error, contains('Deletion was refused'));
-      auth.dispose();
-      await api.dispose();
-    }
-  });
+      expect(auth.deletionCodeSent, false);
+      expect(auth.error, contains('session expired'));
+      expect(api.deleteRequestedFor, isNull);
+    },
+  );
 
-  test('expired session after code delivery resets challenge with message', () async {
-    final api = FakeAuthApi()..sessionId = accountA;
-    final auth = controller(api, FakeBoundAccountStore()..saved = accountA);
-    addTearDown(auth.dispose);
-    addTearDown(api.dispose);
-    await auth.restore();
-    await auth.requestDeletionCode();
-    expect(auth.deletionCodeSent, true);
-    api.expired = true;
-    await auth.confirmAccountDeletion('123456');
-    expect(auth.deletionCodeSent, false);
-    expect(auth.error, contains('session expired'));
-    expect(api.deleteRequestedFor, isNull);
-  });
+  test(
+    'email OTP rate limit gives wait guidance instead of connectivity advice',
+    () async {
+      final api = FakeAuthApi()
+        ..sessionId = accountA
+        ..rateLimited = true;
+      final auth = controller(api, FakeBoundAccountStore()..saved = accountA);
+      addTearDown(auth.dispose);
+      addTearDown(api.dispose);
+      await auth.restore();
+      await auth.requestDeletionCode();
+      expect(auth.deletionCodeSent, false);
+      expect(auth.error, contains('Too many email codes'));
+      expect(auth.error, isNot(contains('connection')));
+    },
+  );
 
-  test('email OTP rate limit gives wait guidance instead of connectivity advice', () async {
-    final api = FakeAuthApi()
-      ..sessionId = accountA
-      ..rateLimited = true;
-    final auth = controller(api, FakeBoundAccountStore()..saved = accountA);
-    addTearDown(auth.dispose);
-    addTearDown(api.dispose);
-    await auth.restore();
-    await auth.requestDeletionCode();
-    expect(auth.deletionCodeSent, false);
-    expect(auth.error, contains('Too many email codes'));
-    expect(auth.error, isNot(contains('connection')));
-  });
+  test(
+    'rate limiting also gives correct sign-in and recovery guidance',
+    () async {
+      final api = FakeAuthApi()..rateLimited = true;
+      final bound = FakeBoundAccountStore();
+      final recovery = FakeDeletionRecoveryStore();
+      final auth = controller(api, bound, recovery: recovery);
+      addTearDown(auth.dispose);
+      addTearDown(api.dispose);
+      await auth.restore();
+      await auth.requestCode('owner@example.invalid');
+      expect(auth.error, contains('Too many email codes'));
 
-  test('rate limiting also gives correct sign-in and recovery guidance', () async {
-    final api = FakeAuthApi()..rateLimited = true;
-    final bound = FakeBoundAccountStore();
-    final recovery = FakeDeletionRecoveryStore();
-    final auth = controller(api, bound, recovery: recovery);
-    addTearDown(auth.dispose);
-    addTearDown(api.dispose);
-    await auth.restore();
-    await auth.requestCode('owner@example.invalid');
-    expect(auth.error, contains('Too many email codes'));
-
-    recovery.saved = accountA;
-    final restarted = controller(api, bound, recovery: recovery);
-    addTearDown(restarted.dispose);
-    await restarted.restore();
-    await restarted.requestCode('owner@example.invalid');
-    expect(restarted.error, contains('Too many email codes'));
-    expect(restarted.deletionRecoveryPending, true);
-    expect(api.sentTo, isNull);
-  });
+      recovery.saved = accountA;
+      final restarted = controller(api, bound, recovery: recovery);
+      addTearDown(restarted.dispose);
+      await restarted.restore();
+      await restarted.requestCode('owner@example.invalid');
+      expect(restarted.error, contains('Too many email codes'));
+      expect(restarted.deletionRecoveryPending, true);
+      expect(api.sentTo, isNull);
+    },
+  );
 
   test('missing verified Auth email prevents deletion code delivery', () async {
     final api = FakeAuthApi()
