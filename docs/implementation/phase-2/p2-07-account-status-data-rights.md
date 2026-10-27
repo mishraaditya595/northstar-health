@@ -36,9 +36,11 @@ Required by ADR-0005 before release. Implementation and review requirements:
    account as defence in depth, checks response owner IDs, and rechecks the
    auth session before/after every network call. Hosted JWT/RLS adversarial
    tests are still a P2-08 release gate.
-2. Page by workout UUID (max 100 rows/request), filter by the initial
+2. Page by workout UUID (strict request cap 100 rows), filter by the initial
    highest owner change sequence (including tombstones) and re-read the same
-   maximum at the end. Any concurrent owner write/delete increases that
+   maximum at the end. Stop only on an empty page (not a short page): a
+   lower PostgREST server-side row cap must not silently truncate exports.
+   Any concurrent owner write/delete increases that
    sequence and aborts the export *before* platform file handoff; no partial
    document is saved. No durable snapshot is reserved across requests.
    Database PITR requires epoch rotation per the existing restore runbook.
@@ -50,19 +52,33 @@ Required by ADR-0005 before release. Implementation and review requirements:
    permanent file is created; iOS writes a protected temporary file deleted
    on picker completion. No clipboard, analytics logging or in-app automatic
    saving. Native picker cancellation does not say exported. The JSON is
-   materialized in memory with a strict 64 MiB bound; larger accounts fail
-   explicitly instead of generating truncated data. Streaming large-account
-   exports beyond this limit are a separate P2-07b follow-up before the
+   materialized in memory with a temporary conservative 4 MiB *output byte*
+   bound (not a measured heap bound); larger accounts fail explicitly and
+   never report success with truncated data. The Dart JSON buffer, channel
+   copy and native picker can hold multiple representations simultaneously.
+   **No low-memory device peak-RSS figure has been measured yet**; this is a
+   release blocker. Native Android streams writing on a background thread
+   using truncate mode, with best-effort DocumentsContract deletion for failed,
+   abandoned or incomplete files; providers can deny deletion. Native iOS
+   atomic write uses complete file protection and stale temporary export folders
+   are purged on launch. Both pickers require physical-device QA. Streaming
+   large-account exports beyond 4 MiB remain follow-up work before the
    all-history requirement can be considered satisfied at arbitrary scale.
    The user-selected destination is outside NorthStar's control; warn that
    the exported file is sensitive. Test native delivery on physical iOS
    and Android before release.
-4. Synthetic tests for empty accounts, 1,201 workouts over 13 pages, null
-   values, changed server watermark, expired/switched auth, wrong-account
-   rows, malformed payloads, out-of-order pages, oversized output and native
-   save/cancel/write failures. Hosted signed JWT/RLS tests, simultaneous
-   second-device changes and iOS document-picker device tests remain P2-08
-   acceptance gates.
+4. Dart synthetic unit/widget tests cover empty accounts, 1,201 workouts
+   with an additional empty-terminal page, **short server pages**, nulls,
+   changed server watermark, expired/switched auth, wrong-account rows,
+   malformed payloads/UUIDs, out-of-order pages, excessive output, and
+   Dart MethodChannel's mocked native save/cancel/failure responses.
+   Actual SupabaseWorkoutExportReader queries are asserted over mocked HTTP,
+   including owner, status, tombstone exclusion, ordering, cap and high-water
+   query. **These are not Kotlin/Swift native tests**, not real cloud RLS tests,
+   and not proof of platform file-provider behavior. Native export tests,
+   hosted signed JWT/RLS tests, simultaneous second-device changes, Drive/SAF
+   denial of delete, app kill/restart cleanup, iOS picker presentation failure,
+   and Android low-memory (including peak RSS) remain release gates.
 
 ## P2-07c: irreversible account deletion (not yet implemented)
 
