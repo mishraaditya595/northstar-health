@@ -64,8 +64,7 @@ class _WorkoutConflictReviewPageState
             WorkoutReviewChoices(
               candidate: candidate,
               remote: remote,
-              onSelect: (choice) =>
-                  Navigator.of(dialogContext).pop(choice),
+              onSelect: (choice) => Navigator.of(dialogContext).pop(choice),
             ),
           ],
         ),
@@ -74,7 +73,8 @@ class _WorkoutConflictReviewPageState
       service.resolve(candidate: candidate, remote: remote, action: action);
       refreshResolvedWorkout(
         ref,
-        uploadQueued: action == WorkoutResolutionAction.retryLocal ||
+        uploadQueued:
+            action == WorkoutResolutionAction.retryLocal ||
             (action == WorkoutResolutionAction.finishDeletion &&
                 remote.change != null &&
                 !remote.change!.deleted),
@@ -137,127 +137,143 @@ class _WorkoutConflictReviewPageState
               listenable: auth,
               builder: (context, _) => auth.userId == null
                   ? const Center(
-                      child: Text('Signed out. Sign in to review your workouts.'),
+                      child: Text(
+                        'Signed out. Sign in to review your workouts.',
+                      ),
                     )
-                  : Consumer(builder: (context, ref, _) {
-                      // Refresh candidates whenever the foreground worker
-                      // reports a change; the explicit refresh button covers
-                      // statuses changed while the page remains open.
-                      ref.listen(workoutSyncFlagsProvider, (_, __) {
-                        ref.invalidate(workoutConflictCandidatesProvider);
-                      });
-                      ref.listen(blockedWorkoutCountProvider, (_, __) {
-                        ref.invalidate(workoutConflictCandidatesProvider);
-                      });
-                      final candidates = ref.watch(workoutConflictCandidatesProvider);
-                      final cursor = ref.watch(workoutRestoreCursorProvider);
-                      final block = cursor?.blockedCode;
-                      return ListView(
-                        padding: const EdgeInsets.all(16),
-                        children: [
-                          const PageHeader(
-                            title: 'Workout review',
-                            eyebrow: 'MANUAL RECOVERY',
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Your workouts stay on this device until you choose '
-                            'how to resolve each disagreement. Cloud review '
-                            'requires an active sign-in and connection.',
-                          ),
-                          const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton.icon(
-                              onPressed: () {
-                                ref.invalidate(workoutConflictCandidatesProvider);
-                                ref.invalidate(workoutRestoreBlockedCodeProvider);
-                              },
-                              icon: const Icon(Icons.refresh),
-                              label: const Text('Refresh status'),
+                  : Consumer(
+                      builder: (context, ref, _) {
+                        // Refresh candidates whenever the foreground worker
+                        // reports a change; the explicit refresh button covers
+                        // statuses changed while the page remains open.
+                        ref.listen(workoutSyncFlagsProvider, (_, __) {
+                          ref.invalidate(workoutConflictCandidatesProvider);
+                        });
+                        ref.listen(blockedWorkoutCountProvider, (_, __) {
+                          ref.invalidate(workoutConflictCandidatesProvider);
+                        });
+                        final candidates = ref.watch(
+                          workoutConflictCandidatesProvider,
+                        );
+                        final cursor = ref.watch(workoutRestoreCursorProvider);
+                        final block = cursor?.blockedCode;
+                        return ListView(
+                          padding: const EdgeInsets.all(16),
+                          children: [
+                            const PageHeader(
+                              title: 'Workout review',
+                              eyebrow: 'MANUAL RECOVERY',
                             ),
-                          ),
-                          if (block != null && cursor != null)
-                            Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Cloud restore paused',
-                                      style: TextStyle(fontWeight: FontWeight.bold),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      'A cloud change could not be safely '
-                                      'reconciled. Local workouts are intact. '
-                                      'Review conflicts below, or explicitly '
-                                      'retry the saved restore position.',
-                                    ),
-                                    const SizedBox(height: 8),
-                                    OutlinedButton(
-                                      onPressed: retryingRestore
-                                          ? null
-                                          : () => _retryRestore(cursor),
-                                      child: const Text('Retry restore'),
-                                    ),
-                                  ],
-                                ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Your workouts stay on this device until you choose '
+                              'how to resolve each disagreement. Cloud review '
+                              'requires an active sign-in and connection.',
+                            ),
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton.icon(
+                                onPressed: () {
+                                  ref.invalidate(
+                                    workoutConflictCandidatesProvider,
+                                  );
+                                  ref.invalidate(
+                                    workoutRestoreBlockedCodeProvider,
+                                  );
+                                },
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Refresh status'),
                               ),
                             ),
-                          const SizedBox(height: 16),
-                          if (candidates.isEmpty)
-                            const Card(
-                              child: Padding(
-                                padding: EdgeInsets.all(18),
-                                child: Text(
-                                  'No workouts currently need conflict review.',
-                                ),
-                              ),
-                            ),
-                          for (final candidate in candidates)
-                            Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(14),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    Text(
-                                      candidate.name,
-                                      style: Theme.of(context).textTheme.titleMedium,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      candidate.deletedLocally
-                                          ? 'Deleted here; cloud deletion needs review'
-                                          : candidate.canKeepLocalOnly
-                                          ? 'Could not be backed up. Keep it on this device.'
-                                          : candidate.hasLocalWorkout
-                                          ? 'Local copy protected until review'
-                                          : 'Remote change was skipped',
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: OutlinedButton(
-                                        onPressed: workingUuid == null
-                                            ? () => _review(candidate)
-                                            : null,
-                                        child: Text(
-                                          workingUuid == candidate.workoutUuid
-                                              ? 'Checking…'
-                                              : 'Review',
+                            if (block != null && cursor != null)
+                              Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Cloud restore paused',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(height: 8),
+                                      const Text(
+                                        'A cloud change could not be safely '
+                                        'reconciled. Local workouts are intact. '
+                                        'Review conflicts below, or explicitly '
+                                        'retry the saved restore position.',
+                                      ),
+                                      const SizedBox(height: 8),
+                                      OutlinedButton(
+                                        onPressed: retryingRestore
+                                            ? null
+                                            : () => _retryRestore(cursor),
+                                        child: const Text('Retry restore'),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
-                      );
-                    }),
+                            const SizedBox(height: 16),
+                            if (candidates.isEmpty)
+                              const Card(
+                                child: Padding(
+                                  padding: EdgeInsets.all(18),
+                                  child: Text(
+                                    'No workouts currently need conflict review.',
+                                  ),
+                                ),
+                              ),
+                            for (final candidate in candidates)
+                              Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(14),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Text(
+                                        candidate.name,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        candidate.deletedLocally
+                                            ? 'Deleted here; cloud deletion needs review'
+                                            : candidate.canKeepLocalOnly
+                                            ? 'Could not be backed up. Keep it on this device.'
+                                            : candidate.hasLocalWorkout
+                                            ? 'Local copy protected until review'
+                                            : 'Remote change was skipped',
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: OutlinedButton(
+                                          onPressed: workingUuid == null
+                                              ? () => _review(candidate)
+                                              : null,
+                                          child: Text(
+                                            workingUuid == candidate.workoutUuid
+                                                ? 'Checking…'
+                                                : 'Review',
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
             ),
     );
   }
