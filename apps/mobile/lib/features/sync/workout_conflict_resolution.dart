@@ -21,6 +21,14 @@ class WorkoutConflictResolutionService {
   List<WorkoutConflictCandidate> get candidates =>
       importer.readConflictCandidates();
 
+  WorkoutRestoreCursor get cursor => importer.readCursor();
+
+  bool retryBlockedRestore(WorkoutRestoreCursor observed) =>
+      importer.clearBlocked(
+        afterSeq: observed.nextCursor,
+        requestedEpoch: observed.epoch,
+      );
+
   Future<WorkoutRemoteReview> review(String workoutUuid) =>
       transport.fetchWorkout(workoutUuid);
 
@@ -54,6 +62,12 @@ final workoutConflictResolutionProvider =
       );
     });
 
+final workoutRestoreBlockedCodeProvider = Provider<String?>((ref) {
+  final auth = ref.watch(accountAuthControllerProvider);
+  if (auth?.userId == null) return null;
+  return ref.watch(workoutConflictResolutionProvider).cursor.blockedCode;
+});
+
 final workoutConflictCandidatesProvider =
     Provider<List<WorkoutConflictCandidate>>(
       (ref) => ref.watch(workoutConflictResolutionProvider).candidates,
@@ -61,6 +75,7 @@ final workoutConflictCandidatesProvider =
 
 void refreshResolvedWorkout(WidgetRef ref, {required bool uploadQueued}) {
   ref.invalidate(workoutConflictCandidatesProvider);
+  ref.invalidate(workoutRestoreBlockedCodeProvider);
   ref.invalidate(completedWorkoutHistoryProvider);
   ref.invalidate(workoutSyncFlagsProvider);
   ref.invalidate(blockedWorkoutCountProvider);
