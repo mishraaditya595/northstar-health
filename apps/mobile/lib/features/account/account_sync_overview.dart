@@ -2,6 +2,9 @@ import '../workouts/data/objectbox_workout_outbox.dart';
 
 /// Device-local sync *issues*, not a server-confirmed inventory. A workout
 /// appears once in the highest-priority state from the durable outbox/skip.
+/// For example, a workout with both pending and blocked outbox operations
+/// counts as local-only (not queued); counts are for distinct workouts, while
+/// [blockedOperations] separately counts individual blocked operations.
 class AccountSyncOverview {
   const AccountSyncOverview({
     required this.queued,
