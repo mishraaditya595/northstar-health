@@ -47,13 +47,20 @@ class _WorkoutConflictReviewPageState
         builder: (dialogContext) => NsDialog(
           title: 'Resolve workout conflict',
           content: SingleChildScrollView(
-            child: Text(
-              'This device: $localSummary.\n'
-              'Cloud: $cloudSummary.\n\n'
-              'Choose which copy to keep. Accepting cloud deletion '
-              'permanently removes the local workout and its sets. '
-              'If another device changes this workout during review, '
-              'you may need to review it again.',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'This device: $localSummary.\n'
+                  'Cloud: $cloudSummary.\n\n'
+                  'Choose which copy to keep. Accepting cloud deletion '
+                  'permanently removes the local workout and its sets. '
+                  'If another device changes this workout during review, '
+                  'you may need to review it again.',
+                ),
+                WorkoutReviewDeletionHint(candidate: candidate, remote: remote),
+              ],
             ),
           ),
           actions: [
