@@ -136,10 +136,7 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                           ],
                           if (auth.notice != null) ...[
                             const SizedBox(height: 16),
-                            Text(
-                              auth.notice!,
-                              textAlign: TextAlign.center,
-                            ),
+                            Text(auth.notice!, textAlign: TextAlign.center),
                           ],
                           if (auth.error != null) ...[
                             const SizedBox(height: 16),
