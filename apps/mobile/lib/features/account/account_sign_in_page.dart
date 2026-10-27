@@ -164,14 +164,18 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                                   : () async {
                                       final leave = await showNsConfirm(
                                         context,
-                                        title: 'Leave account recovery?',
+                                        title: 'Erase local data and leave recovery?',
                                         message:
-                                            'Your original account may still exist. '
-                                            'Leaving recovery does not erase local '
-                                            'workouts, but they remain locked to '
-                                            'the original account and cannot be '
-                                            'transferred to a new account.',
-                                        confirmLabel: 'Leave recovery',
+                                            'Your cloud account may still exist if '
+                                            'deletion was not confirmed. This will '
+                                            'permanently erase this device’s '
+                                            'original workouts, unfinished sessions, '
+                                            'custom plans and pending uploads, '
+                                            'including items never backed up. '
+                                            'It does not delete cloud data. '
+                                            'Only choose this if you no longer '
+                                            'need any local workout data.',
+                                        confirmLabel: 'Erase local data and leave',
                                         cancelLabel: 'Keep recovering',
                                       );
                                       if (leave == true) {
@@ -179,7 +183,7 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                                       }
                                     },
                               child: const Text(
-                                'Use a different account instead',
+                                'Erase local workouts and use another account',
                               ),
                             ),
                           ],
