@@ -89,6 +89,13 @@ import UIKit
           self?.finishExport("cancelled")
         }
       }
+      // Presentation's completion can be skipped if the hosting scene becomes
+      // inactive. A bounded watchdog also releases the waiting Flutter UI.
+      DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self, weak picker] in
+        if self?.exportResult != nil, picker?.presentingViewController == nil {
+          self?.finishExport("cancelled")
+        }
+      }
     } catch {
       clearExport()
       result(FlutterError(code: "export_failed", message: "Could not open document picker", details: nil))
