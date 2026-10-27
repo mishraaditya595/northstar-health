@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/design/dialogs.dart';
 import '../../core/design/inputs.dart';
 import 'account_auth_controller.dart';
 
@@ -152,40 +153,17 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                               onPressed: auth.busy
                                   ? null
                                   : () async {
-                                      final leave = await showDialog<bool>(
-                                        context: context,
-                                        builder: (dialogContext) => AlertDialog(
-                                          title: const Text(
-                                            'Leave account recovery?',
-                                          ),
-                                          content: const Text(
+                                      final leave = await showNsConfirm(
+                                        context,
+                                        title: 'Leave account recovery?',
+                                        message:
                                             'Your original account may still exist. '
                                             'Leaving recovery does not erase local '
                                             'workouts, but they remain locked to '
                                             'the original account and cannot be '
                                             'transferred to a new account.',
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.pop(
-                                                dialogContext,
-                                                false,
-                                              ),
-                                              child: const Text(
-                                                'Keep recovering',
-                                              ),
-                                            ),
-                                            FilledButton(
-                                              onPressed: () => Navigator.pop(
-                                                dialogContext,
-                                                true,
-                                              ),
-                                              child: const Text(
-                                                'Leave recovery',
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                        confirmLabel: 'Leave recovery',
+                                        cancelLabel: 'Keep recovering',
                                       );
                                       if (leave == true) {
                                         await auth.leaveDeletionRecovery();
