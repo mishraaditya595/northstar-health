@@ -43,9 +43,9 @@ Map<String, dynamic> exportRow(int index, {String owner = accountA}) {
               'input_unit': 'kg',
               'rpe': null,
               'completed_at_utc': '2026-10-27T10:30:00Z',
-            }
+            },
           ],
-        }
+        },
       ],
     },
   };
@@ -65,10 +65,12 @@ class FakeExportReader implements WorkoutExportReader {
     highReads++;
     return highReads > 1 && finalHead != null
         ? finalHead!
-        : rows.fold<int>(0, (a, b) =>
-            a > (b['server_change_seq'] as int)
+        : rows.fold<int>(
+            0,
+            (a, b) => a > (b['server_change_seq'] as int)
                 ? a
-                : b['server_change_seq'] as int);
+                : b['server_change_seq'] as int,
+          );
   }
 
   @override
@@ -81,10 +83,12 @@ class FakeExportReader implements WorkoutExportReader {
     if (limit > maxRequestedPageSize) maxRequestedPageSize = limit;
     if (pausePage != null) await pausePage!.future;
     return rows
-        .where((r) =>
-            (r['server_change_seq'] as int) <= throughSeq &&
-            (afterId == null ||
-                (r['workout_id'] as String).compareTo(afterId) > 0))
+        .where(
+          (r) =>
+              (r['server_change_seq'] as int) <= throughSeq &&
+              (afterId == null ||
+                  (r['workout_id'] as String).compareTo(afterId) > 0),
+        )
         .take(limit)
         .toList();
   }
@@ -105,54 +109,69 @@ CompletedWorkoutHistoryExporter makeExporter(
 );
 
 void main() {
-  test('empty account is valid but does not imply local data were exported', () async {
-    final reader = FakeExportReader([]);
-    final json = jsonDecode(await makeExporter(reader).exportJson())
-        as Map<String, dynamic>;
-    expect(json['workout_count'], 0);
-    expect(json['workouts'], isEmpty);
-    expect(json['cloud_change_seq'], 0);
-    expect(json['source'], 'northstar_completed_phone_workouts_cloud');
-    expect(json['excludes'], contains('custom_plans'));
-    expect(reader.highReads, 2);
-  });
+  test(
+    'empty account is valid but does not imply local data were exported',
+    () async {
+      final reader = FakeExportReader([]);
+      final json = jsonDecode(
+        await makeExporter(reader).exportJson(),
+      ) as Map<String, dynamic>;
+      expect(json['workout_count'], 0);
+      expect(json['workouts'], isEmpty);
+      expect(json['cloud_change_seq'], 0);
+      expect(json['source'], 'northstar_completed_phone_workouts_cloud');
+      expect(json['excludes'], contains('custom_plans'));
+      expect(reader.highReads, 2);
+    },
+  );
 
-  test('keyset pages export thousands without dropping records or null fields',
-      () async {
-    final reader = FakeExportReader(
-      List.generate(1201, (index) => exportRow(index)),
-    );
-    final data = jsonDecode(
-      await makeExporter(reader, pageSize: 100).exportJson(),
-    ) as Map<String, dynamic>;
-    final rows = data['workouts'] as List<dynamic>;
-    expect(rows.length, 1201);
-    expect(data['workout_count'], 1201);
-    expect((rows.first as Map)['workout_id'], workoutId(0));
-    expect((rows.last as Map)['workout_id'], workoutId(1200));
-    expect(
-      ((((rows.first as Map)['payload'] as Map)['exercises'] as List).first
-          as Map)['sets'],
-      isNotEmpty,
-    );
-    final set = (((rows.first as Map)['payload'] as Map)['exercises'] as List)
-        .first['sets'][0] as Map;
-    expect(set.containsKey('load_grams'), true);
-    expect(set['load_grams'], isNull);
-    expect(set['rpe'], isNull);
-    expect(reader.maxRequestedPageSize, 100);
-    expect(reader.pageReads, 13);
-  });
+  test(
+    'keyset pages export thousands without dropping records or null fields',
+    () async {
+      final reader = FakeExportReader(
+        List.generate(1201, (index) => exportRow(index)),
+      );
+      final data = jsonDecode(
+        await makeExporter(reader, pageSize: 100).exportJson(),
+      ) as Map<String, dynamic>;
+      final rows = data['workouts'] as List<dynamic>;
+      expect(rows.length, 1201);
+      expect(data['workout_count'], 1201);
+      expect((rows.first as Map)['workout_id'], workoutId(0));
+      expect((rows.last as Map)['workout_id'], workoutId(1200));
+      expect(
+        ((((rows.first as Map)['payload'] as Map)['exercises'] as List).first
+            as Map)['sets'],
+        isNotEmpty,
+      );
+      final set =
+          (((rows.first as Map)['payload'] as Map)['exercises'] as List)
+                  .first['sets'][0]
+              as Map;
+      expect(set.containsKey('load_grams'), true);
+      expect(set['load_grams'], isNull);
+      expect(set['rpe'], isNull);
+      expect(reader.maxRequestedPageSize, 100);
+      expect(reader.pageReads, 13);
+    },
+  );
 
-  test('concurrent owner write aborts instead of releasing inconsistent JSON',
-      () async {
-    final reader = FakeExportReader([exportRow(0)])..finalHead = 100;
-    await expectLater(
-      makeExporter(reader).exportJson(),
-      throwsA(isA<WorkoutExportException>()
-          .having((e) => e.code, 'code', 'history_changed_retry')),
-    );
-  });
+  test(
+    'concurrent owner write aborts instead of releasing inconsistent JSON',
+    () async {
+      final reader = FakeExportReader([exportRow(0)])..finalHead = 100;
+      await expectLater(
+        makeExporter(reader).exportJson(),
+        throwsA(
+          isA<WorkoutExportException>().having(
+            (e) => e.code,
+            'code',
+            'history_changed_retry',
+          ),
+        ),
+      );
+    },
+  );
 
   test('sign-out while page is in flight discards all data', () async {
     final hold = Completer<void>();
@@ -167,8 +186,13 @@ void main() {
     hold.complete();
     await expectLater(
       work,
-      throwsA(isA<WorkoutExportException>()
-          .having((e) => e.code, 'code', 'session_changed')),
+      throwsA(
+        isA<WorkoutExportException>().having(
+          (e) => e.code,
+          'code',
+          'session_changed',
+        ),
+      ),
     );
   });
 
@@ -208,8 +232,13 @@ void main() {
     final reader = FakeExportReader([exportRow(2), exportRow(1)]);
     await expectLater(
       makeExporter(reader, pageSize: 1).exportJson(),
-      throwsA(isA<WorkoutExportException>()
-          .having((e) => e.code, 'code', 'invalid_order')),
+      throwsA(
+        isA<WorkoutExportException>().having(
+          (e) => e.code,
+          'code',
+          'invalid_order',
+        ),
+      ),
     );
     final dup = FakeExportReader([exportRow(0), exportRow(0)]);
     await expectLater(
@@ -218,15 +247,22 @@ void main() {
     );
   });
 
-  test('excessive export fails instead of returning a truncated document',
-      () async {
-    final reader = FakeExportReader([exportRow(0), exportRow(1)]);
-    await expectLater(
-      makeExporter(reader, maxExportBytes: 1024).exportJson(),
-      throwsA(isA<WorkoutExportException>()
-          .having((e) => e.code, 'code', 'export_too_large')),
-    );
-  });
+  test(
+    'excessive export fails instead of returning a truncated document',
+    () async {
+      final reader = FakeExportReader([exportRow(0), exportRow(1)]);
+      await expectLater(
+        makeExporter(reader, maxExportBytes: 1024).exportJson(),
+        throwsA(
+          isA<WorkoutExportException>().having(
+            (e) => e.code,
+            'code',
+            'export_too_large',
+          ),
+        ),
+      );
+    },
+  );
 
   test('network error propagates; no file delivery can occur', () async {
     final reader = _FailingReader();
