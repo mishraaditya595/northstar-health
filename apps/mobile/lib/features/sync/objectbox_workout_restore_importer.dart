@@ -442,6 +442,17 @@ class ObjectBoxWorkoutRestoreImporter {
 
     var localRevision = local?.revision ?? 0;
     if (change.deleted) {
+      // A deletion observed from another device also redacts old, already
+      // acknowledged local outbox snapshots in this same import transaction.
+      // Keep UUID, revision, change sequence and owner CAS evidence intact.
+      for (final op in operations) {
+        if (op.state == 'acknowledged' &&
+            op.action == 'upsert' &&
+            op.payloadJson != 'null') {
+          op.payloadJson = 'null';
+          _outbox.put(op);
+        }
+      }
       if (local != null) {
         // Tombstones must remove the original workout details on *every*
         // signed-in device, not merely hide them from the Progress query.
