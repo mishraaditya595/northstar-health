@@ -297,7 +297,11 @@ void main() {
       )],
     ), afterSeq: 0, requestedEpoch: null);
     expect(result.tombstones, 1);
-    expect(store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs, isNotNull);
+    final session = store.box<WorkoutSessionEntity>().getAll().single;
+    expect(session.deletedAtMs, isNotNull);
+    expect(session.name, 'Deleted workout');
+    expect(store.box<WorkoutExerciseEntity>().count(), 0);
+    expect(store.box<WorkoutSetEntity>().count(), 0);
     expect(store.box<WorkoutRemoteStateEntity>().getAll().single.deleted, true);
   });
 }
