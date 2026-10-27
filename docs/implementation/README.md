@@ -1,40 +1,25 @@
 # NorthStar implementation notes
 
-The [roadmap](../ROADMAP.md) defines product milestones. Each note records actual behavior, data ownership, QA gaps and PR evidence rather than replacing the ADRs.
+The [roadmap](../ROADMAP.md) tracks milestone state. These notes describe source behavior, data ownership, PR evidence and outstanding QA; they are not production approval. **As of 27 October 2026, P2-01–P2-07 are merged in source; P2-08 release validation has not passed.**
 
-## Phase 1 — local workout logger
+## Phase 1 — durable offline workout logger
 
-- [ObjectBox foundation](phase-1/objectbox-foundation.md) — session/set durability and revisions (PR #5).
-- [Exercise catalog and plans](phase-1/exercise-catalog-and-plans.md) — local exercises and atomic plans (PR #7).
-- [Plan editor hardening](phase-1/plan-editor-hardening.md) — follow-up to PR #7.
-- [Live workout engine](phase-1/live-workout-engine.md) — atomic quick/plan start and recovery.
-- [Active workout logger and rest timer](phase-1/active-workout-logger.md) — saved sets and resumable sessions (PR #10).
-- [Workout history and progress](phase-1/workout-history-progress.md) — completed history, trends and details (PR #11).
+- [ObjectBox foundation](phase-1/objectbox-foundation.md) — session/set transactions and revisions (#5).
+- [Exercise catalog and plans](phase-1/exercise-catalog-and-plans.md) and [plan hardening](phase-1/plan-editor-hardening.md) — local definitions and atomic plans (#7).
+- [Live workout engine](phase-1/live-workout-engine.md) and [active logger/rest timer](phase-1/active-workout-logger.md) — recovery, saved sets and rest timers (#10).
+- [Workout history and progress](phase-1/workout-history-progress.md) — completed history, trends and details (#11).
 
-## Phase 2 — mandatory accounts and automatic sync
+## Phase 2 — authenticated completed-workout sync and data rights
 
-- [P2-01 Supabase backend foundation and review remediation](phase-2/p2-01-supabase-foundation.md) — PR #13 (merged), completed-only phone workout RPC, migration history, tests and outstanding release gates.
+- [P2-01 Supabase foundation](phase-2/p2-01-supabase-foundation.md) — completed-only owner-scoped sync RPC and migration/security tests (#13).
+- [P2-02 Mandatory account sign-in](phase-2/p2-02-account-authentication.md) — email-code Auth and owner-isolated local partitions (#14).
+- [P2-03 Transactional completed-workout outbox](phase-2/p2-03-durable-outbox.md) — durable local queue and upgrade regressions (#15).
+- [P2-04 Authenticated foreground uploader](phase-2/p2-04-authenticated-uploader.md) — account-matched retries, revisions and idempotency (#16).
+- [P2-05 Server progress](phase-2/p2-05-server-progress.md) — day-level server aggregates with explicit missing-data semantics (#17).
+- [P2-06 Restore/change feed](phase-2/p2-06-restore-and-conflicts.md), [transport](phase-2/p2-06-mobile-restore-transport.md), [atomic ObjectBox importer](phase-2/p2-06-mobile-objectbox-importer.md), and [serialized foreground coordinator](phase-2/p2-06-foreground-restore-coordinator.md) — rollback epoch, cursor and transaction safety (#18–#22).
+- [P2-06 Queue fairness and dependency ordering](phase-2/p2-06-fair-upload-queue.md) — blocked revision handling (#23).
+- [P2-06 Workout tombstones](phase-2/p2-06-completed-workout-deletion.md) and [reviewed conflict resolution](phase-2/p2-06-reviewed-conflict-resolution.md) — deletion and user-controlled recovery (#24).
+- [P2-07 Account/sync status, JSON cloud-history export and permanent account deletion](phase-2/p2-07-account-status-data-rights.md) — #25, #27 and #29 merged. Uncertain deletion retains files locked unless the user independently chooses to erase them; [ADR-0007](../adr/0007-account-deletion-recovery-exit-choices.md) preserves both exit choices.
+- [P2-08 export/device verification matrix](phase-2/p2-08-workout-export-release-validation.md) — **not run**, alongside hosted signed-JWT/RLS, two-device, Auth-deletion and production rollout gates in [RELEASE.md](../RELEASE.md).
 
-- [P2-02 Mandatory Flutter authentication and owner-bound offline storage](phase-2/p2-02-account-authentication.md) — PR #14 (merged), account gate, secure email code auth, isolated ObjectBox directories and account sign-out.
-
-- [P2-03 Durable ObjectBox outbox and auth backup-paused state](phase-2/p2-03-durable-outbox.md) — PR #15 (**merged**), completed phone workout snapshot queue and schema upgrade tests.
-
-- [P2-04 Authenticated Supabase upload worker](phase-2/p2-04-authenticated-uploader.md) — PR #16 (**merged**), foreground automatic uploader, resilient retries, CAS/idempotency, completed-only backfill and account guard; restore and conflict UX remain outstanding.
-
-- [P2-05 Server progress aggregation](phase-2/p2-05-server-progress.md) — PR #17 (**merged 2026-10-26**), server-derived day-level workout aggregates, nullable weighted-volume semantics, authenticated read API and SQL regressions. No Flutter UI / raw physiological data.
-
-- [P2-06 Restore feed and conflict handling](phase-2/p2-06-restore-and-conflicts.md) — PR #18 **merged**, owner-isolated paginated server change feed with a rollback epoch and pgTAP tests. Safe mobile import, reconciliation, deletion and conflict UX remain open.
-
-- [P2-06 Flutter restore transport and strict decoder](phase-2/p2-06-mobile-restore-transport.md) — PR #19 (**merged**), authenticated read-only RPC, validated epoch/pagination and completed workout DTOs; PR #22 merged and connects them to the foreground worker.
-
-Authoritative policy: [ADR-0003](../adr/0003-data-cloud-health.md) **as superseded for auth/cloud workout scope** by [ADR-0005](../adr/0005-mandatory-auth-and-workout-sync.md), [ObjectBox](../OBJECTBOX.md), and [Cloud Sync](../CLOUD_SYNC.md).
-
-- [P2-06 Transactional ObjectBox restore importer](phase-2/p2-06-mobile-objectbox-importer.md) — PR #20 (**merged**), versioned owner cursor and remote tombstones, atomic page import and host-native schema/restart/rollback tests; foreground pull is merged in PR #22; conflict recovery remains outstanding.
-
-- [P2-06 Foreground restore coordinator](phase-2/p2-06-foreground-restore-coordinator.md) — PR #22 (**merged**), foreground serialized upload/pull, paged restore, epoch recovery, skip records and host-native tests; not yet released.
-
-- [P2-06 Fair upload queue and durable dependencies](phase-2/p2-06-fair-upload-queue.md) — PR #23 (**merged**), bounded ObjectBox-window scan beyond 500 and persisted dependency-paused upload revisions; device release tests outstanding.
-
-- [P2-06 Completed workout deletion and tombstones](phase-2/p2-06-completed-workout-deletion.md) — PR #24 (**draft**), atomic local delete command, durable cloud deletion queue and tombstone replay regression tests; not yet deployed.
-
-- [P2-06 Reviewed conflict recovery and point lookup](phase-2/p2-06-reviewed-conflict-resolution.md) — PR #24 (**draft**), user-selected local/cloud/deletion reconciliation, owner-scoped server point lookup, durable superseded operations and conflict UI. Not deployed or device-verified.
+**Policy and operational guides:** [ADR-0003](../adr/0003-data-cloud-health.md) (superseded for auth/cloud scope by [ADR-0005](../adr/0005-mandatory-auth-and-workout-sync.md)), [ObjectBox](../OBJECTBOX.md), [Cloud Sync](../CLOUD_SYNC.md), [account deletion runbook](../../supabase/ACCOUNT_DELETION_RUNBOOK.md), and [Supabase restore runbook](../../supabase/RESTORE_RUNBOOK.md). "Merged" does not imply hosted deployment, real-device verification or store release.
