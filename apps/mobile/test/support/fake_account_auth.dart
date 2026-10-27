@@ -10,6 +10,7 @@ class FakeBoundAccountStore implements BoundAccountStore {
   String? saved;
   bool failClear = false;
   bool failWrite = false;
+  Completer<void>? holdClear;
 
   @override
   Future<String?> read() async => saved;
@@ -22,6 +23,7 @@ class FakeBoundAccountStore implements BoundAccountStore {
 
   @override
   Future<void> clear() async {
+    if (holdClear != null) await holdClear!.future;
     if (failClear) throw StateError('Keychain unavailable');
     saved = null;
   }
@@ -35,11 +37,22 @@ class FakeAuthApi implements AccountAuthApi {
   bool signedOut = false;
   bool offline = false;
   bool expired = false;
+  int? sessionExpiresAtSeconds;
   final _events = StreamController<String?>.broadcast(sync: true);
 
   @override
   String? get cloudSessionUserId =>
-      sessionId != null && !anonymous && !expired ? sessionId : null;
+      sessionId != null &&
+          !anonymous &&
+          !expired &&
+          (sessionExpiresAtSeconds == null ||
+              sessionExpiresAtSeconds! >
+                  DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000)
+      ? sessionId
+      : null;
+
+  @override
+  int? get cloudSessionExpiresAtSeconds => sessionExpiresAtSeconds;
 
   @override
   Stream<String?> get cloudIdentityChanges => _events.stream;
