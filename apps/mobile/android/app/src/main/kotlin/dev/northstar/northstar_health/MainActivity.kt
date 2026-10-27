@@ -2,6 +2,9 @@ package dev.northstar.northstar_health
 
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.provider.DocumentsContract
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -10,6 +13,34 @@ class MainActivity : FlutterActivity() {
     private var pendingExport: MethodChannel.Result? = null
     private var pendingJson: String? = null
     private val exportRequest = 7411
+    private val exportPrefs by lazy {
+        getSharedPreferences("northstar_export_recovery", MODE_PRIVATE)
+    }
+    private val pendingUriKey = "unfinished_document_uri"
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // A process may have been killed after CREATE_DOCUMENT and before a
+        // finished write. Delete only the exact previously selected export
+        // URI. Some providers revoke grants across process death; deletion is
+        // best-effort, never an assertion that all providers can clean up.
+        val stale = exportPrefs.getString(pendingUriKey, null)
+        if (stale != null) {
+            Thread {
+                tryDeleteDocument(Uri.parse(stale))
+                exportPrefs.edit().remove(pendingUriKey).commit()
+            }.start()
+        }
+    }
+
+    private fun tryDeleteDocument(uri: Uri) {
+        try {
+            DocumentsContract.deleteDocument(contentResolver, uri)
+        } catch (_: Exception) {
+            // A provider may not support delete or may revoke its grant.
+            // Never log a potentially identifying URI or file contents.
+        }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -50,23 +81,61 @@ class MainActivity : FlutterActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != exportRequest) return
-        val callback = pendingExport ?: return
+        val callback = pendingExport
         val json = pendingJson
-        pendingExport = null
         pendingJson = null
-        if (resultCode != Activity.RESULT_OK || data?.data == null || json == null) {
-            callback.success("cancelled")
+        val uri = data?.data
+
+        if (resultCode != Activity.RESULT_OK || uri == null) {
+            pendingExport = null
+            callback?.success("cancelled")
             return
         }
-        try {
-            contentResolver.openOutputStream(data.data!!, "w")?.use { stream ->
-                stream.writer(Charsets.UTF_8).use { it.write(json) }
-            } ?: throw IllegalStateException("Output stream unavailable")
-            callback.success("saved")
-        } catch (_: Exception) {
-            // No JSON, URI, file paths or private errors go to analytics/logs.
-            callback.error("write_failed", "Could not write export file", null)
+        if (callback == null || json == null) {
+            // Picker returned after Activity recreation / process death.
+            // CREATE_DOCUMENT may already have created an empty file.
+            pendingExport = null
+            Thread { tryDeleteDocument(uri) }.start()
+            callback?.error("write_unavailable", "Export no longer available", null)
+            return
         }
+
+        // Record a recoverable cleanup marker before any byte is written.
+        // commit() is intentional: apply() is not durable on process death.
+        if (!exportPrefs.edit().putString(pendingUriKey, uri.toString()).commit()) {
+            pendingExport = null
+            Thread { tryDeleteDocument(uri) }.start()
+            callback.error("write_unavailable", "Could not secure export write", null)
+            return
+        }
+
+        // SAF providers (including Drive) can block for many seconds.
+        // All stream IO and best-effort deletion stay off the UI thread.
+        Thread {
+            var saved = false
+            try {
+                val output = contentResolver.openOutputStream(uri, "wt")
+                    ?: throw IllegalStateException("Output stream unavailable")
+                output.use { stream ->
+                    stream.writer(Charsets.UTF_8).use { it.write(json) }
+                }
+                saved = true
+            } catch (_: Exception) {
+                tryDeleteDocument(uri)
+            } finally {
+                // Do not leave the cleanup marker after a successful export.
+                // If killed before this point, startup tries deleting the
+                // potentially empty/partial file.
+                exportPrefs.edit().remove(pendingUriKey).commit()
+                runOnUiThread {
+                    if (pendingExport === callback) {
+                        pendingExport = null
+                        if (saved) callback.success("saved")
+                        else callback.error("write_failed", "Could not write export file", null)
+                    }
+                }
+            }
+        }.start()
     }
 
     override fun onDestroy() {
