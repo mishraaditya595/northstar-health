@@ -234,6 +234,16 @@ class ObjectBoxWorkoutOutbox {
       session.name = 'Deleted workout';
       session.planUuid = null;
       _sessions.put(session);
+      // Keep ACK CAS metadata but remove already-uploaded workout snapshots.
+      // Pending/conflicted operations stay immutable until safe resolution.
+      for (final op in prior) {
+        if (op.state == 'acknowledged' &&
+            op.action == 'upsert' &&
+            op.payloadJson != 'null') {
+          op.payloadJson = 'null';
+          _operations.put(op);
+        }
+      }
       _operations.put(
         WorkoutSyncOutboxEntity(
           operationUuid: _requireUuid(_ids.newId()),
@@ -769,6 +779,18 @@ class ObjectBoxWorkoutOutbox {
     op.state = 'acknowledged';
     op.serverRevision = serverRevision;
     op.serverChangeSeq = serverChangeSeq;
+    // If the workout was deleted while its upload was in flight, the
+    // now-ACKed snapshot is safe to redact without touching its CAS receipt.
+    if (op.action == 'upsert') {
+      final sessions = _find(
+        _sessions,
+        WorkoutSessionEntity_.uuid,
+        op.sessionUuid,
+      );
+      if (sessions.length == 1 && sessions.single.deletedAtMs != null) {
+        op.payloadJson = 'null';
+      }
+    }
     _operations.put(op);
     // Resume successors in the same commit, so dependency_paused always means
     // an unacknowledged predecessor. Restore treats paused rows as resolved
