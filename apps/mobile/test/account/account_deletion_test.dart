@@ -166,34 +166,36 @@ void main() {
     },
   );
 
-
-  test('server commits deletion but response is lost: no account recreated', () async {
-    final api = FakeAuthApi()
-      ..sessionId = accountA
-      ..commitThenLoseReceipt = true;
-    final bound = FakeBoundAccountStore()..saved = accountA;
-    final recovery = FakeDeletionRecoveryStore();
-    final auth = controller(api, bound, recovery: recovery);
-    addTearDown(auth.dispose);
-    addTearDown(api.dispose);
-    await auth.restore();
-    await auth.requestDeletionCode();
-    await auth.confirmAccountDeletion('123456');
-    expect(api.serverDeleted, true);
-    expect(auth.userId, isNull);
-    expect(bound.saved, isNull);
-    expect(recovery.saved, accountA);
-    expect(auth.error, contains('could not be confirmed'));
-    final restarted = controller(api, bound, recovery: recovery);
-    addTearDown(restarted.dispose);
-    await restarted.restore();
-    expect(restarted.deletionRecoveryPending, true);
-    await restarted.requestCode('original@example.invalid');
-    expect(api.recoveryCodeSentTo, isNull);
-    expect(api.sentTo, isNull); // Creating accounts is forbidden in recovery.
-    expect(restarted.error, contains('Could not send'));
-    expect(bound.saved, isNull);
-  });
+  test(
+    'server commits deletion but response is lost: no account recreated',
+    () async {
+      final api = FakeAuthApi()
+        ..sessionId = accountA
+        ..commitThenLoseReceipt = true;
+      final bound = FakeBoundAccountStore()..saved = accountA;
+      final recovery = FakeDeletionRecoveryStore();
+      final auth = controller(api, bound, recovery: recovery);
+      addTearDown(auth.dispose);
+      addTearDown(api.dispose);
+      await auth.restore();
+      await auth.requestDeletionCode();
+      await auth.confirmAccountDeletion('123456');
+      expect(api.serverDeleted, true);
+      expect(auth.userId, isNull);
+      expect(bound.saved, isNull);
+      expect(recovery.saved, accountA);
+      expect(auth.error, contains('could not be confirmed'));
+      final restarted = controller(api, bound, recovery: recovery);
+      addTearDown(restarted.dispose);
+      await restarted.restore();
+      expect(restarted.deletionRecoveryPending, true);
+      await restarted.requestCode('original@example.invalid');
+      expect(api.recoveryCodeSentTo, isNull);
+      expect(api.sentTo, isNull); // Creating accounts is forbidden in recovery.
+      expect(restarted.error, contains('Could not send'));
+      expect(bound.saved, isNull);
+    },
+  );
 
   test('pending recovery only unlocks the exact original Auth UUID', () async {
     final api = FakeAuthApi()
