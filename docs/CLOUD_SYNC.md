@@ -4,6 +4,31 @@
 
 **Implementation status (27 October 2026):** P2-01–P2-05, the P2-06 change feed/importer and serialized foreground upload/pull (#18–#22), and fair queue/revision dependencies (#23) are merged but not necessarily hosted or released. Merged PR #24 adds atomic workout tombstones, safe local-only deletion, a read-only authenticated per-workout conflict lookup (`get_workout_for_resolution`) and explicit user-reviewed local/cloud/deletion recovery. Pending uploads are not superseded; blocked/conflicted predecessors can only be superseded after a point lookup and confirmed choice. The upload/pull worker remains **foreground-only**. P2-07a account/sync status UI (#25) provides manual foreground sync, per-device status and reviewed recovery access. P2-07b owner-scoped JSON export (#27) is implemented in code, with a 4 MiB provisional, unmeasured on low-memory hardware in-memory limit and native device QA still outstanding; permanent account deletion and P2-08 signed-JWT, two-device, hosted security, physical-device and production rollout validation remain open. See [Reviewed conflict recovery](implementation/phase-2/p2-06-reviewed-conflict-resolution.md).
 
+## P2-07c verified account deletion (draft #29, not deployed)
+
+An in-app irreversible deletion flow is under review. It sends a deletion OTP
+only to the currently verified account email (`shouldCreateUser:false`).
+The resulting *new* Auth session must have a persisted
+`auth.sessions.created_at` within five minutes. An Edge Function validates
+the caller's JWT/user, checks that read-only gate under caller privileges, then
+uses the server-held service-role credential to call
+`auth.admin.deleteUser(user.id, false)`. Hard deletion cascades completed
+workouts, tombstones, receipt hashes and owner cursors from `auth.users`.
+The app's secure bound-account key is cleared and the old local partition is
+unmounted **before** issuing the remote request so no upload/restore can
+continue under its UI. The local files remain owner-partitioned and locked;
+they are not automatically purged or reassigned.
+
+An uncertain HTTP result cannot be called success or failure. The account
+remains locked until a fresh same-owner sign-in succeeds (only possible if
+that account still exists) or support reviews it. Deletion of an Auth user
+does NOT immediately invalidate existing stateless JWT access tokens; hosted
+tests must verify all sync/RLS paths for deleted users and short token expiry.
+The server endpoint/migration are **not deployed**. See
+[`supabase/ACCOUNT_DELETION_RUNBOOK.md`](../supabase/ACCOUNT_DELETION_RUNBOOK.md)
+and P2-08 acceptance gates. The existing 4 MiB cloud-history export cap also
+remains a **release** gate under ADR-0005.
+
 ## Data classification and account gating
 
 Everyone must register/sign in before using workout features (no guest mode); first authentication requires internet. A securely authenticated account may continue offline, save locally and enqueue changes until the network and auth session can resume. Supabase Auth anonymous accounts are not valid NorthStar accounts.
