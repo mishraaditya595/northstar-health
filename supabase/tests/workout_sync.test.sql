@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(64);
+select plan(66);
 
 insert into auth.users(id,email) values
  ('00000000-0000-4000-8000-0000000000a1','northstar-p2-a@example.invalid'),
@@ -40,6 +40,15 @@ select set_config('northstar.fixture',
 set local role authenticated;
 select set_config('request.jwt.claims',
  '{"sub":"00000000-0000-4000-8000-0000000000a1","role":"authenticated","is_anonymous":false}',true);
+
+-- The mobile outbox must not queue a cloud delete with no tracked upload:
+-- the RPC rejects an absent workout instead of inventing a tombstone.
+select is((public.sync_workout('00000000-0000-4000-8000-0000000000de',
+ '00000000-0000-4000-8000-0000000000dd',0,'delete',null::jsonb)->>'result'),
+ 'conflict','deleting an unknown server workout is not an applied operation');
+select is((select count(*)::int from public.workout_records
+ where workout_id='00000000-0000-4000-8000-0000000000dd'),0,
+ 'missing-record delete cannot create a phantom cloud row');
 
 select is((public.sync_workout('00000000-0000-4000-8000-000000000011',
  '00000000-0000-4000-8000-000000000101',0,'upsert',
