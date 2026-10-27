@@ -69,6 +69,14 @@ class ReservedWorkoutUpload {
   final int expectedServerRevision;
 }
 
+/// Whether a completed workout was only removed locally, or also needs a
+/// server-side tombstone. No remote record is created for a never-synced log.
+enum CompletedWorkoutDeleteResult {
+  alreadyDeleted,
+  localOnly,
+  cloudDeleteQueued,
+}
+
 class ObjectBoxWorkoutOutbox {
   ObjectBoxWorkoutOutbox(Store store, {UuidFactory? uuidFactory})
     : _store = store,
@@ -162,13 +170,15 @@ class ObjectBoxWorkoutOutbox {
   ///
   /// Soft-delete the session, remove its local exercise/set details and
   /// enqueue one immutable *null-payload* delete operation in the SAME
-  /// ObjectBox write transaction. Keep a minimal session tombstone so a
-  /// delayed upload, another device, or restore cannot resurrect this UUID.
+  /// ObjectBox write transaction when a prior upload/remote record exists.
+  /// Never queue a server delete for a never-synced legacy local workout.
+  /// Keep a minimal session tombstone so a delayed upload or restore
+  /// cannot resurrect this UUID.
   ///
   /// Previous pending uploads stay in the outbox and must ACK first, even
   /// if their server response was lost. Never discard a potentially applied
   /// server upsert simply because a user deleted the local copy.
-  bool deleteCompletedWorkout({
+  CompletedWorkoutDeleteResult deleteCompletedWorkout({
     required String sessionUuid,
     required int expectedLocalRevision,
     DateTime Function()? clock,
@@ -180,9 +190,11 @@ class ObjectBoxWorkoutOutbox {
     final nowMs = (clock ?? DateTime.now)().toUtc().millisecondsSinceEpoch;
     return _store.runInTransaction(TxMode.write, () {
       final rows = _find(_sessions, WorkoutSessionEntity_.uuid, sessionUuid);
-      if (rows.length != 1) return false;
+      if (rows.length != 1) return CompletedWorkoutDeleteResult.alreadyDeleted;
       final session = rows.single;
-      if (session.deletedAtMs != null) return false; // Exact local retry.
+      if (session.deletedAtMs != null) {
+        return CompletedWorkoutDeleteResult.alreadyDeleted; // Exact retry.
+      }
       if (session.revision != expectedLocalRevision) {
         throw StateError('workout_revision_changed');
       }
@@ -210,6 +222,14 @@ class ObjectBoxWorkoutOutbox {
       if (prior.any((op) => op.localRevision >= session.revision + 1)) {
         throw StateError('outbox_revision_inconsistent');
       }
+
+      // A legacy completed session can predate the outbox. With no upload
+      // receipt, queued upsert or imported remote state, there is no known
+      // server workout to delete. The SQL RPC intentionally rejects deletes
+      // of nonexistent rows: do not create a permanently conflicted command.
+      // Any ambiguous/pending previous operation MUST instead be retained
+      // and ordered ahead of a durable cloud delete.
+      final needsCloudDelete = prior.isNotEmpty || remote.isNotEmpty;
 
       // Keep only the minimal session identity/revision necessary for
       // idempotent retries and the importer's resurrection guard.
@@ -244,17 +264,20 @@ class ObjectBoxWorkoutOutbox {
           _operations.put(op);
         }
       }
-      _operations.put(
-        WorkoutSyncOutboxEntity(
-          operationUuid: _requireUuid(_ids.newId()),
-          sessionUuid: normalized,
-          localRevision: session.revision,
-          action: 'delete',
-          payloadJson: 'null',
-          createdAtMs: nowMs,
-        ),
-      );
-      return true;
+      if (needsCloudDelete) {
+        _operations.put(
+          WorkoutSyncOutboxEntity(
+            operationUuid: _requireUuid(_ids.newId()),
+            sessionUuid: normalized,
+            localRevision: session.revision,
+            action: 'delete',
+            payloadJson: 'null',
+            createdAtMs: nowMs,
+          ),
+        );
+        return CompletedWorkoutDeleteResult.cloudDeleteQueued;
+      }
+      return CompletedWorkoutDeleteResult.localOnly;
     });
   }
 
