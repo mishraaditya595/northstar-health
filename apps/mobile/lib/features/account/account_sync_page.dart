@@ -13,14 +13,24 @@ import 'account_sync_overview.dart';
 
 /// P2-07: a truthful device-local sync dashboard and account access surface.
 /// Does not claim cloud completion, delete a server account or export raw data.
-class AccountSyncPage extends ConsumerWidget {
+class AccountSyncPage extends ConsumerStatefulWidget {
   const AccountSyncPage({super.key});
+
+  @override
+  ConsumerState<AccountSyncPage> createState() => _AccountSyncPageState();
+}
+
+class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
+  bool _confirmingSignOut = false;
 
   Future<void> _signOut(
     BuildContext context,
     AccountAuthController auth,
     AccountSyncOverview overview,
   ) async {
+    if (_confirmingSignOut || auth.busy) return;
+    setState(() => _confirmingSignOut = true);
+    try {
     final warning = overview.hasUnresolvedLocalChanges
         ? 'Some completed workouts still need backup or review. '
               'They will stay on this device and will not move to a different '
@@ -35,15 +45,18 @@ class AccountSyncPage extends ConsumerWidget {
           'partition; it does not erase your cloud account or its data.',
       confirmLabel: 'Sign out',
     );
-    if (!confirmed || !context.mounted) return;
+    if (!confirmed || !context.mounted || auth.busy) return;
     await auth.signOut();
     if (context.mounted && auth.error != null) {
       showNsMessage(context, auth.error!);
     }
+    } finally {
+      if (mounted) setState(() => _confirmingSignOut = false);
+    }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final auth = ref.watch(accountAuthControllerProvider);
     if (auth == null) {
       return const Center(child: Text('Sign in to view account status.'));
@@ -68,7 +81,9 @@ class AccountSyncPage extends ConsumerWidget {
           final kick = ref.watch(workoutUploadKickProvider);
           final online = auth.cloudBackupReady;
 
-          return ListView(
+          return Scaffold(
+            appBar: AppBar(title: const Text('Account')),
+            body: ListView(
             padding: EdgeInsets.fromLTRB(
               16,
               16,
@@ -76,7 +91,10 @@ class AccountSyncPage extends ConsumerWidget {
               32 + MediaQuery.paddingOf(context).bottom,
             ),
             children: [
-              const PageHeader(title: 'Account', eyebrow: 'BACKUP & PRIVACY'),
+              Text(
+                'BACKUP & PRIVACY',
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
               const SizedBox(height: 18),
               Card(
                 margin: EdgeInsets.zero,
@@ -107,6 +125,14 @@ class AccountSyncPage extends ConsumerWidget {
                           FilledButton.icon(
                             onPressed: online && kick != null
                                 ? () {
+                                    if (!auth.cloudBackupReady) {
+                                      showNsMessage(
+                                        context,
+                                        'Cloud session expired. Sign in again '
+                                        'before syncing.',
+                                      );
+                                      return;
+                                    }
                                     kick();
                                     showNsMessage(
                                       context,
@@ -125,7 +151,7 @@ class AccountSyncPage extends ConsumerWidget {
                               ref.invalidate(workoutRestoreCursorProvider);
                               showNsMessage(
                                 context,
-                                'Refreshed status saved on this device.',
+                                'Status re-read from this device.',
                               );
                             },
                             icon: const Icon(Icons.refresh),
@@ -166,7 +192,7 @@ class AccountSyncPage extends ConsumerWidget {
               const SizedBox(height: 8),
               NsListCard(
                 icon: Icons.phone_android_outlined,
-                title: '${overview.localOnly} local-only workouts',
+                title: '${overview.localOnly} local-only workout${overview.localOnly == 1 ? '' : 's'}',
                 subtitle:
                     'These workouts cannot be backed up in their current form.',
               ),
@@ -209,8 +235,9 @@ class AccountSyncPage extends ConsumerWidget {
               const Text(
                 'Completed phone workouts (including sets, loads, exercise '
                 'labels and timestamps) can be backed up automatically. '
-                'Unfinished sessions, custom plans, preferences and health '
-                'measurements stay on this device. Signing out never deletes '
+                'Unfinished sessions, custom plans and preferences stay '
+                'on this device. HealthKit/Health Connect measurements '
+                'are not integrated in this build. Signing out never deletes '
                 'either local or cloud records.',
               ),
               const SizedBox(height: 10),
@@ -221,11 +248,14 @@ class AccountSyncPage extends ConsumerWidget {
               ),
               const SizedBox(height: 18),
               OutlinedButton.icon(
-                onPressed: () => _signOut(context, auth, overview),
+                onPressed: auth.busy || _confirmingSignOut
+                    ? null
+                    : () => _signOut(context, auth, overview),
                 icon: const Icon(Icons.logout),
                 label: const Text('Sign out of this device'),
               ),
             ],
+            ),
           );
         },
       ),
