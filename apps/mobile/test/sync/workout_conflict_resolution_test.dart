@@ -17,6 +17,7 @@ const setId = '00000000-0000-4000-8000-000000006704';
 final started = DateTime.utc(2026, 10, 26, 10).millisecondsSinceEpoch;
 
 const reviewedDeleteUuid = '00000000-0000-4000-8000-000000006799';
+
 class FixedReviewedIds implements UuidFactory {
   @override
   String newId() => reviewedDeleteUuid;
@@ -470,7 +471,10 @@ void main() {
     expect(importer.readConflictCandidates(), isEmpty);
     expect(store.box<WorkoutExerciseEntity>().count(), 1);
     expect(store.box<WorkoutSetEntity>().count(), 1);
-    expect(store.box<WorkoutSyncOutboxEntity>().getAll().single.state, 'superseded');
+    expect(
+      store.box<WorkoutSyncOutboxEntity>().getAll().single.state,
+      'superseded',
+    );
     expect(outbox.blockedCount(), 0);
     expect(outbox.backfillCompleted(), 0);
   });
@@ -494,32 +498,38 @@ void main() {
         ),
       ),
     );
-    expect(store.box<WorkoutSyncOutboxEntity>().getAll().single.state, 'conflict');
+    expect(
+      store.box<WorkoutSyncOutboxEntity>().getAll().single.state,
+      'conflict',
+    );
   });
 
-  test('blocked cursor permits independent review but needs explicit retry', () {
-    seed();
-    conflict();
-    expect(
-      importer.recordBlocked(
-        afterSeq: 0,
-        requestedEpoch: null,
-        code: 'duplicate_remote_sequence',
-      ),
-      true,
-    );
-    importer.resolveReviewedWorkout(
-      workoutUuid: workout,
-      expectedLocalRevision: 1,
-      review: review(),
-      action: WorkoutResolutionAction.useCloud,
-    );
-    expect(importer.readConflictCandidates(), isEmpty);
-    expect(importer.readCursor().blockedCode, 'duplicate_remote_sequence');
-    expect(importer.clearBlocked(afterSeq: 0, requestedEpoch: null), true);
-    expect(importer.readCursor().blockedCode, isNull);
-    expect(importer.clearBlocked(afterSeq: 0, requestedEpoch: null), false);
-  });
+  test(
+    'blocked cursor permits independent review but needs explicit retry',
+    () {
+      seed();
+      conflict();
+      expect(
+        importer.recordBlocked(
+          afterSeq: 0,
+          requestedEpoch: null,
+          code: 'duplicate_remote_sequence',
+        ),
+        true,
+      );
+      importer.resolveReviewedWorkout(
+        workoutUuid: workout,
+        expectedLocalRevision: 1,
+        review: review(),
+        action: WorkoutResolutionAction.useCloud,
+      );
+      expect(importer.readConflictCandidates(), isEmpty);
+      expect(importer.readCursor().blockedCode, 'duplicate_remote_sequence');
+      expect(importer.clearBlocked(afterSeq: 0, requestedEpoch: null), true);
+      expect(importer.readCursor().blockedCode, isNull);
+      expect(importer.clearBlocked(afterSeq: 0, requestedEpoch: null), false);
+    },
+  );
 
   test('an older sequence with lower revision cannot replay silently', () {
     seed();
@@ -550,7 +560,10 @@ void main() {
         ),
       ),
     );
-    expect(store.box<WorkoutSessionEntity>().getAll().single.name, 'Cloud strength');
+    expect(
+      store.box<WorkoutSessionEntity>().getAll().single.name,
+      'Cloud strength',
+    );
   });
 
   test('recovery delete UUID comes from injected factory', () {
