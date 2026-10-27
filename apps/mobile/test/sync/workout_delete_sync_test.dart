@@ -134,7 +134,7 @@ void main() {
   });
 
   test(
-    'delete commits minimal tombstone, child purge and null outbox atomically',
+    'never-uploaded workout deletes locally without impossible server command',
     () {
       seed();
       final when = DateTime.utc(2026, 10, 27);
@@ -144,7 +144,7 @@ void main() {
           expectedLocalRevision: 1,
           clock: () => when,
         ),
-        true,
+        CompletedWorkoutDeleteResult.localOnly,
       );
       final local = store.box<WorkoutSessionEntity>().getAll().single;
       expect(local.revision, 2);
@@ -153,37 +153,37 @@ void main() {
       expect(local.planUuid, null);
       expect(store.box<WorkoutExerciseEntity>().count(), 0);
       expect(store.box<WorkoutSetEntity>().count(), 0);
-      final op = store.box<WorkoutSyncOutboxEntity>().getAll().single;
-      expect(op.action, 'delete');
-      expect(op.localRevision, 2);
-      expect(op.payloadJson, 'null');
-      expect(op.state, 'pending');
+      // SQL rejects delete(expected_revision=0) for a nonexistent row.
+      // The legacy local-only workout must not create a failing RPC.
+      expect(store.box<WorkoutSyncOutboxEntity>().count(), 0);
       expect(
-        outbox
-            .reserveNext(nowMs: when.millisecondsSinceEpoch + 1)!
-            .expectedServerRevision,
-        0,
+        outbox.reserveNext(nowMs: when.millisecondsSinceEpoch + 1),
+        isNull,
       );
       expect(
         outbox.deleteCompletedWorkout(
           sessionUuid: workout,
           expectedLocalRevision: 1,
         ),
-        false,
+        CompletedWorkoutDeleteResult.alreadyDeleted,
       );
-      expect(store.box<WorkoutSyncOutboxEntity>().count(), 1);
+      expect(store.box<WorkoutSyncOutboxEntity>().count(), 0);
       reopen();
       expect(
         store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs,
         when.millisecondsSinceEpoch,
       );
-      expect(outbox.pending().single.action, 'delete');
+      expect(outbox.pending(), isEmpty);
       expect(outbox.backfillCompleted(), 0);
     },
   );
 
   test('invalid UUID for queued delete rolls back all local writes', () {
     seed();
+    // An existing pending upload makes a cloud tombstone necessary.
+    store.runInTransaction(TxMode.write, () {
+      outbox.enqueueCompletedInTransaction(workout);
+    });
     final bad = ObjectBoxWorkoutOutbox(store, uuidFactory: InvalidUuid());
     expect(
       () => bad.deleteCompletedWorkout(
@@ -198,7 +198,8 @@ void main() {
     expect(local.revision, 1);
     expect(store.box<WorkoutExerciseEntity>().count(), 1);
     expect(store.box<WorkoutSetEntity>().count(), 1);
-    expect(outbox.pending(), isEmpty);
+    expect(outbox.pending().single.action, 'upsert');
+    expect(store.box<WorkoutSyncOutboxEntity>().count(), 1);
   });
 
   test('stale revision, unfinished and nonphone deletion are rejected', () {
@@ -250,9 +251,12 @@ void main() {
       });
       final original = outbox.pending().single;
       expect(original.action, 'upsert');
-      outbox.deleteCompletedWorkout(
-        sessionUuid: workout,
-        expectedLocalRevision: 1,
+      expect(
+        outbox.deleteCompletedWorkout(
+          sessionUuid: workout,
+          expectedLocalRevision: 1,
+        ),
+        CompletedWorkoutDeleteResult.cloudDeleteQueued,
       );
       final api = FakeAuthApi()..sessionId = accountA;
       final bound = FakeBoundAccountStore()..saved = accountA;
@@ -350,7 +354,7 @@ void main() {
           sessionUuid: workout,
           expectedLocalRevision: 1,
         ),
-        true,
+        CompletedWorkoutDeleteResult.cloudDeleteQueued,
       );
       final reserved = outbox.reserveNext(
         nowMs: DateTime.now().millisecondsSinceEpoch + 1,
@@ -418,7 +422,7 @@ void main() {
         sessionUuid: workout,
         expectedLocalRevision: 1,
       ),
-      true,
+      CompletedWorkoutDeleteResult.cloudDeleteQueued,
     );
     final acknowledged = store.box<WorkoutSyncOutboxEntity>().getAll().first;
     expect(acknowledged.state, 'acknowledged');
