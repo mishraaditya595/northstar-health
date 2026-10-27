@@ -478,6 +478,8 @@ class WorkoutRemoteReview {
   final String cursorEpoch;
   final RemoteWorkoutChange? change;
 
+  static String validateWorkoutId(String value) => _id(value);
+
   static WorkoutRemoteReview decode(Object? raw, String workoutId) {
     final id = _id(workoutId);
     final body = _map(raw, const {
