@@ -36,3 +36,5 @@ Authoritative policy: [ADR-0003](../adr/0003-data-cloud-health.md) **as supersed
 - [P2-06 Fair upload queue and durable dependencies](phase-2/p2-06-fair-upload-queue.md) — PR #23 (**merged**), bounded ObjectBox-window scan beyond 500 and persisted dependency-paused upload revisions; device release tests outstanding.
 
 - [P2-06 Completed workout deletion and tombstones](phase-2/p2-06-completed-workout-deletion.md) — PR #24 (**draft**), atomic local delete command, durable cloud deletion queue and tombstone replay regression tests; not yet deployed.
+
+- [P2-06 Reviewed conflict recovery and point lookup](phase-2/p2-06-reviewed-conflict-resolution.md) — PR #24 (**draft**), user-selected local/cloud/deletion reconciliation, owner-scoped server point lookup, durable superseded operations and conflict UI. Not deployed or device-verified.
