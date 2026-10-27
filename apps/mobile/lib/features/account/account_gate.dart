@@ -106,6 +106,15 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
             workoutUploadKickProvider.overrideWith(
               (ref) => ref.read(workoutUploadCoordinatorProvider).kick,
             ),
+            workoutRestoreCursorProvider.overrideWith((ref) {
+              final auth = ref.watch(accountAuthControllerProvider);
+              final owner = auth?.userId;
+              if (owner == null) return null;
+              return ref.watch(workoutRestoreImporterProvider)(
+                owner,
+                () => auth?.userId,
+              ).readCursor();
+            }),
             blockedWorkoutCountProvider.overrideWith(
               (ref) => ref.watch(workoutOutboxProvider).blockedCount(),
             ),
