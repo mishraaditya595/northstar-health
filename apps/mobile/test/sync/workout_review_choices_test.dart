@@ -17,15 +17,17 @@ const epoch = '00000000-0000-4000-8000-000000006702';
 WorkoutConflictCandidate candidate({
   bool localOnly = false,
   bool deleted = false,
+  bool orphaned = false,
 }) => WorkoutConflictCandidate(
   workoutUuid: workout,
   name: deleted ? 'Deleted workout' : 'Row',
   localRevision: 1,
   deletedLocally: deleted,
-  hasLocalWorkout: true,
+  hasLocalWorkout: !orphaned,
   exerciseCount: deleted ? 0 : 1,
   setCount: deleted ? 0 : 2,
   canKeepLocalOnly: localOnly,
+  canDismissMissing: orphaned,
 );
 
 WorkoutRemoteReview review({bool present = false, bool deleted = false}) =>
@@ -119,6 +121,33 @@ void main() {
     );
     expect(find.text('Use cloud copy'), findsNothing);
     expect(find.text('Complete deletion'), findsOneWidget);
+  });
+
+  testWidgets('orphaned skipped workout can be dismissed after lookup', (
+    tester,
+  ) async {
+    final picked = await showChoices(
+      tester,
+      local: candidate(orphaned: true),
+      cloud: review(),
+    );
+    expect(find.text('Dismiss unavailable workout'), findsOneWidget);
+    expect(find.text('Retry this device'), findsNothing);
+    expect(find.text('Keep on this device only'), findsNothing);
+    await tester.tap(find.text('Dismiss unavailable workout'));
+    expect(picked, [WorkoutResolutionAction.dismissMissing]);
+  });
+
+  testWidgets('orphan dismissal disappears when cloud workout is present', (
+    tester,
+  ) async {
+    await showChoices(
+      tester,
+      local: candidate(orphaned: true),
+      cloud: review(present: true),
+    );
+    expect(find.text('Dismiss unavailable workout'), findsNothing);
+    expect(find.text('Use cloud copy'), findsOneWidget);
   });
 
   test('contract failures have actionable explanations', () {
