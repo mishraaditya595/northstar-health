@@ -2,20 +2,20 @@
 
 ## Stack (decided vs implemented)
 
-| Concern | Decision | Current foundation status |
+| Concern | Decision | Current implementation status |
 | --- | --- | --- |
-| Mobile/iPad/tablet UI | Flutter Material 3 with Performance V2 semantic tokens | Demo screens implemented |
-| State and DI | Riverpod 3 providers/notifiers | Theme implemented |
-| Navigation | go_router | Four fixture sections implemented |
-| Durable mobile storage | **ObjectBox** | Dependencies present; first entities/repositories not implemented |
+| Mobile/iPad/tablet UI | Flutter Material 3, Performance V2 semantic tokens | Offline logger, exercise catalog, plans, history/progress, account UI implemented; physical-device/adaptive QA pending |
+| State and DI | Riverpod 3 providers/notifiers | App, workouts, auth and sync controllers in source |
+| Navigation | go_router | Feature/account navigation in source |
+| Durable mobile storage | **ObjectBox** | Transactional repositories, owner-bound partitions, outbox and restore state implemented |
 | Appearance preferences | shared_preferences (non-sensitive) | Theme preference implemented |
-| User identity and workout sync | **Supabase Auth + PostgreSQL** | P2-01 development schema/RPC implemented; Flutter auth/outbox not implemented |
-| Health inputs | **HealthKit (Apple), Health Connect (Android)** | Permission-based, read-only measurements in MVP; not implemented |
-| Workout health export | Optional permission-controlled **summary only** | Approved architecture; not implemented |
-| Watch sensors | watchOS HealthKit workout sessions; Wear OS Health Services | Native session ownership; apps/prototypes not built |
-| Watch transport | Versioned durable events, replay-safe acknowledgment | Contract documented, not implemented |
-| Diagnostics | **Firebase Crashlytics + Firebase Analytics** | Collection off/unconfigured; not implemented |
-| CI | Format, analyze, Flutter widget tests | GitHub Actions enabled |
+| Identity and cloud sync | **Supabase Auth + PostgreSQL** | Mandatory email OTP, completed-only foreground upload/restore, tombstones, conflict review, JSON export and permanent deletion merged through P2-07c; hosted QA pending |
+| Health inputs | **HealthKit (Apple), Health Connect (Android)** | Planned permission-based reads; no live integration |
+| Workout health export | Optional, permission-controlled **summary only** | Planned; distinct from implemented Supabase JSON history export |
+| Watch sensors | watchOS HealthKit workout sessions; Wear OS Health Services | Non-recording native starter targets, no shipping sessions |
+| Watch transport | Versioned durable events and replay-safe ACKs | Contract/fixtures only; watch-to-phone delivery not active |
+| Diagnostics | **Firebase Crashlytics + Analytics** | Off/unconfigured; no collection |
+| CI | GitHub checks; Codemagic planned | GitHub Actions present; Codemagic templates intentionally inactive |
 
 ## Authoritative decisions
 
@@ -66,7 +66,7 @@ Use `LayoutBuilder` and available content width (compact under ~600dp -> bottom 
 
 ## Implementation truth
 
-The initial merged foundation started as a Flutter **demo**. Phase 1 now contains workout entities and logging features; P2-01 has a development-only Supabase schema/RPC. Flutter authentication/sync worker, production rollout, HealthKit, Health Connect, Firebase and watch companions still require implementation/review and device testing.
+Phase 1 local workout flows and P2-01–P2-07 source implementations are merged. The app uses mandatory Auth and per-account ObjectBox partitions, durable completed-only outbox, serialized **foreground** upload/pull, reviewed conflict resolution, account/sync controls, owner-scoped cloud-history JSON export and freshly verified server-side account deletion. The P2-07c deletion endpoint and its fresh-session SQL gate are committed but **not asserted to be deployed or tested with real accounts**. Uncertain deletion results keep the original partition locked; ADR-0007 separately permits the user to leave while retaining old owner-locked files or explicitly erase only that owner's local files. A confirmed server deletion may clean up that same owner's local partition. Hostile JWT/RLS, second-device, low-memory export and native-device testing remain P2-08 release gates. See [ROADMAP.md](ROADMAP.md), [CLOUD_SYNC.md](CLOUD_SYNC.md), and [RELEASE.md](RELEASE.md). No HealthKit/Health Connect, Firebase collection or live watch-session feature has shipped.
 
 ## Repository layout (ADR-0004)
 
