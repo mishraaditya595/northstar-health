@@ -25,7 +25,9 @@ void main() {
     }
 
     await deleteBoundAccountStoreAtRoot(
-      base, _owner, projectHost: 'dev.example.invalid',
+      base,
+      _owner,
+      projectHost: 'dev.example.invalid',
     );
     expect(await a.exists(), false);
     expect(await b.exists(), true);
@@ -34,20 +36,27 @@ void main() {
 
     // Retrying a completed cleanup must be safe.
     await deleteBoundAccountStoreAtRoot(
-      base, _owner, projectHost: 'dev.example.invalid',
+      base,
+      _owner,
+      projectHost: 'dev.example.invalid',
     );
     expect(await b.exists(), true);
   });
 
-  test('untrusted owner directory identifiers cannot cause traversal', () async {
-    final base = await Directory.systemTemp.createTemp('northstar-safety-');
-    addTearDown(() => base.delete(recursive: true));
-    await expectLater(
-      deleteBoundAccountStoreAtRoot(
-        base, '../other-account', projectHost: 'dev.example.invalid',
-      ),
-      throwsFormatException,
-    );
-    expect(await base.exists(), true);
-  });
+  test(
+    'untrusted owner directory identifiers cannot cause traversal',
+    () async {
+      final base = await Directory.systemTemp.createTemp('northstar-safety-');
+      addTearDown(() => base.delete(recursive: true));
+      await expectLater(
+        deleteBoundAccountStoreAtRoot(
+          base,
+          '../other-account',
+          projectHost: 'dev.example.invalid',
+        ),
+        throwsFormatException,
+      );
+      expect(await base.exists(), true);
+    },
+  );
 }
