@@ -467,3 +467,51 @@ class WorkoutRestorePage {
     );
   }
 }
+
+
+/// Versioned, owner-scoped point lookup for an explicitly reviewed conflict.
+/// A missing row is different from a tombstone and must never be synthesized
+/// into a new upsert/deletion without the user's choice.
+class WorkoutRemoteReview {
+  const WorkoutRemoteReview({required this.cursorEpoch, required this.change});
+
+  final String cursorEpoch;
+  final RemoteWorkoutChange? change;
+
+  static WorkoutRemoteReview decode(Object? raw, String workoutId) {
+    final id = _id(workoutId);
+    final body = _map(raw, const {
+      'schema_version',
+      'cursor_epoch',
+      'change',
+    });
+    if (body['schema_version'] != 1) _invalid('invalid_schema_version');
+    final epoch = _id(body['cursor_epoch']);
+    final row = body['change'];
+    if (row == null) {
+      return WorkoutRemoteReview(cursorEpoch: epoch, change: null);
+    }
+    // Reuse the exact strict change/DTO decoder used for paged restores.
+    final change = _map(row, _changeFields);
+    if (_id(change['workout_id']) != id) {
+      _invalid('workout_id_mismatch');
+    }
+    final decoded = WorkoutRestorePage.decode(
+      {
+        'schema_version': 1,
+        'cursor_epoch': epoch,
+        'cursor_reset': false,
+        'next_cursor': change['change_seq'],
+        'has_more': false,
+        'changes': [change],
+      },
+      afterSeq: 0,
+      limit: 1,
+      requestedEpoch: epoch,
+    );
+    return WorkoutRemoteReview(
+      cursorEpoch: epoch,
+      change: decoded.changes.single,
+    );
+  }
+}
