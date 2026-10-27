@@ -63,6 +63,7 @@ class WorkoutConflictCandidate {
     this.canDismissMissing = false,
     this.skippedEpoch,
     this.skippedChangeSeq,
+    this.skippedDeletion = false,
   });
   final String workoutUuid;
   final String name;
@@ -75,6 +76,8 @@ class WorkoutConflictCandidate {
   final bool canDismissMissing;
   final String? skippedEpoch;
   final int? skippedChangeSeq;
+  /// Whether the skipped remote change was a cloud deletion marker.
+  final bool skippedDeletion;
 }
 
 /// Injected per-account importer; *not* an app background service.
@@ -652,6 +655,7 @@ class ObjectBoxWorkoutRestoreImporter {
               canDismissMissing: canDismissMissing,
               skippedEpoch: skip?.cursorEpoch,
               skippedChangeSeq: skip?.serverChangeSeq,
+              skippedDeletion: skip?.deleted ?? false,
             ),
           );
         }
