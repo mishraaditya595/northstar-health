@@ -20,7 +20,11 @@ Every finding: affected file/line, reproducible impact, smallest correction, tes
 - [ ] Cloud payload allowlist: authenticated, completed NorthStar phone workouts only; no unfinished sessions, health cache/vitals, rest/recovery checkpoints, imported workouts or plans (ADR-0005)
 - [ ] Mandatory signup, no guest mode; logout/account-switch with unsynced data
 - [ ] Supabase RLS SELECT/INSERT/UPDATE/DELETE and any privileged RPC ownership, least-privilege
-- [ ] Concurrent device update/revision rejection; retry identical operation ID; deletion tombstones/cursor ordering
+- [ ] Concurrent device update/revision rejection; retry identical operation ID; deletion tombstones/cursor ordering and epoch reset after database restore
+- [ ] P2-07 account status is device-local (not a false all-backed-up promise); manual sync remains foreground-only
+- [ ] Owner-scoped JSON export includes all and only completed cloud history: UUID pagination, high-water change check, NULL values, native picker cancellation, large-account handling, low-memory profiling and sensitive-destination notice
+- [ ] Fresh-OTP deletion checks persisted Auth session age; privileged Edge Function keys remain server-only; cascade cleanup, second-device old JWTs and uncertain HTTP results are tested against a hosted project
+- [ ] ADR-0007 both recovery exits: separately confirmed keep-old-data-locked vs erase-only-original-owner, safe marker order, retry and Keep recovering cancellation; never transfer partitions
 - [ ] HealthKit/Health Connect source/time/units, per-metric permission, cache expiry/revocation, no double aggregate
 - [ ] Export-only completed app-owned summary; Apple Watch saved HKWorkout skip; ambiguous retry reconciliation
 - [ ] Firebase native collection default off, separate consent and synthetic sensitive-field redaction test
@@ -29,7 +33,7 @@ Every finding: affected file/line, reproducible impact, smallest correction, tes
 
 ## Definition of done
 
-Document why and scope; screenshots of phone/tablet layouts in both modes if UI changed; privacy and permission inventory; test and CI results; known gaps. Never mark a mocked flow or architectural contract as production-ready. Wear OS/watchOS proof requires real devices, not just simulator screenshots. Follow [CLOUD_SYNC](CLOUD_SYNC.md), [HEALTH_DATA](HEALTH_DATA.md), [FIREBASE_PRIVACY](FIREBASE_PRIVACY.md) and [SYNC_PROTOCOL](SYNC_PROTOCOL.md).
+Document why and scope; screenshots of phone/tablet layouts in both modes if UI changed; privacy and permission inventory; test and CI results; known gaps. Never mark a mocked flow or architectural contract as production-ready. A merged PR does not establish hosted migration parity, real-account signed-JWT/RLS tests or device-tested file/keychain behavior. Follow [RELEASE.md](RELEASE.md) for P2-08 acceptance. Wear OS/watchOS proof requires real devices, not just simulator screenshots. Follow [CLOUD_SYNC](CLOUD_SYNC.md), [HEALTH_DATA](HEALTH_DATA.md), [FIREBASE_PRIVACY](FIREBASE_PRIVACY.md) and [SYNC_PROTOCOL](SYNC_PROTOCOL.md).
 
 ## Repository restructuring / build review
 

@@ -1,6 +1,6 @@
 # P2-07 — Account status, export and deletion milestones
 
-**Status:** P2-07a account/sync status UI (#25) merged. P2-07b cloud-history JSON export (#27) is implemented in code; P2-07c account deletion is implemented in draft PR #29 but has **not** been deployed or security-accepted. Phase 2 is not released.
+**Status (27 October 2026):** P2-07a account/sync UI (#25), P2-07b JSON cloud-history export (#27) and P2-07c freshly verified permanent account deletion (#29) are **merged into main**. Neither hosted deployment nor physical-device/security acceptance is established. P2-08 remains a release gate.
 
 ## P2-07a: account and sync status UI (#25)
 
@@ -89,7 +89,7 @@ Required by ADR-0005 before release. Implementation and review requirements:
    The concrete, **unrun** hardware and hosted verification matrix is
    [P2-08 workout export release validation](p2-08-workout-export-release-validation.md).
 
-## P2-07c: irreversible account deletion (draft PR #29, not deployed)
+## P2-07c: irreversible account deletion (merged PR #29, not deployed)
 
 Implementation uses an OTP verified against the *same* Supabase account to
 create a genuinely new Auth session. The read-only
@@ -133,5 +133,4 @@ against a hosted project or physical device**. See
 
 Hosted Supabase migration drift, JWT/RLS adversarial tests, signed two-device
 sync/restore/deletion and iOS/Android storage/device testing are independent
-release gates. All CI on the PR head and independent code/security review
-must pass before merge. No deployment from this PR.
+release gates. All relevant CI and independent code/security review are required for changes; **merging PR #29 did not authorize a production deployment**. Record hosted and device acceptance separately before release.

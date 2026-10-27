@@ -1,6 +1,6 @@
 # P2-06 — Mobile restore transport and validated decoding
 
-**Scope:** First Flutter portion of P2-06 following merged PR #18 (server restore feed). **Not end-to-end restore; not deployed.** Branch: feat/p2-06-mobile-restore-transport.
+**Scope/status:** Historical PR #19 transport/decoder slice, now **merged**. PRs #20 and #22 subsequently add transactional import and serialized foreground restore; #23/#24 complete queue fairness and reviewed recovery in source. None of these merges establish hosted/device release acceptance.
 
 ## Implemented in this slice
 
@@ -17,7 +17,7 @@ The decoder **accepts PostgreSQL UUID input spellings** (mixed-case hexadecimal,
 
 **Accepted limitation, no server migration in this PR:** The P2-01 database validator compares exercise and set UUIDs as *strings*, so it can accept two different spellings that represent the **same UUID** within one domain. ObjectBox cannot safely materialize both under one canonical ID; do **not** silently rename one or merge the records. The decoder raises `duplicate_exercise_id` or `duplicate_set_id` and blocks that page. A future additive server migration may canonicalize/reject duplicate semantic UUIDs for *new writes*, but historical rows need an audited remediation plan. Until then, this ambiguity is intentionally fail-closed rather than an automatic merge or drop.
 
-**Required importer behavior for any permanently invalid row (not yet implemented):**
+**Required importer behavior for any permanently invalid row (implemented by subsequent importer/coordinator slices):**
 
 1. Decode/validate a fetched page **before** opening a write transaction. On `RestoreContractException`, preserve the last **durably committed** account-bound `(cursor_epoch, next_cursor)`, all local sessions and all pending/blocked/conflicted operations. **Never skip a row, advance the cursor, or import part of a rejected page.**
 2. Record a bounded **owner-scoped** restore-blocked state with a stable non-PII `error.code` (for example `invalid_uuid`, `invalid_timestamp`, `duplicate_set_id`, `unsupported_field`, `payload_too_large`, `epoch_mismatch`). Never store the invalid payload, raw RPC exception, free-text notes or account/workout IDs in telemetry. The public error message is generic; invalid caller arguments report **"Invalid workout restore request"**.
@@ -42,7 +42,7 @@ The error has **no** `shouldAdvanceCursor` decision property. The future importe
 4. Add a foreground pull coordinator serialized with the upload worker, safely handling network outages, account switch, cancellation, process restart, and cursor reset full replay.
 5. Fix queued-op first-500 starvation and dependencies; complete two-account live JWT/RLS, real device cross-phone restore, schema upgrade and epoch/PITR staging tests.
 
-**Deployment:** Changes are limited to Flutter code, tests and docs. There is no Supabase deployment or enabled mobile restore. Server epoch rotation after database restore remains mandatory per supabase/RESTORE_RUNBOOK.md. The P2-06 milestone remains incomplete.
+**Deployment / subsequent work:** This original slice modified Flutter transport and tests only and did not enable restore on its own. Later merged #20–#24 implement foreground restore and recovery. **No hosted or physical-device release acceptance is claimed**. Server epoch rotation after a database restore remains mandatory per [RESTORE_RUNBOOK.md](../../../supabase/RESTORE_RUNBOOK.md).
 
 ## Validation
 

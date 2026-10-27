@@ -1,6 +1,6 @@
 # NorthStar release-readiness gates
 
-**Status:** Structure and scaffolding only. Neither watch application nor the mobile app is ready for store distribution.
+**Status (27 October 2026):** Phase 1 and P2-01–P2-07 source features are merged, **not released or verified for production**. P2-08 hosted security, native-device and large-history/data-rights acceptance is outstanding. Watch recording and health integration remain unimplemented; neither mobile nor watch app is ready for store distribution.
 
 ## Source and builds
 
@@ -11,6 +11,16 @@
 - Watch iOS embedding, companion bundle identifiers, signing, TestFlight archive/physical pairing and watch-only source experiment must not be confused.
 - Wear OS uses final app identity/signing, Play Console declarations and physical round-watch layout tests; package IDs in scaffolding are placeholders.
 - Keep FlutterWatch custom toolchain out of stable builds; experimental comparison only.
+
+## P2-08 immediate release blockers
+
+- **Hosted database rollout:** reconcile migration history with the **11 committed migrations** (including the P2-07c fresh Auth-session gate) and verify UTC backfill semantics and transaction/index impact before deploying to a data-bearing project. The repository does not prove hosted application.
+- **Real-account security:** independently test signed user JWTs and RLS against a nonproduction hosted project: cross-user SELECT/RPC restrictions, two-device upload/restore/revisions/tombstones, stale/deleted-user JWT paths, fresh-session deletion gate, Auth hard-delete cascades and network-uncertain recovery. Synthetic pgTAP and mocked HTTP are necessary but not substitutes.
+- **JSON export rights:** the current **4 MiB in-memory output limit** can block all-history export. Measure Android/iOS low-memory behavior and native SAF/UIDocumentPicker lifecycle; implement/validate a bounded-memory larger-history path (or a justified device-tested ceiling that satisfies the all-history requirement) before release. Verify complete and correct synthetic exports.
+- **Safe account exit:** device-test confirmation, verified deletion cleanup/retry, fail-closed uncertainty, and ADR-0007's two separately confirmed recovery exits (keep original owner's files locked, or explicitly erase only that owner's local partition), including cancellation and crash/relaunch.
+- **Operations/privacy:** owner-scoped receipt-expiry pruning schedule, backup/restore epoch rotation runbook, legal retention/disclosure, secure logging and independent security review. No diagnostics data collection until the separately reviewed Firebase gate is met.
+
+Track evidence in [P2-08 export validation](implementation/phase-2/p2-08-workout-export-release-validation.md) and the [account deletion runbook](../supabase/ACCOUNT_DELETION_RUNBOOK.md).
 
 ## Feature and privacy readiness
 
@@ -29,10 +39,11 @@
 
 ## Ordered engineering follow-ups
 
-1. Integrate `apps/watch_os/Sources` with a **real existing-iOS-app watchOS target** inside `apps/mobile/ios` using Xcode; commit project settings, embedding/copy phase and test a companion archive.
-2. Verify mobile iOS simulator and native watchOS build in macOS CI, then replace placeholder bundle identifiers with final approved organization IDs and signing configuration.
-3. Implement transactional ObjectBox workout repo and mobile native adapters; only then add sensor/HealthKit/Health Services features.
-4. Implement account-gated automatic completed phone workout sync, restoration and independent watch event queues against v1 protocol; add multi-device permission/reconnect and version migration tests.
+1. Finish the **P2-08 release gates above** before describing Phase 2 as shipped; retain real-device and hosted test evidence with commit SHA, environment and outcome.
+2. Integrate `apps/watch_os/Sources` into an actual embedded iOS Runner watchOS companion target; verify bundle IDs, signing and TestFlight/physical pairing.
+3. Verify mobile iOS, standalone watchOS and Wear OS builds in macOS/Android CI and profile low-end devices. Replace placeholder app identifiers only with approved production identities.
+4. Begin future Phase 3 HealthKit/Health Connect permission-based reads and Phase 4 user-controlled health-platform summary export only after the separate consent and provenance designs are verified.
+5. Implement durable native watch workout recording, offline event transport, deduplication and the watch-to-phone-to-cloud two-stage ACK before claiming wearable logging support.
 
 ## CI/CD cutover status
 

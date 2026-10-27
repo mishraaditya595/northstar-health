@@ -1,6 +1,6 @@
 # Phase 2 / P2-01 — Supabase workout sync foundation
 
-**Review state:** PR #13; ADR-0005 accepted by the owner. Merge is a human action.  
+**Historical slice / merged:** PR #13 is merged; ADR-0005 is accepted. This note documents the original P2-01 scope and its historical development database state, not current hosted migration parity. Eleven total migrations are now committed; see [Supabase README](../../../supabase/README.md).  
 **Policy:** [ADR-0005](../../adr/0005-mandatory-auth-and-workout-sync.md) (mandatory accounts, no guest mode, completed-workout sync).  
 **Backend environment:** Connected *development* Supabase project, not production.
 

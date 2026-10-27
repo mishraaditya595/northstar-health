@@ -1,6 +1,6 @@
 # P2-06 — Reviewed workout conflict recovery (PR #24)
 
-**Implementation candidate — not merged, deployed or device-verified.** See ADR-0006. Completes the missing *functional* P2-06 conflict-resolution slice, subject to independent code/security review and CI. Real signed-JWT multi-device verification and physical-device sign-off remain P2-08 release gates. P2-07 covers broader account/export/deletion settings, not workout conflict recovery.
+**Status:** PR #24 **merged into main 2026-10-27**, but not hosted-deployed or device/security release-accepted. See ADR-0006. It completes functional P2-06 user-reviewed recovery in source; real signed-JWT two-device tests, full native QA and P2-08 sign-off remain release gates. P2-07 subsequently added account/status/export/deletion settings (#25/#27/#29).
 
 ## Server read contract
 

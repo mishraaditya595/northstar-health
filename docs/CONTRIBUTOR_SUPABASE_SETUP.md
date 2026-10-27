@@ -50,7 +50,11 @@ supabase db push
 
 `db push` applies every file in `supabase/migrations/` in order. Re-run it after pulling new migrations from `main`.
 
-A fresh project needs no restore-epoch rotation. [RESTORE_RUNBOOK.md](../supabase/RESTORE_RUNBOOK.md) applies only after restoring a database backup.
+A fresh project needs no restore-epoch rotation. [RESTORE_RUNBOOK.md](../supabase/RESTORE_RUNBOOK.md) applies only after restoring a database backup. The repository now includes **11 migrations**, including a fresh-session gate for the optional account-deletion flow; `supabase db push` does **not** deploy the Edge Function.
+
+### Optional: testing permanent account deletion on your own disposable project
+
+The Account-screen permanent deletion flow additionally requires deployment of the server-only `delete-account` Edge Function, not just SQL migrations. Follow the [account-deletion deployment/security runbook](../supabase/ACCOUNT_DELETION_RUNBOOK.md) and use only **disposable synthetic accounts and workouts**. Never embed `SUPABASE_SERVICE_ROLE_KEY` or other privileged secrets in Flutter, screenshots or Git. You can run and test ordinary workout features without enabling deletion; do not interpret an unconfigured function as proof that deletion is safe or available.
 
 ## 4. Copy your public keys
 

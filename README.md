@@ -2,9 +2,9 @@
 
 **Train consistently. Understand your health. Keep control of your data.**
 
-NorthStar is a proposed privacy-conscious, offline-first health and strength-training app for **Android, iPhone, Android tablets and iPad**, with **Apple Watch and Wear OS** companions planned. Build the Flutter product with a distinct athletic performance aesthetic, not a generic wellness dashboard.
+NorthStar Health is an **offline-first health and strength-training app in development** for Android, iPhone, Android tablets and iPad. It combines durable workout logging with account-bound completed-workout backup. Native Apple Watch and Wear OS companions, permission-based health metrics and a broader health dashboard are future milestones.
 
-> **Development status — Phase 2 (accounts and completed-workout sync) in progress; not released.** Implemented and merged: the local ObjectBox exercise catalog, plan editor, active workout logger with rest timer, and workout history/progress (Phase 1); mandatory email-code sign-in with account-bound offline storage, a durable completed-workout outbox, an authenticated foreground uploader and server-side progress against a **development** Supabase backend (P2-01 to P2-05). P2-06 multi-device restore, workout deletion and reviewed conflict recovery are merged (not necessarily hosted). P2-07 account/sync status UI (#25) provides local status, manual sync and reviewed recovery; P2-07b authenticated cloud JSON export (#27) is implemented in code; P2-07c permanent account deletion is under review in draft PR #29, not deployed or release-validated. Native file-picker and hosted security tests remain release gates. There is **no HealthKit/Health Connect integration, Firebase collection or shipping wearable app**, and nothing is deployed to production. See the [roadmap tracker](docs/ROADMAP.md) for exact status. The pictures below are **proposed static UI concepts**, not application screenshots.
+> **Development status — not released.** Offline workout logging and Phase 2 accounts, foreground sync and data-rights flows are merged in source. Hosted rollout, real-account security tests, device validation and large-history export support remain P2-08 release gates. HealthKit/Health Connect, Firebase collection and live watch recording are not implemented. See the [milestone tracker](docs/ROADMAP.md) and [release gates](docs/RELEASE.md). Previews below are static concepts, not application screenshots.
 
 ## UI concept previews
 
@@ -22,11 +22,11 @@ NorthStar is a proposed privacy-conscious, offline-first health and strength-tra
 
 | Area | Decision | Delivery |
 | --- | --- | --- |
-| Mobile platform | Flutter, iOS / iPadOS / Android and tablet layouts | Fixture app scaffolded |
-| State + dependency injection | Riverpod 3 | Theme state scaffolded |
-| Navigation | go_router, bottom tabs / adaptive side rail | Scaffolded |
+| Mobile platform | Flutter, iOS / iPadOS / Android and tablet layouts | App scaffold and offline workout features implemented; device QA pending |
+| State + dependency injection | Riverpod 3 | Workout, account and sync state implemented |
+| Navigation | go_router, bottom tabs / adaptive side rail | Workout, progress and account routes implemented |
 | On-device workout data | **ObjectBox** | Local model, repositories, exercise catalog, plan editor, live logging and history implemented |
-| User identity + completed-workout sync | **Supabase Auth + PostgreSQL** | Mandatory sign-in, outbox, foreground upload and completed-workout restore/recovery (#18–#24); P2-07 account/sync UI (#25) |
+| User identity + completed-workout sync | **Supabase Auth + PostgreSQL** | Mandatory sign-in, outbox, foreground upload/restore, tombstones and conflict review; account/sync UI, JSON export and verified deletion (#25, #27, #29) merged; hosted QA pending |
 | Health measurements | **Apple HealthKit and Android Health Connect** | Permissioned read planned; no SDK permissions yet |
 | Workout summary write-back | One app-owned completed workout, opt-in, no duplicates | Planned |
 | Crash/usage telemetry | **Firebase Crashlytics + Analytics** | Chosen, **not installed/collecting**; explicit privacy gate |
@@ -62,9 +62,15 @@ docs/                         # ADRs, security, design, cloud sync, watch and re
 AGENTS.md                     # repository-wide AI coding and review instructions
 ```
 
-**Not a released health product:** local workout logging, sign-in and completed-workout upload exist in code, but nothing has been released, the Supabase backend is development-only and not production-ready, and native Apple Health/Health Connect integrations, Firebase and live watch recording are not implemented. Watch source now has native non-recording starter UI; the Xcode watch target must still be embedded in the iOS Runner and validated for companion signing/distribution before release.
+**Not a released health product:** workout logging, mandatory sign-in, foreground backup/restore and account/data-rights flows are present in source, but the hosted backend is development-only and P2-08 release verification is pending. HealthKit, Health Connect, Firebase and live watch recording are not implemented. The native watch starter screens do not yet constitute signed/embedded watch companions.
 
 Read [monorepo boundaries](docs/REPOSITORY_LAYOUT.md), [ADR-0004](docs/adr/0004-production-monorepo.md), [watchOS setup](apps/watch_os/README.md), [Wear OS setup](apps/wear_os/README.md), and the [watch sync contract](contracts/workout_sync/v1/README.md). Also see [AGENTS.md](AGENTS.md), [ADR-0003](docs/adr/0003-data-cloud-health.md) and the [independent review checklist](docs/REVIEW_GUIDE.md).
+
+## Accounts, backups and data rights (development)
+
+First use requires online email-code sign-in; subsequent workouts can be logged offline under the **same verified account**. Finishing a NorthStar-authored phone workout queues its supported session/exercise/set data for **foreground** Supabase backup; manual sync and review controls are on the Account screen. Sync status is device-local evidence, **not a guarantee** that every cloud write succeeded. Unfinished sessions, user-created plans, device settings and HealthKit/Health Connect measurements are **not backed up**. Signing out locks the old account's files rather than transferring them.
+
+Account provides an authenticated **JSON export of completed cloud history** using the platform document picker. It currently refuses output above a provisional **4 MiB** and requires low-memory, large-history and native picker verification before release. Permanent account deletion requires fresh same-owner OTP verification and a server-side Auth hard deletion; a confirmed result removes that account's cloud data and its original device partition. On an **uncertain response**, no local files are erased automatically: users may recover the original account, **use another account while keeping old data locked**, or **explicitly erase only the old account's local data and leave**. Neither exit transfers data. Server deployment and end-to-end deletion security checks remain outstanding. See [data rights](docs/implementation/phase-2/p2-07-account-status-data-rights.md), [ADR-0007](docs/adr/0007-account-deletion-recovery-exit-choices.md), and [cloud sync](docs/CLOUD_SYNC.md).
 
 ## Codemagic CI/CD (planned)
 
@@ -79,8 +85,10 @@ cd apps/mobile
 flutter pub get
 dart format --output=none --set-exit-if-changed lib test
 flutter analyze
-flutter test
+flutter test  # Native ObjectBox host library required for store-backed tests
 ```
+
+For macOS host-native tests, use `bash scripts/test_objectbox_macos.sh` from the repository root; see [contributor setup](CONTRIBUTING.md) and [ObjectBox testing](docs/OBJECTBOX.md).
 
 **Running the app needs a Supabase backend** because sign-in is mandatory. Create your own free project and follow [Run NorthStar against your own Supabase project](docs/CONTRIBUTOR_SUPABASE_SETUP.md), then run `flutter run --dart-define-from-file=supabase.local.json`.
 

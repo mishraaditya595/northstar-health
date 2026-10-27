@@ -1,6 +1,6 @@
 # P2-06 — Fair upload-queue scanning and revision dependencies
 
-**Status:** Implementation in the draft PR opened for this slice, not merged or deployed. PR #22 is merged into main; this is the next independent P2-06 workstream.
+**Status:** PR #23 **merged**; PR #22 foreground restore is also merged. This historical implementation slice remains subject to hosted/two-device and physical-device validation under P2-08. No production deployment is claimed.
 
 ## Problem
 

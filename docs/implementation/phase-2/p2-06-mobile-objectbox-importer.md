@@ -1,6 +1,6 @@
 # P2-06 — Owner-scoped transactional ObjectBox restore importer
 
-**Status:** [PR #20](https://github.com/mishraaditya595/northstar-health/pull/20) merged 2026-10-26. Its importer itself performs no RPC. Draft [PR #22](https://github.com/mishraaditya595/northstar-health/pull/22) mounts a serialized foreground coordinator, but **it has not been merged or deployed**.
+**Status:** [PR #20](https://github.com/mishraaditya595/northstar-health/pull/20) merged 2026-10-26. Its importer itself performs no RPC. [PR #22](https://github.com/mishraaditya595/northstar-health/pull/22) subsequently merged the serialized foreground coordinator. This document describes the **original PR #20 importer slice**, not an unmerged milestone. Neither is claimed production-deployed.
 
 ## What this slice adds
 
@@ -32,10 +32,10 @@
 
 ## Explicit non-goals and release blockers
 
-This PR **does not activate** the restore transport, register an app lifecycle pull coordinator, provide automatic pagination/network retry, or resolve conflict UI. It intentionally does not implement the upload-worker serialization, outbox first-500 fairness, deletion-command UX, account data export/deletion, or real multi-device tests. All remain open in P2-06/P2-07/P2-08.
+**Historical boundary of PR #20:** the importer alone did not activate restore or implement upload/pull serialization, fairness, deletion/conflict UI or account data rights. Those source features were subsequently merged in #22–#24 and #25/#27/#29. **Real-account/two-device, export-size and physical-device verification remain P2-08 blockers.**
 
 **Test scope:** These tests run in the Flutter host test runner against a real, file-backed native ObjectBox Store on CI Linux; they are **not Android/iOS physical-device tests**. AGENTS.md's required device persistence, force-stop, restore, upgrade and account-switch verification is **unrun and remains a release gate**. The deterministic last-write failure seam is on an `@visibleForTesting` method, not the production `applyPage` signature. The clock is injectable for stable timestamps.
 
 **Server emission invariant:** P2-01 increments `server_revision` whenever it allocates a new `server_change_seq` for a successful workout write. The read-only P2-06 feed exposes the row's latest values. Therefore a higher change sequence with unchanged per-workout revision is inconsistent in the current SQL contract and fails closed with `duplicate_remote_sequence`, rather than re-materializing and increasing local revision. Exact stale page replays are handled before this check.
 
-**Before deployment:** check current hosted Supabase migrations and apply approved seventh, eighth, ninth migrations in order to a controlled environment; run live signed-JWT owner-isolation tests, concurrent updates, account switching and Android/iOS physical-device process-death QA. Do not merge, deploy or change production data automatically from this PR.
+**Before deployment:** reconcile the actual hosted migration ledger with **all 11 committed migrations** in order, deploy the deletion Edge Function separately only after review, and run signed-JWT owner isolation, concurrent two-device updates, account switching and Android/iOS process-death QA. The original PR #20 merge was not deployment approval.
