@@ -14,6 +14,7 @@ import 'cloud_session_guard.dart';
 import 'objectbox_workout_restore_importer.dart';
 import 'workout_restore_feed.dart';
 import 'workout_restore_transport.dart';
+import 'workout_conflict_resolution.dart';
 
 /// Supabase RPC authorization is decided by the server JWT + RLS. The mobile
 /// binary only contains its public publishable key, never privileged tokens.
@@ -100,7 +101,11 @@ final workoutUploadCoordinatorProvider = Provider<WorkoutUploadCoordinator>((
         ref.invalidate(workoutSyncFlagsProvider);
       }
     },
-    onRestored: () => ref.invalidate(completedWorkoutHistoryProvider),
+    onRestored: () {
+      ref.invalidate(completedWorkoutHistoryProvider);
+      ref.invalidate(workoutRestoreBlockedCodeProvider);
+      ref.invalidate(workoutConflictCandidatesProvider);
+    },
   );
   ref.onDispose(coordinator.dispose);
   // Never perform ObjectBox writes or RPCs while Riverpod builds a provider.
