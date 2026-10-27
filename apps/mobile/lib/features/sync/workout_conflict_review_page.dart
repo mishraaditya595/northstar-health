@@ -146,10 +146,10 @@ class _WorkoutConflictReviewPageState
                         // Refresh candidates whenever the foreground worker
                         // reports a change; the explicit refresh button covers
                         // statuses changed while the page remains open.
-                        ref.listen(workoutSyncFlagsProvider, (_, __) {
+                        ref.listen(workoutSyncFlagsProvider, (_, _) {
                           ref.invalidate(workoutConflictCandidatesProvider);
                         });
-                        ref.listen(blockedWorkoutCountProvider, (_, __) {
+                        ref.listen(blockedWorkoutCountProvider, (_, _) {
                           ref.invalidate(workoutConflictCandidatesProvider);
                         });
                         final candidates = ref.watch(
