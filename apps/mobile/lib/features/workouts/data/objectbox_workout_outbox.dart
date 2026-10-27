@@ -158,6 +158,84 @@ class ObjectBoxWorkoutOutbox {
     );
   }
 
+  /// Irreversible user-initiated completed-workout deletion.
+  ///
+  /// Soft-delete the session, remove its local exercise/set details and
+  /// enqueue one immutable *null-payload* delete operation in the SAME
+  /// ObjectBox write transaction. Keep a minimal session tombstone so a
+  /// delayed upload, another device, or restore cannot resurrect this UUID.
+  ///
+  /// Previous pending uploads stay in the outbox and must ACK first, even
+  /// if their server response was lost. Never discard a potentially applied
+  /// server upsert simply because a user deleted the local copy.
+  bool deleteCompletedWorkout({
+    required String sessionUuid,
+    required int expectedLocalRevision,
+    DateTime Function()? clock,
+  }) {
+    final normalized = _requireUuid(sessionUuid);
+    if (expectedLocalRevision < 1) throw ArgumentError.value(expectedLocalRevision);
+    final nowMs = (clock ?? DateTime.now)().toUtc().millisecondsSinceEpoch;
+    return _store.runInTransaction(TxMode.write, () {
+      final rows = _find(_sessions, WorkoutSessionEntity_.uuid, sessionUuid);
+      if (rows.length != 1) return false;
+      final session = rows.single;
+      if (session.deletedAtMs != null) return false; // Exact local retry.
+      if (session.revision != expectedLocalRevision) {
+        throw StateError('workout_revision_changed');
+      }
+      if (session.status != 'completed' ||
+          session.completedAtMs == null ||
+          session.origin != 'northstar_phone') {
+        throw StateError('only_completed_phone_workouts_can_be_deleted');
+      }
+      final remote = _find(_remote, WorkoutRemoteStateEntity_.workoutUuid, normalized);
+      if (remote.any((row) => row.deleted)) {
+        throw StateError('remote_workout_already_deleted');
+      }
+      final prior = _find(
+        _operations,
+        WorkoutSyncOutboxEntity_.sessionUuid,
+        normalized,
+      );
+      if (prior.any((op) => op.action == 'delete')) {
+        throw StateError('delete_already_queued');
+      }
+      if (prior.any((op) => op.localRevision >= session.revision + 1)) {
+        throw StateError('outbox_revision_inconsistent');
+      }
+
+      // Keep only the minimal session identity/revision necessary for
+      // idempotent retries and the importer's resurrection guard.
+      final exercises = _find(
+        _exercises, WorkoutExerciseEntity_.sessionUuid, session.uuid,
+      );
+      for (final exercise in exercises) {
+        for (final set in _find(
+          _sets, WorkoutSetEntity_.exerciseUuid, exercise.uuid,
+        )) {
+          _sets.remove(set.id);
+        }
+        _exercises.remove(exercise.id);
+      }
+      session.deletedAtMs = nowMs;
+      session.updatedAtMs = nowMs;
+      session.revision += 1;
+      session.name = 'Deleted workout';
+      session.planUuid = null;
+      _sessions.put(session);
+      _operations.put(WorkoutSyncOutboxEntity(
+        operationUuid: _requireUuid(_ids.newId()),
+        sessionUuid: normalized,
+        localRevision: session.revision,
+        action: 'delete',
+        payloadJson: 'null',
+        createdAtMs: nowMs,
+      ));
+      return true;
+    });
+  }
+
   /// Validate an immutable snapshot separately from persistence. This may
   /// reject cloud compatibility; it must never prevent local completion.
   String _createPayload(WorkoutSessionEntity workout) {
@@ -476,8 +554,8 @@ class ObjectBoxWorkoutOutbox {
           if (window.isEmpty) return null;
           var permanentlyRemoved = 0;
           for (final op in window) {
-            if (op.action != 'upsert' ||
-                op.payloadJson.isEmpty ||
+            if (!((op.action == 'upsert' && op.payloadJson.isNotEmpty) ||
+                    (op.action == 'delete' && op.payloadJson == 'null')) ||
                 op.localRevision < 1) {
               // Invalid legacy operation can never be retried.
               _transition(op, 'blocked', 'invalid_queue');
