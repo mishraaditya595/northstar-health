@@ -100,7 +100,7 @@ uses `auth.admin.deleteUser` with a server-held privileged key; existing
 cascade FKs remove completed history, receipts, tombstones and owner cursors.
 The phone clears its secure bound-account identity before asking the server,
 unmounting its upload/restore worker and locking the original local partition.
-After an exact server success receipt, a durable confirmed-cleanup marker is saved and the original owner's ObjectBox directory is erased after Store unmount (retry on launch if needed). Only that UUID's directory is eligible; uncertain server results lock without erasing. Explicit handler 4xx refusals can rebind only if the same verified owner remains active.
+After an exact server success receipt, the app attempts a durable confirmed-cleanup marker and erases the original owner's ObjectBox directory after Store unmount (retry on launch if the marker was saved). If this marker write fails, the verified response still permits immediate erase; if that also fails, the persisted uncertain-recovery marker remains locked and the user may explicitly choose to erase local data on a later launch. No uncertain result triggers automatic local erasure. Only that UUID's directory is eligible; uncertain server results lock without erasing. Explicit handler 4xx refusals can rebind only if the same verified owner remains active.
 
 The following requirements are **implemented in code, not yet demonstrated
 against a hosted project or physical device**. See
