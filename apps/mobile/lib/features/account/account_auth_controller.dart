@@ -106,6 +106,7 @@ abstract class AccountAuthApi {
   Stream<String?> get cloudIdentityChanges;
 
   Future<void> sendEmailCode(String email);
+
   /// Recovery never registers a new Auth user.
   Future<void> sendRecoveryCode(String email);
   Future<String> verifyEmailCode(String email, String code);
@@ -334,7 +335,8 @@ class AccountAuthController extends ChangeNotifier {
     _recoveryOwner = pending == null ? null : validAccountId(pending);
     final bound = _accountIdOrNull(await _binding.read());
     final active = _api.signedInUserId;
-    if (_recoveryOwner == null && bound != null &&
+    if (_recoveryOwner == null &&
+        bound != null &&
         (active == null ||
             (!_api.isAnonymous && _accountIdOrNull(active) == bound))) {
       _userId = bound;
@@ -579,7 +581,7 @@ class AccountAuthController extends ChangeNotifier {
       _error = _recoveryOwner == null
           ? 'Verification failed. Check the code and try again.'
           : 'Could not recover the original account. No new account was '
-              'created. Check the email and code, or contact support.';
+                'created. Check the email and code, or contact support.';
     } finally {
       _busy = false;
       notifyListeners();
@@ -609,8 +611,7 @@ class AccountAuthController extends ChangeNotifier {
         // No active local binding remains.
       }
     } catch (_) {
-      _error =
-          'Could not clear the recovery lock securely. Retry or contact support.';
+      _error = 'Could not clear the recovery lock securely. Retry or contact support.';
     } finally {
       _busy = false;
       notifyListeners();
