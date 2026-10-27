@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:northstar_health/core/design/northstar_theme.dart';
 import 'package:northstar_health/features/account/account_auth_provider.dart';
 import 'package:northstar_health/features/account/account_sync_page.dart';
 import 'package:northstar_health/features/sync/workout_conflict_resolution.dart';
@@ -35,7 +36,10 @@ void main() {
             blockedWorkoutCountProvider.overrideWithValue(2),
             workoutRestoreBlockedCodeProvider.overrideWithValue('invalid_page'),
           ],
-          child: const MaterialApp(home: Scaffold(body: AccountSyncPage())),
+          child: MaterialApp(
+          theme: NorthstarTheme.build(Brightness.light),
+          home: const Scaffold(body: AccountSyncPage()),
+        ),
         ),
       );
       expect(find.text('Cloud session ready'), findsOneWidget);
@@ -77,7 +81,10 @@ void main() {
             'w1': WorkoutSyncFlag.notSynced,
           }),
         ],
-        child: const MaterialApp(home: Scaffold(body: AccountSyncPage())),
+        child: MaterialApp(
+          theme: NorthstarTheme.build(Brightness.light),
+          home: const Scaffold(body: AccountSyncPage()),
+        ),
       ),
     );
     expect(find.text('Cloud backup paused'), findsOneWidget);
@@ -107,10 +114,16 @@ void main() {
             'w1': WorkoutSyncFlag.notSynced,
           }),
         ],
-        child: const MaterialApp(home: Scaffold(body: AccountSyncPage())),
+        child: MaterialApp(
+          theme: NorthstarTheme.build(Brightness.light),
+          home: const Scaffold(body: AccountSyncPage()),
+        ),
       ),
     );
-    await tester.ensureVisible(find.text('Sign out of this device'));
+    await tester.scrollUntilVisible(
+      find.text('Sign out of this device'),
+      220,
+    );
     await tester.tap(find.text('Sign out of this device'));
     await tester.pumpAndSettle();
     expect(
@@ -123,7 +136,10 @@ void main() {
     expect(auth.userId, accountA);
     expect(api.signedOut, false);
 
-    await tester.ensureVisible(find.text('Sign out of this device'));
+    await tester.scrollUntilVisible(
+      find.text('Sign out of this device'),
+      220,
+    );
     await tester.tap(find.text('Sign out of this device'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Sign out', skipOffstage: false).last);
