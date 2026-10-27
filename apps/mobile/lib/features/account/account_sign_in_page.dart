@@ -134,6 +134,13 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                             const SizedBox(height: 16),
                             const Center(child: CircularProgressIndicator()),
                           ],
+                          if (auth.notice != null) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              auth.notice!,
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                           if (auth.error != null) ...[
                             const SizedBox(height: 16),
                             Text(
