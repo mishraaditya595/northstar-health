@@ -150,10 +150,8 @@ class _WorkoutConflictReviewPageState
                         ref.invalidate(workoutConflictCandidatesProvider);
                       });
                       final candidates = ref.watch(workoutConflictCandidatesProvider);
-                      final block = ref.watch(workoutRestoreBlockedCodeProvider);
-                      final cursor = block == null
-                          ? null
-                          : ref.read(workoutConflictResolutionProvider).cursor;
+                      final cursor = ref.watch(workoutRestoreCursorProvider);
+                      final block = cursor?.blockedCode;
                       return ListView(
                         padding: const EdgeInsets.all(16),
                         children: [
