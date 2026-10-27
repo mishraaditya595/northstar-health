@@ -690,6 +690,13 @@ class ObjectBoxWorkoutRestoreImporter {
     if (action == WorkoutResolutionAction.useCloud && remoteChange == null) {
       throw const RestoreImportException('resolution_cloud_missing');
     }
+    // A user-initiated local tombstone is irreversible. Even a reviewed
+    // older live server snapshot cannot resurrect the deleted UUID.
+    if (action == WorkoutResolutionAction.useCloud &&
+        local?.deletedAtMs != null &&
+        remoteChange?.deleted == false) {
+      throw const RestoreImportException('local_tombstone_sticky');
+    }
     if (action == WorkoutResolutionAction.retryLocal &&
         (local == null ||
             local.deletedAtMs != null ||
