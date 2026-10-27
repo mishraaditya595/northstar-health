@@ -96,6 +96,11 @@ final workoutUploadCoordinatorProvider = Provider<WorkoutUploadCoordinator>((
     onQueueChanged: () => ref.invalidate(blockedWorkoutCountProvider),
     // Rebuild tagged UI only when a workout's sync state actually changed.
     onSyncStateChanged: () {
+      // The restore cursor can become blocked even when no workout flag
+      // changes. Keep Today and an open Review page in sync after each drain.
+      ref.invalidate(workoutRestoreCursorProvider);
+      ref.invalidate(workoutRestoreBlockedCodeProvider);
+      ref.invalidate(workoutConflictCandidatesProvider);
       final outbox = ref.read(workoutOutboxProvider);
       if (!mapEquals(outbox.syncFlags(), ref.read(workoutSyncFlagsProvider))) {
         ref.invalidate(workoutSyncFlagsProvider);
