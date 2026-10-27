@@ -79,6 +79,7 @@ final workoutConflictCandidatesProvider =
 
 void refreshResolvedWorkout(WidgetRef ref, {required bool uploadQueued}) {
   ref.invalidate(workoutConflictCandidatesProvider);
+  ref.invalidate(workoutRestoreCursorProvider);
   ref.invalidate(workoutRestoreBlockedCodeProvider);
   ref.invalidate(completedWorkoutHistoryProvider);
   ref.invalidate(workoutSyncFlagsProvider);
