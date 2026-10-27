@@ -59,12 +59,7 @@ void main() {
       final bound = FakeBoundAccountStore()..saved = accountA;
       final recovery = FakeDeletionRecoveryStore()..saved = accountA;
       final cleaner = FakeLocalAccountDataCleaner();
-      final auth = controller(
-        api,
-        bound,
-        recovery: recovery,
-        cleaner: cleaner,
-      );
+      final auth = controller(api, bound, recovery: recovery, cleaner: cleaner);
       addTearDown(auth.dispose);
       addTearDown(api.dispose);
       await auth.restore();
@@ -82,10 +77,7 @@ void main() {
         find.text('Erase local workouts and use another account'),
       );
       await tester.pumpAndSettle();
-      expect(
-        find.text('Erase local data and leave recovery?'),
-        findsOneWidget,
-      );
+      expect(find.text('Erase local data and leave recovery?'), findsOneWidget);
       expect(recovery.saved, accountA);
       await tester.tap(find.text('Keep recovering'));
       await tester.pumpAndSettle();
