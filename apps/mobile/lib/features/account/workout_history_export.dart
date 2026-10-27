@@ -90,10 +90,11 @@ class CompletedWorkoutHistoryExporter {
     required this.authorized,
     DateTime Function()? now,
     this.pageSize = 100,
-    this.maxExportBytes = 64 * 1024 * 1024,
+    // Conservative temporary cap until low-memory device profiling is done.
+    this.maxExportBytes = 4 * 1024 * 1024,
   }) : accountId = validAccountId(accountId),
        _now = now ?? DateTime.now {
-    if (pageSize < 1 || pageSize > 200 || maxExportBytes < 1024) {
+    if (pageSize < 1 || pageSize > 100 || maxExportBytes < 1024) {
       throw ArgumentError('Invalid export bounds');
     }
   }
@@ -107,6 +108,14 @@ class CompletedWorkoutHistoryExporter {
 
   void _checkOwner() {
     if (!authorized()) throw const WorkoutExportException('session_changed');
+  }
+
+  bool _validWorkoutId(String id) {
+    try {
+      return validAccountId(id) == id;
+    } on FormatException {
+      return false;
+    }
   }
 
   Future<String> exportJson() async {
@@ -133,7 +142,8 @@ class CompletedWorkoutHistoryExporter {
       '"exported_at_utc":${jsonEncode(_now().toUtc().toIso8601String())},'
       '"cloud_change_seq":$high,'
       '"excludes":["deleted_workouts","unfinished_sessions",'
-      '"custom_plans","device_preferences","health_measurements"],'
+      '"custom_plans","device_preferences","pending_local_uploads",
+      '"health_measurements"],''
       '"workouts":[',
     );
 
@@ -165,7 +175,7 @@ class CompletedWorkoutHistoryExporter {
         }
         final id = row['workout_id'];
         if (id is! String ||
-            validAccountId(id) != id ||
+            !_validWorkoutId(id) ||
             (lastId != null && id.compareTo(lastId) <= 0)) {
           throw const WorkoutExportException('invalid_order');
         }
@@ -190,7 +200,9 @@ class CompletedWorkoutHistoryExporter {
         count++;
         lastId = id;
       }
-      if (page.length < pageSize) break;
+      // A PostgREST server may cap each result below the requested page
+      // size; only an *empty* keyset page proves exhaustion.
+      if (page.isEmpty) break;
     }
     add('],"workout_count":$count}');
     _checkOwner();
