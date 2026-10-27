@@ -18,6 +18,7 @@ WorkoutConflictCandidate candidate({
   bool localOnly = false,
   bool deleted = false,
   bool orphaned = false,
+  bool skippedDeletion = false,
 }) => WorkoutConflictCandidate(
   workoutUuid: workout,
   name: deleted ? 'Deleted workout' : 'Row',
@@ -28,6 +29,7 @@ WorkoutConflictCandidate candidate({
   setCount: deleted ? 0 : 2,
   canKeepLocalOnly: localOnly,
   canDismissMissing: orphaned,
+  skippedDeletion: skippedDeletion,
 );
 
 WorkoutRemoteReview review({bool present = false, bool deleted = false}) =>
@@ -88,6 +90,61 @@ void main() {
     expect(find.text('Use cloud copy'), findsNothing);
     await tester.tap(find.text('Keep on this device only'));
     expect(picked, [WorkoutResolutionAction.keepLocalOnly]);
+  });
+
+  testWidgets('skipped cloud deletion warns before reuploading a missing row', (
+    tester,
+  ) async {
+    final local = candidate(skippedDeletion: true);
+    final missing = review();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              WorkoutReviewDeletionHint(candidate: local, remote: missing),
+              WorkoutReviewChoices(
+                candidate: local,
+                remote: missing,
+                onSelect: (_) {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(
+      find.textContaining('previously deleted in the cloud'),
+      findsOneWidget,
+    );
+    expect(find.text('Retry this device'), findsOneWidget);
+  });
+
+  testWidgets('deletion hint hidden if no skipped tombstone or cloud exists', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              WorkoutReviewDeletionHint(
+                candidate: candidate(),
+                remote: review(),
+              ),
+              WorkoutReviewDeletionHint(
+                candidate: candidate(skippedDeletion: true),
+                remote: review(present: true),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(
+      find.textContaining('previously deleted in the cloud'),
+      findsNothing,
+    );
   });
 
   testWidgets('review with live cloud copy offers explicit winner', (
