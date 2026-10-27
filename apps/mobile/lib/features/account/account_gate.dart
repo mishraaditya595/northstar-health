@@ -8,6 +8,8 @@ import '../../core/storage/objectbox_store_provider.dart';
 import '../../objectbox.g.dart';
 import 'account_auth_controller.dart';
 import '../sync/workout_upload_coordinator.dart';
+import '../sync/objectbox_workout_restore_importer.dart';
+import '../sync/workout_conflict_resolution.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
 import 'account_auth_provider.dart';
 import 'account_sign_in_page.dart';
