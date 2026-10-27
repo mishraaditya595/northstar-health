@@ -84,8 +84,7 @@ String workoutReviewFailureMessage(Object error) {
       'local_tombstone_sticky' => 'A workout deleted on this device cannot be restored through conflict review.',
       'resolution_not_deleted' =>
         'This workout is not deleted locally. Refresh before choosing.',
-      'resolution_cannot_dismiss' =>
-        'This workout still has saved data or a pending upload. Refresh the review before dismissing it.',
+      'resolution_cannot_dismiss' => 'This workout still has saved data or a pending upload. Refresh the review before dismissing it.',
       _ => 'This conflict could not be resolved safely. Your workout was not changed.',
     };
   }
