@@ -17,11 +17,11 @@ class MainActivity : FlutterActivity() {
         // last durable marker before another export can begin.
         private val exportStateLock = Any()
         private var activeWrites = 0
+        private var cleanupInProgress = false
     }
 
     private var pendingExport: MethodChannel.Result? = null
     private var writeInProgress = false
-    @Volatile private var startupCleanupRunning = false
     private var pendingJson: String? = null
     private val exportRequest = 7411
     private val exportPrefs by lazy {
@@ -38,10 +38,10 @@ class MainActivity : FlutterActivity() {
         synchronized(exportStateLock) {
             // Another Activity may be recreated while its writer is still
             // running. Such a marker is active, not stale; don't delete it.
-            if (activeWrites == 0) {
+            if (activeWrites == 0 && !cleanupInProgress) {
                 val stale = exportPrefs.getString(pendingUriKey, null)
                 if (stale != null) {
-                    startupCleanupRunning = true
+                    cleanupInProgress = true
                     Thread {
                         // Marker format is unique-token|URI. Plain URI is
                         // supported for recovery from earlier app builds.
@@ -55,7 +55,7 @@ class MainActivity : FlutterActivity() {
                                 if (exportPrefs.getString(pendingUriKey, null) == stale) {
                                     exportPrefs.edit().remove(pendingUriKey).commit()
                                 }
-                                startupCleanupRunning = false
+                                cleanupInProgress = false
                             }
                         }
                     }.start()
@@ -87,7 +87,7 @@ class MainActivity : FlutterActivity() {
             val filename = args?.get("name") as? String
             val json = args?.get("json") as? String
             val recoveryBusy = synchronized(exportStateLock) {
-                activeWrites > 0 || startupCleanupRunning
+                activeWrites > 0 || cleanupInProgress
             }
             if (pendingExport != null || recoveryBusy ||
                 filename != "northstar-workouts.json" ||
@@ -139,7 +139,7 @@ class MainActivity : FlutterActivity() {
         // commit() is intentional: apply() is not durable on process death.
         val marker = "${UUID.randomUUID()}|${uri}"
         val secured = synchronized(exportStateLock) {
-            if (activeWrites != 0 || startupCleanupRunning ||
+            if (activeWrites != 0 || cleanupInProgress ||
                 !exportPrefs.edit().putString(pendingUriKey, marker).commit()) {
                 false
             } else {
