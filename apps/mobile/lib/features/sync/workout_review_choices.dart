@@ -93,3 +93,31 @@ String workoutReviewFailureMessage(Object error) {
   }
   return 'Could not verify the cloud workout. No changes were made; check your sign-in and connection.';
 }
+
+/// A skipped cloud tombstone may be older than the current lookup, because
+/// server tombstones expire. Do not imply that the missing row was never
+/// deleted, and keep the retry action an explicit user choice.
+class WorkoutReviewDeletionHint extends StatelessWidget {
+  const WorkoutReviewDeletionHint({
+    required this.candidate,
+    required this.remote,
+    super.key,
+  });
+
+  final WorkoutConflictCandidate candidate;
+  final WorkoutRemoteReview remote;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!candidate.skippedDeletion ||
+        !candidate.hasLocalWorkout ||
+        candidate.deletedLocally ||
+        remote.change != null) {
+      return const SizedBox.shrink();
+    }
+    return const Text(
+      'This workout was previously deleted in the cloud, possibly from '
+      'another device. Retrying will upload it again.',
+    );
+  }
+}
