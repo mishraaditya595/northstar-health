@@ -35,7 +35,9 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
           .read(workoutHistoryExporterProvider)(owner)
           .exportJson();
       if (!mounted || auth.userId != owner || !auth.cloudBackupReady) return;
-      final saved = await ref.read(workoutExportFileWriterProvider).saveJson(data);
+      final saved = await ref
+          .read(workoutExportFileWriterProvider)
+          .saveJson(data);
       if (!mounted || auth.userId != owner) return;
       if (saved) showNsMessage(context, 'Workout history exported.');
     } on WorkoutExportException catch (error) {
