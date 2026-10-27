@@ -27,13 +27,13 @@ ObjectBox schema and generated model committed; domain models and repository bou
 
 | Milestone | GitHub PR | Implementation status | Outstanding gate |
 | --- | --- | --- | --- |
-| P2-01 — Supabase schema, authentication boundaries and sync RPC | #13 | **Merged** | Real-account isolation/device E2E |
-| P2-02 — Mandatory Flutter auth and bound account storage | #14 | **Merged** | Physical-device secure-storage QA |
-| P2-03 — Durable completed-workout outbox | #15 | **Merged** | Device rollback/restart QA |
-| P2-04 — Automatic authenticated foreground uploader | #16 | **Merged** | Live JWT/RLS and network interruption tests |
+| P2-01 — Supabase schema, authentication boundaries and sync RPC | [#13](https://github.com/mishraaditya595/northstar-health/pull/13) | **Merged 2026-10-25** | Real-account isolation/device E2E |
+| P2-02 — Mandatory Flutter auth and bound account storage | [#14](https://github.com/mishraaditya595/northstar-health/pull/14) | **Merged 2026-10-25** | Physical-device secure-storage QA |
+| P2-03 — Durable completed-workout outbox | [#15](https://github.com/mishraaditya595/northstar-health/pull/15) | **Merged 2026-10-25** | Device rollback/restart QA |
+| P2-04 — Automatic authenticated foreground uploader | [#16](https://github.com/mishraaditya595/northstar-health/pull/16) | **Merged 2026-10-26** | Live JWT/RLS and network interruption tests |
 | P2-05 — Server-side workout progress | [#17](https://github.com/mishraaditya595/northstar-health/pull/17) | **Merged 2026-10-26** | Hosted migration drift, independent security review, live Auth/RLS, controlled deployment |
 | P2-06 — Multi-device restore and conflicts | [#24](https://github.com/mishraaditya595/northstar-health/pull/24) and prior #18–#23 | **Merged 2026-10-27** (not deployed/released) | Hosted signed-JWT, two-device and physical-device E2E are P2-08 gates |
-| P2-07 — Account, progress/sync status, export and deletion UI | [#25](https://github.com/mishraaditya595/northstar-health/pull/25), [#27](https://github.com/mishraaditya595/northstar-health/pull/27), [#29](https://github.com/mishraaditya595/northstar-health/pull/29) | **All merged in source (2026-10-27); not deployed/released** | Native picker/large-history export QA, fresh-session deletion and both uncertain-recovery exits on devices, hosted Auth/JWT/RLS and cascade verification |
+| P2-07 — Account, progress/sync status, export and deletion UI | [Plan](implementation/phase-2/p2-07-account-status-data-rights.md), [#25](https://github.com/mishraaditya595/northstar-health/pull/25), [#27](https://github.com/mishraaditya595/northstar-health/pull/27), [#29](https://github.com/mishraaditya595/northstar-health/pull/29) | **All merged in source (2026-10-27); not deployed/released** | Native picker/large-history export QA, fresh-session deletion and both uncertain-recovery exits on devices, hosted Auth/JWT/RLS and cascade verification |
 | P2-08 — End-to-end validation and release readiness | [Export matrix](implementation/phase-2/p2-08-workout-export-release-validation.md), [deletion runbook](../supabase/ACCOUNT_DELETION_RUNBOOK.md) | **Pending; no release sign-off recorded** | Hosted migration reconciliation (11 committed files), signed-JWT/RLS and two-device E2E, deleted-user stale-JWT tests, physical-device lifecycle and memory QA, all-history export, security/privacy, performance and CI/CD gates |
 
 This is the authoritative **implementation milestone tracker**. P2-01–P2-07 implementation is merged, while **Phase 2 release acceptance remains open**. Merged, deployed, tested on hardware and released are distinct states; consult [RELEASE.md](RELEASE.md) before shipping.
