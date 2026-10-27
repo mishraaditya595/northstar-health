@@ -10,7 +10,9 @@ class BackupStatusNotice extends StatelessWidget {
     this.blockedCount = 0,
     this.unsyncedCount = 0,
     this.reviewCount = 0,
+    this.restoreBlocked = false,
     this.onSyncNow,
+    this.onReview,
     super.key,
   });
 
@@ -18,8 +20,14 @@ class BackupStatusNotice extends StatelessWidget {
   final int blockedCount;
   final int unsyncedCount;
 
-  /// Conflicted/skipped workouts: retrying cannot fix them, so no action.
+  /// Conflicted/skipped workouts require explicit review, not blind retry.
   final int reviewCount;
+
+  /// The global restore cursor is paused; separate from per-workout conflicts.
+  final bool restoreBlocked;
+
+  /// Opens explicit reviewed conflict recovery, not a blind retry.
+  final VoidCallback? onReview;
 
   /// Runs the foreground upload/restore now. Null hides the action.
   final VoidCallback? onSyncNow;
@@ -35,7 +43,8 @@ class BackupStatusNotice extends StatelessWidget {
         if (!auth.backupPaused &&
             blockedCount == 0 &&
             reviewCount == 0 &&
-            !showUnsynced) {
+            !showUnsynced &&
+            !restoreBlocked) {
           return const SizedBox.shrink();
         }
         return Padding(
@@ -45,6 +54,18 @@ class BackupStatusNotice extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (restoreBlocked)
+                  InsightCard(
+                    icon: Icons.cloud_off_outlined,
+                    text: const TextSpan(
+                      text:
+                          'Cloud restore paused after a data conflict. '
+                          'Workouts on this device remain safe. Review or '
+                          'retry the saved restore position.',
+                    ),
+                    actionLabel: onReview == null ? null : 'Review restore',
+                    onAction: onReview,
+                  ),
                 if (auth.backupPaused)
                   const InsightCard(
                     icon: Icons.cloud_off_outlined,
@@ -77,8 +98,10 @@ class BackupStatusNotice extends StatelessWidget {
                           '$reviewCount completed '
                           'workout${reviewCount == 1 ? '' : 's'} changed on '
                           'another device. This phone\'s copy is kept; '
-                          'conflict review is not available yet.',
+                          'review each conflicting version before syncing.',
                     ),
+                    actionLabel: onReview == null ? null : 'Review',
+                    onAction: onReview,
                   ),
                 if ((auth.backupPaused || showUnsynced || reviewCount > 0) &&
                     blockedCount > 0)
@@ -91,8 +114,10 @@ class BackupStatusNotice extends StatelessWidget {
                           '$blockedCount completed '
                           'workout${blockedCount == 1 ? '' : 's'} saved locally '
                           'but not backup-compatible. No upload will be '
-                          'attempted for these workouts.',
+                          'attempted for these workouts until reviewed.',
                     ),
+                    actionLabel: onReview == null ? null : 'Review',
+                    onAction: onReview,
                   ),
               ],
             ),

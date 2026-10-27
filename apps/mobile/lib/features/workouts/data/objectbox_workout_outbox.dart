@@ -69,7 +69,33 @@ class ReservedWorkoutUpload {
   final int expectedServerRevision;
 }
 
+/// Whether a completed workout was only removed locally, or also needs a
+/// server-side tombstone. No remote record is created for a never-synced log.
+enum CompletedWorkoutDeleteResult {
+  alreadyDeleted,
+  localOnly,
+  cloudDeleteQueued,
+}
+
 class ObjectBoxWorkoutOutbox {
+  /// A blocked upload with zero attempts and one of these specific local
+  /// validation reasons was never sent. Other blocked states are ambiguous.
+  static bool neverSentLocalValidation(WorkoutSyncOutboxEntity op) =>
+      op.action == 'upsert' &&
+      op.state == 'blocked' &&
+      op.attempts == 0 &&
+      op.attemptedAtMs == null &&
+      op.serverRevision == null &&
+      op.serverChangeSeq == null &&
+      const {'invalid_snapshot', 'payload_too_large'}.contains(op.errorCode);
+
+  static bool entirelyUnsentLocalValidations(
+    Iterable<WorkoutSyncOutboxEntity> operations,
+  ) {
+    final entries = operations.toList();
+    return entries.isNotEmpty && entries.every(neverSentLocalValidation);
+  }
+
   ObjectBoxWorkoutOutbox(Store store, {UuidFactory? uuidFactory})
     : _store = store,
       _ids = uuidFactory ?? SecureUuidFactory(),
@@ -156,6 +182,132 @@ class ObjectBoxWorkoutOutbox {
         createdAtMs: DateTime.now().toUtc().millisecondsSinceEpoch,
       ),
     );
+  }
+
+  /// Irreversible user-initiated completed-workout deletion.
+  ///
+  /// Soft-delete the session, remove its local exercise/set details and
+  /// enqueue one immutable *null-payload* delete operation in the SAME
+  /// ObjectBox write transaction when a prior upload/remote record exists.
+  /// Never queue a server delete for a never-synced legacy local workout.
+  /// Keep a minimal session tombstone so a delayed upload or restore
+  /// cannot resurrect this UUID.
+  ///
+  /// Previous pending uploads stay in the outbox and must ACK first, even
+  /// if their server response was lost. Never discard a potentially applied
+  /// server upsert simply because a user deleted the local copy.
+  CompletedWorkoutDeleteResult deleteCompletedWorkout({
+    required String sessionUuid,
+    required int expectedLocalRevision,
+    DateTime Function()? clock,
+  }) {
+    final normalized = _requireUuid(sessionUuid);
+    if (expectedLocalRevision < 1) {
+      throw ArgumentError.value(expectedLocalRevision);
+    }
+    final nowMs = (clock ?? DateTime.now)().toUtc().millisecondsSinceEpoch;
+    return _store.runInTransaction(TxMode.write, () {
+      final rows = _find(_sessions, WorkoutSessionEntity_.uuid, normalized);
+      if (rows.isEmpty) throw StateError('workout_missing');
+      if (rows.length != 1) throw StateError('duplicate_workout_id');
+      final session = rows.single;
+      if (session.deletedAtMs != null) {
+        return CompletedWorkoutDeleteResult.alreadyDeleted; // Exact retry.
+      }
+      if (session.revision != expectedLocalRevision) {
+        throw StateError('workout_revision_changed');
+      }
+      if (session.status != 'completed' ||
+          session.completedAtMs == null ||
+          session.origin != 'northstar_phone') {
+        throw StateError('only_completed_phone_workouts_can_be_deleted');
+      }
+      final remote = _find(
+        _remote,
+        WorkoutRemoteStateEntity_.workoutUuid,
+        normalized,
+      );
+      if (remote.any((row) => row.deleted)) {
+        throw StateError('remote_workout_already_deleted');
+      }
+      final prior = _find(
+        _operations,
+        WorkoutSyncOutboxEntity_.sessionUuid,
+        normalized,
+      );
+      if (prior.any((op) => op.action == 'delete')) {
+        throw StateError('delete_already_queued');
+      }
+      if (prior.any((op) => op.localRevision >= session.revision + 1)) {
+        throw StateError('outbox_revision_inconsistent');
+      }
+
+      // A legacy completed session can predate the outbox. With no upload
+      // receipt, queued upsert or imported remote state, there is no known
+      // server workout to delete. The SQL RPC intentionally rejects deletes
+      // of nonexistent rows: do not create a permanently conflicted command.
+      // Any ambiguous/pending previous operation MUST instead be retained
+      // and ordered ahead of a durable cloud delete.
+      final localBlockedOnly =
+          remote.isEmpty && entirelyUnsentLocalValidations(prior);
+      final needsCloudDelete =
+          remote.isNotEmpty || (prior.isNotEmpty && !localBlockedOnly);
+
+      // Keep only the minimal session identity/revision necessary for
+      // idempotent retries and the importer's resurrection guard.
+      final exercises = _find(
+        _exercises,
+        WorkoutExerciseEntity_.sessionUuid,
+        session.uuid,
+      );
+      for (final exercise in exercises) {
+        for (final set in _find(
+          _sets,
+          WorkoutSetEntity_.exerciseUuid,
+          exercise.uuid,
+        )) {
+          _sets.remove(set.id);
+        }
+        _exercises.remove(exercise.id);
+      }
+      session.deletedAtMs = nowMs;
+      session.updatedAtMs = nowMs;
+      session.revision += 1;
+      session.name = 'Deleted workout';
+      session.planUuid = null;
+      _sessions.put(session);
+      // Keep ACK CAS metadata but remove already-uploaded workout snapshots.
+      // Pending/conflicted operations stay immutable until safe resolution.
+      for (final op in prior) {
+        if (localBlockedOnly) {
+          op.state = 'superseded';
+          op.errorCode = 'deleted_locally_never_uploaded';
+          op.payloadJson = 'null';
+          _operations.put(op);
+          continue;
+        }
+        if (op.state == 'acknowledged' &&
+            op.action == 'upsert' &&
+            op.payloadJson != 'null') {
+          op.payloadJson = 'null';
+          _operations.put(op);
+        }
+      }
+      if (needsCloudDelete) {
+        _operations.put(
+          WorkoutSyncOutboxEntity(
+            operationUuid: _requireUuid(_ids.newId()),
+            sessionUuid: normalized,
+            localRevision: session.revision,
+            action: 'delete',
+            payloadJson: 'null',
+            createdAtMs: nowMs,
+          ),
+        );
+        return CompletedWorkoutDeleteResult.cloudDeleteQueued;
+      }
+      return CompletedWorkoutDeleteResult.localOnly;
+    });
   }
 
   /// Validate an immutable snapshot separately from persistence. This may
@@ -476,8 +628,8 @@ class ObjectBoxWorkoutOutbox {
           if (window.isEmpty) return null;
           var permanentlyRemoved = 0;
           for (final op in window) {
-            if (op.action != 'upsert' ||
-                op.payloadJson.isEmpty ||
+            if (!((op.action == 'upsert' && op.payloadJson.isNotEmpty) ||
+                    (op.action == 'delete' && op.payloadJson == 'null')) ||
                 op.localRevision < 1) {
               // Invalid legacy operation can never be retried.
               _transition(op, 'blocked', 'invalid_queue');
@@ -496,7 +648,10 @@ class ObjectBoxWorkoutOutbox {
             // Durable dependency marker; a conflicted/blocked predecessor
             // must never be bypassed. A pending predecessor also blocks the
             // successor until it is ACKed, including after a process restart.
-            if (predecessors.any((prev) => prev.state != 'acknowledged')) {
+            if (predecessors.any(
+              (prev) =>
+                  prev.state != 'acknowledged' && prev.state != 'superseded',
+            )) {
               if (op.state != 'dependency_paused' ||
                   op.errorCode != 'predecessor_unresolved') {
                 _transition(op, 'dependency_paused', 'predecessor_unresolved');
@@ -679,6 +834,18 @@ class ObjectBoxWorkoutOutbox {
     op.state = 'acknowledged';
     op.serverRevision = serverRevision;
     op.serverChangeSeq = serverChangeSeq;
+    // If the workout was deleted while its upload was in flight, the
+    // now-ACKed snapshot is safe to redact without touching its CAS receipt.
+    if (op.action == 'upsert') {
+      final sessions = _find(
+        _sessions,
+        WorkoutSessionEntity_.uuid,
+        op.sessionUuid,
+      );
+      if (sessions.length == 1 && sessions.single.deletedAtMs != null) {
+        op.payloadJson = 'null';
+      }
+    }
     _operations.put(op);
     // Resume successors in the same commit, so dependency_paused always means
     // an unacknowledged predecessor. Restore treats paused rows as resolved
@@ -693,7 +860,8 @@ class ObjectBoxWorkoutOutbox {
           sameWorkout.every(
             (prev) =>
                 prev.localRevision >= next.localRevision ||
-                prev.state == 'acknowledged',
+                prev.state == 'acknowledged' ||
+                prev.state == 'superseded',
           )) {
         next.state = 'pending';
         next.errorCode = null;

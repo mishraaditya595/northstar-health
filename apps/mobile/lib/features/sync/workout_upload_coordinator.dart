@@ -14,6 +14,7 @@ import 'cloud_session_guard.dart';
 import 'objectbox_workout_restore_importer.dart';
 import 'workout_restore_feed.dart';
 import 'workout_restore_transport.dart';
+import 'workout_conflict_resolution.dart';
 
 /// Supabase RPC authorization is decided by the server JWT + RLS. The mobile
 /// binary only contains its public publishable key, never privileged tokens.
@@ -95,12 +96,22 @@ final workoutUploadCoordinatorProvider = Provider<WorkoutUploadCoordinator>((
     onQueueChanged: () => ref.invalidate(blockedWorkoutCountProvider),
     // Rebuild tagged UI only when a workout's sync state actually changed.
     onSyncStateChanged: () {
+      // The restore cursor can become blocked even when no workout flag
+      // changes. Keep Today and an open Review page in sync after each drain.
+      ref.invalidate(workoutRestoreCursorProvider);
+      ref.invalidate(workoutRestoreBlockedCodeProvider);
+      ref.invalidate(workoutConflictCandidatesProvider);
       final outbox = ref.read(workoutOutboxProvider);
       if (!mapEquals(outbox.syncFlags(), ref.read(workoutSyncFlagsProvider))) {
         ref.invalidate(workoutSyncFlagsProvider);
       }
     },
-    onRestored: () => ref.invalidate(completedWorkoutHistoryProvider),
+    onRestored: () {
+      ref.invalidate(completedWorkoutHistoryProvider);
+      ref.invalidate(workoutRestoreCursorProvider);
+      ref.invalidate(workoutRestoreBlockedCodeProvider);
+      ref.invalidate(workoutConflictCandidatesProvider);
+    },
   );
   ref.onDispose(coordinator.dispose);
   // Never perform ObjectBox writes or RPCs while Riverpod builds a provider.
@@ -238,7 +249,7 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
         );
         if (reserved == null) break;
         final operation = reserved.operation;
-        if (!_isCompletedSnapshot(operation)) {
+        if (!_isValidUploadOperation(operation)) {
           if (_isAuthorized) {
             outbox.markBlocked(
               operationUuid: operation.operationUuid,
@@ -451,7 +462,11 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
     }
   }
 
-  static bool _isCompletedSnapshot(WorkoutSyncOperation op) {
+  static bool _isValidUploadOperation(WorkoutSyncOperation op) {
+    // PostgreSQL requires a SQL NULL payload for a delete, not an empty
+    // object, absent key, or JSON string. The immutable queued 'null'
+    // serializes to a real null through jsonDecode in the transport.
+    if (op.action == 'delete') return op.payloadJson == 'null';
     if (op.action != 'upsert') return false;
     try {
       final decoded = jsonDecode(op.payloadJson);

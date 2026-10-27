@@ -72,7 +72,11 @@ jobs:
         run: flutter pub get --enforce-lockfile
       - name: Format
         working-directory: apps/mobile
-        run: dart format --output=none --set-exit-if-changed lib test
+        run: |
+          dart format lib test
+          # Show the exact formatting diff on failure so reviewers can
+          # apply it without needing the same local Flutter SDK.
+          git diff --exit-code -- lib test
       - name: Analyze
         working-directory: apps/mobile
         run: flutter analyze

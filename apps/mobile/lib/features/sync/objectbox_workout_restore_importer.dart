@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/ids/uuid_factory.dart';
 import '../../core/storage/account_store.dart';
 import '../../core/storage/objectbox_store_provider.dart';
 import '../../objectbox.g.dart';
 import '../workouts/data/workout_entities.dart';
+import '../workouts/data/objectbox_workout_outbox.dart';
 import 'workout_restore_feed.dart';
 
 /// Does not contain a raw server response, account ID, workout ID or note.
@@ -40,6 +42,45 @@ class RestoreApplyResult {
   final bool alreadyApplied;
 }
 
+enum WorkoutResolutionAction {
+  useCloud,
+  retryLocal,
+  finishDeletion,
+  keepLocalOnly,
+  dismissMissing,
+}
+
+class WorkoutConflictCandidate {
+  const WorkoutConflictCandidate({
+    required this.workoutUuid,
+    required this.name,
+    required this.localRevision,
+    required this.deletedLocally,
+    required this.hasLocalWorkout,
+    required this.exerciseCount,
+    required this.setCount,
+    required this.canKeepLocalOnly,
+    this.canDismissMissing = false,
+    this.skippedEpoch,
+    this.skippedChangeSeq,
+    this.skippedDeletion = false,
+  });
+  final String workoutUuid;
+  final String name;
+  final int localRevision;
+  final bool deletedLocally;
+  final bool hasLocalWorkout;
+  final int exerciseCount;
+  final int setCount;
+  final bool canKeepLocalOnly;
+  final bool canDismissMissing;
+  final String? skippedEpoch;
+  final int? skippedChangeSeq;
+
+  /// Whether the skipped remote change was a cloud deletion marker.
+  final bool skippedDeletion;
+}
+
 /// Injected per-account importer; *not* an app background service.
 ///
 /// A validated page, session/exercise/set changes, tombstone metadata and its
@@ -52,8 +93,10 @@ class ObjectBoxWorkoutRestoreImporter {
     required String accountId,
     required this.activeAccountId,
     DateTime Function()? clock,
+    UuidFactory? uuidFactory,
   }) : accountId = validAccountId(accountId),
        _clock = clock ?? DateTime.now,
+       _ids = uuidFactory ?? SecureUuidFactory(),
        _cursors = _store.box<WorkoutRestoreCursorEntity>(),
        _remote = _store.box<WorkoutRemoteStateEntity>(),
        _sessions = _store.box<WorkoutSessionEntity>(),
@@ -66,6 +109,7 @@ class ObjectBoxWorkoutRestoreImporter {
   final String accountId;
   final String? Function() activeAccountId;
   final DateTime Function() _clock;
+  final UuidFactory _ids;
   final Box<WorkoutRestoreCursorEntity> _cursors;
   final Box<WorkoutRemoteStateEntity> _remote;
   final Box<WorkoutSessionEntity> _sessions;
@@ -352,7 +396,9 @@ class ObjectBoxWorkoutRestoreImporter {
     if (operations.any((op) => op.state == 'pending')) {
       throw const RestoreImportException('local_outbox_unresolved');
     }
-    if (operations.any((op) => op.state != 'acknowledged')) {
+    if (operations.any(
+      (op) => op.state != 'acknowledged' && op.state != 'superseded',
+    )) {
       // A conflicted/blocked local upload keeps its copy. Record the skipped
       // remote change so one workout never stops the rest of the feed.
       final existing = _one(
@@ -384,20 +430,40 @@ class ObjectBoxWorkoutRestoreImporter {
           ..sort((a, b) => b.localRevision.compareTo(a.localRevision));
     final latestAck = acknowledged.isEmpty ? null : acknowledged.first;
 
-    if (remote != null && remote.deleted && !change.deleted) {
-      throw const RestoreImportException('tombstone_resurrection');
-    }
     if (remote != null && remote.cursorEpoch == epoch) {
+      // A user-reviewed per-workout lookup can advance the known baseline
+      // ahead of the shared cursor. The later page replay of that SAME or an
+      // older change must not block the entire account or overwrite review.
+      if (change.changeSeq <= remote.serverChangeSeq) {
+        // A point lookup may have recorded a newer cloud version while an
+        // older feed page was already in flight. Older sequence + older
+        // revision is normal historical replay: ignore it and let the shared
+        // cursor advance. An older sequence claiming a NEWER revision is
+        // inconsistent and must not silently overwrite the reviewed state.
+        if (change.changeSeq < remote.serverChangeSeq) {
+          if (change.serverRevision > remote.serverRevision) {
+            throw const RestoreImportException('remote_sequence_inconsistent');
+          }
+          return false;
+        }
+        if (change.serverRevision != remote.serverRevision ||
+            change.deleted != remote.deleted) {
+          throw const RestoreImportException('remote_sequence_inconsistent');
+        }
+        return false;
+      }
       if (change.serverRevision < remote.serverRevision) {
         throw const RestoreImportException('server_revision_regressed');
       }
       if (change.serverRevision == remote.serverRevision) {
-        // P2-01 increments revision alongside the change sequence on each
-        // successful write. A new sequence with identical revision is
-        // inconsistent, not a permitted unchanged re-emission.
         throw const RestoreImportException('duplicate_remote_sequence');
       }
-    } else if (remote != null &&
+    }
+    if (remote != null && remote.deleted && !change.deleted) {
+      throw const RestoreImportException('tombstone_resurrection');
+    }
+    if (remote != null &&
+        remote.cursorEpoch != epoch &&
         change.serverRevision < remote.serverRevision) {
       // PITR may roll the server back while the device still has newer
       // acknowledged material. Never silently overwrite that local copy.
@@ -412,8 +478,13 @@ class ObjectBoxWorkoutRestoreImporter {
           local.completedAtMs == null) {
         throw const RestoreImportException('local_workout_conflict');
       }
-      final knownRevision =
-          remote?.localRevisionAtImport ?? latestAck?.localRevision;
+      // The device may be receiving its own just-ACKed delete. Its local
+      // tombstone revision advanced before the network call, whereas the
+      // previously imported metadata still holds the earlier local version.
+      // Trust a matching *durable server ACK*, never an unacknowledged edit.
+      final knownRevision = latestAck?.serverRevision == change.serverRevision
+          ? latestAck!.localRevision
+          : (remote?.localRevisionAtImport ?? latestAck?.localRevision);
       if (knownRevision == null) {
         throw const RestoreImportException('untracked_local_workout');
       }
@@ -437,10 +508,42 @@ class ObjectBoxWorkoutRestoreImporter {
 
     var localRevision = local?.revision ?? 0;
     if (change.deleted) {
-      if (local != null && local.deletedAtMs == null) {
-        local.deletedAtMs = _clock().toUtc().millisecondsSinceEpoch;
+      // A deletion observed from another device also redacts old, already
+      // acknowledged local outbox snapshots in this same import transaction.
+      // Keep UUID, revision, change sequence and owner CAS evidence intact.
+      for (final op in operations) {
+        if (op.state == 'acknowledged' &&
+            op.action == 'upsert' &&
+            op.payloadJson != 'null') {
+          op.payloadJson = 'null';
+          _outbox.put(op);
+        }
+      }
+      if (local != null) {
+        // Tombstones must remove the original workout details on *every*
+        // signed-in device, not merely hide them from the Progress query.
+        // Keep minimal UUID/revision metadata to guard against resurrection.
+        for (final exercise in _matching(
+          _exercises,
+          WorkoutExerciseEntity_.sessionUuid,
+          local.uuid,
+        )) {
+          for (final set in _matching(
+            _sets,
+            WorkoutSetEntity_.exerciseUuid,
+            exercise.uuid,
+          )) {
+            _sets.remove(set.id);
+          }
+          _exercises.remove(exercise.id);
+        }
+        if (local.deletedAtMs == null) {
+          local.deletedAtMs = _clock().toUtc().millisecondsSinceEpoch;
+          local.revision++;
+        }
         local.updatedAtMs = local.deletedAtMs!;
-        local.revision++;
+        local.name = 'Deleted workout';
+        local.planUuid = null;
         _sessions.put(local);
         localRevision = local.revision;
       }
@@ -452,7 +555,8 @@ class ObjectBoxWorkoutRestoreImporter {
       final unchangedAck =
           local != null &&
           latestAck?.serverRevision == change.serverRevision &&
-          (remote == null || remote.serverRevision == change.serverRevision);
+          latestAck?.serverChangeSeq == change.changeSeq &&
+          latestAck?.localRevision == local.revision;
       if (!unchangedAck) {
         localRevision = _materialize(snapshot, local);
       }
@@ -474,6 +578,367 @@ class ObjectBoxWorkoutRestoreImporter {
     metadata.deleted = change.deleted;
     _remote.put(metadata);
     return true;
+  }
+
+  /// Durable, owner-bound review queue. Only terminal/blocked operations and
+  /// explicit skipped remote changes require user choices; never expose
+  /// pending network requests as resolvable conflicts.
+  List<WorkoutConflictCandidate> readConflictCandidates() =>
+      _store.runInTransaction(TxMode.read, () {
+        _checkAccount();
+        _cursorEntity();
+        final ids = <String>{};
+        for (final op in _outbox.getAll()) {
+          if (op.state == 'conflict' || op.state == 'blocked') {
+            ids.add(op.sessionUuid);
+          }
+        }
+        for (final skip in _skips.getAll()) {
+          if (skip.ownerAccountId != accountId) {
+            throw const RestoreImportException('owner_store_mismatch');
+          }
+          ids.add(skip.workoutUuid);
+        }
+        final results = <WorkoutConflictCandidate>[];
+        for (final id in ids) {
+          final session = _one(_sessions, WorkoutSessionEntity_.uuid, id);
+          final operations = _matching(
+            _outbox,
+            WorkoutSyncOutboxEntity_.sessionUuid,
+            id,
+          );
+          final baseline = _one(
+            _remote,
+            WorkoutRemoteStateEntity_.workoutUuid,
+            id,
+          );
+          final skip = _one(_skips, WorkoutRestoreSkipEntity_.workoutUuid, id);
+          if (baseline != null && baseline.ownerAccountId != accountId) {
+            throw const RestoreImportException('owner_store_mismatch');
+          }
+          final keepLocalOnly =
+              baseline == null &&
+              skip == null &&
+              ObjectBoxWorkoutOutbox.entirelyUnsentLocalValidations(operations);
+          final canDismissMissing =
+              session == null &&
+              skip != null &&
+              operations.every((op) => op.state == 'superseded');
+          final exercises = session == null
+              ? <WorkoutExerciseEntity>[]
+              : _matching(
+                  _exercises,
+                  WorkoutExerciseEntity_.sessionUuid,
+                  session.uuid,
+                );
+          final setCount = exercises.fold<int>(
+            0,
+            (sum, exercise) =>
+                sum +
+                _matching(
+                  _sets,
+                  WorkoutSetEntity_.exerciseUuid,
+                  exercise.uuid,
+                ).length,
+          );
+          results.add(
+            WorkoutConflictCandidate(
+              workoutUuid: id,
+              name: session?.deletedAtMs != null
+                  ? 'Deleted workout'
+                  : (session?.name ?? 'Unavailable workout'),
+              localRevision: session?.revision ?? 0,
+              deletedLocally: session?.deletedAtMs != null,
+              hasLocalWorkout: session != null,
+              exerciseCount: exercises.length,
+              setCount: setCount,
+              canKeepLocalOnly: keepLocalOnly,
+              canDismissMissing: canDismissMissing,
+              skippedEpoch: skip?.cursorEpoch,
+              skippedChangeSeq: skip?.serverChangeSeq,
+              skippedDeletion: skip?.deleted ?? false,
+            ),
+          );
+        }
+        results.sort((a, b) => a.workoutUuid.compareTo(b.workoutUuid));
+        return List.unmodifiable(results);
+      });
+
+  /// Called only AFTER an authenticated point lookup and an explicit user
+  /// decision. The read may have raced with another server write; retries
+  /// continue to use normal server CAS and will conflict rather than
+  /// overwriting a newer version. All local changes and skip removal commit
+  /// atomically, including a new outbox dependency baseline.
+  bool resolveReviewedWorkout({
+    required String workoutUuid,
+    required int expectedLocalRevision,
+    required WorkoutRemoteReview review,
+    required WorkoutResolutionAction action,
+    String? expectedSkipEpoch,
+    int? expectedSkipChangeSeq,
+    bool? expectedHasSkip,
+  }) => _store.runInTransaction(TxMode.write, () {
+    _checkAccount();
+    final cursor = _cursorEntity();
+    // A blocked page cursor must not prevent an independent, owner-checked
+    // per-workout reviewed resolution. The cursor itself remains blocked
+    // until an explicit retry; no shared sequence is skipped here.
+    if (cursor?.cursorEpoch != null &&
+        cursor!.cursorEpoch != review.cursorEpoch) {
+      throw const RestoreImportException('resolution_epoch_changed');
+    }
+    if (review.change != null && review.change!.workoutId != workoutUuid) {
+      throw const RestoreImportException('resolution_workout_mismatch');
+    }
+    final local = _one(_sessions, WorkoutSessionEntity_.uuid, workoutUuid);
+    if ((local?.revision ?? 0) != expectedLocalRevision) {
+      throw const RestoreImportException('resolution_local_changed');
+    }
+    if (local != null &&
+        (local.origin != 'northstar_phone' ||
+            local.status != 'completed' ||
+            local.completedAtMs == null)) {
+      throw const RestoreImportException('resolution_not_phone_history');
+    }
+    final oldRemote = _one(
+      _remote,
+      WorkoutRemoteStateEntity_.workoutUuid,
+      workoutUuid,
+    );
+    if (oldRemote != null && oldRemote.ownerAccountId != accountId) {
+      throw const RestoreImportException('owner_store_mismatch');
+    }
+    final operations = _matching(
+      _outbox,
+      WorkoutSyncOutboxEntity_.sessionUuid,
+      workoutUuid,
+    );
+    // A pending request may already have reached the server; never abandon
+    // it on the strength of a read-only lookup.
+    if (operations.any((op) => op.state == 'pending')) {
+      throw const RestoreImportException('resolution_upload_pending');
+    }
+    if (operations.any(
+      (op) =>
+          op.state != 'acknowledged' &&
+          op.state != 'superseded' &&
+          op.state != 'conflict' &&
+          op.state != 'blocked' &&
+          op.state != 'dependency_paused',
+    )) {
+      throw const RestoreImportException('resolution_unknown_operation');
+    }
+    final skip = _one(
+      _skips,
+      WorkoutRestoreSkipEntity_.workoutUuid,
+      workoutUuid,
+    );
+    if (skip != null && skip.ownerAccountId != accountId) {
+      throw const RestoreImportException('owner_store_mismatch');
+    }
+    // Local revision does not change when an importer advances a skip.
+    // The review screen must detect a new/changed skip after its snapshot
+    // was fetched, even when the current server record is absent.
+    if (expectedHasSkip != null &&
+        (expectedHasSkip != (skip != null) ||
+            (skip != null &&
+                (skip.cursorEpoch != expectedSkipEpoch ||
+                    skip.serverChangeSeq != expectedSkipChangeSeq)))) {
+      throw const RestoreImportException('resolution_stale_skip');
+    }
+    if (skip == null &&
+        !operations.any(
+          (op) => op.state == 'conflict' || op.state == 'blocked',
+        )) {
+      throw const RestoreImportException('resolution_already_handled');
+    }
+    final remoteChange = review.change;
+    // Restore sequence numbers are scoped to their cursor epoch. An old
+    // epoch skip cannot be compared to a fresh authoritative point lookup.
+    // A current-epoch skip can be cleared by a reviewed missing-row choice,
+    // but a present server row must be at least as new as the recorded skip.
+    if (skip != null &&
+        skip.cursorEpoch == review.cursorEpoch &&
+        remoteChange != null &&
+        remoteChange.changeSeq < skip.serverChangeSeq) {
+      throw const RestoreImportException('resolution_stale_skip');
+    }
+    if (oldRemote != null &&
+        oldRemote.cursorEpoch == review.cursorEpoch &&
+        ((remoteChange == null &&
+                action != WorkoutResolutionAction.dismissMissing) ||
+            (remoteChange != null &&
+                (remoteChange.serverRevision < oldRemote.serverRevision ||
+                    remoteChange.changeSeq < oldRemote.serverChangeSeq)))) {
+      throw const RestoreImportException('resolution_stale_server');
+    }
+    final localOnlyAllowed =
+        action == WorkoutResolutionAction.keepLocalOnly &&
+        local != null &&
+        local.deletedAtMs == null &&
+        remoteChange == null &&
+        oldRemote == null &&
+        skip == null &&
+        ObjectBoxWorkoutOutbox.entirelyUnsentLocalValidations(operations);
+    if (action == WorkoutResolutionAction.keepLocalOnly && !localOnlyAllowed) {
+      throw const RestoreImportException('resolution_cannot_keep_local');
+    }
+    // A skip with neither local nor current cloud data may be dismissed
+    // only by explicit user choice. Never drop an unacknowledged mutation,
+    // or known current-epoch cloud baseline, as an orphaned skip.
+    final canDismissMissing =
+        action == WorkoutResolutionAction.dismissMissing &&
+        skip != null &&
+        local == null &&
+        remoteChange == null &&
+        operations.every((op) => op.state == 'superseded');
+    if (action == WorkoutResolutionAction.dismissMissing &&
+        !canDismissMissing) {
+      throw const RestoreImportException('resolution_cannot_dismiss');
+    }
+    if (action == WorkoutResolutionAction.useCloud && remoteChange == null) {
+      throw const RestoreImportException('resolution_cloud_missing');
+    }
+    // A user-initiated local tombstone is irreversible. Even a reviewed
+    // older live server snapshot cannot resurrect the deleted UUID.
+    if (action == WorkoutResolutionAction.useCloud &&
+        local?.deletedAtMs != null &&
+        remoteChange?.deleted == false) {
+      throw const RestoreImportException('local_tombstone_sticky');
+    }
+    if (action == WorkoutResolutionAction.retryLocal &&
+        (local == null ||
+            local.deletedAtMs != null ||
+            local.origin != 'northstar_phone' ||
+            local.status != 'completed' ||
+            local.completedAtMs == null ||
+            remoteChange?.deleted == true)) {
+      throw const RestoreImportException('resolution_cannot_upload');
+    }
+    if (action == WorkoutResolutionAction.finishDeletion &&
+        (local == null || local.deletedAtMs == null)) {
+      throw const RestoreImportException('resolution_not_deleted');
+    }
+    // These states never have an uncertain in-flight server mutation:
+    // conflict means explicit server CAS rejection; blocked is a terminal
+    // local/server validation; dependency_paused has never been sent.
+    for (final op in operations) {
+      if (op.state == 'conflict' ||
+          op.state == 'blocked' ||
+          op.state == 'dependency_paused') {
+        op.state = 'superseded';
+        op.errorCode = 'reviewed_resolution';
+        op.payloadJson = 'null';
+        _outbox.put(op);
+      }
+    }
+    final before = local?.revision ?? 0;
+    var importedRevision = before;
+    if (action == WorkoutResolutionAction.dismissMissing) {
+      // No local workout, current cloud record or unresolved upload exists.
+      // An orphaned baseline is no longer a current cloud record after
+      // the reviewed authenticated lookup, regardless of its saved epoch.
+      // Leave the account restore cursor untouched.
+      if (oldRemote != null) _remote.remove(oldRemote.id);
+    } else if (action == WorkoutResolutionAction.useCloud) {
+      if (remoteChange!.deleted) {
+        if (local != null) {
+          _redactSession(local);
+          if (local.deletedAtMs == null) {
+            local.deletedAtMs = _clock().toUtc().millisecondsSinceEpoch;
+            local.revision++;
+          }
+          local.updatedAtMs = local.deletedAtMs!;
+          local.name = 'Deleted workout';
+          local.planUuid = null;
+          _sessions.put(local);
+          importedRevision = local.revision;
+        }
+        // Discard known ACKed workout snapshots after an explicit tombstone.
+        for (final op in operations) {
+          if (op.state == 'acknowledged' &&
+              op.action == 'upsert' &&
+              op.payloadJson != 'null') {
+            op.payloadJson = 'null';
+            _outbox.put(op);
+          }
+        }
+      } else {
+        importedRevision = _materialize(remoteChange.snapshot!, local);
+      }
+    } else if (action == WorkoutResolutionAction.keepLocalOnly) {
+      // Preserve full workout details and the terminal superseded marker,
+      // preventing future automatic backfill of this UUID.
+    } else if (action == WorkoutResolutionAction.retryLocal) {
+      local!.revision++;
+      local.updatedAtMs = _clock().toUtc().millisecondsSinceEpoch;
+      _sessions.put(local);
+      ObjectBoxWorkoutOutbox(_store).enqueueCompletedInTransaction(workoutUuid);
+      final fresh = _matching(
+        _outbox,
+        WorkoutSyncOutboxEntity_.sessionUuid,
+        workoutUuid,
+      ).where((op) => op.localRevision == local.revision).toList();
+      if (fresh.length != 1 || fresh.single.state != 'pending') {
+        // No circular blocked operations for an invalid immutable snapshot.
+        throw const RestoreImportException('resolution_invalid_snapshot');
+      }
+    } else if (remoteChange != null && !remoteChange.deleted) {
+      local!.revision++;
+      local.updatedAtMs = _clock().toUtc().millisecondsSinceEpoch;
+      _sessions.put(local);
+      _outbox.put(
+        WorkoutSyncOutboxEntity(
+          operationUuid: _ids.newId(),
+          sessionUuid: workoutUuid,
+          localRevision: local.revision,
+          action: 'delete',
+          payloadJson: 'null',
+          createdAtMs: local.updatedAtMs,
+        ),
+      );
+    }
+    if (remoteChange != null) {
+      final baseline = action == WorkoutResolutionAction.useCloud
+          ? importedRevision
+          : before;
+      final state =
+          oldRemote ??
+          WorkoutRemoteStateEntity(
+            workoutUuid: workoutUuid,
+            ownerAccountId: accountId,
+            serverRevision: remoteChange.serverRevision,
+            serverChangeSeq: remoteChange.changeSeq,
+            cursorEpoch: review.cursorEpoch,
+            localRevisionAtImport: baseline,
+          );
+      state.serverRevision = remoteChange.serverRevision;
+      state.serverChangeSeq = remoteChange.changeSeq;
+      state.cursorEpoch = review.cursorEpoch;
+      state.localRevisionAtImport = baseline;
+      state.deleted = remoteChange.deleted;
+      _remote.put(state);
+    }
+    if (skip != null) _skips.remove(skip.id);
+    _checkAccount();
+    return true;
+  });
+
+  void _redactSession(WorkoutSessionEntity session) {
+    for (final exercise in _matching(
+      _exercises,
+      WorkoutExerciseEntity_.sessionUuid,
+      session.uuid,
+    )) {
+      for (final set in _matching(
+        _sets,
+        WorkoutSetEntity_.exerciseUuid,
+        exercise.uuid,
+      )) {
+        _sets.remove(set.id);
+      }
+      _exercises.remove(exercise.id);
+    }
   }
 
   int _materialize(

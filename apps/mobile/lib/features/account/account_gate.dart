@@ -8,6 +8,8 @@ import '../../core/storage/objectbox_store_provider.dart';
 import '../../objectbox.g.dart';
 import 'account_auth_controller.dart';
 import '../sync/workout_upload_coordinator.dart';
+import '../sync/objectbox_workout_restore_importer.dart';
+import '../sync/workout_conflict_resolution.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
 import 'account_auth_provider.dart';
 import 'account_sign_in_page.dart';
@@ -104,6 +106,17 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
             workoutUploadKickProvider.overrideWith(
               (ref) => ref.read(workoutUploadCoordinatorProvider).kick,
             ),
+            workoutRestoreCursorProvider.overrideWith((ref) {
+              final auth = ref.watch(accountAuthControllerProvider);
+              final owner = auth?.userId;
+              if (owner == null) return null;
+              return ref
+                  .watch(workoutRestoreImporterProvider)(
+                    owner,
+                    () => auth?.userId,
+                  )
+                  .readCursor();
+            }),
             blockedWorkoutCountProvider.overrideWith(
               (ref) => ref.watch(workoutOutboxProvider).blockedCount(),
             ),
