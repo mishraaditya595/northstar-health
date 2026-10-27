@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/design/page_header.dart';
+import '../../core/design/dialogs.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,6 +11,7 @@ import '../../core/design/northstar_theme.dart';
 import 'domain/progress_overview.dart';
 import '../../core/units/load_units.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
+import '../sync/workout_upload_coordinator.dart';
 import '../workouts/domain/workout_models.dart';
 import 'domain/workout_history_models.dart';
 import 'workout_history_state.dart';
@@ -62,6 +64,7 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
                 context,
                 chosen,
                 ref.watch(workoutSyncFlagsProvider)[chosen.uuid],
+                ref,
               );
             },
           ),
@@ -74,6 +77,7 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
     BuildContext context,
     WorkoutSessionRecord session,
     WorkoutSyncFlag? syncFlag,
+    WidgetRef ref,
   ) {
     final finished = session.completedAtUtc!;
     final day = originalLocalDay(session);
@@ -258,8 +262,52 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
                 'cannot rewrite a completed workout.',
           ),
         ),
+        const SizedBox(height: 14),
+        TextButton.icon(
+          onPressed: () => _confirmDelete(context, ref, session),
+          icon: const Icon(Icons.delete_outline),
+          label: const Text('Delete workout'),
+        ),
       ],
     );
+  }
+
+  Future<void> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    WorkoutSessionRecord session,
+  ) async {
+    final confirmed = await showNsConfirm(
+      context,
+      title: 'Delete completed workout?',
+      message:
+          'This removes the workout from this device and queues a cloud '
+          'deletion for your other devices. If backup is paused or there is '
+          'a conflict, remote deletion waits for sync recovery. '
+          'This cannot be undone.',
+      confirmLabel: 'Delete workout',
+    );
+    if (!confirmed || !context.mounted) return;
+    try {
+      ref.read(workoutOutboxProvider).deleteCompletedWorkout(
+        sessionUuid: session.uuid,
+        expectedLocalRevision: session.revision,
+      );
+      ref.invalidate(completedWorkoutHistoryProvider);
+      ref.invalidate(workoutSyncFlagsProvider);
+      ref.read(workoutUploadCoordinatorProvider).kick();
+      if (context.mounted) {
+        showNsMessage(context, 'Workout removed locally. Cloud deletion queued.');
+        Navigator.of(context).maybePop();
+      }
+    } catch (_) {
+      if (context.mounted) {
+        showNsMessage(
+          context,
+          'Could not delete this workout. Your workout was not changed.',
+        );
+      }
+    }
   }
 
   TextStyle? _head(ThemeData theme) => theme.textTheme.labelSmall?.copyWith(
