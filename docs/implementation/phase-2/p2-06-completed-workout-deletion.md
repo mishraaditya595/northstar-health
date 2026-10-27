@@ -17,6 +17,8 @@ No action is exposed for health observations, imported third-party activity, unf
 
 Pending previous upserts are **not silently deleted**, including an in-flight upload whose acknowledgement may have been lost. They must ACK first, after which the delete uploads with the correct server CAS revision. A conflicted/blocked predecessor pauses the delete until explicit resolution. Tombstone writes are sticky; a new upsert cannot resurrect the same UUID on the server.
 
+**Acknowledged snapshot cleanup:** local deletion, late upload acknowledgement, and an imported remote tombstone all redact the JSON payload of **already acknowledged** upsert receipts in the same ObjectBox write transaction. Operation UUID, owner binding, action, local/server revision and change sequence remain for CAS. **Unacknowledged** payloads cannot be discarded automatically: a request may already have reached the server, and deleting its snapshot would make safe replay and remote deletion impossible. Consequently offline deletion is not immediate secure erasure of every queued copy; conflict review and complete account data-rights workflows remain P2-06/P2-07.
+
 ## Transport, restore and failure rules
 No new SQL migration required. Existing P2-01 server `sync_workout` accepts `delete` only when `p_payload IS NULL`, checks owner JWT/RLS and expected server revision, records an idempotent receipt and produces a tombstone on success. The existing foreground worker now accepts the specific `delete`/`null` combination in addition to validated completed upsert DTOs. Uploads and restores remain single-flight and account-bound.
 
