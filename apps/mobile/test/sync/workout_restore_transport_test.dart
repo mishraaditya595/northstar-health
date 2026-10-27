@@ -253,35 +253,41 @@ void main() {
     },
   );
 
-  test('point lookup authenticates and strictly validates server revision', () async {
-    const id = '00000000-0000-4000-8000-000000006701';
-    handler = (_, args) async => {
-      'schema_version': 1,
-      'cursor_epoch': epochA,
-      'change': {
-        'workout_id': id,
-        'server_revision': 4,
-        'change_seq': 12,
-        'deleted': true,
-        'payload': null,
-      },
-    };
-    final result = await transport().fetchWorkout(id);
-    expect(rpcName, 'get_workout_for_resolution');
-    expect(rpcParams, {'p_workout_id': id});
-    expect(result.change!.serverRevision, 4);
-    expect(result.change!.deleted, true);
-    expect(result.cursorEpoch, epochA);
+  test(
+    'point lookup authenticates and strictly validates server revision',
+    () async {
+      const id = '00000000-0000-4000-8000-000000006701';
+      handler = (_, args) async => {
+        'schema_version': 1,
+        'cursor_epoch': epochA,
+        'change': {
+          'workout_id': id,
+          'server_revision': 4,
+          'change_seq': 12,
+          'deleted': true,
+          'payload': null,
+        },
+      };
+      final result = await transport().fetchWorkout(id);
+      expect(rpcName, 'get_workout_for_resolution');
+      expect(rpcParams, {'p_workout_id': id});
+      expect(result.change!.serverRevision, 4);
+      expect(result.change!.deleted, true);
+      expect(result.cursorEpoch, epochA);
 
-    handler = (_, _) async => {
-      'schema_version': 1,
-      'cursor_epoch': epochA,
-      'change': null,
-    };
-    final missing = await transport().fetchWorkout(id);
-    expect(missing.change, isNull);
-    await expectLater(transport().fetchWorkout('not-a-uuid'), throwsFormatException);
-  });
+      handler = (_, _) async => {
+        'schema_version': 1,
+        'cursor_epoch': epochA,
+        'change': null,
+      };
+      final missing = await transport().fetchWorkout(id);
+      expect(missing.change, isNull);
+      await expectLater(
+        transport().fetchWorkout('not-a-uuid'),
+        throwsFormatException,
+      );
+    },
+  );
 
   test('point lookup never releases data after account switch', () async {
     const id = '00000000-0000-4000-8000-000000006701';
