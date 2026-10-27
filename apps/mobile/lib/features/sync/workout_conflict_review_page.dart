@@ -55,7 +55,8 @@ class _WorkoutConflictReviewPageState
               onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('Cancel'),
             ),
-            if (remote.change != null)
+            if (remote.change != null &&
+                (!candidate.deletedLocally || remote.change!.deleted))
               TextButton(
                 onPressed: () =>
                     Navigator.of(dialogContext)
