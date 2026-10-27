@@ -1,6 +1,6 @@
 # P2-06 — Completed workout deletion and cross-device tombstones
 
-**Status:** Draft PR #24; NOT merged, deployed or device-verified. PR #23 (queue fairness) merged.
+**Status:** PR #24 **merged into main 2026-10-27**, not hosted-deployed or physical-device validated. PR #23 queue fairness is also merged. This is the tombstone/delete slice of P2-06; P2-08 acceptance remains pending.
 
 ## User experience
 A completed NorthStar phone workout has a **Delete workout** action on its details page. The shared `showNsConfirm` dialog explains that deleting immediately removes local history, queues a cloud tombstone only when a prior upload or remote state is known, can be delayed by paused backup / conflicts, and cannot be undone. Never-synced legacy workouts are deleted locally without attempting an impossible cloud RPC. Cancelling is a no-op. The details screen then invalidates the completed-history Riverpod provider, refreshes sync badges, kicks the existing authenticated foreground worker and navigates back when possible.
