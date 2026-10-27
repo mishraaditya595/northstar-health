@@ -289,10 +289,12 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
     );
     if (!confirmed || !context.mounted) return;
     try {
-      final removed = ref.read(workoutOutboxProvider).deleteCompletedWorkout(
-        sessionUuid: session.uuid,
-        expectedLocalRevision: session.revision,
-      );
+      final removed = ref
+          .read(workoutOutboxProvider)
+          .deleteCompletedWorkout(
+            sessionUuid: session.uuid,
+            expectedLocalRevision: session.revision,
+          );
       if (!removed) {
         ref.invalidate(completedWorkoutHistoryProvider);
         showNsMessage(context, 'This workout was already deleted.');
