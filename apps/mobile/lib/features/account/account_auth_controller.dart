@@ -48,6 +48,31 @@ abstract class BoundAccountStore {
   Future<void> clear();
 }
 
+/// A pending deletion is not a grant to open locally protected workouts.
+/// Persist the original owner separately from the active account binding.
+abstract class DeletionRecoveryStore {
+  Future<String?> read();
+  Future<void> write(String originalOwner);
+  Future<void> clear();
+}
+
+class SecureDeletionRecoveryStore implements DeletionRecoveryStore {
+  SecureDeletionRecoveryStore({required String projectHost})
+    : _key = 'northstar.pending_deletion.v1.$projectHost';
+
+  final String _key;
+
+  @override
+  Future<String?> read() => _secureStorage.read(key: _key);
+
+  @override
+  Future<void> write(String originalOwner) =>
+      _secureStorage.write(key: _key, value: validAccountId(originalOwner));
+
+  @override
+  Future<void> clear() => _secureStorage.delete(key: _key);
+}
+
 class SecureBoundAccountStore implements BoundAccountStore {
   SecureBoundAccountStore({required String projectHost})
     : _key = 'northstar.trusted_account.v1.$projectHost';
@@ -81,6 +106,8 @@ abstract class AccountAuthApi {
   Stream<String?> get cloudIdentityChanges;
 
   Future<void> sendEmailCode(String email);
+  /// Recovery never registers a new Auth user.
+  Future<void> sendRecoveryCode(String email);
   Future<String> verifyEmailCode(String email, String code);
   Future<void> signOutLocally();
 
@@ -131,6 +158,10 @@ class SupabaseAccountAuthApi implements AccountAuthApi {
   @override
   Future<void> sendEmailCode(String email) =>
       _client.auth.signInWithOtp(email: email, shouldCreateUser: true);
+
+  @override
+  Future<void> sendRecoveryCode(String email) =>
+      _client.auth.signInWithOtp(email: email, shouldCreateUser: false);
 
   @override
   Future<String> verifyEmailCode(String email, String code) async {
@@ -201,7 +232,7 @@ class SupabaseAccountAuthApi implements AccountAuthApi {
 /// the bound user ID into OS secure storage. When a token refresh cannot run
 /// offline, only that same account may open its partitioned local database.
 class AccountAuthController extends ChangeNotifier {
-  AccountAuthController(this._api, this._binding) {
+  AccountAuthController(this._api, this._binding, this._recoveryStore) {
     _authSubscription = _api.cloudIdentityChanges.listen(
       _onIdentityChange,
       onError: (Object _) {
@@ -213,6 +244,7 @@ class AccountAuthController extends ChangeNotifier {
 
   final AccountAuthApi _api;
   final BoundAccountStore _binding;
+  final DeletionRecoveryStore _recoveryStore;
   late final StreamSubscription<String?> _authSubscription;
   Timer? _sessionExpiryTimer;
   bool _refreshFailed = false;
@@ -271,6 +303,11 @@ class AccountAuthController extends ChangeNotifier {
   String? _error;
   String? _pendingEmail;
 
+  String? _recoveryOwner;
+
+  /// This is a lock, never an authentication grant.
+  bool get deletionRecoveryPending => _recoveryOwner != null;
+
   String? _deletionEmail;
   String? _deletionOwner;
   bool _deletionCodeSent = false;
@@ -292,9 +329,12 @@ class AccountAuthController extends ChangeNotifier {
   /// access; cloud transfer must re-authenticate first.
   /// A corrupt binding counts as no binding; account data stays on disk.
   Future<void> restore() async {
+    final pending = await _recoveryStore.read();
+    // Invalid protected state must not silently allow ordinary sign-in.
+    _recoveryOwner = pending == null ? null : validAccountId(pending);
     final bound = _accountIdOrNull(await _binding.read());
     final active = _api.signedInUserId;
-    if (bound != null &&
+    if (_recoveryOwner == null && bound != null &&
         (active == null ||
             (!_api.isAnonymous && _accountIdOrNull(active) == bound))) {
       _userId = bound;
@@ -406,6 +446,8 @@ class AccountAuthController extends ChangeNotifier {
       return;
     }
 
+    // Stop foreground workers immediately after the durable local lock.
+    // No destructive request is sent until recovery is also durable.
     _userId = null;
     _sessionExpiryTimer?.cancel();
     _sessionExpiryTimer = null;
@@ -414,22 +456,40 @@ class AccountAuthController extends ChangeNotifier {
     _deletionEmail = null;
     notifyListeners();
     try {
+      await _recoveryStore.write(owner);
+      _recoveryOwner = owner;
+    } catch (_) {
+      // No remote deletion occurred. The original partition stays locked.
+      _error =
+          'Could not save safe deletion recovery on this device. '
+          'Account deletion has not been requested. Sign in again.';
+      _busy = false;
+      notifyListeners();
+      return;
+    }
+    try {
       await _api.deleteAccountOnServer(owner);
       _notice =
           'Account deletion confirmed. Cloud workout history was '
-          'deleted. This device is locked; existing local data is not '
-          'automatically reassigned to another account.';
+          'deleted. Local data remains locked and is not transferred.';
+      try {
+        await _recoveryStore.clear();
+        _recoveryOwner = null;
+      } catch (_) {
+        // Confirmed deletion is irreversible. Keep the guard if it cannot
+        // be cleared; the user must explicitly leave recovery.
+      }
       try {
         await _api.signOutLocally();
       } catch (_) {
-        // Server-side deletion is already verified. Local binding is gone.
+        // Verified remote deletion already completed.
       }
     } catch (_) {
-      // Network errors may have happened AFTER the server committed deletion.
+      // Server deletion may have committed before the response was lost.
       _error =
           'Account deletion could not be confirmed. This device is '
-          'locked. If the account still exists, sign in again with the '
-          'same email to review it. Otherwise contact support.';
+          'locked. Recover ONLY the original account if it still exists; '
+          'otherwise contact support. Recovery never creates an account.';
     } finally {
       _busy = false;
       notifyListeners();
@@ -449,7 +509,11 @@ class AccountAuthController extends ChangeNotifier {
     _notice = null;
     notifyListeners();
     try {
-      await _api.sendEmailCode(normalized);
+      if (_recoveryOwner != null) {
+        await _api.sendRecoveryCode(normalized);
+      } else {
+        await _api.sendEmailCode(normalized);
+      }
       _pendingEmail = normalized;
       _codeSent = true;
     } catch (_) {
@@ -483,12 +547,24 @@ class AccountAuthController extends ChangeNotifier {
       final identity = validAccountId(
         await _api.verifyEmailCode(_pendingEmail!, code),
       );
-      // Never expose an account's ObjectBox directory before a durable
-      // secure binding succeeds, even if Supabase signed in successfully.
+      // A different existing account can also verify an OTP; only the
+      // original verified Auth UUID is permitted to restore this binding.
+      if (_recoveryOwner != null && identity != _recoveryOwner) {
+        try {
+          await _api.signOutLocally();
+        } catch (_) {
+          // The secure recovery marker remains authoritative.
+        }
+        throw StateError('Recovery owner mismatch');
+      }
       try {
         await _binding.write(identity);
+        if (_recoveryOwner != null) {
+          // A failed marker clear stays locked across app restarts.
+          await _recoveryStore.clear();
+          _recoveryOwner = null;
+        }
       } catch (_) {
-        // The code is spent, so send the user back to request a new one.
         _error =
             'This device could not save your sign-in securely. '
             'Send a new code to retry.';
@@ -500,7 +576,37 @@ class AccountAuthController extends ChangeNotifier {
       _codeSent = false;
       _pendingEmail = null;
     } catch (_) {
-      _error = 'Verification failed. Check the code and try again.';
+      _error = _recoveryOwner == null
+          ? 'Verification failed. Check the code and try again.'
+          : 'Could not recover the original account. No new account was '
+              'created. Check the email and code, or contact support.';
+    } finally {
+      _busy = false;
+      notifyListeners();
+    }
+  }
+
+  /// Explicit abandonment never deletes, opens or reassigns local workouts.
+  /// The UI must show a confirmation warning before invoking this.
+  Future<void> leaveDeletionRecovery() async {
+    if (_busy || _recoveryOwner == null || _userId != null) return;
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _recoveryStore.clear();
+      _recoveryOwner = null;
+      _codeSent = false;
+      _pendingEmail = null;
+      _notice = null;
+      try {
+        await _api.signOutLocally();
+      } catch (_) {
+        // No active local binding remains.
+      }
+    } catch (_) {
+      _error =
+          'Could not clear the recovery lock securely. Retry or contact support.';
     } finally {
       _busy = false;
       notifyListeners();
