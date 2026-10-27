@@ -62,6 +62,9 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
     );
     if (!accepted || !mounted || !auth.cloudBackupReady) return;
     await auth.requestDeletionCode();
+    if (mounted && auth.error != null) {
+      showNsMessage(context, auth.error!);
+    }
   }
 
   Future<void> _confirmDeletion(AccountAuthController auth) async {
@@ -420,7 +423,7 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
                     child: const Text('Cancel account deletion'),
                   ),
                 ],
-                if (auth.error != null) ...[
+                if (auth.deletionCodeSent && auth.error != null) ...[
                   const SizedBox(height: 8),
                   Text(
                     auth.error!,
