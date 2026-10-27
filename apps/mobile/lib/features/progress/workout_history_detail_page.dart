@@ -281,21 +281,22 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
       context,
       title: 'Delete completed workout?',
       message:
-          'This removes the workout from this device and queues a cloud '
-          'deletion for your other devices. If backup is paused or there is '
-          'a conflict, remote deletion waits for sync recovery. '
+          'This removes the workout from this device. If it was backed up, '
+          'a cloud deletion will be queued for your other devices. '
+          'Offline backup or conflicts may delay that deletion. '
           'This cannot be undone.',
       confirmLabel: 'Delete workout',
     );
     if (!confirmed || !context.mounted) return;
+    late final CompletedWorkoutDeleteResult outcome;
     try {
-      final removed = ref
+      outcome = ref
           .read(workoutOutboxProvider)
           .deleteCompletedWorkout(
             sessionUuid: session.uuid,
             expectedLocalRevision: session.revision,
           );
-      if (!removed) {
+      if (outcome == CompletedWorkoutDeleteResult.alreadyDeleted) {
         ref.invalidate(completedWorkoutHistoryProvider);
         showNsMessage(context, 'This workout was already deleted.');
         return;
@@ -313,14 +314,21 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
     // error cannot make the UI claim the workout is still present.
     ref.invalidate(completedWorkoutHistoryProvider);
     ref.invalidate(workoutSyncFlagsProvider);
-    try {
-      ref.read(workoutUploadCoordinatorProvider).kick();
-    } catch (_) {
-      // Durable outbox remains; the next authenticated foreground retry
-      // handles the pending cloud delete.
+    if (outcome == CompletedWorkoutDeleteResult.cloudDeleteQueued) {
+      try {
+        ref.read(workoutUploadCoordinatorProvider).kick();
+      } catch (_) {
+        // Durable outbox remains; the next authenticated foreground retry
+        // handles the pending cloud delete.
+      }
     }
     if (context.mounted) {
-      showNsMessage(context, 'Workout removed locally. Cloud deletion queued.');
+      showNsMessage(
+        context,
+        outcome == CompletedWorkoutDeleteResult.cloudDeleteQueued
+            ? 'Workout removed locally. Cloud deletion queued.'
+            : 'Workout removed locally. No cloud deletion needed.',
+      );
       Navigator.of(context).maybePop();
     }
   }
