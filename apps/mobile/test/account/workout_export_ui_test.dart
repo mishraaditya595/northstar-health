@@ -11,7 +11,7 @@ import 'package:northstar_health/features/account/workout_export_file_writer.dar
 import 'package:northstar_health/features/account/workout_history_export.dart';
 
 import '../support/fake_account_auth.dart';
-import 'workout_history_export_test.dart' show FakeExportReader, exportRow;
+import '../support/workout_export_fakes.dart';
 
 class RecordingFileWriter extends WorkoutExportFileWriter {
   RecordingFileWriter() : super(channel: const MethodChannel('test/export'));
