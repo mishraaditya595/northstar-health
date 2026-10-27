@@ -531,13 +531,58 @@ void main() {
     },
   );
 
-  test('an older sequence with lower revision cannot replay silently', () {
+  test('older feed revision replays harmlessly after a newer review', () {
     seed();
     conflict();
     importer.resolveReviewedWorkout(
       workoutUuid: workout,
       expectedLocalRevision: 1,
-      review: review(),
+      review: review(revision: 3, seq: 9),
+      action: WorkoutResolutionAction.useCloud,
+    );
+    final result = importer.applyPage(
+      WorkoutRestorePage(
+        cursorEpoch: epoch,
+        cursorReset: false,
+        nextCursor: 5,
+        hasMore: false,
+        changes: [review(revision: 2, seq: 5).change!],
+      ),
+      afterSeq: 0,
+      requestedEpoch: null,
+    );
+    expect(result.imported, 0);
+    expect(result.tombstones, 0);
+    expect(importer.readCursor().nextCursor, 5);
+    expect(importer.readCursor().blockedCode, isNull);
+    expect(store.box<WorkoutSessionEntity>().getAll().single.name,
+        'Cloud strength');
+    final baseline = store.box<WorkoutRemoteStateEntity>().getAll().single;
+    expect(baseline.serverRevision, 3);
+    expect(baseline.serverChangeSeq, 9);
+    final newer = importer.applyPage(
+      WorkoutRestorePage(
+        cursorEpoch: epoch,
+        cursorReset: false,
+        nextCursor: 9,
+        hasMore: false,
+        changes: [review(revision: 3, seq: 9).change!],
+      ),
+      afterSeq: 5,
+      requestedEpoch: epoch,
+    );
+    expect(newer.imported, 0);
+    expect(newer.cursor.nextCursor, 9);
+    expect(newer.cursor.blockedCode, isNull);
+  });
+
+  test('older sequence with newer revision fails closed', () {
+    seed();
+    conflict();
+    importer.resolveReviewedWorkout(
+      workoutUuid: workout,
+      expectedLocalRevision: 1,
+      review: review(revision: 3, seq: 9),
       action: WorkoutResolutionAction.useCloud,
     );
     expect(
@@ -547,23 +592,204 @@ void main() {
           cursorReset: false,
           nextCursor: 5,
           hasMore: false,
-          changes: [review(revision: 2, seq: 5).change!],
+          changes: [review(revision: 4, seq: 5).change!],
         ),
         afterSeq: 0,
         requestedEpoch: null,
       ),
-      throwsA(
-        isA<RestoreImportException>().having(
-          (error) => error.code,
-          'code',
-          'server_revision_regressed',
-        ),
-      ),
+      throwsA(isA<RestoreImportException>().having(
+        (error) => error.code,
+        'code',
+        'remote_sequence_inconsistent',
+      )),
+    );
+    expect(importer.readCursor().nextCursor, 0);
+    expect(importer.readCursor().blockedCode,
+        'remote_sequence_inconsistent');
+    expect(store.box<WorkoutRemoteStateEntity>().getAll().single.serverRevision,
+        3);
+    expect(store.box<WorkoutSessionEntity>().getAll().single.name,
+        'Cloud strength');
+  });
+
+  test('same-sequence mismatched server revision is rejected', () {
+    seed();
+    conflict();
+    importer.resolveReviewedWorkout(
+      workoutUuid: workout,
+      expectedLocalRevision: 1,
+      review: review(revision: 3, seq: 9),
+      action: WorkoutResolutionAction.useCloud,
     );
     expect(
-      store.box<WorkoutSessionEntity>().getAll().single.name,
-      'Cloud strength',
+      () => importer.applyPage(
+        WorkoutRestorePage(
+          cursorEpoch: epoch,
+          cursorReset: false,
+          nextCursor: 9,
+          hasMore: false,
+          changes: [review(revision: 4, seq: 9).change!],
+        ),
+        afterSeq: 0,
+        requestedEpoch: null,
+      ),
+      throwsA(isA<RestoreImportException>().having(
+        (error) => error.code,
+        'code',
+        'remote_sequence_inconsistent',
+      )),
     );
+  });
+
+  test('old-epoch skip can resolve against current cloud record', () {
+    seed();
+    conflict();
+    store.box<WorkoutRestoreSkipEntity>().put(
+      WorkoutRestoreSkipEntity(
+        workoutUuid: workout,
+        ownerAccountId: accountA,
+        serverChangeSeq: 100,
+        cursorEpoch: '00000000-0000-4000-8000-000000006799',
+        skippedAtMs: started,
+      ),
+    );
+    final candidate = importer.readConflictCandidates().single;
+    expect(candidate.skippedChangeSeq, 100);
+    importer.resolveReviewedWorkout(
+      workoutUuid: workout,
+      expectedLocalRevision: candidate.localRevision,
+      review: review(revision: 2, seq: 3),
+      action: WorkoutResolutionAction.useCloud,
+      expectedHasSkip: true,
+      expectedSkipEpoch: candidate.skippedEpoch,
+      expectedSkipChangeSeq: candidate.skippedChangeSeq,
+    );
+    expect(store.box<WorkoutRestoreSkipEntity>().count(), 0);
+    expect(importer.readConflictCandidates(), isEmpty);
+    expect(store.box<WorkoutSessionEntity>().getAll().single.name,
+        'Cloud strength');
+  });
+
+  test('old-epoch skip can requeue local when cloud workout is missing', () {
+    seed();
+    conflict();
+    store.box<WorkoutRestoreSkipEntity>().put(
+      WorkoutRestoreSkipEntity(
+        workoutUuid: workout,
+        ownerAccountId: accountA,
+        serverChangeSeq: 100,
+        cursorEpoch: '00000000-0000-4000-8000-000000006799',
+        skippedAtMs: started,
+      ),
+    );
+    final candidate = importer.readConflictCandidates().single;
+    importer.resolveReviewedWorkout(
+      workoutUuid: workout,
+      expectedLocalRevision: candidate.localRevision,
+      review: review(missing: true),
+      action: WorkoutResolutionAction.retryLocal,
+      expectedHasSkip: true,
+      expectedSkipEpoch: candidate.skippedEpoch,
+      expectedSkipChangeSeq: candidate.skippedChangeSeq,
+    );
+    expect(store.box<WorkoutRestoreSkipEntity>().count(), 0);
+    expect(outbox.reserveNext(nowMs: started + 10000000)!
+        .expectedServerRevision, 0);
+    expect(store.box<WorkoutSessionEntity>().getAll().single.name,
+        'Local strength');
+  });
+
+  test('missing local and cloud workout permits explicit orphan skip dismissal', () {
+    store.box<WorkoutRestoreSkipEntity>().put(
+      WorkoutRestoreSkipEntity(
+        workoutUuid: workout,
+        ownerAccountId: accountA,
+        serverChangeSeq: 13,
+        cursorEpoch: epoch,
+        skippedAtMs: started,
+      ),
+    );
+    final candidate = importer.readConflictCandidates().single;
+    expect(candidate.hasLocalWorkout, false);
+    expect(candidate.canDismissMissing, true);
+    expect(candidate.skippedEpoch, epoch);
+    importer.resolveReviewedWorkout(
+      workoutUuid: workout,
+      expectedLocalRevision: 0,
+      review: review(missing: true),
+      action: WorkoutResolutionAction.dismissMissing,
+      expectedHasSkip: true,
+      expectedSkipEpoch: candidate.skippedEpoch,
+      expectedSkipChangeSeq: candidate.skippedChangeSeq,
+    );
+    expect(store.box<WorkoutRestoreSkipEntity>().count(), 0);
+    expect(importer.readConflictCandidates(), isEmpty);
+    expect(importer.readCursor().nextCursor, 0);
+    expect(store.box<WorkoutSessionEntity>().count(), 0);
+  });
+
+  test('dismiss cannot drop a skip advanced after review was opened', () {
+    store.box<WorkoutRestoreSkipEntity>().put(
+      WorkoutRestoreSkipEntity(
+        workoutUuid: workout,
+        ownerAccountId: accountA,
+        serverChangeSeq: 13,
+        cursorEpoch: epoch,
+        skippedAtMs: started,
+      ),
+    );
+    final candidate = importer.readConflictCandidates().single;
+    final skip = store.box<WorkoutRestoreSkipEntity>().getAll().single;
+    skip.serverChangeSeq = 14;
+    store.box<WorkoutRestoreSkipEntity>().put(skip);
+    expect(
+      () => importer.resolveReviewedWorkout(
+        workoutUuid: workout,
+        expectedLocalRevision: 0,
+        review: review(missing: true),
+        action: WorkoutResolutionAction.dismissMissing,
+        expectedHasSkip: true,
+        expectedSkipEpoch: candidate.skippedEpoch,
+        expectedSkipChangeSeq: candidate.skippedChangeSeq,
+      ),
+      throwsA(isA<RestoreImportException>().having(
+        (error) => error.code,
+        'code',
+        'resolution_stale_skip',
+      )),
+    );
+    expect(store.box<WorkoutRestoreSkipEntity>().getAll().single.serverChangeSeq,
+        14);
+  });
+
+  test('orphan dismissal rejects unresolved operations and local data', () {
+    seed();
+    conflict();
+    store.box<WorkoutRestoreSkipEntity>().put(
+      WorkoutRestoreSkipEntity(
+        workoutUuid: workout,
+        ownerAccountId: accountA,
+        serverChangeSeq: 13,
+        cursorEpoch: epoch,
+        skippedAtMs: started,
+      ),
+    );
+    expect(importer.readConflictCandidates().single.canDismissMissing, false);
+    expect(
+      () => importer.resolveReviewedWorkout(
+        workoutUuid: workout,
+        expectedLocalRevision: 1,
+        review: review(missing: true),
+        action: WorkoutResolutionAction.dismissMissing,
+      ),
+      throwsA(isA<RestoreImportException>().having(
+        (error) => error.code,
+        'code',
+        'resolution_cannot_dismiss',
+      )),
+    );
+    expect(store.box<WorkoutRestoreSkipEntity>().count(), 1);
+    expect(store.box<WorkoutSessionEntity>().count(), 1);
   });
 
   test('recovery delete UUID comes from injected factory', () {
