@@ -690,10 +690,12 @@ void main() {
         ownerAccountId: accountA,
         serverChangeSeq: 100,
         cursorEpoch: '00000000-0000-4000-8000-000000006799',
+        deleted: true,
         skippedAtMs: started,
       ),
     );
     final candidate = importer.readConflictCandidates().single;
+    expect(candidate.skippedDeletion, true);
     importer.resolveReviewedWorkout(
       workoutUuid: workout,
       expectedLocalRevision: candidate.localRevision,
