@@ -66,10 +66,6 @@ import UIKit
       try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
       exportDirectory = parent
       try bytes.write(to: file, options: [.atomic, .completeFileProtection])
-      try FileManager.default.setAttributes(
-        [.protectionKey: FileProtectionType.complete],
-        ofItemAtPath: file.path
-      )
       guard let root = UIApplication.shared.connectedScenes
         .compactMap({ $0 as? UIWindowScene })
         .flatMap({ $0.windows })
