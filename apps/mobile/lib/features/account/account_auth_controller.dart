@@ -175,10 +175,12 @@ class SupabaseAccountAuthApi implements AccountAuthApi {
   @override
   Future<void> deleteAccountOnServer(String accountId) async {
     final session = _client.auth.currentSession;
-    if (session == null || session.user.id != accountId ||
+    if (session == null ||
+        session.user.id != accountId ||
         session.user.isAnonymous ||
         session.expiresAt == null ||
-        session.expiresAt! <= DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000) {
+        session.expiresAt! <=
+            DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000) {
       throw const AuthException('Verified account required');
     }
     final response = await _client.functions.invoke(
@@ -186,8 +188,10 @@ class SupabaseAccountAuthApi implements AccountAuthApi {
       body: {'account_id': accountId, 'confirm': 'DELETE MY ACCOUNT'},
     );
     final data = response.data;
-    if (response.status != 200 || data is! Map ||
-        data['schema_version'] != 1 || data['deleted'] != true) {
+    if (response.status != 200 ||
+        data is! Map ||
+        data['schema_version'] != 1 ||
+        data['deleted'] != true) {
       throw const AuthException('Deletion receipt missing');
     }
   }
@@ -355,9 +359,13 @@ class AccountAuthController extends ChangeNotifier {
   /// again to their *same* existing account only if deletion did not commit.
   /// An old local partition is never reassigned to a newly created account.
   Future<void> confirmAccountDeletion(String code) async {
-    if (_busy || !_deletionCodeSent ||
-        _deletionEmail == null || _deletionOwner == null ||
-        _userId != _deletionOwner || !cloudBackupReady) return;
+    if (_busy ||
+        !_deletionCodeSent ||
+        _deletionEmail == null ||
+        _deletionOwner == null ||
+        _userId != _deletionOwner ||
+        !cloudBackupReady)
+      return;
     if (!RegExp(r'^\d{6}$').hasMatch(code.trim())) {
       _error = 'Enter the six-digit deletion verification code.';
       notifyListeners();
@@ -378,7 +386,8 @@ class AccountAuthController extends ChangeNotifier {
         throw StateError('Deletion verification account mismatch');
       }
     } catch (_) {
-      _error = 'Verification failed or the account changed. '
+      _error =
+          'Verification failed or the account changed. '
           'Check the code and sign in again if necessary.';
       _busy = false;
       notifyListeners();
@@ -388,7 +397,8 @@ class AccountAuthController extends ChangeNotifier {
     try {
       await _binding.clear();
     } catch (_) {
-      _error = 'Could not lock this device securely. '
+      _error =
+          'Could not lock this device securely. '
           'Account deletion has not been requested.';
       _busy = false;
       notifyListeners();
@@ -404,7 +414,8 @@ class AccountAuthController extends ChangeNotifier {
     notifyListeners();
     try {
       await _api.deleteAccountOnServer(owner);
-      _notice = 'Account deletion confirmed. Cloud workout history was '
+      _notice =
+          'Account deletion confirmed. Cloud workout history was '
           'deleted. This device is locked; existing local data is not '
           'automatically reassigned to another account.';
       try {
@@ -414,7 +425,8 @@ class AccountAuthController extends ChangeNotifier {
       }
     } catch (_) {
       // Network errors may have happened AFTER the server committed deletion.
-      _error = 'Account deletion could not be confirmed. This device is '
+      _error =
+          'Account deletion could not be confirmed. This device is '
           'locked. If the account still exists, sign in again with the '
           'same email to review it. Otherwise contact support.';
     } finally {
