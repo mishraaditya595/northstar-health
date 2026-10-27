@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design/page_header.dart';
 import 'objectbox_workout_restore_importer.dart';
 import 'workout_conflict_resolution.dart';
-import 'workout_restore_feed.dart';
 
 /// A deliberate, reviewed choice. No automatic last-write-wins policy.
 class WorkoutConflictReviewPage extends ConsumerStatefulWidget {
