@@ -145,7 +145,8 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                               child: const Text('Use a different email'),
                             ),
                           ],
-                          if (auth.deletionRecoveryPending && !auth.codeSent) ...[
+                          if (auth.deletionRecoveryPending &&
+                              !auth.codeSent) ...[
                             const SizedBox(height: 14),
                             TextButton(
                               onPressed: auth.busy
@@ -154,7 +155,9 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                                       final leave = await showDialog<bool>(
                                         context: context,
                                         builder: (dialogContext) => AlertDialog(
-                                          title: const Text('Leave account recovery?'),
+                                          title: const Text(
+                                            'Leave account recovery?',
+                                          ),
                                           content: const Text(
                                             'Your original account may still exist. '
                                             'Leaving recovery does not erase local '
@@ -164,14 +167,22 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                                           ),
                                           actions: [
                                             TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(dialogContext, false),
-                                              child: const Text('Keep recovering'),
+                                              onPressed: () => Navigator.pop(
+                                                dialogContext,
+                                                false,
+                                              ),
+                                              child: const Text(
+                                                'Keep recovering',
+                                              ),
                                             ),
                                             FilledButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(dialogContext, true),
-                                              child: const Text('Leave recovery'),
+                                              onPressed: () => Navigator.pop(
+                                                dialogContext,
+                                                true,
+                                              ),
+                                              child: const Text(
+                                                'Leave recovery',
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -180,7 +191,9 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                                         await auth.leaveDeletionRecovery();
                                       }
                                     },
-                              child: const Text('Use a different account instead'),
+                              child: const Text(
+                                'Use a different account instead',
+                              ),
                             ),
                           ],
                           if (auth.busy) ...[
