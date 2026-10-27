@@ -174,8 +174,9 @@ class ObjectBoxWorkoutOutbox {
     DateTime Function()? clock,
   }) {
     final normalized = _requireUuid(sessionUuid);
-    if (expectedLocalRevision < 1)
+    if (expectedLocalRevision < 1) {
       throw ArgumentError.value(expectedLocalRevision);
+    }
     final nowMs = (clock ?? DateTime.now)().toUtc().millisecondsSinceEpoch;
     return _store.runInTransaction(TxMode.write, () {
       final rows = _find(_sessions, WorkoutSessionEntity_.uuid, sessionUuid);
