@@ -3,7 +3,7 @@
 **Status:** Draft PR #24; NOT merged, deployed or device-verified. PR #23 (queue fairness) merged.
 
 ## User experience
-A completed NorthStar phone workout has a **Delete workout** action on its details page. The shared `showNsConfirm` dialog explains that deleting immediately removes local history, queues a deletion for Supabase and other signed-in devices, can be delayed by paused backup / conflicts, and cannot be undone. Cancelling is a no-op. The details screen then invalidates the completed-history Riverpod provider, refreshes sync badges, kicks the existing authenticated foreground worker and navigates back when possible.
+A completed NorthStar phone workout has a **Delete workout** action on its details page. The shared `showNsConfirm` dialog explains that deleting immediately removes local history, queues a cloud tombstone only when a prior upload or remote state is known, can be delayed by paused backup / conflicts, and cannot be undone. Never-synced legacy workouts are deleted locally without attempting an impossible cloud RPC. Cancelling is a no-op. The details screen then invalidates the completed-history Riverpod provider, refreshes sync badges, kicks the existing authenticated foreground worker and navigates back when possible.
 
 No action is exposed for health observations, imported third-party activity, unfinished sessions, plans or non-phone data.
 
@@ -12,8 +12,9 @@ No action is exposed for health observations, imported third-party activity, unf
 - Require an existing, completed, non-deleted `northstar_phone` session and exact local optimistic revision.
 - Preserve the session's minimal UUID, revision, origin, timestamps and soft-deleted flag for idempotency and the importer's anti-resurrection checks; redact name and plan identity.
 - Purge locally stored workout exercise and set detail rows.
-- Append exactly one durable `WorkoutSyncOutboxEntity` with `action='delete'`, `payloadJson='null'` and the next local revision. This immutable token decodes to an actual SQL/JSON null, as required by the existing server RPC. Never embed a deleted workout snapshot in the deletion request.
-- An exception, including an invalid generated operation UUID, rolls back **all** local changes. Exact local retries return false without creating another command.
+- If a prior outbox operation or imported server state exists, append exactly one durable `WorkoutSyncOutboxEntity` with `action='delete'`, `payloadJson='null'` and the next local revision. This token decodes to SQL/JSON null, as required by the existing RPC. Never embed a deleted snapshot in the deletion request.
+- If neither an outbox operation nor a remote state exists (legacy completed log never tracked for upload), keep the local tombstone and scrub details **without** a cloud operation: `sync_workout` deliberately returns `conflict` when deleting an absent server row. This no-evidence branch does not assert anything about external/manual copies.
+- An exception, including an invalid generated operation UUID when cloud deletion is needed, rolls back **all** local changes. Exact local retries return `alreadyDeleted`, and a successful deletion returns either `localOnly` or `cloudDeleteQueued`, so UI text and foreground sync behavior remain accurate.
 
 Pending previous upserts are **not silently deleted**, including an in-flight upload whose acknowledgement may have been lost. They must ACK first, after which the delete uploads with the correct server CAS revision. A conflicted/blocked predecessor pauses the delete until explicit resolution. Tombstone writes are sticky; a new upsert cannot resurrect the same UUID on the server.
 
@@ -27,9 +28,9 @@ The importer already handles remote tombstones by soft-deleting eligible device 
 **Important limitation:** a user can locally delete a workout while offline but the server may retain its existing copy until the queued operation succeeds. The UI must be truthful about this. A conflicting or blocked predecessor may hold the deletion indefinitely until reviewed conflict resolution (next P2-06 slice). Explicit account deletion/retention/export remain P2-07. Physical device tests and hosted Supabase two-account/delete race tests remain P2-08.
 
 ## Verification
-- Real file-backed ObjectBox tests: local data redaction and children removal, durable null-payload delete enqueue, idempotency across store reopen, rollback before commit, stale revision / incomplete / non-phone rejection.
+- Real file-backed ObjectBox tests: never-uploaded local-only redaction (no queued RPC), known-cloud durable null-payload delete enqueue, idempotency across store reopen, rollback with an existing pending upsert, stale revision / incomplete / non-phone rejection.
 - Fake authenticated upload/restore tests: upsert then delete CAS ordering, local ACK replay with tombstone, imported remote CAS baseline, remote tombstone on second device.
-- UI widget test: shared confirmation dialog cancel and confirmed delete, completed-history provider invalidation.
+- UI widget tests: shared confirmation dialog cancel and confirmed delete, both local-only and queued-cloud branches, completed-history provider invalidation.
 - CI must verify Dart format, Flutter analyze, all host ObjectBox/widget tests, Android debug build, repository contracts, Supabase SQL/RLS and watchOS proof.
 
 **Unrun release gates:** real iOS/Android app lifecycle tests, physical owner-switch/process-death, real Supabase multidevice signed JWT, server migration drift reconciliation, low-end profiling and actual deletion latency while backup is offline/blocked.
