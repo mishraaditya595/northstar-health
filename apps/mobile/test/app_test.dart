@@ -35,13 +35,18 @@ void main() {
     await tester.pumpWidget(signedInApp(auth));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Sign out of NorthStar'));
+    await tester.tap(find.byTooltip('Account and backup'));
+    await tester.pumpAndSettle();
+    expect(find.text('Account'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Sign out of this device'), 180);
+    await tester.tap(find.text('Sign out of this device'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(auth.userId, accountA);
 
-    await tester.tap(find.byTooltip('Sign out of NorthStar'));
+    await tester.scrollUntilVisible(find.text('Sign out of this device'), 180);
+    await tester.tap(find.text('Sign out of this device'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
     await tester.pumpAndSettle();
