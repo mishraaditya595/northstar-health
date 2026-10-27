@@ -53,11 +53,13 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
       message:
           '${warning}This permanently deletes your signed-in account, '
           'cloud workout history, deletion tombstones and sync receipts. '
-          'Other devices will lose access. Local workouts and plans remain '
-          'locked to this account on this device; they will not be moved '
-          'to any other account. Export your cloud workout history FIRST, '
+          'Other devices will lose access. Once deletion is confirmed, '
+          'this device will also erase this account\'s local workouts, '
+          'plans and pending uploads. If the response is uncertain, local '
+          'data stays locked instead. Export your cloud workout history FIRST, '
           'and be aware the current export has a 4 MiB limit. '
-          'You must verify a new email code before deletion.',
+          'You must verify a new code sent using the normal Supabase '
+          'sign-in email template before deletion.',
       confirmLabel: 'Send deletion code',
     );
     if (!accepted || !mounted || !auth.cloudBackupReady) return;
@@ -74,9 +76,10 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
       title: 'Delete permanently?',
       message:
           'This cannot be undone. The verified account and its cloud '
-          'history will be deleted. This device will immediately lock its '
-          'local owner partition, even if the network result is uncertain. '
-          'A successful delete cannot be reversed.',
+          'history will be deleted. This device immediately locks the '
+          'account partition. Once the server confirms deletion, local '
+          'workouts, plans and unsynced data are permanently erased too. '
+          'If the result is uncertain they remain locked, not erased.',
       confirmLabel: 'Delete permanently',
     );
     if (!accepted || !mounted || !auth.deletionCodeSent) return;
@@ -383,8 +386,9 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
                   'Deleting an account permanently removes its cloud history '
                   'and disables sign-in on other devices. Any unfinished or '
                   'unsynced workouts and custom plans on this device are NOT '
-                  'part of the cloud export. Local history is locked and '
-                  'cannot be reassigned to a different account.',
+                  'part of the cloud export. A confirmed deletion also erases '
+                  'this account\'s local workouts and plans; an uncertain '
+                  'server result only locks them.',
                 ),
                 const SizedBox(height: 12),
                 if (!auth.deletionCodeSent)
@@ -412,6 +416,11 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
                     onSubmitted: (_) => _confirmDeletion(auth),
                   ),
                   const SizedBox(height: 8),
+                  const Text(
+                    'This code arrives in the usual sign-in email; there '
+                    'is no separate deletion-email template.',
+                  ),
+                  const SizedBox(height: 8),
                   FilledButton(
                     onPressed: auth.busy || _exporting
                         ? null
@@ -423,7 +432,7 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
                     child: const Text('Cancel account deletion'),
                   ),
                 ],
-                if (auth.deletionCodeSent && auth.error != null) ...[
+                if (auth.error != null) ...[
                   const SizedBox(height: 8),
                   Text(
                     auth.error!,
