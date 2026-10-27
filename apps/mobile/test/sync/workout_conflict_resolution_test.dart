@@ -333,37 +333,42 @@ void main() {
   });
 
 
-  test('a reviewed live cloud copy cannot resurrect an irreversible delete', () {
-    seed();
-    conflict();
-    outbox.deleteCompletedWorkout(
-      sessionUuid: workout,
-      expectedLocalRevision: 1,
-    );
-    outbox.reserveNext(nowMs: started + 10000000);
-    expect(
-      () => importer.resolveReviewedWorkout(
-        workoutUuid: workout,
-        expectedLocalRevision: 2,
-        review: review(),
-        action: WorkoutResolutionAction.useCloud,
-      ),
-      throwsA(
-        isA<RestoreImportException>().having(
-          (error) => error.code,
-          'code',
-          'local_tombstone_sticky',
+  test(
+    'a reviewed live cloud copy cannot resurrect an irreversible delete',
+    () {
+      seed();
+      conflict();
+      outbox.deleteCompletedWorkout(
+        sessionUuid: workout,
+        expectedLocalRevision: 1,
+      );
+      outbox.reserveNext(nowMs: started + 10000000);
+      expect(
+        () => importer.resolveReviewedWorkout(
+          workoutUuid: workout,
+          expectedLocalRevision: 2,
+          review: review(),
+          action: WorkoutResolutionAction.useCloud,
         ),
-      ),
-    );
-    expect(
-      store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs,
-      isNotNull,
-    );
-    expect(store.box<WorkoutSyncOutboxEntity>().getAll().first.state,
-        'conflict');
-    expect(importer.readConflictCandidates().single.deletedLocally, true);
-  });
+        throwsA(
+          isA<RestoreImportException>().having(
+            (error) => error.code,
+            'code',
+            'local_tombstone_sticky',
+          ),
+        ),
+      );
+      expect(
+        store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs,
+        isNotNull,
+      );
+      expect(
+        store.box<WorkoutSyncOutboxEntity>().getAll().first.state,
+        'conflict',
+      );
+      expect(importer.readConflictCandidates().single.deletedLocally, true);
+    },
+  );
 
   test(
     'deleted workout with absent server row resolves without network work',
