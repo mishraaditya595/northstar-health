@@ -31,7 +31,16 @@ function validRequest(method: string, authorization: string | null, body: unknow
     /^[0-9a-f-]{36}$/i.test(document.account_id);
 }
 
-Deno.serve(async (request: Request): Promise<Response> => {
+/// Dependency-injected handler enables offline, fully stubbed Deno security
+/// tests. Production still uses exactly createClient and Deno environment.
+export function createDeleteAccountHandler({
+  makeClient = createClient,
+  getEnv = (key: string) => Deno.env.get(key),
+}: {
+  makeClient?: typeof createClient;
+  getEnv?: (key: string) => string | undefined;
+} = {}) {
+  return async (request: Request): Promise<Response> => {
   if (request.method !== "POST") {
     return reply(405, { error: "method_not_allowed" });
   }
@@ -49,9 +58,9 @@ Deno.serve(async (request: Request): Promise<Response> => {
     return reply(400, { error: "invalid_request" });
   }
 
-  const url = Deno.env.get("SUPABASE_URL");
-  const anon = Deno.env.get("SUPABASE_ANON_KEY");
-  const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const url = getEnv("SUPABASE_URL");
+  const anon = getEnv("SUPABASE_ANON_KEY");
+  const serviceRole = getEnv("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !anon || !serviceRole) {
     // Secrets/config never appear in the response.
     return reply(503, { error: "service_unavailable" });
@@ -60,7 +69,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
   const requestedOwner = (body as Json).account_id as string;
   try {
     // All user-bound operations use the caller's JWT, never the admin client.
-    const caller = createClient(url, anon, {
+    const caller = makeClient(url, anon, {
       global: { headers: { Authorization: authorization! } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
@@ -84,7 +93,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
     // One privileged server-side operation deletes the user. FK ON DELETE
     // CASCADE removes owned workout data in the same Postgres transaction.
     // Default hard delete (never soft delete); do not delete one table first.
-    const admin = createClient(url, serviceRole, {
+    const admin = makeClient(url, serviceRole, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
     const { error } = await admin.auth.admin.deleteUser(user.id, false);
@@ -99,4 +108,10 @@ Deno.serve(async (request: Request): Promise<Response> => {
     // Never claim a rollback or return the original exception or identifiers.
     return reply(503, { error: "deletion_not_confirmed" });
   }
-});
+  };
+}
+
+// Importing the handler for tests MUST NOT start a listening server.
+if (import.meta.main) {
+  Deno.serve(createDeleteAccountHandler());
+}
