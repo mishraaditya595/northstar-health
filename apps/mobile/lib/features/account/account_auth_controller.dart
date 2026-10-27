@@ -581,8 +581,10 @@ class AccountAuthController extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    var serverConfirmed = false;
     try {
       await _api.deleteAccountOnServer(owner);
+      serverConfirmed = true;
       // This write MUST occur only after an exact successful server receipt.
       // A lost response keeps the uncertain marker; it never erases files.
       await _cleanupStore.write(owner);
@@ -611,11 +613,14 @@ class AccountAuthController extends ChangeNotifier {
             'Recover the original account to unlock local workouts.';
       }
     } catch (_) {
-      // A response can disappear AFTER an irreversible server commit.
-      // Keep local data locked and DO NOT erase it in this branch.
-      _error = 'Account deletion could not be confirmed. This device is '
-          'locked. Recover ONLY the original account if it still exists; '
-          'otherwise contact support. Recovery never creates an account.';
+      // A response can disappear AFTER the server commit. Only a confirmed
+      // receipt is permitted to authorize local file erasure.
+      _error = serverConfirmed
+          ? 'Cloud deletion confirmed, but local cleanup could not be '
+              'secured. Data stays locked; contact support.'
+          : 'Account deletion could not be confirmed. This device is '
+              'locked. Recover ONLY the original account if it still exists; '
+              'otherwise contact support. Recovery never creates an account.';
     } finally {
       _busy = false;
       notifyListeners();
@@ -623,7 +628,7 @@ class AccountAuthController extends ChangeNotifier {
   }
 
   Future<void> requestCode(String email) async {
-    if (_busy) return;
+    if (_busy || _cleanupOwner != null) return;
     final normalized = email.trim().toLowerCase();
     if (!normalized.contains('@') || normalized.length > 254) {
       _error = 'Enter a valid email address.';
@@ -659,7 +664,7 @@ class AccountAuthController extends ChangeNotifier {
   }
 
   Future<void> verifyCode(String value) async {
-    if (_busy || _pendingEmail == null) return;
+    if (_busy || _cleanupOwner != null || _pendingEmail == null) return;
     final code = value.trim();
     if (!RegExp(r'^\d{6}$').hasMatch(code)) {
       _error = 'Enter the six-digit email code.';
