@@ -47,6 +47,7 @@ enum WorkoutResolutionAction {
   retryLocal,
   finishDeletion,
   keepLocalOnly,
+  dismissMissing,
 }
 
 class WorkoutConflictCandidate {
@@ -59,6 +60,9 @@ class WorkoutConflictCandidate {
     required this.exerciseCount,
     required this.setCount,
     required this.canKeepLocalOnly,
+    required this.canDismissMissing,
+    required this.skippedEpoch,
+    required this.skippedChangeSeq,
   });
   final String workoutUuid;
   final String name;
@@ -68,6 +72,9 @@ class WorkoutConflictCandidate {
   final int exerciseCount;
   final int setCount;
   final bool canKeepLocalOnly;
+  final bool canDismissMissing;
+  final String? skippedEpoch;
+  final int? skippedChangeSeq;
 }
 
 /// Injected per-account importer; *not* an app background service.
@@ -609,6 +616,12 @@ class ObjectBoxWorkoutRestoreImporter {
               baseline == null &&
               skip == null &&
               ObjectBoxWorkoutOutbox.entirelyUnsentLocalValidations(operations);
+          final canDismissMissing =
+              session == null &&
+              skip != null &&
+              (baseline == null ||
+                  (baseline.cursorEpoch != _cursorEntity()?.cursorEpoch)) &&
+              operations.every((op) => op.state == 'superseded');
           final exercises = session == null
               ? <WorkoutExerciseEntity>[]
               : _matching(
@@ -638,6 +651,9 @@ class ObjectBoxWorkoutRestoreImporter {
               exerciseCount: exercises.length,
               setCount: setCount,
               canKeepLocalOnly: keepLocalOnly,
+              canDismissMissing: canDismissMissing,
+              skippedEpoch: skip?.cursorEpoch,
+              skippedChangeSeq: skip?.serverChangeSeq,
             ),
           );
         }
@@ -655,6 +671,9 @@ class ObjectBoxWorkoutRestoreImporter {
     required int expectedLocalRevision,
     required WorkoutRemoteReview review,
     required WorkoutResolutionAction action,
+    String? expectedSkipEpoch,
+    int? expectedSkipChangeSeq,
+    bool? expectedHasSkip,
   }) => _store.runInTransaction(TxMode.write, () {
     _checkAccount();
     final cursor = _cursorEntity();
@@ -714,6 +733,16 @@ class ObjectBoxWorkoutRestoreImporter {
     if (skip != null && skip.ownerAccountId != accountId) {
       throw const RestoreImportException('owner_store_mismatch');
     }
+    // Local revision does not change when an importer advances a skip.
+    // The review screen must detect a new/changed skip after its snapshot
+    // was fetched, even when the current server record is absent.
+    if (expectedHasSkip != null &&
+        (expectedHasSkip != (skip != null) ||
+            (skip != null &&
+                (skip.cursorEpoch != expectedSkipEpoch ||
+                    skip.serverChangeSeq != expectedSkipChangeSeq)))) {
+      throw const RestoreImportException('resolution_stale_skip');
+    }
     if (skip == null &&
         !operations.any(
           (op) => op.state == 'conflict' || op.state == 'blocked',
@@ -721,14 +750,14 @@ class ObjectBoxWorkoutRestoreImporter {
       throw const RestoreImportException('resolution_already_handled');
     }
     final remoteChange = review.change;
-    // The foreground importer may have skipped a NEWER server change while
-    // the user was reading a conflict preview. Local revision is unchanged
-    // for skips, so the optimistic local check alone is insufficient.
-    // Never clear a newer skip from an older reviewed point lookup.
+    // Restore sequence numbers are scoped to their cursor epoch. An old
+    // epoch skip cannot be compared to a fresh authoritative point lookup.
+    // A current-epoch skip can be cleared by a reviewed missing-row choice,
+    // but a present server row must be at least as new as the recorded skip.
     if (skip != null &&
-        (skip.cursorEpoch != review.cursorEpoch ||
-            remoteChange == null ||
-            remoteChange.changeSeq < skip.serverChangeSeq)) {
+        skip.cursorEpoch == review.cursorEpoch &&
+        remoteChange != null &&
+        remoteChange.changeSeq < skip.serverChangeSeq) {
       throw const RestoreImportException('resolution_stale_skip');
     }
     if (oldRemote != null &&
@@ -748,6 +777,20 @@ class ObjectBoxWorkoutRestoreImporter {
         ObjectBoxWorkoutOutbox.entirelyUnsentLocalValidations(operations);
     if (action == WorkoutResolutionAction.keepLocalOnly && !localOnlyAllowed) {
       throw const RestoreImportException('resolution_cannot_keep_local');
+    }
+    // A skip with neither local nor current cloud data may be dismissed
+    // only by explicit user choice. Never drop an unacknowledged mutation,
+    // or known current-epoch cloud baseline, as an orphaned skip.
+    final canDismissMissing =
+        action == WorkoutResolutionAction.dismissMissing &&
+        skip != null &&
+        local == null &&
+        remoteChange == null &&
+        (oldRemote == null || oldRemote.cursorEpoch != review.cursorEpoch) &&
+        operations.every((op) => op.state == 'superseded');
+    if (action == WorkoutResolutionAction.dismissMissing &&
+        !canDismissMissing) {
+      throw const RestoreImportException('resolution_cannot_dismiss');
     }
     if (action == WorkoutResolutionAction.useCloud && remoteChange == null) {
       throw const RestoreImportException('resolution_cloud_missing');
@@ -787,7 +830,12 @@ class ObjectBoxWorkoutRestoreImporter {
     }
     final before = local?.revision ?? 0;
     var importedRevision = before;
-    if (action == WorkoutResolutionAction.useCloud) {
+    if (action == WorkoutResolutionAction.dismissMissing) {
+      // No local workout, current cloud record or unresolved upload exists.
+      // An old-epoch baseline is obsolete after explicit reviewed dismissal;
+      // leave the account restore cursor untouched.
+      if (oldRemote != null) _remote.remove(oldRemote.id);
+    } else if (action == WorkoutResolutionAction.useCloud) {
       if (remoteChange!.deleted) {
         if (local != null) {
           _redactSession(local);
