@@ -23,25 +23,29 @@ void main() {
     addTearDown(auth.dispose);
     addTearDown(api.dispose);
     await auth.restore();
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        accountAuthControllerProvider.overrideWithValue(auth),
-        workoutSyncFlagsProvider.overrideWithValue(const {
-          'unsent': WorkoutSyncFlag.notSynced,
-          'local': WorkoutSyncFlag.localOnly,
-        }),
-      ],
-      child: MaterialApp(
-        theme: NorthstarTheme.build(Brightness.light),
-        home: const AccountSyncPage(),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          accountAuthControllerProvider.overrideWithValue(auth),
+          workoutSyncFlagsProvider.overrideWithValue(const {
+            'unsent': WorkoutSyncFlag.notSynced,
+            'local': WorkoutSyncFlag.localOnly,
+          }),
+        ],
+        child: MaterialApp(
+          theme: NorthstarTheme.build(Brightness.light),
+          home: const AccountSyncPage(),
+        ),
       ),
-    ));
+    );
     await scrollTo(tester, 'Permanently delete account');
     await tester.tap(find.text('Permanently delete account'));
     await tester.pumpAndSettle();
     expect(find.textContaining('waiting for backup'), findsOneWidget);
-    expect(find.textContaining('Export your cloud workout history FIRST'),
-        findsOneWidget);
+    expect(
+      find.textContaining('Export your cloud workout history FIRST'),
+      findsOneWidget,
+    );
     expect(api.deletionCodeSentTo, isNull);
     expect(bound.saved, accountA);
     await tester.tap(find.text('Cancel'));
@@ -66,7 +70,9 @@ void main() {
     expect(bound.saved, accountA);
   });
 
-  testWidgets('expired session cannot start permanent deletion', (tester) async {
+  testWidgets('expired session cannot start permanent deletion', (
+    tester,
+  ) async {
     final api = FakeAuthApi()
       ..sessionId = accountA
       ..expired = true;
@@ -74,13 +80,15 @@ void main() {
     addTearDown(auth.dispose);
     addTearDown(api.dispose);
     await auth.restore();
-    await tester.pumpWidget(ProviderScope(
-      overrides: [accountAuthControllerProvider.overrideWithValue(auth)],
-      child: MaterialApp(
-        theme: NorthstarTheme.build(Brightness.light),
-        home: const AccountSyncPage(),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [accountAuthControllerProvider.overrideWithValue(auth)],
+        child: MaterialApp(
+          theme: NorthstarTheme.build(Brightness.light),
+          home: const AccountSyncPage(),
+        ),
       ),
-    ));
+    );
     await scrollTo(tester, 'Permanently delete account');
     final delete = tester.widget<OutlinedButton>(
       find.widgetWithText(OutlinedButton, 'Permanently delete account'),
