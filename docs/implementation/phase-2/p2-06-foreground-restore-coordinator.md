@@ -1,6 +1,6 @@
 # P2-06 — Foreground workout restore coordinator
 
-**Status:** Draft [PR #22](https://github.com/mishraaditya595/northstar-health/pull/22), not merged or deployed. P2-06 is not feature complete.
+**Status:** [PR #22](https://github.com/mishraaditya595/northstar-health/pull/22) merged 2026-10-26, not yet deployed. P2-06 is not feature complete.
 
 ## Behavior
 
@@ -32,4 +32,4 @@ Unmount the restore transport/importer from the account-bound coordinator while 
 
 ### Deferred
 
-Queue fairness beyond first 500 rows, resumable conflict resolution and deletion commands, P2-07 account/export/deletion/status UX and P2-08 device, auth/RLS and release verification remain open.
+Queue fairness beyond the first 500 rows is implemented in draft PR #23 (not yet merged); resumable conflict resolution and deletion commands, P2-07 account/export/deletion/status UX and P2-08 device, auth/RLS and release verification remain open.
