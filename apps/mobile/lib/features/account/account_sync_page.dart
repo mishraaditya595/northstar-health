@@ -52,7 +52,8 @@ class AccountSyncPage extends ConsumerWidget {
     // refresh and sign-out (not just on the Riverpod provider's identity).
     return ListenableBuilder(
       listenable: auth,
-      builder: (context, _) {
+      builder: (context, _) => Consumer(
+        builder: (context, ref, _) {
         if (auth.userId == null) {
           return const Center(
             child: Text('Signed out. Sign in to review account status.'),
@@ -226,7 +227,8 @@ class AccountSyncPage extends ConsumerWidget {
             ),
           ],
         );
-      },
+        },
+      ),
     );
   }
 }
