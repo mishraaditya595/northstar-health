@@ -16,6 +16,8 @@ Widget signedInApp([AccountAuthController? auth]) => ProviderScope(
             FakeAuthApi(),
             FakeBoundAccountStore(),
             FakeDeletionRecoveryStore(),
+            cleanupStore: FakeConfirmedDeletionCleanupStore(),
+            localCleaner: FakeLocalAccountDataCleaner(),
           ),
     ),
   ],
@@ -35,6 +37,8 @@ void main() {
       FakeAuthApi()..sessionId = accountA,
       bound,
       FakeDeletionRecoveryStore(),
+      cleanupStore: FakeConfirmedDeletionCleanupStore(),
+      localCleaner: FakeLocalAccountDataCleaner(),
     );
     addTearDown(auth.dispose);
     await auth.restore();
@@ -83,6 +87,8 @@ void main() {
       FakeAuthApi()..sessionId = accountA,
       FakeBoundAccountStore()..saved = accountA,
       FakeDeletionRecoveryStore(),
+      cleanupStore: FakeConfirmedDeletionCleanupStore(),
+      localCleaner: FakeLocalAccountDataCleaner(),
     );
     addTearDown(auth.dispose);
     await auth.restore();
