@@ -102,7 +102,28 @@ jobs:
           unset SUPABASE_INTERNAL_IMAGE_REGISTRY
           supabase db reset
       - name: Execute pgTAP SQL tests
-        run: supabase test db
+        run: |
+          # pgTAP uses its own pg_prove Docker image. setup-cli's GHCR-only
+          # override can throttle here even after db start/reset passed.
+          unset SUPABASE_INTERNAL_IMAGE_REGISTRY
+          set -o pipefail
+          for attempt in 1 2 3 4; do
+            if supabase test db 2>&1 | tee "$RUNNER_TEMP/supabase-test-db.log"; then
+              exit 0
+            fi
+            if ! grep -Eiq 'toomanyrequests|429 Too Many Requests|rate limit exceeded' \
+              "$RUNNER_TEMP/supabase-test-db.log"; then
+              echo "::error::pgTAP SQL test failure (not a registry throttle)."
+              exit 1
+            fi
+            if [ "$attempt" -eq 4 ]; then
+              echo "::error::Container registry rate limit persisted across pgTAP retries."
+              exit 1
+            fi
+            seconds=$((attempt * 20))
+            echo "::warning::pgTAP image pull throttled (attempt $attempt/4); retrying in ${seconds}s."
+            sleep "$seconds"
+          done
       - name: Install pinned Deno for Edge Function verification
         uses: denoland/setup-deno@v2
         with:
