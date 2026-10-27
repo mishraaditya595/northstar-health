@@ -83,6 +83,16 @@ abstract class AccountAuthApi {
   Future<void> sendEmailCode(String email);
   Future<String> verifyEmailCode(String email, String code);
   Future<void> signOutLocally();
+
+  /// Email is read from the signed-in Auth user, never typed by a caller.
+  String? get signedInEmail;
+
+  /// Re-verification must start a NEW session, not merely refresh a JWT.
+  Future<void> sendDeletionCode(String email);
+  Future<String> verifyDeletionCode(String email, String code);
+
+  /// Calls a server-only Edge Function; never bundles an admin key in mobile.
+  Future<void> deleteAccountOnServer(String accountId);
 }
 
 class SupabaseAccountAuthApi implements AccountAuthApi {
@@ -140,6 +150,47 @@ class SupabaseAccountAuthApi implements AccountAuthApi {
   @override
   Future<void> signOutLocally() =>
       _client.auth.signOut(scope: SignOutScope.local);
+
+  @override
+  String? get signedInEmail => _client.auth.currentSession?.user.email;
+
+  @override
+  Future<void> sendDeletionCode(String email) =>
+      _client.auth.signInWithOtp(email: email, shouldCreateUser: false);
+
+  @override
+  Future<String> verifyDeletionCode(String email, String code) async {
+    final answer = await _client.auth.verifyOTP(
+      email: email,
+      token: code,
+      type: OtpType.email,
+    );
+    final user = answer.user;
+    if (answer.session == null || user == null || user.isAnonymous) {
+      throw const AuthException('Fresh verification required');
+    }
+    return user.id;
+  }
+
+  @override
+  Future<void> deleteAccountOnServer(String accountId) async {
+    final session = _client.auth.currentSession;
+    if (session == null || session.user.id != accountId ||
+        session.user.isAnonymous ||
+        session.expiresAt == null ||
+        session.expiresAt! <= DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000) {
+      throw const AuthException('Verified account required');
+    }
+    final response = await _client.functions.invoke(
+      'delete-account',
+      body: {'account_id': accountId, 'confirm': 'DELETE MY ACCOUNT'},
+    );
+    final data = response.data;
+    if (response.status != 200 || data is! Map ||
+        data['schema_version'] != 1 || data['deleted'] != true) {
+      throw const AuthException('Deletion receipt missing');
+    }
+  }
 }
 
 /// No listener ever receives credentials. A prior online verification writes
@@ -216,6 +267,14 @@ class AccountAuthController extends ChangeNotifier {
   String? _error;
   String? _pendingEmail;
 
+  String? _deletionEmail;
+  String? _deletionOwner;
+  bool _deletionCodeSent = false;
+  String? _notice;
+
+  bool get deletionCodeSent => _deletionCodeSent;
+  String? get notice => _notice;
+
   String? get userId => _userId;
   bool get busy => _busy;
   bool get codeSent => _codeSent;
@@ -246,6 +305,239 @@ class AccountAuthController extends ChangeNotifier {
       return validAccountId(value);
     } on FormatException {
       return null;
+    }
+  }
+
+  /// Email proof must come from Supabase's currently bound, live account.
+  /// Sending the code cannot silently create a new Auth identity.
+  Future<void> requestDeletionCode() async {
+    if (_busy || !cloudBackupReady || _userId == null) return;
+    final email = _api.signedInEmail;
+    if (email == null || email.isEmpty) {
+      _error = 'A verified email address is required to delete this account.';
+      notifyListeners();
+      return;
+    }
+    _busy = true;
+    _error = null;
+    _notice = null;
+    notifyListeners();
+    try {
+      await _api.sendDeletionCode(email);
+      if (!cloudBackupReady || _api.signedInEmail != email) {
+        throw StateError('Account identity changed');
+      }
+      _deletionOwner = _userId;
+      _deletionEmail = email;
+      _deletionCodeSent = true;
+    } catch (_) {
+      _error = 'Could not send deletion code. Check your connection and retry.';
+    } finally {
+      _busy = false;
+      notifyListeners();
+    }
+  }
+
+  void cancelDeletion() {
+    if (_busy) return;
+    _deletionEmail = null;
+    _deletionOwner = null;
+    _deletionCodeSent = false;
+    _error = null;
+    notifyListeners();
+  }
+
+  /// Re-verify an OTP to create a fresh Auth session. Stop the owner-bound
+  /// foreground uploader by clearing the binding and unmounting the owner
+  /// BEFORE the privileged remote deletion request.
+  ///
+  /// On an ambiguous HTTP result we remain locked. The user may sign in
+  /// again to their *same* existing account only if deletion did not commit.
+  /// An old local partition is never reassigned to a newly created account.
+  Future<void> confirmAccountDeletion(String code) async {
+    if (_busy || !_deletionCodeSent ||
+        _deletionEmail == null || _deletionOwner == null ||
+        _userId != _deletionOwner || !cloudBackupReady) return;
+    if (!RegExp(r'^\\d{6}
+    if (_busy) return;
+    final normalized = email.trim().toLowerCase();
+    if (!normalized.contains('@') || normalized.length > 254) {
+      _error = 'Enter a valid email address.';
+      notifyListeners();
+      return;
+    }
+    _busy = true;
+    _error = null;
+    _notice = null;
+    notifyListeners();
+    try {
+      await _api.sendEmailCode(normalized);
+      _pendingEmail = normalized;
+      _codeSent = true;
+    } catch (_) {
+      _error = 'Could not send a code. Check your connection and retry.';
+    } finally {
+      _busy = false;
+      notifyListeners();
+    }
+  }
+
+  void changeEmail() {
+    if (_busy) return;
+    _pendingEmail = null;
+    _codeSent = false;
+    _error = null;
+    notifyListeners();
+  }
+
+  Future<void> verifyCode(String value) async {
+    if (_busy || _pendingEmail == null) return;
+    final code = value.trim();
+    if (!RegExp(r'^\d{6}$').hasMatch(code)) {
+      _error = 'Enter the six-digit email code.';
+      notifyListeners();
+      return;
+    }
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final identity = validAccountId(
+        await _api.verifyEmailCode(_pendingEmail!, code),
+      );
+      // Never expose an account's ObjectBox directory before a durable
+      // secure binding succeeds, even if Supabase signed in successfully.
+      try {
+        await _binding.write(identity);
+      } catch (_) {
+        // The code is spent, so send the user back to request a new one.
+        _error =
+            'This device could not save your sign-in securely. '
+            'Send a new code to retry.';
+        _codeSent = false;
+        return;
+      }
+      _userId = identity;
+      _scheduleSessionExpiry();
+      _codeSent = false;
+      _pendingEmail = null;
+    } catch (_) {
+      _error = 'Verification failed. Check the code and try again.';
+    } finally {
+      _busy = false;
+      notifyListeners();
+    }
+  }
+
+  /// Local lock happens before any asynchronous SDK sign-out. Other users
+  /// cannot see or mutate the previous account's ObjectBox Store.
+  Future<void> signOut() async {
+    if (_busy) return;
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    try {
+      // If removing this binding fails, retain the account and report an
+      // error. Never present a successful sign-out while the grant persists.
+      await _binding.clear();
+    } catch (_) {
+      _error = 'Could not finish signing out. Retry before sharing the device.';
+      _busy = false;
+      notifyListeners();
+      return;
+    }
+    _userId = null;
+    _sessionExpiryTimer?.cancel();
+    _sessionExpiryTimer = null;
+    _codeSent = false;
+    _pendingEmail = null;
+    _deletionEmail = null;
+    _deletionOwner = null;
+    _deletionCodeSent = false;
+    notifyListeners();
+    try {
+      await _api.signOutLocally();
+    } catch (_) {
+      // The binding is gone, so the device is already locked. Supabase drops
+      // its local session before the network revoke, so an offline revoke
+      // failure is not a failed sign-out.
+    } finally {
+      _busy = false;
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _sessionExpiryTimer?.cancel();
+    _authSubscription.cancel();
+    super.dispose();
+  }
+}
+).hasMatch(code.trim())) {
+      _error = 'Enter the six-digit deletion verification code.';
+      notifyListeners();
+      return;
+    }
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    final owner = _deletionOwner!;
+    try {
+      final verified = _accountIdOrNull(
+        await _api.verifyDeletionCode(_deletionEmail!, code.trim()),
+      );
+      if (verified != owner ||
+          _api.cloudSessionUserId != owner ||
+          _userId != owner ||
+          _api.isAnonymous) {
+        throw StateError('Deletion verification account mismatch');
+      }
+    } catch (_) {
+      _error = 'Verification failed or the account changed. '
+          'Check the code and sign in again if necessary.';
+      _busy = false;
+      notifyListeners();
+      return;
+    }
+
+    try {
+      await _binding.clear();
+    } catch (_) {
+      _error = 'Could not lock this device securely. '
+          'Account deletion has not been requested.';
+      _busy = false;
+      notifyListeners();
+      return;
+    }
+
+    // No further worker kicks, local edits or restore writes are authorized.
+    _userId = null;
+    _sessionExpiryTimer?.cancel();
+    _sessionExpiryTimer = null;
+    _deletionCodeSent = false;
+    _deletionOwner = null;
+    _deletionEmail = null;
+    notifyListeners();
+    try {
+      await _api.deleteAccountOnServer(owner);
+      _notice = 'Account deletion confirmed. Cloud workout history was '
+          'deleted. This device is locked; existing local data is not '
+          'automatically reassigned to another account.';
+      try {
+        await _api.signOutLocally();
+      } catch (_) {
+        // Server-side deletion is already verified. Local binding is gone.
+      }
+    } catch (_) {
+      // The request could have committed on the server before connectivity
+      // failed. Never say "deletion failed" or unlock old local data.
+      _error = 'Account deletion could not be confirmed. This device is '
+          'locked. If the account still exists, sign in again with the '
+          'same email to review it. Otherwise contact support.';
+    } finally {
+      _busy = false;
+      notifyListeners();
     }
   }
 
