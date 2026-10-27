@@ -32,8 +32,16 @@ class _WorkoutConflictReviewPageState
           title: const Text('Resolve workout conflict'),
           content: SingleChildScrollView(
             child: Text(
-              'This device: ${candidate.deletedLocally ? 'deleted' : candidate.hasLocalWorkout ? 'completed workout' : 'no local copy'}.\n'
-              'Cloud: ${remote.change == null ? 'no record' : remote.change!.deleted ? 'deleted' : 'completed workout'}'
+              'This device: ${candidate.deletedLocally
+                  ? 'deleted'
+                  : candidate.hasLocalWorkout
+                  ? 'completed workout'
+                  : 'no local copy'}.\n'
+              'Cloud: ${remote.change == null
+                  ? 'no record'
+                  : remote.change!.deleted
+                  ? 'deleted'
+                  : 'completed workout'}'
               '${remote.change == null ? '' : ' (revision ${remote.change!.serverRevision})'}.\n\n'
               'Choose explicitly. The latest cloud revision will be used '
               'for upload checks. A concurrent change may require another '
@@ -47,26 +55,29 @@ class _WorkoutConflictReviewPageState
             ),
             if (remote.change != null)
               TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(
-                  WorkoutResolutionAction.useCloud,
-                ),
+                onPressed: () =>
+                    Navigator.of(dialogContext)
+                        .pop(WorkoutResolutionAction.useCloud),
                 child: Text(
-                  remote.change!.deleted ? 'Accept cloud deletion' : 'Use cloud copy',
+                  remote.change!.deleted
+                      ? 'Accept cloud deletion'
+                      : 'Use cloud copy',
                 ),
               ),
-            if (candidate.hasLocalWorkout && !candidate.deletedLocally &&
+            if (candidate.hasLocalWorkout &&
+                !candidate.deletedLocally &&
                 remote.change?.deleted != true)
               TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(
-                  WorkoutResolutionAction.retryLocal,
-                ),
+                onPressed: () =>
+                    Navigator.of(dialogContext)
+                        .pop(WorkoutResolutionAction.retryLocal),
                 child: const Text('Retry this device'),
               ),
             if (candidate.deletedLocally)
               TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(
-                  WorkoutResolutionAction.finishDeletion,
-                ),
+                onPressed: () =>
+                    Navigator.of(dialogContext)
+                        .pop(WorkoutResolutionAction.finishDeletion),
                 child: const Text('Complete deletion'),
               ),
           ],
@@ -76,9 +87,11 @@ class _WorkoutConflictReviewPageState
       service.resolve(candidate: candidate, remote: remote, action: action);
       refreshResolvedWorkout(
         ref,
-        uploadQueued: action == WorkoutResolutionAction.retryLocal ||
+        uploadQueued:
+            action == WorkoutResolutionAction.retryLocal ||
             (action == WorkoutResolutionAction.finishDeletion &&
-                remote.change != null && !remote.change!.deleted),
+                remote.change != null &&
+                !remote.change!.deleted),
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -105,16 +118,11 @@ class _WorkoutConflictReviewPageState
   Widget build(BuildContext context) {
     final candidates = ref.watch(workoutConflictCandidatesProvider);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Sync conflicts'),
-      ),
+      appBar: AppBar(title: const Text('Sync conflicts')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const PageHeader(
-            title: 'Workout review',
-            eyebrow: 'MANUAL RECOVERY',
-          ),
+          const PageHeader(title: 'Workout review', eyebrow: 'MANUAL RECOVERY'),
           const SizedBox(height: 12),
           const Text(
             'Your workouts stay on this device until you choose how to '
@@ -145,8 +153,8 @@ class _WorkoutConflictReviewPageState
                       candidate.deletedLocally
                           ? 'Deleted here; remote deletion needs recovery'
                           : candidate.hasLocalWorkout
-                              ? 'Local copy protected until review'
-                              : 'Remote change was skipped',
+                          ? 'Local copy protected until review'
+                          : 'Remote change was skipped',
                     ),
                     const SizedBox(height: 8),
                     Align(
