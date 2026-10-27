@@ -1,6 +1,6 @@
 # P2-07 — Account status, export and deletion milestones
 
-**Status:** P2-07a account/sync status UI (#25) merged. P2-07b cloud-history JSON export implementation is under review; account deletion remains unimplemented. Phase 2 is not released.
+**Status:** P2-07a account/sync status UI (#25) merged. P2-07b cloud-history JSON export (#27) is implemented in code; account deletion remains unimplemented. Phase 2 is not released.
 
 ## P2-07a: account and sync status UI (#25)
 
@@ -26,7 +26,7 @@
   readings are not backed up under ADR-0005.
 - No new ObjectBox schema, SQL migration, credentials, auth grant or dependency.
 
-## P2-07b: authenticated machine-readable JSON export (under review)
+## P2-07b: authenticated machine-readable JSON export (#27)
 
 Required by ADR-0005 before release. Implementation and review requirements:
 
