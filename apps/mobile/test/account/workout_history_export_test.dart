@@ -95,7 +95,7 @@ class FakeExportReader implements WorkoutExportReader {
 }
 
 CompletedWorkoutHistoryExporter makeExporter(
-  FakeExportReader reader, {
+  WorkoutExportReader reader, {
   bool Function()? authorized,
   int pageSize = 5,
   int maxExportBytes = 64 * 1024 * 1024,
