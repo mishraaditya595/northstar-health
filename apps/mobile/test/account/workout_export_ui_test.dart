@@ -55,12 +55,15 @@ void main() {
       ProviderScope(
         overrides: [
           accountAuthControllerProvider.overrideWithValue(auth),
-          workoutHistoryExporterProvider.overrideWith((ref) =>
-              (owner) => CompletedWorkoutHistoryExporter(
-                accountId: owner,
-                reader: FakeExportReader([exportRow(0)]),
-                authorized: () => auth.userId == owner && auth.cloudBackupReady,
-              )),
+          workoutHistoryExporterProvider.overrideWith(
+            (ref) =>
+                (owner) => CompletedWorkoutHistoryExporter(
+                  accountId: owner,
+                  reader: FakeExportReader([exportRow(0)]),
+                  authorized: () =>
+                      auth.userId == owner && auth.cloudBackupReady,
+                ),
+          ),
           workoutExportFileWriterProvider.overrideWithValue(writer),
         ],
         child: MaterialApp(
@@ -74,7 +77,9 @@ void main() {
       find.text('Export cloud workout history (JSON)'),
       160,
     );
-    await tester.ensureVisible(find.text('Export cloud workout history (JSON)'));
+    await tester.ensureVisible(
+      find.text('Export cloud workout history (JSON)'),
+    );
     await tester.tap(find.text('Export cloud workout history (JSON)'));
     await tester.pumpAndSettle();
     expect(writer.saves, 1);
@@ -82,8 +87,9 @@ void main() {
     expect(find.text('Workout history exported.'), findsOneWidget);
   });
 
-  testWidgets('expired cloud identity disables export even while local opens',
-      (tester) async {
+  testWidgets('expired cloud identity disables export even while local opens', (
+    tester,
+  ) async {
     final api = FakeAuthApi()
       ..sessionId = accountA
       ..expired = true;
@@ -109,14 +115,18 @@ void main() {
       160,
     );
     final button = tester.widget<OutlinedButton>(
-      find.widgetWithText(OutlinedButton, 'Export cloud workout history (JSON)'),
+      find.widgetWithText(
+        OutlinedButton,
+        'Export cloud workout history (JSON)',
+      ),
     );
     expect(button.onPressed, isNull);
     expect(writer.saves, 0);
   });
 
-  testWidgets('account changes mid-fetch never open the document picker',
-      (tester) async {
+  testWidgets('account changes mid-fetch never open the document picker', (
+    tester,
+  ) async {
     final api = FakeAuthApi()..sessionId = accountA;
     final auth = controller(api, FakeBoundAccountStore()..saved = accountA);
     addTearDown(auth.dispose);
@@ -128,12 +138,15 @@ void main() {
       ProviderScope(
         overrides: [
           accountAuthControllerProvider.overrideWithValue(auth),
-          workoutHistoryExporterProvider.overrideWith((ref) =>
-              (owner) => CompletedWorkoutHistoryExporter(
-                accountId: owner,
-                reader: HoldingReader(hold),
-                authorized: () => auth.userId == owner && auth.cloudBackupReady,
-              )),
+          workoutHistoryExporterProvider.overrideWith(
+            (ref) =>
+                (owner) => CompletedWorkoutHistoryExporter(
+                  accountId: owner,
+                  reader: HoldingReader(hold),
+                  authorized: () =>
+                      auth.userId == owner && auth.cloudBackupReady,
+                ),
+          ),
           workoutExportFileWriterProvider.overrideWithValue(writer),
         ],
         child: MaterialApp(
@@ -146,7 +159,9 @@ void main() {
       find.text('Export cloud workout history (JSON)'),
       160,
     );
-    await tester.ensureVisible(find.text('Export cloud workout history (JSON)'));
+    await tester.ensureVisible(
+      find.text('Export cloud workout history (JSON)'),
+    );
     await tester.tap(find.text('Export cloud workout history (JSON)'));
     await tester.pump();
     expect(find.text('Preparing export…'), findsOneWidget);
