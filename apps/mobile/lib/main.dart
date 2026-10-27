@@ -52,6 +52,7 @@ class _AuthBootstrapState extends State<_AuthBootstrap> {
     final controller = AccountAuthController(
       SupabaseAccountAuthApi(Supabase.instance.client),
       SecureBoundAccountStore(projectHost: uri.host),
+      SecureDeletionRecoveryStore(projectHost: uri.host),
     );
     await controller.restore();
     _controller = controller;
