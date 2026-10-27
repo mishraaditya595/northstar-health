@@ -46,7 +46,11 @@ void main() {
       expect(find.text('1 queued for backup'), findsOneWidget);
       expect(find.text('1 need review'), findsOneWidget);
       expect(find.text('1 local-only workouts'), findsOneWidget);
-      expect(find.text('Cloud restore paused'), findsOneWidget);
+      // ListView lazily builds items below the initial viewport.
+      await tester.scrollUntilVisible(
+        find.textContaining('2 blocked upload operations'),
+        160,
+      );
       expect(
         find.text(
           '2 blocked upload operations require review '
@@ -54,6 +58,9 @@ void main() {
         ),
         findsOneWidget,
       );
+      await tester.scrollUntilVisible(find.text('Cloud restore paused'), 160);
+      expect(find.text('Cloud restore paused'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Sync now'), -180);
       await tester.tap(find.text('Sync now'));
       await tester.pump();
       expect(kicks, 1);
