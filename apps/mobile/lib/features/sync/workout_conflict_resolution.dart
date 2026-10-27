@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../account/account_auth_controller.dart';
+import '../account/account_auth_provider.dart';
 import '../progress/workout_history_state.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
 import 'objectbox_workout_restore_importer.dart';
