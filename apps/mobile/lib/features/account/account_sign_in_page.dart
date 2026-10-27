@@ -175,7 +175,8 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                                             'It does not delete cloud data. '
                                             'Only choose this if you no longer '
                                             'need any local workout data.',
-                                        confirmLabel: 'Erase local data and leave',
+                                        confirmLabel:
+                                            'Erase local data and leave',
                                         cancelLabel: 'Keep recovering',
                                       );
                                       if (leave == true) {
