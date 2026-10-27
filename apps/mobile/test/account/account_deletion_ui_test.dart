@@ -61,7 +61,7 @@ void main() {
     expect(api.deleteRequestedFor, isNull);
     expect(auth.deletionCodeSent, true);
 
-    final cancel = find.widgetWithText(TextButton, 'Cancel account deletion');
+    final cancel = find.widgetWithText(TextButton, 'Cancel account deletion').first;
     await tester.scrollUntilVisible(cancel, 150);
     await tester.ensureVisible(cancel);
     expect(find.text('Verify and permanently delete'), findsOneWidget);
