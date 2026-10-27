@@ -28,14 +28,14 @@ class _WorkoutConflictReviewPageState
       final localSummary = candidate.deletedLocally
           ? 'deleted'
           : candidate.hasLocalWorkout
-              ? '${candidate.name} (${candidate.exerciseCount} exercises, ${candidate.setCount} sets)'
-              : 'no local copy';
+          ? '${candidate.name} (${candidate.exerciseCount} exercises, ${candidate.setCount} sets)'
+          : 'no local copy';
       final cloudSnapshot = remote.change?.snapshot;
       final cloudSummary = remote.change == null
           ? 'no cloud record'
           : remote.change!.deleted
-              ? 'deleted (revision ${remote.change!.serverRevision})'
-              : '${cloudSnapshot!.name} (${cloudSnapshot.exercises.length} exercises, ${cloudSnapshot.sets.length} sets, revision ${remote.change!.serverRevision})';
+          ? 'deleted (revision ${remote.change!.serverRevision})'
+          : '${cloudSnapshot!.name} (${cloudSnapshot.exercises.length} exercises, ${cloudSnapshot.sets.length} sets, revision ${remote.change!.serverRevision})';
       final action = await showDialog<WorkoutResolutionAction>(
         context: context,
         builder: (dialogContext) => AlertDialog(
