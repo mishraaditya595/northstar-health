@@ -289,21 +289,14 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
     );
     if (!confirmed || !context.mounted) return;
     try {
-      ref
-          .read(workoutOutboxProvider)
-          .deleteCompletedWorkout(
-            sessionUuid: session.uuid,
-            expectedLocalRevision: session.revision,
-          );
-      ref.invalidate(completedWorkoutHistoryProvider);
-      ref.invalidate(workoutSyncFlagsProvider);
-      ref.read(workoutUploadCoordinatorProvider).kick();
-      if (context.mounted) {
-        showNsMessage(
-          context,
-          'Workout removed locally. Cloud deletion queued.',
-        );
-        Navigator.of(context).maybePop();
+      final removed = ref.read(workoutOutboxProvider).deleteCompletedWorkout(
+        sessionUuid: session.uuid,
+        expectedLocalRevision: session.revision,
+      );
+      if (!removed) {
+        ref.invalidate(completedWorkoutHistoryProvider);
+        showNsMessage(context, 'This workout was already deleted.');
+        return;
       }
     } catch (_) {
       if (context.mounted) {
@@ -312,6 +305,21 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
           'Could not delete this workout. Your workout was not changed.',
         );
       }
+      return;
+    }
+    // The local transaction has *already committed*. A provider or trigger
+    // error cannot make the UI claim the workout is still present.
+    ref.invalidate(completedWorkoutHistoryProvider);
+    ref.invalidate(workoutSyncFlagsProvider);
+    try {
+      ref.read(workoutUploadCoordinatorProvider).kick();
+    } catch (_) {
+      // Durable outbox remains; the next authenticated foreground retry
+      // handles the pending cloud delete.
+    }
+    if (context.mounted) {
+      showNsMessage(context, 'Workout removed locally. Cloud deletion queued.');
+      Navigator.of(context).maybePop();
     }
   }
 
