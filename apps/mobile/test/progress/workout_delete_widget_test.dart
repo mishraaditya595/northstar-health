@@ -142,7 +142,10 @@ void main() {
       ..sort((a, b) => a.localRevision.compareTo(b.localRevision));
     expect(operations.map((op) => op.action), ['upsert', 'delete']);
     expect(operations.last.payloadJson, 'null');
-    expect(store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs, isNotNull);
+    expect(
+      store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs,
+      isNotNull,
+    );
     expect(find.text('This completed workout is unavailable.'), findsOneWidget);
   });
 }
