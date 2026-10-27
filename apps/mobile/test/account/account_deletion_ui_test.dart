@@ -62,9 +62,12 @@ void main() {
     expect(auth.deletionCodeSent, true);
 
     expect(api.deleteRequestedFor, isNull);
-    // The controller guarantees that cancellation only resets the pending
-    // challenge; the widget above verified the actual OTP entry state.
-    auth.cancelDeletion();
+    // Use the real UI action, rather than invoking the controller directly.
+    // A single text match avoids duplicate ancestor TextButton finders.
+    final cancel = find.text('Cancel account deletion').last;
+    await tester.ensureVisible(cancel);
+    await tester.pumpAndSettle();
+    await tester.tap(cancel);
     await tester.pumpAndSettle();
     expect(auth.deletionCodeSent, false);
     expect(bound.saved, accountA);
