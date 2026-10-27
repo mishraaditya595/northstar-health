@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:io';
+
+import 'package:northstar_health/core/storage/account_store.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 
@@ -264,6 +267,79 @@ void main() {
     expect(auth.deletionRecoveryPending, true);
   });
 
+  test('uncertain-result keep path preserves account partition for original owner', () async {
+    final base = await Directory.systemTemp.createTemp('northstar-keep-');
+    addTearDown(() async {
+      if (await base.exists()) await base.delete(recursive: true);
+    });
+    final ownerPath = Directory(
+      '${base.path}/${accountStoreRelativePath(accountA, projectHost: 'dev.example.invalid')}',
+    );
+    await ownerPath.create(recursive: true);
+    final data = File('${ownerPath.path}/unsynced-workouts.test');
+    await data.writeAsString('synthetic local workout');
+    final api = FakeAuthApi()..sessionId = accountA;
+    final bound = FakeBoundAccountStore()..saved = accountA;
+    final recovery = FakeDeletionRecoveryStore()..saved = accountA;
+    final cleaner = FakeLocalAccountDataCleaner();
+    final auth = controller(api, bound, recovery: recovery, cleaner: cleaner);
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+
+    await auth.restore();
+    expect(auth.deletionRecoveryPending, true);
+    expect(auth.userId, isNull);
+    await auth.leaveDeletionRecoveryKeepingData();
+    expect(bound.saved, isNull);
+    expect(recovery.saved, isNull);
+    expect(auth.userId, isNull);
+    expect(cleaner.erased, isEmpty);
+    expect(await data.readAsString(), 'synthetic local workout');
+
+    // A different verified Auth account receives a distinct owner binding.
+    api.verifiedId = accountB;
+    await auth.requestCode('different@example.invalid');
+    await auth.verifyCode('123456');
+    expect(auth.userId, accountB);
+    expect(bound.saved, accountB);
+    expect(accountStoreRelativePath(accountB, projectHost: 'dev.example.invalid'),
+        isNot(accountStoreRelativePath(accountA, projectHost: 'dev.example.invalid')));
+    expect(await data.readAsString(), 'synthetic local workout');
+
+    await auth.signOut();
+    expect(auth.userId, isNull);
+    expect(bound.saved, isNull);
+
+    // Only a successful sign-in with the original UUID can remount its data.
+    api.verifiedId = accountA;
+    await auth.requestCode('owner@example.invalid');
+    await auth.verifyCode('123456');
+    expect(auth.userId, accountA);
+    expect(bound.saved, accountA);
+    expect(await data.readAsString(), 'synthetic local workout');
+    expect(cleaner.erased, isEmpty);
+  });
+
+  test('keep path preserves local data and guard if secure marker clear fails', () async {
+    final api = FakeAuthApi()..sessionId = accountA;
+    final bound = FakeBoundAccountStore()..saved = accountA;
+    final recovery = FakeDeletionRecoveryStore()
+      ..saved = accountA
+      ..failClear = true;
+    final cleaner = FakeLocalAccountDataCleaner();
+    final auth = controller(api, bound, recovery: recovery, cleaner: cleaner);
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+    await auth.restore();
+    await auth.leaveDeletionRecoveryKeepingData();
+    expect(bound.saved, isNull);
+    expect(recovery.saved, accountA);
+    expect(auth.deletionRecoveryPending, true);
+    expect(auth.userId, isNull);
+    expect(cleaner.erased, isEmpty);
+    expect(auth.error, contains('Could not leave recovery securely'));
+  });
+
   test(
     'explicit recovery exit erases only the original local partition',
     () async {
@@ -276,7 +352,7 @@ void main() {
       addTearDown(auth.dispose);
       addTearDown(api.dispose);
       await auth.restore();
-      await auth.leaveDeletionRecovery();
+      await auth.leaveDeletionRecoveryErasingData();
       expect(auth.userId, isNull);
       expect(bound.saved, isNull);
       expect(cleaner.erased, [accountA]);
@@ -442,14 +518,14 @@ void main() {
     expect(relaunched.deletionRecoveryPending, true);
     expect(cleaner.erased, isEmpty); // Never auto-erase uncertain state.
 
-    await relaunched.leaveDeletionRecovery();
+    await relaunched.leaveDeletionRecoveryErasingData();
     expect(relaunched.deletionRecoveryPending, true);
     expect(recovery.saved, accountA);
     expect(cleaner.erased, isEmpty);
     expect(relaunched.error, contains('Could not erase local workouts'));
 
     cleaner.failErase = false;
-    await relaunched.leaveDeletionRecovery();
+    await relaunched.leaveDeletionRecoveryErasingData();
     expect(cleaner.erased, [accountA]);
     expect(recovery.saved, isNull);
     expect(bound.saved, isNull);
