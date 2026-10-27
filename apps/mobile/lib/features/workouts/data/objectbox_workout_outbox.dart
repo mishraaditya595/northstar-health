@@ -78,6 +78,24 @@ enum CompletedWorkoutDeleteResult {
 }
 
 class ObjectBoxWorkoutOutbox {
+  /// A blocked upload with zero attempts and one of these specific local
+  /// validation reasons was never sent. Other blocked states are ambiguous.
+  static bool neverSentLocalValidation(WorkoutSyncOutboxEntity op) =>
+      op.action == 'upsert' &&
+      op.state == 'blocked' &&
+      op.attempts == 0 &&
+      op.attemptedAtMs == null &&
+      op.serverRevision == null &&
+      op.serverChangeSeq == null &&
+      const {'invalid_snapshot', 'payload_too_large'}.contains(op.errorCode);
+
+  static bool entirelyUnsentLocalValidations(
+    Iterable<WorkoutSyncOutboxEntity> operations,
+  ) {
+    final entries = operations.toList();
+    return entries.isNotEmpty && entries.every(neverSentLocalValidation);
+  }
+
   ObjectBoxWorkoutOutbox(Store store, {UuidFactory? uuidFactory})
     : _store = store,
       _ids = uuidFactory ?? SecureUuidFactory(),
@@ -189,8 +207,9 @@ class ObjectBoxWorkoutOutbox {
     }
     final nowMs = (clock ?? DateTime.now)().toUtc().millisecondsSinceEpoch;
     return _store.runInTransaction(TxMode.write, () {
-      final rows = _find(_sessions, WorkoutSessionEntity_.uuid, sessionUuid);
-      if (rows.length != 1) return CompletedWorkoutDeleteResult.alreadyDeleted;
+      final rows = _find(_sessions, WorkoutSessionEntity_.uuid, normalized);
+      if (rows.isEmpty) throw StateError('workout_missing');
+      if (rows.length != 1) throw StateError('duplicate_workout_id');
       final session = rows.single;
       if (session.deletedAtMs != null) {
         return CompletedWorkoutDeleteResult.alreadyDeleted; // Exact retry.
@@ -229,7 +248,10 @@ class ObjectBoxWorkoutOutbox {
       // of nonexistent rows: do not create a permanently conflicted command.
       // Any ambiguous/pending previous operation MUST instead be retained
       // and ordered ahead of a durable cloud delete.
-      final needsCloudDelete = prior.isNotEmpty || remote.isNotEmpty;
+      final localBlockedOnly =
+          remote.isEmpty && entirelyUnsentLocalValidations(prior);
+      final needsCloudDelete =
+          remote.isNotEmpty || (prior.isNotEmpty && !localBlockedOnly);
 
       // Keep only the minimal session identity/revision necessary for
       // idempotent retries and the importer's resurrection guard.
@@ -257,6 +279,13 @@ class ObjectBoxWorkoutOutbox {
       // Keep ACK CAS metadata but remove already-uploaded workout snapshots.
       // Pending/conflicted operations stay immutable until safe resolution.
       for (final op in prior) {
+        if (localBlockedOnly) {
+          op.state = 'superseded';
+          op.errorCode = 'deleted_locally_never_uploaded';
+          op.payloadJson = 'null';
+          _operations.put(op);
+          continue;
+        }
         if (op.state == 'acknowledged' &&
             op.action == 'upsert' &&
             op.payloadJson != 'null') {
