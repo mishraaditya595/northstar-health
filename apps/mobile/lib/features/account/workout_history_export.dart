@@ -142,8 +142,8 @@ class CompletedWorkoutHistoryExporter {
       '"exported_at_utc":${jsonEncode(_now().toUtc().toIso8601String())},'
       '"cloud_change_seq":$high,'
       '"excludes":["deleted_workouts","unfinished_sessions",'
-      '"custom_plans","device_preferences","pending_local_uploads",
-      '"health_measurements"],''
+      '"custom_plans","device_preferences","pending_local_uploads",'
+      '"health_measurements"],'
       '"workouts":[',
     );
 
