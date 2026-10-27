@@ -53,7 +53,7 @@ void main() {
   });
 
   testWidgets(
-    'pending deletion shows non-creating recovery and safe leave UI',
+    'recovery shows both choices; cancelling either does not modify storage',
     (tester) async {
       final api = FakeAuthApi();
       final bound = FakeBoundAccountStore()..saved = accountA;
@@ -69,32 +69,91 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      const keepLabel = 'Use another account (keep old data locked)';
+      const eraseLabel = 'Erase local data and leave';
       expect(find.text('RECOVER ORIGINAL ACCOUNT'), findsOneWidget);
       expect(find.text('Send recovery code'), findsOneWidget);
       expect(find.text('Send sign-in code'), findsNothing);
+      expect(find.text(keepLabel), findsOneWidget);
+      expect(find.text(eraseLabel), findsOneWidget);
 
-      await tester.tap(
-        find.text('Erase local workouts and use another account'),
-      );
+      await tester.ensureVisible(find.text(keepLabel));
+      await tester.tap(find.text(keepLabel));
       await tester.pumpAndSettle();
-      expect(find.text('Erase local data and leave recovery?'), findsOneWidget);
-      expect(recovery.saved, accountA);
+      expect(
+        find.text('Use another account and keep local data?'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('locked to the original'),
+        findsOneWidget,
+      );
       await tester.tap(find.text('Keep recovering'));
       await tester.pumpAndSettle();
       expect(cleaner.erased, isEmpty);
       expect(auth.deletionRecoveryPending, true);
       expect(bound.saved, accountA);
+      expect(recovery.saved, accountA);
 
-      await tester.tap(
-        find.text('Erase local workouts and use another account'),
-      );
+      await tester.ensureVisible(find.text(eraseLabel));
+      await tester.tap(find.text(eraseLabel));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Erase local data and leave'));
+      expect(find.text('Erase local data and leave recovery?'), findsOneWidget);
+      expect(
+        find.textContaining('permanently erase this device'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Keep recovering'));
+      await tester.pumpAndSettle();
+      expect(cleaner.erased, isEmpty);
+      expect(auth.deletionRecoveryPending, true);
+      expect(bound.saved, accountA);
+      expect(recovery.saved, accountA);
+
+      await tester.tap(find.text(eraseLabel));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(FilledButton, eraseLabel).last,
+      );
       await tester.pumpAndSettle();
       expect(cleaner.erased, [accountA]);
       expect(recovery.saved, isNull);
       expect(bound.saved, isNull);
       expect(auth.userId, isNull);
+      expect(find.text('Send sign-in code'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'keep-locked choice exits recovery without invoking local cleanup',
+    (tester) async {
+      final api = FakeAuthApi();
+      final bound = FakeBoundAccountStore()..saved = accountA;
+      final recovery = FakeDeletionRecoveryStore()..saved = accountA;
+      final cleaner = FakeLocalAccountDataCleaner();
+      final auth = controller(api, bound, recovery: recovery, cleaner: cleaner);
+      addTearDown(auth.dispose);
+      addTearDown(api.dispose);
+      await auth.restore();
+      await tester.pumpWidget(
+        MaterialApp(home: AccountSignInPage(controller: auth)),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.text('Use another account (keep old data locked)'),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('not be transferred'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Use another account'));
+      await tester.pumpAndSettle();
+      expect(auth.deletionRecoveryPending, false);
+      expect(auth.userId, isNull);
+      expect(recovery.saved, isNull);
+      expect(bound.saved, isNull);
+      expect(cleaner.erased, isEmpty);
       expect(find.text('Send sign-in code'), findsOneWidget);
     },
   );
