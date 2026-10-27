@@ -412,8 +412,14 @@ class ObjectBoxWorkoutRestoreImporter {
           local.completedAtMs == null) {
         throw const RestoreImportException('local_workout_conflict');
       }
+      // The device may be receiving its own just-ACKed delete. Its local
+      // tombstone revision advanced before the network call, whereas the
+      // previously imported metadata still holds the earlier local version.
+      // Trust a matching *durable server ACK*, never an unacknowledged edit.
       final knownRevision =
-          remote?.localRevisionAtImport ?? latestAck?.localRevision;
+          latestAck?.serverRevision == change.serverRevision
+          ? latestAck!.localRevision
+          : (remote?.localRevisionAtImport ?? latestAck?.localRevision);
       if (knownRevision == null) {
         throw const RestoreImportException('untracked_local_workout');
       }
