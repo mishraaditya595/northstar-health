@@ -85,8 +85,8 @@ class _WorkoutConflictReviewPageState
         action == WorkoutResolutionAction.keepLocalOnly
             ? 'Workout kept on this device only. No cloud upload queued.'
             : action == WorkoutResolutionAction.dismissMissing
-                ? 'Unavailable cloud change dismissed. No workouts were deleted.'
-                : 'Conflict reviewed. Any queued sync will retry.',
+            ? 'Unavailable cloud change dismissed. No workouts were deleted.'
+            : 'Conflict reviewed. Any queued sync will retry.',
       );
     } catch (error) {
       if (!mounted) return;
