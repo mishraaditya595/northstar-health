@@ -6,6 +6,27 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 const accountA = '00000000-0000-4000-8000-0000000000a1';
 const accountB = '00000000-0000-4000-8000-0000000000b2';
 
+class FakeDeletionRecoveryStore implements DeletionRecoveryStore {
+  String? saved;
+  bool failWrite = false;
+  bool failClear = false;
+
+  @override
+  Future<String?> read() async => saved;
+
+  @override
+  Future<void> write(String originalOwner) async {
+    if (failWrite) throw StateError('Secure deletion recovery write failed');
+    saved = originalOwner;
+  }
+
+  @override
+  Future<void> clear() async {
+    if (failClear) throw StateError('Secure deletion recovery clear failed');
+    saved = null;
+  }
+}
+
 class FakeBoundAccountStore implements BoundAccountStore {
   String? saved;
   bool failClear = false;
@@ -41,6 +62,8 @@ class FakeAuthApi implements AccountAuthApi {
   bool failDeletionVerify = false;
   bool failDeletionTransport = false;
   bool serverDeleted = false;
+  bool commitThenLoseReceipt = false;
+  String? recoveryCodeSentTo;
   String? deleteRequestedFor;
   String? deletionCodeSentTo;
   Completer<void>? holdDeletion;
@@ -84,6 +107,12 @@ class FakeAuthApi implements AccountAuthApi {
       sessionId != null && emailAvailable ? 'owner@example.invalid' : null;
 
   @override
+  Future<void> sendRecoveryCode(String email) async {
+    if (offline || serverDeleted) throw StateError('Original account deleted');
+    recoveryCodeSentTo = email;
+  }
+
+  @override
   Future<void> sendDeletionCode(String email) async {
     if (offline || failDeletionRequest) throw StateError('network');
     deletionCodeSentTo = email;
@@ -102,6 +131,10 @@ class FakeAuthApi implements AccountAuthApi {
   Future<void> deleteAccountOnServer(String accountId) async {
     deleteRequestedFor = accountId;
     if (holdDeletion != null) await holdDeletion!.future;
+    if (commitThenLoseReceipt) {
+      serverDeleted = true;
+      throw StateError('response lost AFTER server commit');
+    }
     if (offline || failDeletionTransport) {
       throw StateError('deletion status unknown');
     }
@@ -132,5 +165,6 @@ class FakeAuthApi implements AccountAuthApi {
 
 AccountAuthController controller(
   FakeAuthApi api,
-  FakeBoundAccountStore bound,
-) => AccountAuthController(api, bound);
+  FakeBoundAccountStore bound, {
+  FakeDeletionRecoveryStore? recovery,
+}) => AccountAuthController(api, bound, recovery ?? FakeDeletionRecoveryStore());
