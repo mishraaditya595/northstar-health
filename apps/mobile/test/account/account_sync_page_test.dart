@@ -48,7 +48,7 @@ void main() {
       expect(find.text('Cloud session ready'), findsOneWidget);
       expect(find.text('1 queued for backup'), findsOneWidget);
       expect(find.text('1 need review'), findsOneWidget);
-      expect(find.text('1 local-only workouts'), findsOneWidget);
+      expect(find.text('1 local-only workout'), findsOneWidget);
       // ListView lazily builds items below the initial viewport.
       await tester.scrollUntilVisible(
         find.textContaining('2 blocked upload operations'),
@@ -131,6 +131,11 @@ void main() {
       ),
     );
     await tester.scrollUntilVisible(find.text('Sign out of this device'), 220);
+    await tester.ensureVisible(
+      find.widgetWithText(OutlinedButton, 'Sign out of this device'),
+    );
+    await tester.drag(find.byType(ListView).last, const Offset(0, -160));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Sign out of this device'));
     await tester.pumpAndSettle();
     expect(
@@ -144,6 +149,11 @@ void main() {
     expect(api.signedOut, false);
 
     await tester.scrollUntilVisible(find.text('Sign out of this device'), 220);
+    await tester.ensureVisible(
+      find.widgetWithText(OutlinedButton, 'Sign out of this device'),
+    );
+    await tester.drag(find.byType(ListView).last, const Offset(0, -160));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Sign out of this device'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Sign out', skipOffstage: false).last);
@@ -193,6 +203,11 @@ void main() {
     expect(review.onPressed, isNull);
 
     await tester.scrollUntilVisible(find.text('Sign out of this device'), 160);
+    await tester.ensureVisible(
+      find.widgetWithText(OutlinedButton, 'Sign out of this device'),
+    );
+    await tester.drag(find.byType(ListView).last, const Offset(0, -160));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Sign out of this device'));
     await tester.pumpAndSettle();
     expect(
@@ -230,6 +245,11 @@ void main() {
       ),
     );
     await tester.scrollUntilVisible(find.text('Sign out of this device'), 220);
+    await tester.ensureVisible(
+      find.widgetWithText(OutlinedButton, 'Sign out of this device'),
+    );
+    await tester.drag(find.byType(ListView).last, const Offset(0, -160));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Sign out of this device'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
@@ -262,6 +282,11 @@ void main() {
       ),
     );
     await tester.scrollUntilVisible(find.text('Sign out of this device'), 220);
+    await tester.ensureVisible(
+      find.widgetWithText(OutlinedButton, 'Sign out of this device'),
+    );
+    await tester.drag(find.byType(ListView).last, const Offset(0, -160));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Sign out of this device'));
     await tester.pumpAndSettle();
     expect(
