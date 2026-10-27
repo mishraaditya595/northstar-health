@@ -50,7 +50,8 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
     final accepted = await showNsConfirm(
       context,
       title: 'Permanently delete your account?',
-      message: '${warning}This permanently deletes your signed-in account, '
+      message:
+          '${warning}This permanently deletes your signed-in account, '
           'cloud workout history, deletion tombstones and sync receipts. '
           'Other devices will lose access. Local workouts and plans remain '
           'locked to this account on this device; they will not be moved '
@@ -68,7 +69,8 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
     final accepted = await showNsConfirm(
       context,
       title: 'Delete permanently?',
-      message: 'This cannot be undone. The verified account and its cloud '
+      message:
+          'This cannot be undone. The verified account and its cloud '
           'history will be deleted. This device will immediately lock its '
           'local owner partition, even if the network result is uncertain. '
           'A successful delete cannot be reversed.',
@@ -384,7 +386,10 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
                 const SizedBox(height: 12),
                 if (!auth.deletionCodeSent)
                   OutlinedButton.icon(
-                    onPressed: online && !auth.busy && !_exporting &&
+                    onPressed:
+                        online &&
+                            !auth.busy &&
+                            !_exporting &&
                             !_confirmingSignOut
                         ? () => _beginDeletion(auth, overview)
                         : null,
@@ -419,13 +424,18 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
                   const SizedBox(height: 8),
                   Text(
                     auth.error!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 18),
                 OutlinedButton.icon(
-                  onPressed: auth.busy || auth.deletionCodeSent ||
-                          _confirmingSignOut || _exporting
+                  onPressed:
+                      auth.busy ||
+                          auth.deletionCodeSent ||
+                          _confirmingSignOut ||
+                          _exporting
                       ? null
                       : () => _signOut(context, auth, overview),
                   icon: const Icon(Icons.logout),
