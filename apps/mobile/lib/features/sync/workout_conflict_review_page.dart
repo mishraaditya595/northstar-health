@@ -25,23 +25,25 @@ class _WorkoutConflictReviewPageState
       final service = ref.read(workoutConflictResolutionProvider);
       final remote = await service.review(candidate.workoutUuid);
       if (!mounted) return;
+      final localSummary = candidate.deletedLocally
+          ? 'deleted'
+          : candidate.hasLocalWorkout
+              ? '${candidate.name} (${candidate.exerciseCount} exercises, ${candidate.setCount} sets)'
+              : 'no local copy';
+      final cloudSnapshot = remote.change?.snapshot;
+      final cloudSummary = remote.change == null
+          ? 'no cloud record'
+          : remote.change!.deleted
+              ? 'deleted (revision ${remote.change!.serverRevision})'
+              : '${cloudSnapshot!.name} (${cloudSnapshot.exercises.length} exercises, ${cloudSnapshot.sets.length} sets, revision ${remote.change!.serverRevision})';
       final action = await showDialog<WorkoutResolutionAction>(
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: const Text('Resolve workout conflict'),
           content: SingleChildScrollView(
             child: Text(
-              'This device: ${candidate.deletedLocally
-                  ? 'deleted'
-                  : candidate.hasLocalWorkout
-                  ? 'completed workout'
-                  : 'no local copy'}.\n'
-              'Cloud: ${remote.change == null
-                  ? 'no record'
-                  : remote.change!.deleted
-                  ? 'deleted'
-                  : 'completed workout'}'
-              '${remote.change == null ? '' : ' (revision ${remote.change!.serverRevision})'}.\n\n'
+              'This device: $localSummary.\n'
+              'Cloud: $cloudSummary.\n\n'
               'Choose explicitly. The latest cloud revision will be used '
               'for upload checks. A concurrent change may require another '
               'review. Never discard a pending network request.',
