@@ -73,7 +73,13 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(signedInApp());
+    final auth = AccountAuthController(
+      FakeAuthApi()..sessionId = accountA,
+      FakeBoundAccountStore()..saved = accountA,
+    );
+    addTearDown(auth.dispose);
+    await auth.restore();
+    await tester.pumpWidget(signedInApp(auth));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('Account and backup'));
