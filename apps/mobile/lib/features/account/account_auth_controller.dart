@@ -73,6 +73,45 @@ class SecureDeletionRecoveryStore implements DeletionRecoveryStore {
   Future<void> clear() => _secureStorage.delete(key: _key);
 }
 
+/// Persisted ONLY after receipt confirms server deletion. This marker is
+/// deliberately separate from uncertain-result recovery and is retried on
+/// startup until the original owner's local directory is gone.
+abstract class ConfirmedDeletionCleanupStore {
+  Future<String?> read();
+  Future<void> write(String accountId);
+  Future<void> clear();
+}
+
+class SecureConfirmedDeletionCleanupStore implements ConfirmedDeletionCleanupStore {
+  SecureConfirmedDeletionCleanupStore({required String projectHost})
+    : _key = 'northstar.confirmed_deletion_cleanup.v1.$projectHost';
+
+  final String _key;
+
+  @override
+  Future<String?> read() => _secureStorage.read(key: _key);
+
+  @override
+  Future<void> write(String accountId) =>
+      _secureStorage.write(key: _key, value: validAccountId(accountId));
+
+  @override
+  Future<void> clear() => _secureStorage.delete(key: _key);
+}
+
+/// The production implementation must wait until the owner Store is closed
+/// after the account-bound widget subtree has been unmounted.
+abstract class LocalAccountDataCleaner {
+  Future<void> erase(String owner, {bool waitForUnmount = false});
+}
+
+/// Typed, confirmed 4xx from the delete-account handler: no admin deletion
+/// was performed. Transport failures and 5xx are ALWAYS ambiguous.
+class AccountDeletionRejected implements Exception {
+  const AccountDeletionRejected(this.status);
+  final int status;
+}
+
 class SecureBoundAccountStore implements BoundAccountStore {
   SecureBoundAccountStore({required String projectHost})
     : _key = 'northstar.trusted_account.v1.$projectHost';
@@ -215,10 +254,23 @@ class SupabaseAccountAuthApi implements AccountAuthApi {
             DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000) {
       throw const AuthException('Verified account required');
     }
-    final response = await _client.functions.invoke(
-      'delete-account',
-      body: {'account_id': accountId, 'confirm': 'DELETE MY ACCOUNT'},
-    );
+    late final FunctionResponse response;
+    try {
+      response = await _client.functions.invoke(
+        'delete-account',
+        body: {'account_id': accountId, 'confirm': 'DELETE MY ACCOUNT'},
+      );
+    } on FunctionsHttpException catch (error) {
+      if (error.status == 400 || error.status == 401 || error.status == 403) {
+        throw AccountDeletionRejected(error.status);
+      }
+      rethrow;
+    }
+    if (response.status == 400 ||
+        response.status == 401 ||
+        response.status == 403) {
+      throw AccountDeletionRejected(response.status);
+    }
     final data = response.data;
     if (response.status != 200 ||
         data is! Map ||
@@ -233,7 +285,14 @@ class SupabaseAccountAuthApi implements AccountAuthApi {
 /// the bound user ID into OS secure storage. When a token refresh cannot run
 /// offline, only that same account may open its partitioned local database.
 class AccountAuthController extends ChangeNotifier {
-  AccountAuthController(this._api, this._binding, this._recoveryStore) {
+  AccountAuthController(
+    this._api,
+    this._binding,
+    this._recoveryStore, {
+    required ConfirmedDeletionCleanupStore cleanupStore,
+    required LocalAccountDataCleaner localCleaner,
+  }) : _cleanupStore = cleanupStore,
+       _localCleaner = localCleaner {
     _authSubscription = _api.cloudIdentityChanges.listen(
       _onIdentityChange,
       onError: (Object _) {
@@ -246,6 +305,8 @@ class AccountAuthController extends ChangeNotifier {
   final AccountAuthApi _api;
   final BoundAccountStore _binding;
   final DeletionRecoveryStore _recoveryStore;
+  final ConfirmedDeletionCleanupStore _cleanupStore;
+  final LocalAccountDataCleaner _localCleaner;
   late final StreamSubscription<String?> _authSubscription;
   Timer? _sessionExpiryTimer;
   bool _refreshFailed = false;
@@ -308,6 +369,8 @@ class AccountAuthController extends ChangeNotifier {
 
   /// This is a lock, never an authentication grant.
   bool get deletionRecoveryPending => _recoveryOwner != null;
+  String? _cleanupOwner;
+  bool get confirmedLocalCleanupPending => _cleanupOwner != null;
 
   String? _deletionEmail;
   String? _deletionOwner;
@@ -330,6 +393,14 @@ class AccountAuthController extends ChangeNotifier {
   /// access; cloud transfer must re-authenticate first.
   /// A corrupt binding counts as no binding; account data stays on disk.
   Future<void> restore() async {
+    final cleanup = await _cleanupStore.read();
+    if (cleanup != null) {
+      // A confirmed server delete takes precedence over any stale binding.
+      _cleanupOwner = validAccountId(cleanup);
+      _userId = null;
+      await retryConfirmedLocalCleanup();
+      return;
+    }
     final pending = await _recoveryStore.read();
     // Invalid protected state must not silently allow ordinary sign-in.
     _recoveryOwner = pending == null ? null : validAccountId(pending);
@@ -343,6 +414,38 @@ class AccountAuthController extends ChangeNotifier {
     }
     _scheduleSessionExpiry();
     notifyListeners();
+  }
+
+  /// Run before normal sign-in on launch and after confirmed remote success.
+  /// Failed file erasure retains the durable cleanup marker for next launch.
+  Future<void> retryConfirmedLocalCleanup({bool waitForUnmount = false}) async {
+    final owner = _cleanupOwner;
+    if (owner == null) return;
+    _busy = true;
+    _error = null;
+    _userId = null;
+    notifyListeners();
+    try {
+      await _localCleaner.erase(owner, waitForUnmount: waitForUnmount);
+      await _binding.clear();
+      await _recoveryStore.clear();
+      await _cleanupStore.clear();
+      _cleanupOwner = null;
+      _recoveryOwner = null;
+      _notice = 'Account deleted and local workout data erased.';
+      try {
+        await _api.signOutLocally();
+      } catch (_) {
+        // Local data and binding are already removed.
+      }
+    } catch (_) {
+      _notice = null;
+      _error = 'Cloud account deleted. Local cleanup is not complete. '
+          'Data stays locked; retry removal or restart the app.';
+    } finally {
+      _busy = false;
+      notifyListeners();
+    }
   }
 
   static String? _accountIdOrNull(String? value) {
@@ -376,6 +479,10 @@ class AccountAuthController extends ChangeNotifier {
       _deletionOwner = _userId;
       _deletionEmail = email;
       _deletionCodeSent = true;
+    } on AuthApiException catch (error) {
+      _error = error.statusCode == '429'
+          ? 'Too many email codes requested. Wait before trying again.'
+          : 'Could not send deletion code. Check your connection and retry.';
     } catch (_) {
       _error = 'Could not send deletion code. Check your connection and retry.';
     } finally {
@@ -401,12 +508,17 @@ class AccountAuthController extends ChangeNotifier {
   /// again to their *same* existing account only if deletion did not commit.
   /// An old local partition is never reassigned to a newly created account.
   Future<void> confirmAccountDeletion(String code) async {
-    if (_busy ||
-        !_deletionCodeSent ||
-        _deletionEmail == null ||
+    if (_busy || !_deletionCodeSent) return;
+    if (_deletionEmail == null ||
         _deletionOwner == null ||
         _userId != _deletionOwner ||
         !cloudBackupReady) {
+      _deletionCodeSent = false;
+      _deletionEmail = null;
+      _deletionOwner = null;
+      _error = 'Your verified session expired or changed. '
+          'Request a new deletion code after signing in again.';
+      notifyListeners();
       return;
     }
     if (!RegExp(r'^\d{6}$').hasMatch(code.trim())) {
@@ -471,25 +583,37 @@ class AccountAuthController extends ChangeNotifier {
     }
     try {
       await _api.deleteAccountOnServer(owner);
-      _notice =
-          'Account deletion confirmed. Cloud workout history was '
-          'deleted. Local data remains locked and is not transferred.';
-      try {
-        await _recoveryStore.clear();
-        _recoveryOwner = null;
-      } catch (_) {
-        // Confirmed deletion is irreversible. Keep the guard if it cannot
-        // be cleared; the user must explicitly leave recovery.
-      }
-      try {
-        await _api.signOutLocally();
-      } catch (_) {
-        // Verified remote deletion already completed.
+      // This write MUST occur only after an exact successful server receipt.
+      // A lost response keeps the uncertain marker; it never erases files.
+      await _cleanupStore.write(owner);
+      _cleanupOwner = owner;
+      await retryConfirmedLocalCleanup(waitForUnmount: true);
+    } on AccountDeletionRejected catch (_) {
+      // 400/401/403 are explicit pre-deletion refusals, unlike 5xx or timeouts.
+      // Rebind only while the SAME verified Auth identity is still current.
+      if (_api.cloudSessionUserId == owner &&
+          _api.signedInUserId == owner &&
+          !_api.isAnonymous) {
+        try {
+          await _binding.write(owner);
+          await _recoveryStore.clear();
+          _recoveryOwner = null;
+          _userId = owner;
+          _scheduleSessionExpiry();
+          _error = 'Deletion was refused. Your account and local workouts '
+              'are unchanged. Request a new verification code to retry.';
+        } catch (_) {
+          _error = 'Deletion was refused, but local access could not be '
+              'restored securely. Recover the original account to unlock.';
+        }
+      } else {
+        _error = 'Deletion was refused and your session has changed. '
+            'Recover the original account to unlock local workouts.';
       }
     } catch (_) {
-      // Server deletion may have committed before the response was lost.
-      _error =
-          'Account deletion could not be confirmed. This device is '
+      // A response can disappear AFTER an irreversible server commit.
+      // Keep local data locked and DO NOT erase it in this branch.
+      _error = 'Account deletion could not be confirmed. This device is '
           'locked. Recover ONLY the original account if it still exists; '
           'otherwise contact support. Recovery never creates an account.';
     } finally {
