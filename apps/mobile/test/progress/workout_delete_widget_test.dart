@@ -73,9 +73,7 @@ void main() {
     dir.deleteSync(recursive: true);
   });
 
-  testWidgets('delete requires confirmation and hides completed workout', (
-    tester,
-  ) async {
+  Future<void> mountDetail(WidgetTester tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(800, 1450);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -96,6 +94,12 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+  }
+
+  testWidgets('never-uploaded deletion requires confirmation and stays local', (
+    tester,
+  ) async {
+    await mountDetail(tester);
     await tester.ensureVisible(find.text('Delete workout'));
     await tester.tap(find.text('Delete workout'));
     await tester.pumpAndSettle();
@@ -116,10 +120,29 @@ void main() {
       store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs,
       isNotNull,
     );
-    expect(
-      store.box<WorkoutSyncOutboxEntity>().getAll().single.action,
-      'delete',
-    );
+    expect(store.box<WorkoutSyncOutboxEntity>().count(), 0);
+    expect(find.text('This completed workout is unavailable.'), findsOneWidget);
+  });
+
+  testWidgets('known pending upload queues a dependent cloud tombstone', (
+    tester,
+  ) async {
+    final outbox = ObjectBoxWorkoutOutbox(store);
+    store.runInTransaction(TxMode.write, () {
+      outbox.enqueueCompletedInTransaction(workout);
+    });
+    await mountDetail(tester);
+    await tester.ensureVisible(find.text('Delete workout'));
+    await tester.tap(find.text('Delete workout'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete workout').last);
+    await tester.pumpAndSettle();
+
+    final operations = store.box<WorkoutSyncOutboxEntity>().getAll()
+      ..sort((a, b) => a.localRevision.compareTo(b.localRevision));
+    expect(operations.map((op) => op.action), ['upsert', 'delete']);
+    expect(operations.last.payloadJson, 'null');
+    expect(store.box<WorkoutSessionEntity>().getAll().single.deletedAtMs, isNotNull);
     expect(find.text('This completed workout is unavailable.'), findsOneWidget);
   });
 }
