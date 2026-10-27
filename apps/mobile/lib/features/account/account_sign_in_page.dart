@@ -155,9 +155,36 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                             ),
                           ],
                           if (auth.deletionRecoveryPending &&
-                              !auth.confirmedLocalCleanupPending &&
-                              !auth.codeSent) ...[
+                              !auth.confirmedLocalCleanupPending) ...[
                             const SizedBox(height: 14),
+                            OutlinedButton(
+                              onPressed: auth.busy
+                                  ? null
+                                  : () async {
+                                      final leave = await showNsConfirm(
+                                        context,
+                                        title: 'Use another account and keep local data?',
+                                        message:
+                                            'Old workouts, unfinished sessions, '
+                                            'plans and pending uploads will remain '
+                                            'on this device, locked to the original '
+                                            'account. They will not be transferred '
+                                            'to another account. If the original '
+                                            'account still exists, signing back '
+                                            'into that same account can reopen '
+                                            'its local data.',
+                                        confirmLabel: 'Use another account',
+                                        cancelLabel: 'Keep recovering',
+                                      );
+                                      if (leave == true) {
+                                        await auth.leaveDeletionRecoveryKeepingData();
+                                      }
+                                    },
+                              child: const Text(
+                                'Use another account (keep old data locked)',
+                              ),
+                            ),
+                            const SizedBox(height: 8),
                             TextButton(
                               onPressed: auth.busy
                                   ? null
@@ -180,12 +207,10 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                                         cancelLabel: 'Keep recovering',
                                       );
                                       if (leave == true) {
-                                        await auth.leaveDeletionRecovery();
+                                        await auth.leaveDeletionRecoveryErasingData();
                                       }
                                     },
-                              child: const Text(
-                                'Erase local workouts and use another account',
-                              ),
+                              child: const Text('Erase local data and leave'),
                             ),
                           ],
                           if (auth.confirmedLocalCleanupPending) ...[
