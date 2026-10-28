@@ -1,0 +1,104 @@
+name: ADE harness pilot (non-deploying)
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/ade_harness_pilot.yml"
+      - "docs/ADE_HARNESS_PILOT.md"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  harness-pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: northstar
+      - uses: actions/checkout@v4
+        with:
+          repository: mishraaditya595/agentic-development-environment
+          ref: 61c69fd786653151107a3a38b3eca0919a9481ad
+          path: ade-source
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install NorthStar contract-test dependencies
+        run: python3 -m pip install 'jsonschema==4.23.0' 'PyYAML==6.0.2'
+      - name: Preview ADE installation without writes
+        run: |
+          python3 ade-source/scripts/bootstrap.py --target northstar --agents codex,claude --preset minimal --dry-run
+          test ! -e northstar/.agentic-dev/config.json
+      - name: Install ADE into ephemeral CI checkout
+        run: |
+          python3 ade-source/scripts/bootstrap.py --target northstar --agents codex,claude --preset minimal
+          python3 ade-source/scripts/bootstrap.py --target northstar --agents codex,claude --preset minimal
+      - name: Verify existing NorthStar instructions and route mapping
+        working-directory: northstar
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, subprocess
+          original = subprocess.check_output(["git","show","HEAD:AGENTS.md"]).decode()
+          current = pathlib.Path("AGENTS.md").read_text()
+          assert current.startswith(original), "Original agent rules unexpectedly replaced"
+          assert current.count("ADE ROUTING START") == 1
+          assert "@AGENTS.md" in pathlib.Path("CLAUDE.md").read_text()
+          mapping = json.loads(pathlib.Path(".agentic-dev/skill-map.json").read_text())
+          config = json.loads(pathlib.Path(".agentic-dev/config.json").read_text())
+          assert mapping["routes"] and config["skills"]
+          print("Original rules preserved; ADE routing section installed")
+          PY
+      - name: Configure project-owned checks and execute ADE
+        working-directory: northstar
+        run: |
+          python3 - <<'PY'
+          import json, pathlib
+          config = {
+            "schema_version":1,
+            "checks":{
+              "fast":{"argv":["python3","-m","compileall","-q","tool","scripts"],"timeout_seconds":60},
+              "full":{"argv":["python3","-m","unittest","discover","-s","tool","-p","test_*.py"],"timeout_seconds":180}
+            }
+          }
+          pathlib.Path(".agentic-dev/harness.json").write_text(json.dumps(config,indent=2)+"\n")
+          PY
+          python3 .agentic-dev/bin/ade-harness.py --target . doctor
+          python3 .agentic-dev/bin/ade-harness.py --target . verify --check fast --check full --criterion "Existing Python contract tests pass"
+      - name: Smoke-test session state and verification evidence
+        working-directory: northstar
+        run: |
+          python3 .agentic-dev/bin/ade-harness.py --target . session status
+          test ! -e .agentic-dev/state/sessions.jsonl
+          python3 .agentic-dev/bin/ade-harness.py --target . session start --title "ADE pilot"
+          python3 .agentic-dev/bin/ade-harness.py --target . session checkpoint --step "Contract tests verified"
+          python3 .agentic-dev/bin/ade-harness.py --target . session close --verdict partial
+          python3 .agentic-dev/bin/ade-harness.py --target . --evidence .agentic-dev/evidence/pilot.json verify --check fast --check full
+          test -f .agentic-dev/evidence/pilot.json
+          grep -Fx 'state/' .agentic-dev/.gitignore
+          grep -Fx 'evidence/' .agentic-dev/.gitignore
+      - name: Exercise optional Claude hook installer locally only
+        run: |
+          python3 ade-source/scripts/install-hooks.py --target northstar --agents claude --local --dry-run
+          python3 ade-source/scripts/install-hooks.py --target northstar --agents claude --local
+          test -f northstar/.claude/settings.local.json
+          test ! -f northstar/.claude/settings.json
+          python3 - <<'PY'
+          import json, os, pathlib, subprocess
+          project=pathlib.Path("northstar").resolve()
+          settings=json.loads((project/".claude/settings.local.json").read_text())
+          command=settings["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"]
+          result=subprocess.run(["sh","-c",command],cwd=project/"apps/mobile",
+                                env={**os.environ,"CLAUDE_PROJECT_DIR":str(project)},
+                                input="{}",text=True,capture_output=True)
+          assert result.returncode==0, result.stderr
+          output=json.loads(result.stdout)
+          assert output["hookSpecificOutput"]["additionalContext"]
+          print("Claude command runs from nested Flutter directory")
+          PY
+      - name: Confirm no harness files were committed or pushed
+        working-directory: northstar
+        run: |
+          git status --short
+          test -n "$(git status --porcelain)"
+          echo "All harness installation files exist only in this temporary runner."
