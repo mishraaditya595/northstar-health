@@ -15,6 +15,8 @@ The global restore epoch and schema metadata are NOT owner data and remain. No u
 
 A confirmed server deletion schedules **destruction of the original owner's local ObjectBox directory** (workouts, plans, pending upload/restore state); cleanup waits for the bound ProviderScope/Store to unmount. A separate OS-secure confirmed-cleanup marker survives app termination and is retried at launch or via the locked recovery screen if filesystem removal fails. The local binding is always cleared first. A timeout, 5xx or lost receipt retains the original ObjectBox files **locked but not erased**, behind the separate uncertainty/recovery marker. A newly created account, even with the same email, must NEVER be bound to that prior UUID's partition. No guest migration or cloud reassociation is permitted.
 
+When using Codemagic for deployment, see [the manual staging/production operator guide](../docs/SUPABASE_CODEMAGIC_DEPLOY.md). Migration and Edge Function deploys are **separate** manually approved workflows; after running them, every security and recovery check below still applies. Do not treat a Codemagic job success as deletion authorization.
+
 ## Verify before enabling in any environment
 
 1. Apply the committed P2-07c migration `20261027180000_p2_07c_recent_account_session_gate.sql` only after reconciling **all prior** migrations/hosted drift and making a backup. Run clean `supabase test db` and review its SQL privilege/session tests.
