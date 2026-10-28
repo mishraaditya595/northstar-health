@@ -12,6 +12,8 @@
 - Wear OS uses final app identity/signing, Play Console declarations and physical round-watch layout tests; package IDs in scaffolding are placeholders.
 - Keep FlutterWatch custom toolchain out of stable builds; experimental comparison only.
 
+**Controlled backend deployment pipeline:** Codemagic now has [manual Supabase staging/production preview, migration and Edge Function workflows](SUPABASE_CODEMAGIC_DEPLOY.md), subject to private credential groups, per-commit approvals and operator acceptance. The existence of these workflows is **not evidence of any hosted deployment**. The 11 existing app/watch Codemagic builds remain templates.
+
 ## P2-08 immediate release blockers
 
 **P2-08 work started, not passed:** The [hosted preflight and release execution plan](implementation/phase-2/p2-08-hosted-release-plan.md) adds a read-only, two-signed-user security audit and synthetic CI tests. The connected development project was observed with 6/11 migrations and no Edge Functions on 27 October 2026; no deployment or real-account audit has been performed. The read-only audit is only a subset of hosted release acceptance.

@@ -1,6 +1,6 @@
-# NorthStar Codemagic CI/CD skeleton
+# NorthStar Codemagic CI/CD and manual Supabase deployments
 
-**Status: templates only.** The root `codemagic.yaml` defines 11 named **manual** workflows with intentionally non-successful placeholder steps. It is **not** yet a functional Codemagic build, release or distribution pipeline. No actual builds, Codemagic account connection, publishing or new signing credentials were configured as part of this change.
+**Status:** The original 11 app/watch workflows remain intentionally failing, manual templates. Six additional **manual Supabase workflows** implement staging/production migration previews, database migration pushes and `delete-account` Function deploys, requiring privately configured Codemagic groups and per-commit owner approval. None has been run on hosted Codemagic or used to deploy a database. See [Supabase Codemagic deployment runbook](SUPABASE_CODEMAGIC_DEPLOY.md). No mobile build, signing or store release is enabled.
 
 Codemagic reads `codemagic.yaml` **from the repository root**, even though apps live under `apps/`. Each workflow sets `working_directory` to the appropriate project. See [Codemagic YAML docs](https://docs.codemagic.io/yaml-basic-configuration/yaml-getting-started/) and [monorepo directory guidance](https://docs.codemagic.io/getting-started/adding-apps/).
 
@@ -20,9 +20,13 @@ Codemagic reads `codemagic.yaml` **from the repository root**, even though apps 
 | `watchos-simulator` | `apps/watch_os` | Standalone XcodeGen SwiftUI simulator proof |
 | `watchos-companion-release` | `apps/mobile` | Intended embedded watchOS/iOS companion archive; **blocked** |
 
-### Why every template intentionally exits with failure
+### Why the original 11 mobile/watch templates intentionally exit with failure
 
-Codemagic's manual Start new build can select a workflow even without an automatic `triggering` block. If a workflow only printed “hello,” it might be marked successful without compiling anything. Each stub prints **TEMPLATE ONLY** and `exit 1` to prevent false release confidence. Replace this guard with working code and validated artifacts before running a real build. No `publishing`, `android_signing`, `ios_signing` or active variable-group declarations are included.
+Codemagic's manual Start new build can select a workflow even without an automatic `triggering` block. If a workflow only printed “hello,” it might be marked successful without compiling anything. Each app/watch stub prints **TEMPLATE ONLY** and `exit 1` to prevent false release confidence. Replace these guards with validated build commands and artifacts before claiming an app build. There is no app `publishing`, signing or credential group. **The six Supabase workflows are different:** they reference named, private Codemagic UI groups and can modify a database or Function *only* when explicitly run with matching approvals. See [operator guide](SUPABASE_CODEMAGIC_DEPLOY.md); never trigger them automatically.
+
+## Manual Supabase workflows
+
+The six `supabase-{staging,production}-{preview,migrate,function}` workflows live in the same root YAML, run `scripts/codemagic_supabase.sh` with a pinned Supabase CLI and require `main`, a manual/API trigger, a matching environment group and, for deploy actions, approved commit + project ID. Function deployments require **additional** approval. All credentials remain in encrypted Codemagic settings, not Git. See [complete setup, procedures, failure and rollback guidance](SUPABASE_CODEMAGIC_DEPLOY.md).
 
 ## Setup sequence
 
@@ -37,10 +41,10 @@ Codemagic's manual Start new build can select a workflow even without an automat
 ## Release safety gates
 
 - The **Apple Watch companion release** must remain disabled until `apps/watch_os/Sources` is integrated into `apps/mobile/ios` as a real embedded, correctly signed watch target and an iPhone/watch archive is verified.
-- No workflow deploys or backs up personal health data. Firebase and Supabase credentials belong in scoped Codemagic groups; no debug `printenv`, secret echo or health records in CI artifacts/logs.
+- Only the six explicitly manual Supabase workflows can deploy backend schema/Function code; no workflow exports or backs up personal health records. Firebase and Supabase credentials belong in scoped Codemagic groups; never print environment variables, secret values or health records in CI artifacts/logs.
 - Signed Android and Wear OS package identity, target API/permissions, store disclosures and physical-device tests precede production distribution.
 - Before release, validate repository contracts, ObjectBox model UID changes, HealthKit/Health Connect permissions and consent/privacy tests.
 
 ## Validation
 
-This template is checked for YAML parseability, known workflow IDs, project paths, manual-only triggers, absence of publishing credentials, and intentionally failing placeholders by `tool/test_codemagic_config.py`. **This test validates the template contract, not Codemagic's hosted build execution.**
+The existing templates and new deployment definitions are checked by `tool/test_codemagic_config.py`; the deployment shell is exercised against a stub CLI in `tool/test_codemagic_supabase.py`. These are offline configuration/unit tests and **do not demonstrate a Codemagic hosted deployment or data-security acceptance**.
