@@ -1,6 +1,6 @@
 """Language-neutral watch event contract checks; run from repository root.
 
-Dependencies: pip install jsonschema==4.23.0
+Dependencies: python3 -m pip install -r tool/requirements-ci.txt
 """
 
 import json

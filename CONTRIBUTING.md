@@ -44,7 +44,7 @@ Other gates:
 
 ```sh
 # repository and protocol contracts (repo root)
-python3 -m pip install 'jsonschema==4.23.0' 'PyYAML==6.0.2'
+python3 -m pip install -r tool/requirements-ci.txt
 python3 -m unittest discover -s tool -p 'test_*.py'
 
 # Wear OS (JDK 17, Android SDK 35)

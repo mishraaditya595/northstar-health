@@ -31,7 +31,7 @@ jobs:
       supabase: ${{ steps.filter.outputs.supabase }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
         id: filter
         with:
           filters: |
@@ -64,7 +64,7 @@ jobs:
             echo "::warning::GHCR login unavailable; trying public image pulls."
           fi
       - name: Install pinned Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1 branch
         with:
           version: "2.81.3"
       - name: Start database, replay migrations, and run pgTAP with registry failover
@@ -134,7 +134,7 @@ jobs:
           run_supabase reset db reset
           run_supabase pgtap test db
       - name: Install pinned Deno for Edge Function verification
-        uses: denoland/setup-deno@v2
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2 branch
         with:
           deno-version: v2.9.8
       - name: Type-check deletion Edge Function
