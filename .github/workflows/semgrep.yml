@@ -45,7 +45,7 @@ jobs:
 
       - name: Require Semgrep token
         env:
-          SEMGREP_APP_TOKEN: ""
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
         run: |
           if [ -z "$SEMGREP_APP_TOKEN" ]; then
             echo "::error::SEMGREP_APP_TOKEN is not configured"
