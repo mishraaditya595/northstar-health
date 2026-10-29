@@ -32,7 +32,7 @@ Dependabot checks pinned GitHub Actions for updates every week through `.github/
 
 ## Accepted / deferred findings
 
-These findings were reviewed against the NorthStar implementation. Their status here records the repository-level decision; the corresponding findings must also be triaged as **Won't Fix** in the Semgrep dashboard, with this rationale attached. Reopen the decision if the listed conditions change.
+These findings were reviewed against the NorthStar implementation. Their status here records the repository-level decision; the corresponding findings must also be triaged in Semgrep as **Ignored** with reason **Acceptable risk** (Semgrep's equivalent of the requested “won't fix” disposition), with this rationale attached. Reopen the decision if the listed conditions change.
 
 | Finding | Disposition | Rationale | Revisit when |
 |---|---|---|---|
