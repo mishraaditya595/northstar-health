@@ -230,7 +230,23 @@ if 'migration' in args and 'list' in args:
         )
         self.assertNotEqual(function_preview.returncode, 0)
         self.assertFalse(self.calls())
+        self.assertIn(
+            "replace SELECT_FUNCTION with a function name, e.g. delete-account",
+            function_preview.stderr,
+        )
         self.assertIn("invalid function selection", function_preview.stderr)
+
+    def test_function_placeholder_has_specific_validation_error(self):
+        result = subprocess.run(
+            ["python3", str(VALIDATOR), "SELECT_FUNCTION"],
+            cwd=ROOT, capture_output=True, text=True, check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "replace SELECT_FUNCTION with a function name, e.g. delete-account",
+            result.stderr,
+        )
+        self.assertNotIn("unknown/invalid Function name", result.stderr)
 
     def test_placeholder_confirmations_cannot_authorize_deploy(self):
         for job in ("database", "functions"):
