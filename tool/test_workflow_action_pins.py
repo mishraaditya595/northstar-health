@@ -13,7 +13,7 @@ PIN_PATTERN = re.compile(r"^[^@\s]+@[0-9a-f]{40}$")
 class WorkflowActionPinTests(unittest.TestCase):
     def test_external_actions_use_full_commit_sha(self):
         inspected = 0
-        for workflow in sorted(WORKFLOWS.glob("*.yml")):
+        for workflow in sorted([*WORKFLOWS.glob("*.yml"), *WORKFLOWS.glob("*.yaml")]):
             text = workflow.read_text(encoding="utf-8")
             for match in USE_PATTERN.finditer(text):
                 reference = match.group(1)
