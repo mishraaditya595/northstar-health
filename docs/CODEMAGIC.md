@@ -26,7 +26,7 @@ Codemagic's manual Start new build can select a workflow even without an automat
 
 ## Manual Supabase workflows
 
-`supabase-database` and `supabase-functions` live in the same root YAML. Both are manually started on `main` with build inputs (`preview` or `deploy`, project-ref confirmation and, for Functions, space-separated names). Both reuse `scripts/codemagic_supabase.sh` and the `ns_supabase_deploy` group, configured for only one project per Codemagic app. Production must use separately isolated credentials, not import staging and production secrets together. All credentials remain in encrypted Codemagic settings, not Git. See [complete setup, procedures, failure and rollback guidance](SUPABASE_CODEMAGIC_DEPLOY.md).
+`supabase-database` and `supabase-functions` live in the same root YAML. Both are manually started on `main` with build inputs (`preview` or `deploy`, exact project-ref and full reviewed HEAD SHA confirmation for writes and, for Functions, explicitly entered space-separated names). Function selection is empty by default; `delete-account` is never preselected. Both reuse `scripts/codemagic_supabase.sh` and the `ns_supabase_deploy` group, configured for only one project per Codemagic app. Production must use separately isolated credentials, not import staging and production secrets together. All credentials remain in encrypted Codemagic settings, not Git. See [complete setup, procedures, failure and rollback guidance](SUPABASE_CODEMAGIC_DEPLOY.md).
 
 ## Setup sequence
 
