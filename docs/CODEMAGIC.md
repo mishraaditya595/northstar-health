@@ -1,6 +1,6 @@
 # NorthStar Codemagic CI/CD and manual Supabase deployments
 
-**Status:** The original 11 app/watch workflows remain intentionally failing, manual templates. Six additional **manual Supabase workflows** implement staging/production migration previews, database migration pushes and `delete-account` Function deploys, requiring privately configured Codemagic groups and per-commit owner approval. None has been run on hosted Codemagic or used to deploy a database. See [Supabase Codemagic deployment runbook](SUPABASE_CODEMAGIC_DEPLOY.md). No mobile build, signing or store release is enabled.
+**Status:** The original 11 app/watch workflows remain intentionally failing, manual templates. Two additional **manual Supabase workflows** handle database migrations and selected Edge Functions via build inputs, using a private Codemagic group bound to a single target project. None has been run on hosted Codemagic or used to deploy a database. See [Supabase Codemagic deployment runbook](SUPABASE_CODEMAGIC_DEPLOY.md). No mobile build, signing or store release is enabled.
 
 Codemagic reads `codemagic.yaml` **from the repository root**, even though apps live under `apps/`. Each workflow sets `working_directory` to the appropriate project. See [Codemagic YAML docs](https://docs.codemagic.io/yaml-basic-configuration/yaml-getting-started/) and [monorepo directory guidance](https://docs.codemagic.io/getting-started/adding-apps/).
 
@@ -22,11 +22,11 @@ Codemagic reads `codemagic.yaml` **from the repository root**, even though apps 
 
 ### Why the original 11 mobile/watch templates intentionally exit with failure
 
-Codemagic's manual Start new build can select a workflow even without an automatic `triggering` block. If a workflow only printed “hello,” it might be marked successful without compiling anything. Each app/watch stub prints **TEMPLATE ONLY** and `exit 1` to prevent false release confidence. Replace these guards with validated build commands and artifacts before claiming an app build. There is no app `publishing`, signing or credential group. **The six Supabase workflows are different:** they reference named, private Codemagic UI groups and can modify a database or Function *only* when explicitly run with matching approvals. See [operator guide](SUPABASE_CODEMAGIC_DEPLOY.md); never trigger them automatically.
+Codemagic's manual Start new build can select a workflow even without an automatic `triggering` block. If a workflow only printed “hello,” it might be marked successful without compiling anything. Each app/watch stub prints **TEMPLATE ONLY** and `exit 1` to prevent false release confidence. Replace these guards with validated build commands and artifacts before claiming an app build. There is no app `publishing`, signing or credential group. **The two Supabase workflows are different:** they use a project-bound protected Codemagic group and can write only after an explicit `deploy` input and exact project-ref confirmation. See [operator guide](SUPABASE_CODEMAGIC_DEPLOY.md); never trigger them automatically.
 
 ## Manual Supabase workflows
 
-The six `supabase-{staging,production}-{preview,migrate,function}` workflows live in the same root YAML, run `scripts/codemagic_supabase.sh` with a pinned Supabase CLI and require `main`, a manual/API trigger, a matching environment group and, for deploy actions, approved commit + project ID. Function deployments require **additional** approval. All credentials remain in encrypted Codemagic settings, not Git. See [complete setup, procedures, failure and rollback guidance](SUPABASE_CODEMAGIC_DEPLOY.md).
+`supabase-database` and `supabase-functions` live in the same root YAML. Both are manually started on `main` with build inputs (`preview` or `deploy`, exact project-ref and full reviewed HEAD SHA confirmation for writes and, for Functions, explicitly entered space-separated names). Function selection is empty by default; `delete-account` is never preselected. Both reuse `scripts/codemagic_supabase.sh` and the `ns_supabase_deploy` group, configured for only one project per Codemagic app. Production must use separately isolated credentials, not import staging and production secrets together. All credentials remain in encrypted Codemagic settings, not Git. See [complete setup, procedures, failure and rollback guidance](SUPABASE_CODEMAGIC_DEPLOY.md).
 
 ## Setup sequence
 
@@ -41,7 +41,7 @@ The six `supabase-{staging,production}-{preview,migrate,function}` workflows liv
 ## Release safety gates
 
 - The **Apple Watch companion release** must remain disabled until `apps/watch_os/Sources` is integrated into `apps/mobile/ios` as a real embedded, correctly signed watch target and an iPhone/watch archive is verified.
-- Only the six explicitly manual Supabase workflows can deploy backend schema/Function code; no workflow exports or backs up personal health records. Firebase and Supabase credentials belong in scoped Codemagic groups; never print environment variables, secret values or health records in CI artifacts/logs.
+- Only the two explicitly manual Supabase workflows can deploy backend schema/Function code; no workflow exports or backs up personal health records. Firebase and Supabase credentials belong in scoped Codemagic groups; never print environment variables, secret values or health records in CI artifacts/logs.
 - Signed Android and Wear OS package identity, target API/permissions, store disclosures and physical-device tests precede production distribution.
 - Before release, validate repository contracts, ObjectBox model UID changes, HealthKit/Health Connect permissions and consent/privacy tests.
 
