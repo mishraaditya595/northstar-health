@@ -17,9 +17,11 @@ They require a manually started build on `main` and a trusted initiator.
 `NOT_SET` placeholder, and `function_names` uses `SELECT_FUNCTION`. These
 are deliberately **nonempty** because Codemagic rejects empty interpolated
 `environment.vars` values during YAML validation. Leave both `NOT_SET`
-placeholders unchanged for a **database preview**; do not clear the fields.
+placeholders unchanged for **any preview**; do not clear the fields.
 For a Function preview, explicitly replace `SELECT_FUNCTION` with the
 function name(s), e.g. `delete-account`; no Function is preselected.
+Leaving `SELECT_FUNCTION` unchanged fails with instructions to select
+an actual function name.
 Neither placeholder can authorize a deployment or select a Function.
 For any `deploy`, manually enter the exact protected project ref and full
 40-character **reviewed** commit SHA (not just the branch name). The runner
@@ -107,10 +109,11 @@ blindly rerun a destructive operation.
    `_shared` is not deployable. Use names (`delete-account another-func`),
    **not paths**. Python **3.11+** is required for `tomllib`; older
    versions fail with a clear error before linking.
-2. Start `supabase-functions` on `main` with action `preview`, and
-   **explicitly populate** the initially empty `function_names` field
-   with your space-separated selection. Leaving it empty fails safely,
-   including during preview. `delete-account` is **never** preselected.
+2. Start `supabase-functions` on `main` with action `preview`.
+   Leave both `NOT_SET` confirmation inputs unchanged and **replace**
+   `SELECT_FUNCTION` in `function_names` with your space-separated
+   selection. Leaving the placeholder unchanged fails safely with an
+   actionable error; `delete-account` is **never** preselected.
    The runner first
    ensures every committed migration is recorded on the remote project.
    If any migration is pending or histories diverge, Function deployment
