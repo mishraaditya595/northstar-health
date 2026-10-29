@@ -1,0 +1,39 @@
+# NorthStar Semgrep target exclusions.
+# A root .semgrepignore overrides Semgrep's built-in default ignore list.
+# Preserve the built-in defaults below (as reviewed in Semgrep's
+# src/targeting/default.semgrepignore) and keep Git's ignore rules.
+:include .gitignore
+
+# Semgrep default: version-control metadata
+.git
+.svn
+.hg
+_darcs
+CVS
+
+# Semgrep default: build, vendor, distribution, minified, environments
+build/
+vendor/
+dist/
+*.min.js
+.env/
+.tox/
+
+# Semgrep default: package-manager outputs
+node_modules/
+.npm/
+.yarn/
+.venv/
+_opam/
+_build/
+_cargo/
+
+# Semgrep default: common test paths
+test/
+tests/
+testsuite/
+*_test.go
+
+# NorthStar: generated Dart serializers and frozen design reference
+**/*.g.dart
+/prototypes/performance-v2/
