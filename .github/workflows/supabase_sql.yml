@@ -30,7 +30,7 @@ jobs:
     outputs:
       supabase: ${{ steps.filter.outputs.supabase }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -52,7 +52,7 @@ jobs:
       contents: read
       packages: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: Authenticate Docker pulls from GitHub Container Registry
         env:
           GHCR_TOKEN: ${{ github.token }}
