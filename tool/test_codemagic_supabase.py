@@ -87,6 +87,8 @@ if 'migration' in args and 'list' in args:
             "NS_SUPABASE_CONFIRM_COMMIT_SHA": "",
             "NS_SUPABASE_FUNCTIONS": "delete-account",
         }
+        # The inherited runner environment must not supply a legacy label.
+        self.env.pop("NS_SUPABASE_TARGET", None)
 
     def run_job(self, job="database", **override):
         env = {**self.env, **override}
