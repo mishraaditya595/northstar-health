@@ -24,15 +24,27 @@ done
   fail "invalid target environment"
 [[ "$SUPABASE_PROJECT_ID" =~ ^[a-z0-9]{20}$ ]] || fail "malformed Supabase project ref"
 
-# Deployment requires a separate project-ref confirmation supplied via build input.
-# A preview is always non-mutating for the hosted database.
+# Deployment requires an exact project ID and full reviewed commit SHA,
+# explicitly supplied in this build. Reject a stale build/source revision.
+# Preview remains read-only against the hosted project.
 if [[ "$NS_SUPABASE_ACTION" == "deploy" ]]; then
   require NS_SUPABASE_CONFIRM_PROJECT_ID
   [[ "$NS_SUPABASE_CONFIRM_PROJECT_ID" == "$SUPABASE_PROJECT_ID" ]] ||
     fail "deployment project confirmation does not match protected credentials"
+  require NS_SUPABASE_CONFIRM_COMMIT_SHA
+  [[ "$NS_SUPABASE_CONFIRM_COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]] ||
+    fail "reviewed commit confirmation must be a full 40-character SHA"
+  command -v git >/dev/null || fail "git is required for reviewed commit verification"
+  current_sha="$(git rev-parse HEAD)" || fail "could not read checked-out commit"
+  [[ "$NS_SUPABASE_CONFIRM_COMMIT_SHA" == "$current_sha" ]] ||
+    fail "reviewed commit SHA does not match checked-out HEAD"
 fi
 [[ -f supabase/config.toml && -d supabase/migrations &&
    -d supabase/functions ]] || fail "must run from repository root"
+
+command -v python3 >/dev/null || fail "Python 3.11+ is required"
+python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' ||
+  fail "Python 3.11+ is required (tomllib)"
 
 # Validate all requested names and JWT policies before making any network calls.
 if [[ "$job" == "functions" ]]; then
@@ -43,7 +55,6 @@ if [[ "$job" == "functions" ]]; then
 fi
 
 command -v npx >/dev/null || fail "Node.js/npx is required"
-command -v python3 >/dev/null || fail "Python 3 is required"
 cli() { npx --yes supabase@2.81.3 "$@"; }
 [[ "$(cli --version)" == "2.81.3" ]] || fail "unexpected Supabase CLI version"
 cli link --project-ref "$SUPABASE_PROJECT_ID"
