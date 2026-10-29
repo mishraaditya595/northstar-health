@@ -40,8 +40,10 @@ both staging and production credentials into the same workflow.
 
 **These three variables are the complete required group configuration.**
 `SUPABASE_PROJECT_ID` is the actual deployment target; there is no separate
-`NS_SUPABASE_TARGET` label to maintain. Mark both credentials **Secret** in
-Codemagic. Only trusted maintainers may edit this group or start privileged
+`NS_SUPABASE_TARGET` label to maintain. If an older Codemagic group still
+contains `NS_SUPABASE_TARGET`, the deployment script now **ignores it**;
+you can safely delete that leftover variable from the group. Mark both
+credentials **Secret** in Codemagic. Only trusted maintainers may edit this group or start privileged
 builds. The YAML imports **only** the `ns_supabase_deploy` group. Input
 values such as Function names are not credentials and must **never** contain
 secrets.
