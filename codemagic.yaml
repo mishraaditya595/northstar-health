@@ -227,6 +227,10 @@ workflows:
         description: "For DEPLOY, type the exact project ref from the protected group"
         type: string
         default: ""
+      confirm_commit_sha:
+        description: "For DEPLOY, type the full reviewed 40-character Git commit SHA"
+        type: string
+        default: ""
     environment:
       node: v22.11.0
       groups:
@@ -234,6 +238,7 @@ workflows:
       vars:
         NS_SUPABASE_ACTION: "${{ inputs.action }}"
         NS_SUPABASE_CONFIRM_PROJECT_ID: "${{ inputs.confirm_project_ref }}"
+        NS_SUPABASE_CONFIRM_COMMIT_SHA: "${{ inputs.confirm_commit_sha }}"
     scripts:
       - name: "Preview or apply pending migrations"
         script: |
@@ -255,10 +260,14 @@ workflows:
         description: "For DEPLOY, type the exact project ref from the protected group"
         type: string
         default: ""
-      function_names:
-        description: "Space-separated function names (example: delete-account)"
+      confirm_commit_sha:
+        description: "For DEPLOY, type the full reviewed 40-character Git commit SHA"
         type: string
-        default: "delete-account"
+        default: ""
+      function_names:
+        description: "Space-separated function names (required; example: delete-account)"
+        type: string
+        default: ""
     environment:
       node: v22.11.0
       groups:
@@ -266,6 +275,7 @@ workflows:
       vars:
         NS_SUPABASE_ACTION: "${{ inputs.action }}"
         NS_SUPABASE_CONFIRM_PROJECT_ID: "${{ inputs.confirm_project_ref }}"
+        NS_SUPABASE_CONFIRM_COMMIT_SHA: "${{ inputs.confirm_commit_sha }}"
         NS_SUPABASE_FUNCTIONS: "${{ inputs.function_names }}"
     scripts:
       - name: "Preview or deploy selected functions"
