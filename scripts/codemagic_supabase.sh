@@ -39,7 +39,7 @@ if [[ "$job" == "functions" ]]; then
   require NS_SUPABASE_FUNCTIONS
   validated="$(python3 scripts/check_supabase_functions.py "$NS_SUPABASE_FUNCTIONS")" ||
     fail "invalid function selection/configuration"
-  mapfile -t selected_functions <<< "$validated"
+  read -r -a selected_functions <<< "$validated"
 fi
 
 command -v npx >/dev/null || fail "Node.js/npx is required"
