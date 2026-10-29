@@ -8,13 +8,23 @@ before activating account sync or deletion on real devices.
 
 | Codemagic workflow | Build inputs | Does it write? |
 | --- | --- | --- |
-| `supabase-database` | action: preview/deploy; project ref confirmation | Only when deploy |
-| `supabase-functions` | action: preview/deploy; project ref confirmation; space-separated Function **names** | Only when deploy |
+| `supabase-database` | action: preview/deploy; project ref and reviewed full commit SHA confirmations | Only when deploy |
+| `supabase-functions` | action: preview/deploy; project ref and reviewed full commit SHA confirmations; space-separated Function **names** | Only when deploy |
 
 Both are **manual-only**: no push, PR, cron or publishing triggers.
 They require a manually started build on `main` and a trusted initiator.
-`preview` is the default. Running previews never changes the hosted database
-or deploys a Function, though `supabase link` writes local CLI metadata on the build machine.
+`preview` is the default. `confirm_project_ref` and `confirm_commit_sha`
+default to empty, as does `function_names`; no Function is preselected.
+For any `deploy`, manually enter the exact protected project ref and full
+40-character **reviewed** commit SHA (not just the branch name). The runner
+checks that SHA against `git rev-parse HEAD` **before connecting** and
+refuses a stale or mismatched revision. If `main` advances after your
+review, review the new commit and reenter its SHA rather than silently
+deploying it. This input is an explicit operator confirmation, **not an
+independent authorization mechanism**: restrict who can run Codemagic
+builds and who can edit protected groups. Running previews never changes
+the hosted database or deploys a Function, though `supabase link`
+writes local CLI metadata on the build machine.
 
 ### One-time setup
 
@@ -58,7 +68,8 @@ the group label implies; control access and keep the project-ref confirmation.
    Pending versions are expected; unexpected remote-only versions or
    malformed history stop the job.
 3. After reviewing the preview and backup, rerun the **same** job with
-   action `deploy`. Type the exact project ref in `confirm_project_ref`.
+   action `deploy`. Type the exact project ref in `confirm_project_ref`
+   and the **full reviewed commit SHA** in `confirm_commit_sha`.
    The runner invokes `supabase db push --linked --yes`, which applies all
    locally committed, still-pending migration files in timestamp order.
    You **do not pass SQL paths**: the Supabase migration history identifies
@@ -78,19 +89,29 @@ blindly rerun a destructive operation.
    `supabase/functions/<name>/index.ts`, with an explicit Boolean
    `[functions.<name>].verify_jwt` in `supabase/config.toml`.
    The runner validates *all* Function folders/config entries and the
-   entire requested selection before deployment. `_shared` is not
-   deployable. Use names (`delete-account another-func`), **not paths**.
-2. Start `supabase-functions` on `main` with action `preview`, and set
-   `function_names` to the space-separated selection. The runner first
+   entire requested selection before deployment. **Every** deployable
+   Function folder must have its own matching `config.toml` entry, even
+   if it is not selected for this build. A single missing/mismatched entry
+   intentionally blocks **all** Function deployments (fail-closed).
+   `_shared` is not deployable. Use names (`delete-account another-func`),
+   **not paths**. Python **3.11+** is required for `tomllib`; older
+   versions fail with a clear error before linking.
+2. Start `supabase-functions` on `main` with action `preview`, and
+   **explicitly populate** the initially empty `function_names` field
+   with your space-separated selection. Leaving it empty fails safely,
+   including during preview. `delete-account` is **never** preselected.
+   The runner first
    ensures every committed migration is recorded on the remote project.
    If any migration is pending or histories diverge, Function deployment
    is blocked; the CLI's `db push --dry-run` success is insufficient.
 3. After Function-specific Auth/JWT and dependency review, rerun
    `supabase-functions` with action `deploy`, the same `function_names`,
-   and the exact `confirm_project_ref`. Selected Functions deploy
-   sequentially with `supabase functions deploy <name> --use-api`.
-   A failure may leave earlier Functions updated; inspect their live
-   versions before retrying.
+   the exact `confirm_project_ref` and the **full reviewed**
+   `confirm_commit_sha`. Selected Functions deploy sequentially with
+   `supabase functions deploy <name> --use-api`. Pre-deploy selection
+   validation is all-or-nothing, but **deployment is not atomic**: if one
+   deploy fails, earlier Functions in the selection may already have
+   been updated. Inspect their live versions and permissions before retrying.
 4. Verify each Function's live JWT configuration and behavior. The runner
    never uses the global `--no-verify-jwt` option. `delete-account`
    intentionally has `verify_jwt=false` **only because the handler calls
