@@ -13,6 +13,10 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "codemagic_supabase.sh"
 VALIDATOR = ROOT / "scripts" / "check_supabase_functions.py"
 REF = "abcdefghijklmnopqrst"
+SHA = subprocess.run(
+    ["git", "rev-parse", "HEAD"], cwd=ROOT,
+    capture_output=True, text=True, check=True,
+).stdout.strip()
 
 
 class SupabaseCodemagicTest(unittest.TestCase):
@@ -81,6 +85,7 @@ if 'migration' in args and 'list' in args:
             "NS_SUPABASE_TARGET": "staging",
             "NS_SUPABASE_ACTION": "preview",
             "NS_SUPABASE_CONFIRM_PROJECT_ID": "",
+            "NS_SUPABASE_CONFIRM_COMMIT_SHA": "",
             "NS_SUPABASE_FUNCTIONS": "delete-account",
         }
 
@@ -112,7 +117,7 @@ if 'migration' in args and 'list' in args:
 
     def test_database_deploy_only_pushes_pending_and_verifies(self):
         r = self.run_job(NS_SUPABASE_ACTION="deploy", NS_SUPABASE_CONFIRM_PROJECT_ID=REF,
-                         NS_FAKE_REMOTE_STATE="pending")
+                         NS_SUPABASE_CONFIRM_COMMIT_SHA=SHA, NS_FAKE_REMOTE_STATE="pending")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(self.calls()[-2:], [
             ["--yes", "supabase@2.81.3", "db", "push", "--linked", "--yes"],
@@ -128,7 +133,8 @@ if 'migration' in args and 'list' in args:
 
     def test_function_deploy_uses_only_selected_name_and_no_global_jwt_flag(self):
         r = self.run_job("functions", NS_SUPABASE_ACTION="deploy",
-                         NS_SUPABASE_CONFIRM_PROJECT_ID=REF)
+                         NS_SUPABASE_CONFIRM_PROJECT_ID=REF,
+                         NS_SUPABASE_CONFIRM_COMMIT_SHA=SHA)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(self.calls()[-1], [
             "--yes", "supabase@2.81.3", "functions", "deploy",
@@ -164,9 +170,65 @@ if 'migration' in args and 'list' in args:
                     if self.log.exists():
                         self.log.unlink()
                     r = self.run_job(job, NS_SUPABASE_ACTION="deploy",
+                                     NS_SUPABASE_CONFIRM_COMMIT_SHA=SHA,
                                      NS_SUPABASE_CONFIRM_PROJECT_ID=value)
                     self.assertNotEqual(r.returncode, 0)
                     self.assertEqual(self.calls(), [])
+
+    def test_deploy_requires_exact_reviewed_commit_on_both_jobs(self):
+        for job in ("database", "functions"):
+            for value in ("", "0" * 40, SHA[:12], "G" * 40):
+                with self.subTest(job=job, confirm_commit_sha=value):
+                    if self.log.exists():
+                        self.log.unlink()
+                    r = self.run_job(
+                        job, NS_SUPABASE_ACTION="deploy",
+                        NS_SUPABASE_CONFIRM_PROJECT_ID=REF,
+                        NS_SUPABASE_CONFIRM_COMMIT_SHA=value,
+                    )
+                    self.assertNotEqual(r.returncode, 0)
+                    self.assertIn("commit", r.stderr.lower())
+                    self.assertEqual(self.calls(), [])
+
+    def test_preview_does_not_require_reviewed_commit(self):
+        for job in ("database", "functions"):
+            with self.subTest(job=job):
+                if self.log.exists():
+                    self.log.unlink()
+                r = self.run_job(job, NS_SUPABASE_CONFIRM_COMMIT_SHA="")
+                self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_function_selection_is_explicit_even_for_preview(self):
+        r = self.run_job("functions", NS_SUPABASE_FUNCTIONS="")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual(self.calls(), [])
+        self.assertIn("missing required setting NS_SUPABASE_FUNCTIONS", r.stderr)
+
+    def test_python_older_than_311_fails_before_link(self):
+        fake_py = Path(self.tmp.name) / "python3"
+        fake_py.write_text(
+            '#!/bin/sh\nif [ "$1" = "-c" ]; then exit 1; fi\nexit 99\n',
+            encoding="utf-8",
+        )
+        fake_py.chmod(0o700)
+        result = self.run_job("functions")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Python 3.11+ is required", result.stderr)
+        self.assertEqual(self.calls(), [])
+
+    def test_a_missing_function_config_blocks_other_valid_selections(self):
+        from scripts.check_supabase_functions import validate
+        local = Path(self.tmp.name) / "sandbox"
+        source = local / "supabase" / "functions"
+        for name in ("valid-func", "missing-config"):
+            folder = source / name
+            folder.mkdir(parents=True)
+            (folder / "index.ts").write_text("export {};", encoding="utf-8")
+        (local / "supabase" / "config.toml").write_text(
+            "[functions.valid-func]\nverify_jwt = true\n", encoding="utf-8"
+        )
+        with self.assertRaisesRegex(ValueError, "source/config lists differ"):
+            validate("valid-func", root=local)
 
     def test_function_validation_fails_closed_before_linking(self):
         for selection in ("", "../delete-account", "delete-account delete-account",
@@ -204,7 +266,8 @@ if 'migration' in args and 'list' in args:
                 if self.log.exists():
                     self.log.unlink()
                 r = self.run_job(NS_SUPABASE_ACTION="deploy",
-                                 NS_SUPABASE_CONFIRM_PROJECT_ID=REF, **changes)
+                                 NS_SUPABASE_CONFIRM_PROJECT_ID=REF,
+                                 NS_SUPABASE_CONFIRM_COMMIT_SHA=SHA, **changes)
                 self.assertNotEqual(r.returncode, 0)
                 self.assertFalse(any("functions" in c for c in self.calls()))
 
