@@ -29,3 +29,13 @@ Semgrep only blocks findings covered by enabled blocking policies. Keep policy c
 Workflow steps that use third-party GitHub Actions are pinned to verified full commit SHAs rather than mutable version tags or branches. A contract test in `tool/test_workflow_action_pins.py` rejects unpinned external actions, including new workflow files. The readable trailing version comments describe the pinned release or version branch; they do not affect execution.
 
 Dependabot checks pinned GitHub Actions for updates every week through `.github/dependabot.yml`. Review proposed changes and their upstream release notes before merging. The Semgrep workflow currently skips Dependabot PRs because it needs a repository secret, so a passing/skipped Semgrep check on those PRs is **not** security approval; other PR checks and manual review still apply.
+
+## Accepted / deferred findings
+
+These findings were reviewed against the NorthStar implementation. Their status here records the repository-level decision; the corresponding findings must also be triaged as **Won't Fix** in the Semgrep dashboard, with this rationale attached. Reopen the decision if the listed conditions change.
+
+| Finding | Disposition | Rationale | Revisit when |
+|---|---|---|---|
+| `swift ATS-consider-pinning` (`apps/mobile/ios/Runner/Info.plist`) | Deferred | ATS defaults are in force with no exceptions. Pinning rotating Supabase certificates risks outages; Dart's `HttpClient` does not use ATS, so `NSPinnedDomains` alone would not cover Flutter-managed requests. This does not disable normal HTTPS certificate validation. | After the Flutter/Supabase HTTPS audit |
+| `java exported_activity` (`apps/wear_os/app/src/main/AndroidManifest.xml`) | Accepted | The sole `MAIN`/`LAUNCHER` activity must be exported for normal launch. It reads no intent extras and declares no permissions. | If the activity gains privileged functionality |
+

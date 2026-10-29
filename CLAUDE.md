@@ -37,7 +37,8 @@ Other CI gates (`.github/workflows/`):
 - **Semgrep (`semgrep/ci`):** same-repo PR, `main` push, and nightly security scanning. Requires the `SEMGREP_APP_TOKEN` Actions secret; missing/invalid tokens and scanner errors fail the job. Only policies configured to **Block** fail on findings. Fork/Dependabot PRs skip; see `docs/SEMGREP.md` for setup and required smoke tests before enforcing this check.
 
 ```sh
-# repo/protocol contracts (needs jsonschema==4.23.0, PyYAML==6.0.2)
+# repo/protocol contracts (from repository root)
+python3 -m pip install -r tool/requirements-ci.txt
 python3 -m unittest discover -s tool -p 'test_*.py'
 python3 -m unittest tool.test_protocol_contract    # single module
 
