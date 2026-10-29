@@ -45,7 +45,7 @@ if __name__ == "__main__":
     try:
         if len(sys.argv) != 2:
             raise ValueError("expected one space-separated selection argument")
-        print("\n".join(validate(sys.argv[1])))
+        print(" ".join(validate(sys.argv[1])))
     except (ValueError, OSError) as exc:
         print(f"Function selection rejected: {exc}", file=sys.stderr)
         sys.exit(1)
