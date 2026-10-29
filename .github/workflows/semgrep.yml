@@ -1,0 +1,58 @@
+name: Semgrep
+
+# Scan same-repository PRs, every push to main, and nightly.
+# Fork and Dependabot PRs deliberately skip because repository secrets are not
+# available to them; their changes are scanned after merging into main.
+# Skipped checks may appear successful. Do NOT require semgrep/ci in branch
+# protection until the token and a blocking-rule smoke test are verified.
+# See docs/SEMGREP.md for setup, limitations, and validation.
+on:
+  workflow_dispatch:
+
+  pull_request:
+
+  push:
+    branches:
+      - main
+
+  schedule:
+    - cron: '12 15 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: semgrep-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  semgrep:
+    name: semgrep/ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    if: >-
+      github.actor != 'dependabot[bot]' &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
+
+    container:
+      image: semgrep/semgrep
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Require Semgrep token
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        run: |
+          if [ -z "$SEMGREP_APP_TOKEN" ]; then
+            echo "::error::SEMGREP_APP_TOKEN is not configured"
+            exit 1
+          fi
+
+      - name: Run Semgrep
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        run: semgrep ci --no-suppress-errors
