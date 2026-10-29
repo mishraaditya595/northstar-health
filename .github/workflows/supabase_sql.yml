@@ -30,8 +30,8 @@ jobs:
     outputs:
       supabase: ${{ steps.filter.outputs.supabase }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
@@ -52,7 +52,7 @@ jobs:
       contents: read
       packages: read
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Authenticate Docker pulls from GitHub Container Registry
         env:
           GHCR_TOKEN: ${{ github.token }}
@@ -64,7 +64,7 @@ jobs:
             echo "::warning::GHCR login unavailable; trying public image pulls."
           fi
       - name: Install pinned Supabase CLI
-        uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1 branch
+        uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359 # v3.0.1
         with:
           version: "2.81.3"
       - name: Start database, replay migrations, and run pgTAP with registry failover
