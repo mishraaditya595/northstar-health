@@ -232,6 +232,8 @@ workflows:
       confirm_commit_sha:
         description: "For DEPLOY, replace NOT_SET with the full reviewed 40-character SHA"
         type: string
+        # Codemagic environment.vars rejects empty interpolated input values.
+        # This sentinel never authorizes a deploy; the runner checks the full SHA.
         default: "NOT_SET"
     environment:
       node: v22.11.0
@@ -267,6 +269,8 @@ workflows:
       confirm_commit_sha:
         description: "For DEPLOY, replace NOT_SET with the full reviewed 40-character SHA"
         type: string
+        # Codemagic environment.vars rejects empty interpolated input values.
+        # This sentinel never authorizes a deploy; the runner checks the full SHA.
         default: "NOT_SET"
       function_names:
         description: "Replace SELECT_FUNCTION with explicit space-separated names (example: delete-account)"
