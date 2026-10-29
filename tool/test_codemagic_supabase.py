@@ -175,6 +175,9 @@ if 'migration' in args and 'list' in args:
                     overrides = {} if label is None else {"NS_SUPABASE_TARGET": label}
                     preview = self.run_job(job, **overrides)
                     self.assertEqual(preview.returncode, 0, preview.stderr)
+                    self.assertNotIn(
+                        "not-a-real-environment", preview.stdout + preview.stderr,
+                    )
                     self.assertTrue(self.calls())
                     self.assertFalse(
                         any("functions" in call or
@@ -183,6 +186,27 @@ if 'migration' in args and 'list' in args:
                     )
         # Existing deploy tests verify that project + reviewed SHA
         # confirmations remain mandatory without the legacy target label.
+
+    def test_deploy_ignores_and_does_not_log_legacy_target_label(self):
+        # Even a leftover value in the Codemagic group cannot redirect the
+        # database deployment; linked project + reviewed SHA still control it.
+        deploy = self.run_job(
+            "database",
+            NS_SUPABASE_TARGET="not-a-real-environment",
+            NS_SUPABASE_ACTION="deploy",
+            NS_SUPABASE_CONFIRM_PROJECT_ID=REF,
+            NS_SUPABASE_CONFIRM_COMMIT_SHA=SHA,
+            NS_FAKE_REMOTE_STATE="pending",
+        )
+        self.assertEqual(deploy.returncode, 0, deploy.stderr)
+        self.assertNotIn(
+            "not-a-real-environment", deploy.stdout + deploy.stderr,
+        )
+        self.assertIn(
+            ["--yes", "supabase@2.81.3", "db", "push", "--linked", "--yes"],
+            self.calls(),
+        )
+        self.assertFalse(any("functions" in call for call in self.calls()))
 
     def test_deploy_needs_exact_project_confirmation(self):
         for job in ("database", "functions"):
