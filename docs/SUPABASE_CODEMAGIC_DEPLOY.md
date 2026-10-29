@@ -13,8 +13,14 @@ before activating account sync or deletion on real devices.
 
 Both are **manual-only**: no push, PR, cron or publishing triggers.
 They require a manually started build on `main` and a trusted initiator.
-`preview` is the default. `confirm_project_ref` and `confirm_commit_sha`
-default to empty, as does `function_names`; no Function is preselected.
+`preview` is the default. The confirmation inputs use the harmless
+`NOT_SET` placeholder, and `function_names` uses `SELECT_FUNCTION`. These
+are deliberately **nonempty** because Codemagic rejects empty interpolated
+`environment.vars` values during YAML validation. Leave both `NOT_SET`
+placeholders unchanged for a **database preview**; do not clear the fields.
+For a Function preview, explicitly replace `SELECT_FUNCTION` with the
+function name(s), e.g. `delete-account`; no Function is preselected.
+Neither placeholder can authorize a deployment or select a Function.
 For any `deploy`, manually enter the exact protected project ref and full
 40-character **reviewed** commit SHA (not just the branch name). The runner
 checks that SHA against `git rev-parse HEAD` **before connecting** and
@@ -67,7 +73,8 @@ the group label implies; control access and keep the project-ref confirmation.
    the P2-05 backfill's `SET LOCAL TIMEZONE` requires transaction-level UTC
    verification before deployment. Avoid concurrent deployment runs.
 2. In Codemagic, **Start new build** on `main` and select
-   `supabase-database`, action `preview`. Examine the output of
+   `supabase-database`, action `preview`. Leave both `NOT_SET`
+   confirmation fields unchanged. Examine the output of
    `supabase migration list --linked` and `supabase db push --linked --dry-run`.
    Pending versions are expected; unexpected remote-only versions or
    malformed history stop the job.
