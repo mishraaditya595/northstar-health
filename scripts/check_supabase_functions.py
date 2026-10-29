@@ -24,6 +24,10 @@ VALID_NAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
 
 
 def validate(selection: str, root: Path = ROOT) -> list[str]:
+    if selection == "SELECT_FUNCTION":
+        raise ValueError(
+            "replace SELECT_FUNCTION with a function name, e.g. delete-account"
+        )
     source = root / "supabase" / "functions"
     config = tomllib.loads((root / "supabase" / "config.toml").read_text())
     policies = config.get("functions", {})

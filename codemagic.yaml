@@ -224,13 +224,17 @@ workflows:
         options: [preview, deploy]
         default: preview
       confirm_project_ref:
-        description: "For DEPLOY, type the exact project ref from the protected group"
+        description: "For DEPLOY, replace NOT_SET with the exact protected project ref"
         type: string
-        default: ""
+        # Codemagic environment.vars rejects empty interpolated input values.
+        # This sentinel never authorizes a deploy; the runner checks the exact ref.
+        default: "NOT_SET"
       confirm_commit_sha:
-        description: "For DEPLOY, type the full reviewed 40-character Git commit SHA"
+        description: "For DEPLOY, replace NOT_SET with the full reviewed 40-character SHA"
         type: string
-        default: ""
+        # Codemagic environment.vars rejects empty interpolated input values.
+        # This sentinel never authorizes a deploy; the runner checks the full SHA.
+        default: "NOT_SET"
     environment:
       node: v22.11.0
       groups:
@@ -257,17 +261,22 @@ workflows:
         options: [preview, deploy]
         default: preview
       confirm_project_ref:
-        description: "For DEPLOY, type the exact project ref from the protected group"
+        description: "For DEPLOY, replace NOT_SET with the exact protected project ref"
         type: string
-        default: ""
+        # Codemagic environment.vars rejects empty interpolated input values.
+        # This sentinel never authorizes a deploy; the runner checks the exact ref.
+        default: "NOT_SET"
       confirm_commit_sha:
-        description: "For DEPLOY, type the full reviewed 40-character Git commit SHA"
+        description: "For DEPLOY, replace NOT_SET with the full reviewed 40-character SHA"
         type: string
-        default: ""
+        # Codemagic environment.vars rejects empty interpolated input values.
+        # This sentinel never authorizes a deploy; the runner checks the full SHA.
+        default: "NOT_SET"
       function_names:
-        description: "Space-separated function names (required; example: delete-account)"
+        description: "Replace SELECT_FUNCTION with explicit space-separated names (example: delete-account)"
         type: string
-        default: ""
+        # Invalid function name by design; the validator fails closed until replaced.
+        default: "SELECT_FUNCTION"
     environment:
       node: v22.11.0
       groups:

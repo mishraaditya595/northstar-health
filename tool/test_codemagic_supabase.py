@@ -208,6 +208,67 @@ if 'migration' in args and 'list' in args:
         )
         self.assertFalse(any("functions" in call for call in self.calls()))
 
+    def test_codemagic_preview_placeholders_require_no_approval(self):
+        # UI defaults must be nonempty for Codemagic YAML validation, but
+        # cannot grant permission to deploy or select a privileged Function.
+        preview = self.run_job(
+            "database",
+            NS_SUPABASE_CONFIRM_PROJECT_ID="NOT_SET",
+            NS_SUPABASE_CONFIRM_COMMIT_SHA="NOT_SET",
+        )
+        self.assertEqual(preview.returncode, 0, preview.stderr)
+        self.assertFalse(any(
+            "push" in call and "--dry-run" not in call
+            for call in self.calls()
+        ))
+        self.log.unlink()
+        function_preview = self.run_job(
+            "functions",
+            NS_SUPABASE_CONFIRM_PROJECT_ID="NOT_SET",
+            NS_SUPABASE_CONFIRM_COMMIT_SHA="NOT_SET",
+            NS_SUPABASE_FUNCTIONS="SELECT_FUNCTION",
+        )
+        self.assertNotEqual(function_preview.returncode, 0)
+        self.assertFalse(self.calls())
+        self.assertIn(
+            "replace SELECT_FUNCTION with a function name, e.g. delete-account",
+            function_preview.stderr,
+        )
+        self.assertIn("invalid function selection", function_preview.stderr)
+
+    def test_function_placeholder_has_specific_validation_error(self):
+        result = subprocess.run(
+            ["python3", str(VALIDATOR), "SELECT_FUNCTION"],
+            cwd=ROOT, capture_output=True, text=True, check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "replace SELECT_FUNCTION with a function name, e.g. delete-account",
+            result.stderr,
+        )
+        self.assertNotIn("unknown/invalid Function name", result.stderr)
+
+    def test_placeholder_confirmations_cannot_authorize_deploy(self):
+        for job in ("database", "functions"):
+            for kwargs in (
+                {
+                    "NS_SUPABASE_CONFIRM_PROJECT_ID": "NOT_SET",
+                    "NS_SUPABASE_CONFIRM_COMMIT_SHA": SHA,
+                },
+                {
+                    "NS_SUPABASE_CONFIRM_PROJECT_ID": REF,
+                    "NS_SUPABASE_CONFIRM_COMMIT_SHA": "NOT_SET",
+                },
+            ):
+                with self.subTest(job=job, kwargs=kwargs):
+                    if self.log.exists():
+                        self.log.unlink()
+                    result = self.run_job(
+                        job, NS_SUPABASE_ACTION="deploy", **kwargs,
+                    )
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(self.calls(), [])
+
     def test_deploy_needs_exact_project_confirmation(self):
         for job in ("database", "functions"):
             for value in ("", "0" * 20):
