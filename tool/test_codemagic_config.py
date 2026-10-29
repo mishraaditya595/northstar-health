@@ -26,9 +26,8 @@ EXPECTED = {
 }
 
 SUPABASE_WORKFLOWS = {
-    f"supabase-{target}-{action}": (target, action)
-    for target in ("staging", "production")
-    for action in ("preview", "migrate", "function")
+    "supabase-database": "database",
+    "supabase-functions": "functions",
 }
 
 
@@ -58,36 +57,51 @@ class CodemagicTemplateTest(unittest.TestCase):
                 self.assertIn("TEMPLATE ONLY", body)
                 self.assertTrue(body.rstrip().endswith("exit 1"))
 
-    def test_supabase_workflows_are_manual_scoped_and_have_no_embedded_secrets(self):
+    def test_two_supabase_workflows_have_safe_manual_inputs(self):
         document = yaml.safe_load(FILE.read_text(encoding="utf-8"))
-        for name, (target, action) in SUPABASE_WORKFLOWS.items():
-            with self.subTest(workflow=name):
-                workflow = document["workflows"][name]
-                self.assertNotIn("triggering", workflow)
-                self.assertNotIn("publishing", workflow)
-                self.assertNotIn("artifacts", workflow)
+        workflows = document["workflows"]
+        for key, kind in SUPABASE_WORKFLOWS.items():
+            with self.subTest(workflow=key):
+                workflow = workflows[key]
+                for forbidden in ("triggering", "publishing", "artifacts"):
+                    self.assertNotIn(forbidden, workflow)
                 self.assertEqual(workflow["working_directory"], ".")
                 self.assertEqual(workflow["instance_type"], "mac_mini_m2")
-                env = workflow["environment"]
-                self.assertEqual(env["groups"], [f"ns_supabase_{target}"])
-                self.assertEqual(env["vars"], {
-                    "NS_SUPABASE_TARGET": target,
-                    "NS_SUPABASE_ACTION": action,
-                })
+                self.assertEqual(
+                    workflow["environment"]["groups"], ["ns_supabase_deploy"]
+                )
+                variables = workflow["environment"]["vars"]
+                self.assertEqual(
+                    variables["NS_SUPABASE_ACTION"], "${{ inputs.action }}"
+                )
+                self.assertEqual(
+                    variables["NS_SUPABASE_CONFIRM_PROJECT_ID"],
+                    "${{ inputs.confirm_project_ref }}",
+                )
+                inputs = workflow["inputs"]
+                self.assertEqual(inputs["action"]["type"], "choice")
+                self.assertEqual(inputs["action"]["options"], ["preview", "deploy"])
+                self.assertEqual(inputs["action"]["default"], "preview")
+                self.assertEqual(inputs["confirm_project_ref"]["default"], "")
                 self.assertEqual(len(workflow["scripts"]), 1)
                 self.assertEqual(
                     workflow["scripts"][0]["script"].strip(),
-                    "bash scripts/codemagic_supabase.sh",
+                    f"bash scripts/codemagic_supabase.sh {kind}",
                 )
-                # Variable groups resolve privately in Codemagic; no
-                # credential literals or project refs belong in YAML.
-                for secret_name in (
-                    "SUPABASE_ACCESS_TOKEN", "SUPABASE_DB_PASSWORD",
-                    "SUPABASE_PROJECT_ID", "SUPABASE_SERVICE_ROLE_KEY",
-                ):
-                    self.assertNotIn(secret_name, workflow["scripts"][0]["script"])
-                self.assertNotIn("android_signing", env)
-                self.assertNotIn("ios_signing", env)
+                self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", str(workflow))
+                self.assertNotIn("SUPABASE_ACCESS_TOKEN", str(workflow))
+                self.assertNotIn("SUPABASE_DB_PASSWORD", str(workflow))
+                if kind == "functions":
+                    self.assertEqual(
+                        inputs["function_names"]["default"], "delete-account"
+                    )
+                    self.assertEqual(
+                        variables["NS_SUPABASE_FUNCTIONS"],
+                        "${{ inputs.function_names }}",
+                    )
+                else:
+                    self.assertNotIn("function_names", inputs)
+                    self.assertNotIn("NS_SUPABASE_FUNCTIONS", variables)
 
     def test_watchos_companion_is_explicitly_blocked(self):
         workflow = yaml.safe_load(FILE.read_text(encoding="utf-8"))["workflows"][
