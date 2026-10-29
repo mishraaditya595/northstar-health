@@ -78,11 +78,17 @@ class CodemagicTemplateTest(unittest.TestCase):
                     variables["NS_SUPABASE_CONFIRM_PROJECT_ID"],
                     "${{ inputs.confirm_project_ref }}",
                 )
+                self.assertEqual(
+                    variables["NS_SUPABASE_CONFIRM_COMMIT_SHA"],
+                    "${{ inputs.confirm_commit_sha }}",
+                )
                 inputs = workflow["inputs"]
                 self.assertEqual(inputs["action"]["type"], "choice")
                 self.assertEqual(inputs["action"]["options"], ["preview", "deploy"])
                 self.assertEqual(inputs["action"]["default"], "preview")
                 self.assertEqual(inputs["confirm_project_ref"]["default"], "")
+                self.assertEqual(inputs["confirm_commit_sha"]["type"], "string")
+                self.assertEqual(inputs["confirm_commit_sha"]["default"], "")
                 self.assertEqual(len(workflow["scripts"]), 1)
                 self.assertEqual(
                     workflow["scripts"][0]["script"].strip(),
@@ -93,7 +99,7 @@ class CodemagicTemplateTest(unittest.TestCase):
                 self.assertNotIn("SUPABASE_DB_PASSWORD", str(workflow))
                 if kind == "functions":
                     self.assertEqual(
-                        inputs["function_names"]["default"], "delete-account"
+                        inputs["function_names"]["default"], ""
                     )
                     self.assertEqual(
                         variables["NS_SUPABASE_FUNCTIONS"],
