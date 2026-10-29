@@ -17,11 +17,9 @@ case "${NS_SUPABASE_ACTION:-}" in
   preview|deploy) ;;
   *) fail "invalid action (preview or deploy)" ;;
 esac
-for setting in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_PROJECT_ID NS_SUPABASE_TARGET; do
+for setting in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_PROJECT_ID; do
   require "$setting"
 done
-[[ "$NS_SUPABASE_TARGET" == "staging" || "$NS_SUPABASE_TARGET" == "production" ]] ||
-  fail "invalid target environment"
 [[ "$SUPABASE_PROJECT_ID" =~ ^[a-z0-9]{20}$ ]] || fail "malformed Supabase project ref"
 
 # Deployment requires an exact project ID and full reviewed commit SHA,
