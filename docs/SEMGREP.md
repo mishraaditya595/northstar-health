@@ -23,3 +23,9 @@ The workflow explicitly rejects an empty token and runs `semgrep ci --no-suppres
 Fork PRs and Dependabot PRs intentionally **skip** the Semgrep job because repository secrets are not available to them. GitHub can count a skipped job as successful for required checks. Their merged code is scanned on the next `main` push and in nightly scans; this is a deliberate tradeoff, not equivalent to pre-merge protection. Other PR checks and human review still apply.
 
 Semgrep only blocks findings covered by enabled blocking policies. Keep policy configuration under review and re-run the smoke tests when the token, scanning policies, or workflow change. `semgrep/semgrep` currently tracks upstream updates; changing the scanner version or adding a `.semgrepignore` should be separately reviewed for changes in coverage.
+
+## GitHub Actions supply-chain protections
+
+Workflow steps that use third-party GitHub Actions are pinned to verified full commit SHAs rather than mutable version tags or branches. A contract test in `tool/test_workflow_action_pins.py` rejects unpinned external actions, including new workflow files. The readable trailing version comments describe the pinned release or version branch; they do not affect execution.
+
+Dependabot checks pinned GitHub Actions for updates every week through `.github/dependabot.yml`. Review proposed changes and their upstream release notes before merging. The Semgrep workflow currently skips Dependabot PRs because it needs a repository secret, so a passing/skipped Semgrep check on those PRs is **not** security approval; other PR checks and manual review still apply.
