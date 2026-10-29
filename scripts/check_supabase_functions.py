@@ -2,12 +2,20 @@
 """Validate selected deployable Edge Function names against source and JWT config.
 
 No dynamic code execution, arbitrary paths or automatic --no-verify-jwt flags.
-Outputs validated names, one per line; nonzero exit prevents partial deployment.
+Outputs validated names space-separated on one line. Validation runs before
+deployment, but multiple Function deployments are sequential, not atomic:
+if a later deploy fails, earlier Functions may already have been updated.
+A source folder without a matching config entry blocks every selection.
 """
 from pathlib import Path
 import re
 import sys
-import tomllib
+
+try:
+    import tomllib
+except ImportError:
+    print("Function selection rejected: Python 3.11+ is required (tomllib)", file=sys.stderr)
+    raise SystemExit(1)
 
 ROOT = Path(__file__).resolve().parents[1]
 FUNCTION_DIR = ROOT / "supabase" / "functions"
