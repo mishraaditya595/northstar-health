@@ -1,18 +1,17 @@
 # NorthStar Health - Codemagic CI/CD workflow skeletons
 # https://docs.codemagic.io/yaml-basic-configuration/yaml-getting-started/
 #
-# Mobile/watch workflows are intentionally failing templates. Supabase workflows
-# below are real MANUAL ONLY deployment commands, blocked unless protected
-# Codemagic groups, reviewed commit SHA and matching project are configured.
+# Mobile/watch workflows are intentionally failing templates. The two real
+# Supabase jobs are MANUAL ONLY, use Codemagic build inputs and one secured
+# environment group bound to a single target project.
 # No automatic triggers, signing credentials or publishing.
 #
 # The file MUST remain at the repository root. Application paths follow ADR-0004.
 # mac_mini_m2 is used as a common starter; linux_x2 requires billing-enabled access.
 # Do not enable Store / TestFlight publishing before approvals, signing and target setup.
 #
-# Mobile placeholders remain unconfigured. Supabase workflows reference only
-# private Codemagic UI groups: ns_supabase_staging and ns_supabase_production.
-# These group NAMES are not credentials; see docs/SUPABASE_CODEMAGIC_DEPLOY.md.
+# Mobile placeholders remain unconfigured. Supabase workflows import the
+# private ns_supabase_deploy group; see docs/SUPABASE_CODEMAGIC_DEPLOY.md.
 # Never commit keystores, .p8 API keys, provisioning profiles or Firebase/Supabase secrets.
 #
 # TODO per release workflow:
@@ -212,110 +211,63 @@ workflows:
           exit 1
 
 
-  supabase-staging-preview:
-    name: "MANUAL - Supabase staging - Migration dry run"
+  supabase-database:
+    name: "MANUAL - Supabase - Database migrations"
     instance_type: mac_mini_m2
     max_build_duration: 30
     working_directory: .
-    # No triggering: manual Codemagic UI/API invocation only, never push/PR.
+    # Manual only: no webhook, schedule, publishing or artifacts.
+    inputs:
+      action:
+        description: "Preview only, or deploy pending migrations?"
+        type: choice
+        options: [preview, deploy]
+        default: preview
+      confirm_project_ref:
+        description: "For DEPLOY, type the exact project ref from the protected group"
+        type: string
+        default: ""
     environment:
       node: v22.11.0
       groups:
-        - ns_supabase_staging
+        - ns_supabase_deploy
       vars:
-        NS_SUPABASE_TARGET: "staging"
-        NS_SUPABASE_ACTION: "preview"
+        NS_SUPABASE_ACTION: "${{ inputs.action }}"
+        NS_SUPABASE_CONFIRM_PROJECT_ID: "${{ inputs.confirm_project_ref }}"
     scripts:
-      - name: "Verify environment, linked project and approval; Migration dry run"
+      - name: "Preview or apply pending migrations"
         script: |
-          bash scripts/codemagic_supabase.sh
+          bash scripts/codemagic_supabase.sh database
 
-  supabase-staging-migrate:
-    name: "MANUAL - Supabase staging - Apply database migrations"
+  supabase-functions:
+    name: "MANUAL - Supabase - Edge Functions"
     instance_type: mac_mini_m2
     max_build_duration: 30
     working_directory: .
-    # No triggering: manual Codemagic UI/API invocation only, never push/PR.
+    # Function paths are resolved under supabase/functions; input is names only.
+    inputs:
+      action:
+        description: "Preview only, or deploy the selected functions?"
+        type: choice
+        options: [preview, deploy]
+        default: preview
+      confirm_project_ref:
+        description: "For DEPLOY, type the exact project ref from the protected group"
+        type: string
+        default: ""
+      function_names:
+        description: "Space-separated function names (example: delete-account)"
+        type: string
+        default: "delete-account"
     environment:
       node: v22.11.0
       groups:
-        - ns_supabase_staging
+        - ns_supabase_deploy
       vars:
-        NS_SUPABASE_TARGET: "staging"
-        NS_SUPABASE_ACTION: "migrate"
+        NS_SUPABASE_ACTION: "${{ inputs.action }}"
+        NS_SUPABASE_CONFIRM_PROJECT_ID: "${{ inputs.confirm_project_ref }}"
+        NS_SUPABASE_FUNCTIONS: "${{ inputs.function_names }}"
     scripts:
-      - name: "Verify environment, linked project and approval; Apply database migrations"
+      - name: "Preview or deploy selected functions"
         script: |
-          bash scripts/codemagic_supabase.sh
-
-  supabase-staging-function:
-    name: "MANUAL - Supabase staging - Deploy delete-account function"
-    instance_type: mac_mini_m2
-    max_build_duration: 30
-    working_directory: .
-    # No triggering: manual Codemagic UI/API invocation only, never push/PR.
-    environment:
-      node: v22.11.0
-      groups:
-        - ns_supabase_staging
-      vars:
-        NS_SUPABASE_TARGET: "staging"
-        NS_SUPABASE_ACTION: "function"
-    scripts:
-      - name: "Verify environment, linked project and approval; Deploy delete-account function"
-        script: |
-          bash scripts/codemagic_supabase.sh
-
-  supabase-production-preview:
-    name: "MANUAL - Supabase production - Migration dry run"
-    instance_type: mac_mini_m2
-    max_build_duration: 30
-    working_directory: .
-    # No triggering: manual Codemagic UI/API invocation only, never push/PR.
-    environment:
-      node: v22.11.0
-      groups:
-        - ns_supabase_production
-      vars:
-        NS_SUPABASE_TARGET: "production"
-        NS_SUPABASE_ACTION: "preview"
-    scripts:
-      - name: "Verify environment, linked project and approval; Migration dry run"
-        script: |
-          bash scripts/codemagic_supabase.sh
-
-  supabase-production-migrate:
-    name: "MANUAL - Supabase production - Apply database migrations"
-    instance_type: mac_mini_m2
-    max_build_duration: 30
-    working_directory: .
-    # No triggering: manual Codemagic UI/API invocation only, never push/PR.
-    environment:
-      node: v22.11.0
-      groups:
-        - ns_supabase_production
-      vars:
-        NS_SUPABASE_TARGET: "production"
-        NS_SUPABASE_ACTION: "migrate"
-    scripts:
-      - name: "Verify environment, linked project and approval; Apply database migrations"
-        script: |
-          bash scripts/codemagic_supabase.sh
-
-  supabase-production-function:
-    name: "MANUAL - Supabase production - Deploy delete-account function"
-    instance_type: mac_mini_m2
-    max_build_duration: 30
-    working_directory: .
-    # No triggering: manual Codemagic UI/API invocation only, never push/PR.
-    environment:
-      node: v22.11.0
-      groups:
-        - ns_supabase_production
-      vars:
-        NS_SUPABASE_TARGET: "production"
-        NS_SUPABASE_ACTION: "function"
-    scripts:
-      - name: "Verify environment, linked project and approval; Deploy delete-account function"
-        script: |
-          bash scripts/codemagic_supabase.sh
+          bash scripts/codemagic_supabase.sh functions
