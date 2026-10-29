@@ -64,7 +64,7 @@ jobs:
             echo "::warning::GHCR login unavailable; trying public image pulls."
           fi
       - name: Install pinned Supabase CLI
-        uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359 # v1 branch
+        uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359 # v3.0.1
         with:
           version: "2.81.3"
       - name: Start database, replay migrations, and run pgTAP with registry failover
