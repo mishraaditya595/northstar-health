@@ -81,7 +81,7 @@ import UIKit
     let parent = file.deletingLastPathComponent()
     guard file.lastPathComponent == "northstar-workouts.json",
           parent.lastPathComponent.hasPrefix("northstar-export-"),
-          parent.deletingLastPathComponent().path == temporary.path,
+          parent.deletingLastPathComponent().pathComponents == temporary.pathComponents,
           let size = (try? file.resourceValues(forKeys: [.fileSizeKey]))?.fileSize,
           size >= 2
     else {
