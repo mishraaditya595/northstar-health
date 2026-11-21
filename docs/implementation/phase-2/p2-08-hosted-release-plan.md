@@ -42,7 +42,7 @@ schema/data writes or Auth deletions were performed during this preflight.
 | 3. Hosted signed-JWT owner isolation | real verified A/B sessions and synthetic completed fixtures; green read-only audit in this PR plus write/RPC/expired-token negative tests and unchanged B data | Harness implemented; live execution pending |
 | 4. Two phones / one account | offline completed workout, serial uploads, crash/relaunch, idempotent replay, two-device restore, revision CAS and conflict actions, tombstone/non-resurrection, epoch rotation drill | Not run |
 | 5. Account deletion | fresh OTP session gate, old-session/old-JWT denial across every RPC, server hard delete/cascade, B unaffected, both ADR-0007 recovery exits and protected local partitions | Not run |
-| 6. All-history export | beyond 4 MiB without data loss/OOM, strict owner/cursor checks, iOS picker and Android SAF process-death/cancel/permission/memory probes | **Blocked by 4 MiB cap** |
+| 6. All-history export | beyond 4 MiB without data loss/OOM, strict owner/cursor checks, iOS picker and Android SAF process-death/cancel/permission/memory probes | Cap removed in source (streaming); device probes not run |
 | 7. Release reliability | offline restart, RLS/advisors, retention of tombstones and 90-day receipt pruning including inactive accounts, privacy/security review, Android/iOS CI, low-end memory/accessibility | Not run |
 
 **Do not** deploy to production, enable real-user deletion, change JWT
@@ -151,7 +151,7 @@ python3 -m unittest discover -s tool -p 'test_p2_08_hosted_rls.py'
    irreversible deletion only with disposable A.
 6. Review
    [workout-export release matrix](p2-08-workout-export-release-validation.md)
-   on physical Android/iOS hardware and remove the 4 MiB all-history blocker.
+   on physical Android/iOS hardware, including streamed histories above the former 4 MiB cap.
    Verify both account-recovery choices from
    [ADR-0007](../../adr/0007-account-deletion-recovery-exit-choices.md)
    with separate confirmations and no cross-account data transfer.

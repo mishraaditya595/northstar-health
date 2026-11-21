@@ -97,12 +97,19 @@ CompletedWorkoutHistoryExporter makeExporter(
   WorkoutExportReader reader, {
   bool Function()? authorized,
   int pageSize = 5,
-  int maxExportBytes = 64 * 1024 * 1024,
 }) => CompletedWorkoutHistoryExporter(
   accountId: accountA,
   reader: reader,
   authorized: authorized ?? () => true,
   pageSize: pageSize,
-  maxExportBytes: maxExportBytes,
   now: () => DateTime.utc(2026, 10, 27, 10),
 );
+
+extension CollectExportJson on CompletedWorkoutHistoryExporter {
+  /// Test-only: gathers the streamed chunks into one document.
+  Future<String> exportJson() async {
+    final json = StringBuffer();
+    await exportTo((chunk) async => json.write(chunk));
+    return json.toString();
+  }
+}

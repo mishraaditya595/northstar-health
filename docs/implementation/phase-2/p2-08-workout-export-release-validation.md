@@ -10,15 +10,18 @@ before approving a release. Never commit test JWTs, export files or PII.
 
 ## 1. Bounded export / peak-memory measurement
 
-P2-07b currently caps **output JSON bytes at 4 MiB**, a provisional limit
-picked conservatively. It is **not measured** in app heap or process RSS and
-must not become a permanent all-history limit under ADR-0005.
+P2-07b capped output at a provisional 4 MiB. The cap is now **removed**: Dart
+streams each 100-workout keyset page into a platform-created app-private
+temporary file (iOS complete file protection; Android `noBackupFilesDir`),
+flushing per page, and native code stream-copies that file to the picked
+destination. Memory is bounded by page size **in code**; it is **not yet
+measured** in app heap or process RSS on hardware.
 
 - Test on the lowest supported RAM-class Android phone (ideally 2–3 GB) and
   a low-memory supported iPhone, plus a representative tablet. Record exact
   device, RAM, API/iOS version, build SHA, performance mode and storage target.
-- Generate only synthetic account workloads: empty; 100; 1,000; near-4 MiB,
-  at-4 MiB and over-4 MiB JSON; many exercises/sets and nullable values.
+- Generate only synthetic account workloads: empty; 100; 1,000; and well
+  over 4 MiB (e.g. 20+ MiB) JSON; many exercises/sets and nullable values.
 - For Android, sample process memory while fetching, serializing, launching
   the picker and saving to local Documents and a slow SAF/cloud provider.
   Record `adb shell dumpsys meminfo dev.northstar.northstar_health` along
@@ -32,12 +35,10 @@ must not become a permanent all-history limit under ADR-0005.
   exercise/set/null values; correct account; no tombstones, local-only pending
   uploads, custom plans or physiological data. Check cancellation creates no
   claimed successful export.
-- Confirm oversize histories show a usable explanation, leave no purported
-  complete export, and remain available in cloud. **Before production release,
-  remove the inability to export larger accounts**: implement a reviewed
-  bounded-memory/streaming architecture or increase the limit only to a
-  defensible value supported by recorded device measurements. Repeat the
-  all-history test with data exceeding the old cap.
+- Confirm peak memory stays flat as history grows, the temporary
+  `northstar-export-*` folder is gone after save, cancel and failure, and a
+  process kill mid-stream leaves no folder after next launch. Lock the iPhone
+  mid-stream: the export must fail, never report saved.
 - The user-selected SAF/iOS destination can be unencrypted or backed up by
   another service. Disclosure remains necessary regardless of memory result.
 

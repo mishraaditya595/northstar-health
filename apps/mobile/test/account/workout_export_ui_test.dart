@@ -19,9 +19,15 @@ class RecordingFileWriter extends WorkoutExportFileWriter {
   int saves = 0;
   String? lastJson;
   @override
-  Future<bool> saveJson(String json) async {
+  Future<bool> saveStreamedJson(
+    Future<void> Function(Future<void> Function(String chunk) write) export, {
+    required bool Function() proceed,
+  }) async {
+    final json = StringBuffer();
+    await export((chunk) async => json.write(chunk));
+    if (!proceed()) return false;
     saves++;
-    lastJson = json;
+    lastJson = json.toString();
     return true;
   }
 }
@@ -179,54 +185,6 @@ void main() {
     expect(kicks, 0);
     hold.complete();
     await tester.pumpAndSettle();
-  });
-
-  testWidgets('oversize export has permanent error guidance and never saves', (
-    tester,
-  ) async {
-    final api = FakeAuthApi()..sessionId = accountA;
-    final auth = controller(api, FakeBoundAccountStore()..saved = accountA);
-    addTearDown(auth.dispose);
-    addTearDown(api.dispose);
-    await auth.restore();
-    final writer = RecordingFileWriter();
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          accountAuthControllerProvider.overrideWithValue(auth),
-          workoutHistoryExporterProvider.overrideWith(
-            (ref) =>
-                (owner) => CompletedWorkoutHistoryExporter(
-                  accountId: owner,
-                  reader: FakeExportReader([
-                    exportRow(0),
-                    exportRow(1),
-                    exportRow(2),
-                  ]),
-                  maxExportBytes: 1024,
-                  authorized: () =>
-                      auth.userId == owner && auth.cloudBackupReady,
-                ),
-          ),
-          workoutExportFileWriterProvider.overrideWithValue(writer),
-        ],
-        child: MaterialApp(
-          theme: NorthstarTheme.build(Brightness.light),
-          home: const AccountSyncPage(),
-        ),
-      ),
-    );
-    await tester.scrollUntilVisible(
-      find.text('Export cloud workout history (JSON)'),
-      160,
-    );
-    await tester.ensureVisible(
-      find.text('Export cloud workout history (JSON)'),
-    );
-    await tester.tap(find.text('Export cloud workout history (JSON)'));
-    await tester.pumpAndSettle();
-    expect(find.textContaining('too large for safe export'), findsOneWidget);
-    expect(writer.saves, 0);
   });
 
   testWidgets('account changes mid-fetch never open the document picker', (
