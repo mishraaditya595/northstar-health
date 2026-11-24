@@ -63,6 +63,11 @@ _Tile _steps(HealthOverview o) => switch (o.activity) {
         '${formatClockTime(o.readAt)}',
     gap: null,
   ),
+  SectionData(value: ActivityOverview(stepsGap: final gap?)) => _gapTile(
+    'Steps',
+    gap,
+    _noSteps,
+  ),
   SectionData() => _gapTile('Steps', MetricGap.noData, _noSteps),
 };
 
@@ -76,6 +81,11 @@ _Tile _restingHr(HealthOverview o) => switch (o.heart) {
         ? 'Today'
         : formatHealthDate(hr.day),
     gap: null,
+  ),
+  SectionData(value: HeartOverview(restingHrGap: final gap?)) => _gapTile(
+    'Resting HR',
+    gap,
+    _noRestingHr,
   ),
   SectionData() => _gapTile('Resting HR', MetricGap.noData, _noRestingHr),
 };

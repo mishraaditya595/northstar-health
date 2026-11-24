@@ -183,6 +183,34 @@ void main() {
       expect(find.text('96 bpm'), findsOneWidget);
     });
 
+    testWidgets('a failed VO2 max read offers Try again, not "none"', (
+      tester,
+    ) async {
+      final heart = _heart();
+      await _pump(
+        tester,
+        const HeartDetailPage(),
+        overview(
+          heart: SectionData(
+            HeartOverview(
+              restingHr: heart.restingHr,
+              restingHrDaily: heart.restingHrDaily,
+              hrv: heart.hrv,
+              hrvDaily: heart.hrvDaily,
+              vo2Max: null,
+              vo2MaxDaily: const [],
+              restingHrVsMonth: null,
+              hrvVsNormal: null,
+              hrvIsSdnn: true,
+              vo2Gap: MetricGap.failed,
+            ),
+          ),
+        ),
+      );
+      expect(find.text("Couldn't read · Try again"), findsOneWidget);
+      expect(find.text('None in the last 90 days'), findsNothing);
+    });
+
     testWidgets('Android heart not allowed reads Not allowed · Manage', (
       tester,
     ) async {
@@ -229,6 +257,30 @@ void main() {
       expect(find.text('Best day'), findsOneWidget);
       expect(find.text('Active calories'), findsOneWidget);
       expect(find.byType(NsBarChart), findsNWidgets(2));
+    });
+
+    testWidgets('Android active calories not allowed reads Not allowed', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const ActivityDetailPage(),
+        overview(
+          platform: HealthPlatformKind.healthConnect,
+          activity: SectionData(
+            ActivityOverview(
+              stepsToday: 8214,
+              stepsDaily: daily(30, (i) => 9000),
+              activeEnergyToday: null,
+              activeEnergyDaily: const [],
+              stepsWeekAverage: 9000,
+              energyGap: MetricGap.notAllowed,
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Not allowed · Manage'), findsOneWidget);
+      expect(find.textContaining('need a watch'), findsNothing);
     });
 
     testWidgets('no overflow at text scale 2.0 in dark mode', (tester) async {
@@ -283,6 +335,27 @@ void main() {
       );
       expect(find.text('−0.5 kg a week'), findsOneWidget);
       expect(find.text('17.2%'), findsOneWidget);
+    });
+
+    testWidgets('body fat not allowed reads Not allowed', (tester) async {
+      await _pump(
+        tester,
+        const BodyDetailPage(),
+        overview(
+          platform: HealthPlatformKind.healthConnect,
+          body: SectionData(
+            BodyOverview(
+              weight: (day: DateTime(2026, 11, 24), value: 78.4),
+              weightDaily: [(day: DateTime(2026, 11, 24), value: 78.4)],
+              bodyFat: null,
+              weightVsMonth: null,
+              bodyFatGap: MetricGap.notAllowed,
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Body fat'), findsOneWidget);
+      expect(find.text('Not allowed · Manage'), findsOneWidget);
     });
 
     testWidgets('no lean mass tile without a reading', (tester) async {

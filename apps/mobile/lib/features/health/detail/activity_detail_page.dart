@@ -49,6 +49,7 @@ class _ActivityDetailPageState extends ConsumerState<ActivityDetailPage> {
           overview: overview,
           activity: value,
           days: _days,
+          onRetry: () => ref.read(healthOverviewProvider.notifier).refresh(),
         ),
       },
     );
@@ -60,11 +61,27 @@ class _ActivityView extends StatelessWidget {
     required this.overview,
     required this.activity,
     required this.days,
+    required this.onRetry,
   });
 
   final HealthOverview overview;
   final ActivityOverview activity;
   final int days;
+  final VoidCallback onRetry;
+
+  /// A metric's panel when its read failed or is not allowed.
+  Widget _gapPanel(String title, MetricGap gap, String metricName) =>
+      DetailPanel(
+        title: title,
+        children: [
+          DetailUnavailable(
+            gap: gap,
+            metricName: metricName,
+            platform: overview.platform,
+            onRetry: onRetry,
+          ),
+        ],
+      );
 
   DateTime get _today => _dayOf(overview.readAt);
 
@@ -102,6 +119,9 @@ class _ActivityView extends StatelessWidget {
   }
 
   Widget _steps(BuildContext context, String range, DateTime first) {
+    if (activity.stepsDaily.isEmpty && activity.stepsGap != null) {
+      return _gapPanel('Steps', activity.stepsGap!, 'steps');
+    }
     // Today's slot uses the overview's value, which treats iOS 0 as no data.
     final slots = dailySlots(activity.stepsDaily, _today, days)
       ..last = activity.stepsToday;
@@ -143,6 +163,13 @@ class _ActivityView extends StatelessWidget {
   }
 
   Widget _energy(BuildContext context, String range) {
+    if (activity.activeEnergyDaily.isEmpty && activity.energyGap != null) {
+      return _gapPanel(
+        'Active calories',
+        activity.energyGap!,
+        'active calories',
+      );
+    }
     if (activity.activeEnergyDaily.isEmpty) {
       return const DetailPanel(
         title: 'Active calories',

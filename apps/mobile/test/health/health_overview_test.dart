@@ -291,6 +291,38 @@ void main() {
     expect((overview.activity as SectionGap).gap, MetricGap.noData);
   });
 
+  test('a metric gap is kept when its section has other data', () async {
+    fake = FakeHealthReader(platform: HealthPlatformKind.healthConnect);
+    syntheticWeek();
+    fake
+      ..totalsResults[HealthTotalType.steps] = const SeriesNotAllowed()
+      ..totals[HealthTotalType.activeEnergy] = [
+        (
+          from: DateTime(2026, 11, 24, 7),
+          to: DateTime(2026, 11, 24, 7, 42),
+          value: 120,
+          source: 'Synthetic watch',
+        ),
+      ]
+      ..seriesResults[HealthSeriesType.restingHeartRate] =
+          const SeriesNotAllowed()
+      ..seriesResults[HealthSeriesType.vo2Max] = const SeriesFailed()
+      ..seriesResults[HealthSeriesType.bodyFat] = const SeriesNotAllowed();
+    final c = container();
+    final overview = (await c.read(healthOverviewProvider.future))!;
+
+    final activity = (overview.activity as SectionData<ActivityOverview>).value;
+    expect(activity.stepsGap, MetricGap.notAllowed);
+    expect(activity.energyGap, isNull);
+    final heart = (overview.heart as SectionData<HeartOverview>).value;
+    expect(heart.restingHrGap, MetricGap.notAllowed);
+    expect(heart.hrvGap, isNull);
+    expect(heart.vo2Gap, MetricGap.failed);
+    final body = (overview.body as SectionData<BodyOverview>).value;
+    expect(body.bodyFatGap, MetricGap.notAllowed);
+    expect(body.weightGap, isNull);
+  });
+
   test('needsAccess outranks failed when a section has no data', () async {
     fake
       ..seriesResults[HealthSeriesType.restingHeartRate] = const SeriesFailed()

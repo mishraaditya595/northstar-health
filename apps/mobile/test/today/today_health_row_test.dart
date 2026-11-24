@@ -170,6 +170,46 @@ void main() {
     expect(find.text('Not available on this device'), findsOneWidget);
   });
 
+  testWidgets('Android steps or resting HR not allowed beside other data '
+      'reads Not allowed', (tester) async {
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      overviewController: FakeHealthOverviewController(
+        overview(
+          platform: HealthPlatformKind.healthConnect,
+          heart: SectionData(
+            HeartOverview(
+              restingHr: null,
+              restingHrDaily: const [],
+              hrv: (day: DateTime(2026, 11, 24), value: 52),
+              hrvDaily: [(day: DateTime(2026, 11, 24), value: 52)],
+              vo2Max: null,
+              vo2MaxDaily: const [],
+              restingHrVsMonth: null,
+              hrvVsNormal: null,
+              hrvIsSdnn: false,
+              restingHrGap: MetricGap.notAllowed,
+            ),
+          ),
+          activity: SectionData(
+            ActivityOverview(
+              stepsToday: null,
+              stepsDaily: const [],
+              activeEnergyToday: 120,
+              activeEnergyDaily: [(day: DateTime(2026, 11, 24), value: 120)],
+              stepsWeekAverage: null,
+              stepsGap: MetricGap.notAllowed,
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Not allowed · Manage'), findsNWidgets(2));
+    expect(find.text('No steps yet today'), findsNothing);
+    expect(find.text('None in the last 30 days'), findsNothing);
+  });
+
   testWidgets('Not allowed opens Manage; Couldn\'t read re-reads', (
     tester,
   ) async {

@@ -57,6 +57,7 @@ class _BodyDetailPageState extends ConsumerState<BodyDetailPage> {
           overview: overview,
           body: value,
           days: _days,
+          onRetry: () => ref.read(healthOverviewProvider.notifier).refresh(),
         ),
       },
     );
@@ -68,11 +69,13 @@ class _BodyView extends ConsumerWidget {
     required this.overview,
     required this.body,
     required this.days,
+    required this.onRetry,
   });
 
   final HealthOverview overview;
   final BodyOverview body;
   final int days;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -87,6 +90,14 @@ class _BodyView extends ConsumerWidget {
           'Body fat',
           '${fat.value.toStringAsFixed(1)}%',
           formatHealthDate(fat.day),
+        )
+      else if (body.bodyFatGap case final gap?)
+        DetailUnavailableTile(
+          label: 'Body fat',
+          gap: gap,
+          metricName: 'body fat',
+          platform: overview.platform,
+          onRetry: onRetry,
         ),
       if (lean != null)
         DetailStat(
@@ -116,6 +127,19 @@ class _BodyView extends ConsumerWidget {
     ];
     final rate = weeklyChange(inRange);
     final latestText = latest?.value.toStringAsFixed(1);
+    if (latest == null && body.weightGap != null) {
+      return DetailPanel(
+        title: 'Weight',
+        children: [
+          DetailUnavailable(
+            gap: body.weightGap!,
+            metricName: 'weight',
+            platform: overview.platform,
+            onRetry: onRetry,
+          ),
+        ],
+      );
+    }
     return DetailPanel(
       title: 'Weight',
       trailing: range,

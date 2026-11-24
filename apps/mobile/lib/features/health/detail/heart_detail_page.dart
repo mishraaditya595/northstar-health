@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/design/beyondrep_theme.dart';
 import '../../../core/design/charts/line_chart.dart';
 import '../../../core/design/charts/trend_label.dart';
 import '../application/health_details.dart';
@@ -93,6 +92,29 @@ class _HeartView extends ConsumerWidget {
   DateTime get _first =>
       DateTime(_today.year, _today.month, _today.day - (days - 1));
 
+  void _retry(WidgetRef ref) =>
+      ref.read(healthOverviewProvider.notifier).refresh();
+
+  /// A metric's panel when its read failed or is not allowed.
+  Widget _gapPanel(
+    WidgetRef ref,
+    String title,
+    String trailing,
+    MetricGap gap,
+    String metricName,
+  ) => DetailPanel(
+    title: title,
+    trailing: trailing,
+    children: [
+      DetailUnavailable(
+        gap: gap,
+        metricName: metricName,
+        platform: overview.platform,
+        onRetry: () => _retry(ref),
+      ),
+    ],
+  );
+
   String _when(DateTime day) =>
       day == _today ? 'today' : 'on ${formatHealthDate(day)}';
 
@@ -100,7 +122,7 @@ class _HeartView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [_restingHr(), _hrv(), _tiles(context, ref)],
+      children: [_restingHr(ref), _hrv(ref), _tiles(ref)],
     );
   }
 
@@ -131,8 +153,17 @@ class _HeartView extends ConsumerWidget {
     ];
   }
 
-  Widget _restingHr() {
+  Widget _restingHr(WidgetRef ref) {
     final latest = heart.restingHr;
+    if (latest == null && heart.restingHrGap != null) {
+      return _gapPanel(
+        ref,
+        'Resting heart rate',
+        'Lower is better',
+        heart.restingHrGap!,
+        'resting heart rate',
+      );
+    }
     final trend = heart.restingHrVsMonth;
     final value = latest?.value.round();
     final band = _band(heart.restingHrDaily, '');
@@ -160,8 +191,17 @@ class _HeartView extends ConsumerWidget {
     );
   }
 
-  Widget _hrv() {
+  Widget _hrv(WidgetRef ref) {
     final latest = heart.hrv;
+    if (latest == null && heart.hrvGap != null) {
+      return _gapPanel(
+        ref,
+        'Heart rate variability',
+        'Higher is better',
+        heart.hrvGap!,
+        'HRV',
+      );
+    }
     final trend = heart.hrvVsNormal;
     final value = latest?.value.round();
     final band = _band(heart.hrvDaily, ' ms');
@@ -205,17 +245,26 @@ class _HeartView extends ConsumerWidget {
     );
   }
 
-  Widget _tiles(BuildContext context, WidgetRef ref) {
+  Widget _tiles(WidgetRef ref) {
     final ios = overview.platform == HealthPlatformKind.appleHealth;
     return DetailPanel(
       children: [
-        DetailPairs([_vo2(), if (ios) ?_walking(context, ref)]),
+        DetailPairs([_vo2(ref), if (ios) ?_walking(ref)]),
       ],
     );
   }
 
-  Widget _vo2() {
+  Widget _vo2(WidgetRef ref) {
     final latest = heart.vo2Max;
+    if (latest == null && heart.vo2Gap != null) {
+      return DetailUnavailableTile(
+        label: _vo2Name,
+        gap: heart.vo2Gap!,
+        metricName: 'VO₂ max',
+        platform: overview.platform,
+        onRetry: () => _retry(ref),
+      );
+    }
     if (latest == null) {
       return const DetailStat(_vo2Name, '—', 'None in the last 90 days');
     }
@@ -249,8 +298,7 @@ class _HeartView extends ConsumerWidget {
   }
 
   /// Null when there is nothing for this account (e.g. while switching).
-  Widget? _walking(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+  Widget? _walking(WidgetRef ref) {
     final async = ref.watch(walkingHrProvider);
     // While a reload (e.g. after an account switch) runs, the previous value
     // is not shown.
@@ -262,22 +310,12 @@ class _HeartView extends ConsumerWidget {
         '${value.value.round()} bpm',
         'avg ${_when(value.day)}',
       ),
-      SectionGap(:final gap) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _walkingName,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.mutedColor,
-            ),
-          ),
-          DetailUnavailable(
-            gap: gap,
-            metricName: 'walking heart rate',
-            platform: overview.platform,
-            onRetry: () => ref.invalidate(walkingHrProvider),
-          ),
-        ],
+      SectionGap(:final gap) => DetailUnavailableTile(
+        label: _walkingName,
+        gap: gap,
+        metricName: 'walking heart rate',
+        platform: overview.platform,
+        onRetry: () => ref.invalidate(walkingHrProvider),
       ),
     };
   }

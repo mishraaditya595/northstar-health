@@ -62,6 +62,9 @@ class HeartOverview {
     required this.restingHrVsMonth,
     required this.hrvVsNormal,
     required this.hrvIsSdnn,
+    this.restingHrGap,
+    this.hrvGap,
+    this.vo2Gap,
   });
 
   final DayValue? restingHr;
@@ -79,6 +82,10 @@ class HeartOverview {
 
   /// Apple Health reports SDNN; Health Connect reports RMSSD.
   final bool hrvIsSdnn;
+
+  /// Why a metric could not be read while the section has other data; null
+  /// when its read succeeded (even with no samples).
+  final MetricGap? restingHrGap, hrvGap, vo2Gap;
 }
 
 class ActivityOverview {
@@ -88,6 +95,8 @@ class ActivityOverview {
     required this.activeEnergyToday,
     required this.activeEnergyDaily,
     required this.stepsWeekAverage,
+    this.stepsGap,
+    this.energyGap,
   });
 
   final double? stepsToday;
@@ -97,6 +106,9 @@ class ActivityOverview {
 
   /// Mean of the days with data among the 7 days before today.
   final double? stepsWeekAverage;
+
+  /// As on [HeartOverview]: why a metric could not be read.
+  final MetricGap? stepsGap, energyGap;
 }
 
 class BodyOverview {
@@ -105,6 +117,8 @@ class BodyOverview {
     required this.weightDaily,
     required this.bodyFat,
     required this.weightVsMonth,
+    this.weightGap,
+    this.bodyFatGap,
   });
 
   final DayValue? weight;
@@ -113,6 +127,9 @@ class BodyOverview {
 
   /// Latest vs the earliest weight in the window (needs ≥2 days).
   final TrendResult? weightVsMonth;
+
+  /// As on [HeartOverview]: why a metric could not be read.
+  final MetricGap? weightGap, bodyFatGap;
 }
 
 /// Read fresh and held in memory only; never written anywhere.
@@ -412,6 +429,9 @@ Future<HealthOverview> _read(
       restingHrVsMonth: _vsPrior(TrendMetric.restingHr, rhrDaily, 7),
       hrvVsNormal: _vsPrior(TrendMetric.hrv, hrvDaily, 7),
       hrvIsSdnn: platform == HealthPlatformKind.appleHealth,
+      restingHrGap: _gapOf(rhrResult),
+      hrvGap: _gapOf(hrvResult),
+      vo2Gap: _gapOf(vo2Result),
     );
   });
 
@@ -433,6 +453,8 @@ Future<HealthOverview> _read(
         lastDay: daysAgo(1),
         days: 7,
       ).average,
+      stepsGap: _gapOf(stepsResult),
+      energyGap: _gapOf(energyResult),
     );
   });
 
@@ -450,6 +472,8 @@ Future<HealthOverview> _read(
       weightVsMonth: weight.length < 2
           ? null
           : trendOf(TrendMetric.weight, weight.last.value, weight.first.value),
+      weightGap: _gapOf(weightResult),
+      bodyFatGap: _gapOf(bodyFatResult),
     );
   });
 

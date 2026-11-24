@@ -33,6 +33,10 @@ class FakeHealthReader implements HealthReader {
   final Map<HealthSeriesType, SeriesResult<List<HealthSample>>> seriesResults =
       {};
 
+  /// Non-data results that win over [totals].
+  final Map<HealthTotalType, SeriesResult<List<HealthSample>>> totalsResults =
+      {};
+
   /// Holds every [readSleep] until completed.
   Completer<void>? sleepGate;
 
@@ -83,7 +87,7 @@ class FakeHealthReader implements HealthReader {
     DateTime to,
   ) async {
     totalsCalls.add((type, from, to));
-    return SeriesData(totals[type] ?? const []);
+    return totalsResults[type] ?? SeriesData(totals[type] ?? const []);
   }
 
   @override

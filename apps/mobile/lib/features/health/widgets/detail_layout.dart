@@ -163,6 +163,45 @@ class DetailHeadline extends StatelessWidget {
   }
 }
 
+/// A [DetailStat]-sized tile whose value could not be read: its [label]
+/// over a [DetailUnavailable].
+class DetailUnavailableTile extends StatelessWidget {
+  const DetailUnavailableTile({
+    required this.label,
+    required this.gap,
+    required this.metricName,
+    required this.platform,
+    required this.onRetry,
+    super.key,
+  });
+
+  final String label;
+  final MetricGap gap;
+  final String metricName;
+  final HealthPlatformKind platform;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(color: theme.mutedColor),
+        ),
+        DetailUnavailable(
+          gap: gap,
+          metricName: metricName,
+          platform: platform,
+          onRetry: onRetry,
+        ),
+      ],
+    );
+  }
+}
+
 class DetailLoading extends StatelessWidget {
   const DetailLoading({super.key});
 
