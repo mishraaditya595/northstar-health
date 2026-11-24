@@ -14,6 +14,7 @@ import 'package:objectbox/internal.dart'
 import 'package:objectbox/objectbox.dart' as obx;
 import 'package:objectbox_flutter_libs/objectbox_flutter_libs.dart';
 
+import 'features/health/data/health_connection_entity.dart';
 import 'features/workouts/data/workout_entities.dart';
 
 export 'package:objectbox/objectbox.dart'; // so that callers only have to import this file
@@ -770,6 +771,35 @@ final _entities = <obx_int.ModelEntity>[
     relations: <obx_int.ModelRelation>[],
     backlinks: <obx_int.ModelBacklink>[],
   ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(12, 7621003638056886597),
+    name: 'HealthConnectionEntity',
+    lastPropertyId: const obx_int.IdUid(3, 6501660462108541938),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 4095145685331580277),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 1450287462340673418),
+        name: 'ownerAccountId',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(18, 17668161778702131),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 6501660462108541938),
+        name: 'connectedAtMs',
+        type: 6,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
 ];
 
 /// Shortcut for [obx.Store.new] that passes [getObjectBoxModel] and for Flutter
@@ -815,8 +845,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
     // Typically, this is done with `dart run build_runner build`.
     generatorVersion: obx_int.GeneratorVersion.v2025_12_16,
     entities: _entities,
-    lastEntityId: const obx_int.IdUid(11, 1108347530871021507),
-    lastIndexId: const obx_int.IdUid(17, 8660571198025360781),
+    lastEntityId: const obx_int.IdUid(12, 7621003638056886597),
+    lastIndexId: const obx_int.IdUid(18, 17668161778702131),
     lastRelationId: const obx_int.IdUid(0, 0),
     lastSequenceId: const obx_int.IdUid(0, 0),
     retiredEntityUids: const [],
@@ -1781,6 +1811,50 @@ obx_int.ModelDefinition getObjectBoxModel() {
             return object;
           },
         ),
+    HealthConnectionEntity: obx_int.EntityDefinition<HealthConnectionEntity>(
+      model: _entities[11],
+      toOneRelations: (HealthConnectionEntity object) => [],
+      toManyRelations: (HealthConnectionEntity object) => {},
+      getId: (HealthConnectionEntity object) => object.id,
+      setId: (HealthConnectionEntity object, int id) {
+        object.id = id;
+      },
+      objectToFB: (HealthConnectionEntity object, fb.Builder fbb) {
+        final ownerAccountIdOffset = fbb.writeString(object.ownerAccountId);
+        fbb.startTable(4);
+        fbb.addInt64(0, object.id);
+        fbb.addOffset(1, ownerAccountIdOffset);
+        fbb.addInt64(2, object.connectedAtMs);
+        fbb.finish(fbb.endTable());
+        return object.id;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final idParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          4,
+          0,
+        );
+        final ownerAccountIdParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final connectedAtMsParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          8,
+          0,
+        );
+        final object = HealthConnectionEntity(
+          id: idParam,
+          ownerAccountId: ownerAccountIdParam,
+          connectedAtMs: connectedAtMsParam,
+        );
+
+        return object;
+      },
+    ),
   };
 
   return obx_int.ModelDefinition(model, bindings);
@@ -2361,5 +2435,23 @@ class WorkoutRestoreSkipEntity_ {
   /// See [WorkoutRestoreSkipEntity.skippedAtMs].
   static final skippedAtMs = obx.QueryIntegerProperty<WorkoutRestoreSkipEntity>(
     _entities[10].properties[6],
+  );
+}
+
+/// [HealthConnectionEntity] entity fields to define ObjectBox queries.
+class HealthConnectionEntity_ {
+  /// See [HealthConnectionEntity.id].
+  static final id = obx.QueryIntegerProperty<HealthConnectionEntity>(
+    _entities[11].properties[0],
+  );
+
+  /// See [HealthConnectionEntity.ownerAccountId].
+  static final ownerAccountId = obx.QueryStringProperty<HealthConnectionEntity>(
+    _entities[11].properties[1],
+  );
+
+  /// See [HealthConnectionEntity.connectedAtMs].
+  static final connectedAtMs = obx.QueryIntegerProperty<HealthConnectionEntity>(
+    _entities[11].properties[2],
   );
 }

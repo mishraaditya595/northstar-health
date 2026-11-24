@@ -20,7 +20,7 @@
 ### Apple
 
 1. An active, paid Apple Developer Program membership.
-2. In **Certificates, Identifiers & Profiles**, register the explicit App ID `in.beyondrep.app`. This bundle ID is permanent once the App Store Connect record exists.
+2. In **Certificates, Identifiers & Profiles**, register the explicit App ID `in.beyondrep.app`. This bundle ID is permanent once the App Store Connect record exists. Enable the **HealthKit** capability on this App ID (the app now ships a HealthKit entitlement).
 3. In **App Store Connect → Apps**, create the iOS app with that bundle ID, plus a name and SKU.
 4. In **App Store Connect → Users and Access → Integrations → App Store Connect API**, create a Team key with the **App Manager** role. Download the `.p8` once. Note the Issuer ID and Key ID.
 5. In **TestFlight → Internal Testing**, create a group, add yourself, and enable automatic distribution.
@@ -31,7 +31,7 @@
 2. **Team settings → Integrations → Developer Portal → Manage keys:** add the API key with the exact name `Codemagic Signing`, which must match `integrations.app_store_connect` in the YAML.
 3. **Team settings → codemagic.yaml settings → Code signing identities:**
    - **iOS certificates:** generate or upload an *Apple Distribution* certificate using the key above.
-   - **iOS provisioning profiles:** fetch or create an *App Store* profile for `in.beyondrep.app`.
+   - **iOS provisioning profiles:** fetch or create an *App Store* profile for `in.beyondrep.app`. After enabling HealthKit on the App ID, regenerate this App Store provisioning profile before the next run; a profile without the capability cannot sign the build.
 4. **App → Environment variables:** create the group `ns_mobile_supabase_public` with:
 
    | Variable | Value |
@@ -68,6 +68,6 @@ The `+N` part of the pubspec version is not used for TestFlight builds. To chang
 
 ## Known limits
 
-- The Health tab shows fictional demo data. HealthKit is not implemented, so the app requests no HealthKit entitlement.
+- The Health tab reads sleep, steps, resting heart rate and weight from HealthKit (read-only) and ships a HealthKit entitlement, so the App ID capability and regenerated profile above are required. It is not yet device-verified.
 - No Apple Watch companion is embedded.
 - External TestFlight testing needs Beta App Review, a privacy policy URL and App Privacy answers. It is deliberately not enabled here.

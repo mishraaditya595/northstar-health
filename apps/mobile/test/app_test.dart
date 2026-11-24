@@ -6,10 +6,22 @@ import 'package:beyondrep/app/beyondrep_app.dart';
 import 'package:beyondrep/features/account/account_auth_controller.dart';
 import 'package:beyondrep/features/account/account_auth_provider.dart';
 
+import 'package:beyondrep/features/health/application/health_summary_controller.dart';
+import 'package:beyondrep/features/health/data/health_reader.dart';
+
 import 'support/fake_account_auth.dart';
+import 'support/fake_health_summary.dart';
 
 Widget signedInApp([AccountAuthController? auth]) => ProviderScope(
   overrides: [
+    fakeHealthSummary(
+      FakeHealthSummaryController(
+        const HealthNotConnected(
+          availability: HealthAvailability.available,
+          platform: HealthPlatformKind.appleHealth,
+        ),
+      ),
+    ),
     accountAuthControllerProvider.overrideWithValue(
       auth ??
           AccountAuthController(
@@ -104,7 +116,9 @@ void main() {
     expect(find.text('Cloud session ready'), findsNothing);
   });
 
-  testWidgets('Today shows fictional metrics and four tabs', (tester) async {
+  testWidgets('Today shows the Connect health card and four tabs', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -114,6 +128,9 @@ void main() {
 
     expect(find.text('Full Body A'), findsOneWidget);
     expect(find.textContaining('FICTIONAL DEMO DATA'), findsOneWidget);
+    expect(find.text('Connect Apple Health'), findsNothing);
+    expect(find.textContaining('Connect Apple Health'), findsOneWidget);
+    expect(find.text('6h 18m'), findsNothing);
     expect(find.byType(FloatingNavBar), findsOneWidget);
     expect(find.text('Train'), findsOneWidget);
   });

@@ -8,13 +8,13 @@ import 'beyondrep_theme.dart';
 class PageHeader extends ConsumerWidget {
   const PageHeader({
     required this.title,
-    required this.eyebrow,
+    this.eyebrow,
     this.actions = const [],
     super.key,
   });
 
   final String title;
-  final String eyebrow;
+  final String? eyebrow;
   final List<Widget> actions;
 
   @override
@@ -28,15 +28,17 @@ class PageHeader extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                eyebrow,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: muted,
-                  letterSpacing: 1.1,
-                  fontWeight: FontWeight.w700,
+              if (eyebrow != null) ...[
+                Text(
+                  eyebrow!,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: muted,
+                    letterSpacing: 1.1,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
+                const SizedBox(height: 4),
+              ],
               Text(
                 title,
                 style: theme.textTheme.headlineLarge?.copyWith(

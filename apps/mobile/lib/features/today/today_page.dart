@@ -7,6 +7,7 @@ import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 import '../account/account_auth_provider.dart';
+import '../health/widgets/today_health_row.dart';
 import '../sync/workout_upload_coordinator.dart';
 import '../sync/workout_conflict_resolution.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
@@ -87,54 +88,7 @@ class _TodayPageState extends ConsumerState<TodayPage> {
         ),
         const SizedBox(height: 27),
         const SectionHeading('Recent health', action: 'See all'),
-        const Row(
-          children: [
-            Expanded(
-              child: _Metric(
-                'Sleep',
-                '6h 18m',
-                'Apple Health · Today',
-                Icons.bedtime_outlined,
-                sleep: true,
-              ),
-            ),
-            SizedBox(width: 10),
-            Expanded(
-              child: _Metric(
-                'Steps',
-                '6,420',
-                'Updated 18:20',
-                Icons.directions_walk,
-              ),
-            ),
-            SizedBox(width: 10),
-            Expanded(
-              child: _Metric(
-                'Resting HR',
-                '58 bpm',
-                '23 Oct · Apple',
-                Icons.favorite_border,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 27),
-        const SectionHeading('One useful context'),
-        InsightCard(
-          icon: Icons.nights_stay_outlined,
-          text: const TextSpan(
-            children: [
-              TextSpan(text: 'Your last recorded sleep was '),
-              TextSpan(
-                text: '52 min shorter',
-                style: TextStyle(fontWeight: FontWeight.w800),
-              ),
-              TextSpan(text: ' than your recent average.'),
-            ],
-          ),
-          actionLabel: 'View',
-          onAction: () => context.go('/health'),
-        ),
+        const TodayHealthRow(),
         const SizedBox(height: 27),
         const SectionHeading('This week', action: 'Weekly review'),
         Card(
@@ -367,96 +321,6 @@ class _EnergyChip extends StatelessWidget {
                 ),
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Metric extends StatelessWidget {
-  const _Metric(
-    this.name,
-    this.value,
-    this.source,
-    this.icon, {
-    this.sleep = false,
-  });
-
-  final String name;
-  final String value;
-  final String source;
-  final IconData icon;
-  final bool sleep;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final dark = theme.brightness == Brightness.dark;
-    final muted = theme.extension<BeyondRepColors>()!.muted;
-    final iconBg = sleep
-        ? (dark
-              ? BeyondRepPalette.sleepSoftDark
-              : BeyondRepPalette.sleepSoftLight)
-        : (dark
-              ? BeyondRepPalette.forestSoftDark
-              : BeyondRepPalette.forestSoftLight);
-    final iconColor = sleep
-        ? (dark ? BeyondRepPalette.sleepDark : BeyondRepPalette.sleepLight)
-        : theme.colorScheme.primary;
-    return Semantics(
-      label: '$name: $value. $source',
-      excludeSemantics: true,
-      child: Card(
-        margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 27,
-                height: 27,
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Icon(icon, size: 15, color: iconColor),
-              ),
-              const SizedBox(height: 13),
-              Text(
-                name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: muted,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 4),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  value,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -1.2,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                source,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: muted,
-                  fontSize: 10,
-                ),
-              ),
-            ],
           ),
         ),
       ),
