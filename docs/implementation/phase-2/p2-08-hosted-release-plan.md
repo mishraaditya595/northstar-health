@@ -83,7 +83,8 @@ phone's normal flow, record the two respective workout UUIDs and access tokens
 locally **outside** the repository. Those credentials expire; get fresh ones
 via actual email-code sign-in. Apply the eleventh migration and the deletion
 function *only after* the separate fresh-session review and rollback plan.
-For the complete release acceptance, **all eleven** and the function must
+For the complete release acceptance, **all twelve** (including the P2-08
+`20261124120000_p2_08_schedule_receipt_prune.sql` receipt purge schedule) and the function must
 be verified, even though this read-only audit itself uses only the read/RPC
 features available through migration ten.
 
@@ -129,7 +130,7 @@ python3 -m unittest discover -s tool -p 'test_p2_08_hosted_rls.py'
 
 1. Confirm project ID/environment, no production data, available backup and
    capability to restore. Capture `supabase migration list --linked` and
-   compare every version and migration hash to the **11 committed files**.
+   compare every version and migration hash to the **12 committed files**.
    Recheck row counts before the seventh migration, which deletes noncompleted
    rows; do not rely on the earlier zero-row observation.
 2. Inspect SQL diffs and P2-05 timezone/backfill transaction context; test

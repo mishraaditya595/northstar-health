@@ -5,10 +5,11 @@
 --
 -- pg_cron is available on every Supabase plan and in the local CLI stack.
 -- The job runs as the migration role (postgres), which owns the receipts table
--- and is the only role with EXECUTE on the prune function.
+-- and the prune function; client roles have no EXECUTE on it.
 create extension if not exists pg_cron with schema pg_catalog;
 
--- Clients never see or manage scheduled jobs.
+-- Defence in depth: Supabase grants clients no cron access, and the pgTAP
+-- suite asserts that anon and authenticated have no USAGE on cron.
 revoke all on schema cron from public, anon, authenticated;
 
 -- cron.schedule upserts by job name, so a replay keeps a single job.

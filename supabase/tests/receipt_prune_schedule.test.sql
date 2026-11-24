@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(12);
+select plan(15);
 
 select is(
   (select count(*) from cron.job
@@ -20,6 +20,11 @@ select is(
     where jobname = 'northstar-prune-expired-workout-receipts'),
   'select northstar_private.prune_expired_workout_receipts()',
   'purge job calls only the receipt prune function'
+);
+select is(
+  (select username from cron.job
+    where jobname = 'northstar-prune-expired-workout-receipts'),
+  'postgres', 'purge job runs as the table and function owner'
 );
 select ok(
   (select active from cron.job
@@ -38,6 +43,16 @@ select is(
   has_function_privilege('authenticated',
     'northstar_private.prune_expired_workout_receipts(timestamptz)', 'EXECUTE'),
   false, 'signed-in clients cannot run the full purge'
+);
+select is(
+  has_function_privilege('anon',
+    'northstar_private.prune_expired_workout_receipts(timestamptz)', 'EXECUTE'),
+  false, 'anonymous clients cannot run the full purge'
+);
+select is(
+  has_function_privilege('public',
+    'northstar_private.prune_expired_workout_receipts(timestamptz)', 'EXECUTE'),
+  false, 'PUBLIC has no EXECUTE on the full purge'
 );
 
 insert into auth.users(id, email) values
