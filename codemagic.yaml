@@ -135,7 +135,7 @@ workflows:
     # INTERNAL TestFlight testing; never submits to Beta App Review or the App
     # Store. Setup and limits: docs/IOS_TESTFLIGHT_CODEMAGIC.md.
     integrations:
-      app_store_connect: BeyondRep App Store Connect
+      app_store_connect: Codemagic Signing
     environment:
       flutter: "3.47.7"
       xcode: latest
