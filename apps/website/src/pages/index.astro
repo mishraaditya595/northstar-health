@@ -37,15 +37,6 @@ const jsonLd = [
     url: SITE.url,
   },
   {
-    '@type': 'SoftwareApplication',
-    name: SITE.name,
-    applicationCategory: 'HealthApplication',
-    operatingSystem: 'iOS, iPadOS, Android',
-    description:
-      'An offline-first strength-training log with completed-workout backup and an optional daily summary from Apple Health or Health Connect.',
-    url: SITE.url,
-  },
-  {
     '@type': 'FAQPage',
     mainEntity: faqs.map((f) => ({
       '@type': 'Question',
@@ -77,7 +68,7 @@ const jsonLd = [
             src="/concept-phones.svg"
             width="1440"
             height="816"
-            alt="Three BeyondRep phone screens: Today with a workout plan and health snapshot, Train with a plan's exercises, and Health with sleep trends."
+            alt="Three BeyondRep phone screens: Today with a workout plan and health snapshot, Train with a plan's exercises, and Health with last night's sleep and daily metrics."
             fetchpriority="high"
           />
           <figcaption class="note">Design preview with sample data.</figcaption>
@@ -120,7 +111,7 @@ const jsonLd = [
       <div class="cards">
         <div class="card">
           <h3>Plans and an exercise library</h3>
-          <p>Build your own routines from a catalog of exercises grouped by muscle and equipment, or add your own.</p>
+          <p>Build your own routines from an exercise catalog you can search by name, muscle or equipment, or add your own.</p>
         </div>
         <div class="card">
           <h3>Fast set logging</h3>

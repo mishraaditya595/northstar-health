@@ -8,12 +8,18 @@ const subject = encodeURIComponent('Delete my BeyondRep account');
   description="How to permanently delete your BeyondRep account and backed-up workouts, from the app or by email, and what is deleted."
 >
   <h2>Delete from the app</h2>
+  <p>You need an internet connection. If you want a copy of your workouts, first tap <strong>Export cloud workout history (JSON)</strong> on the same screen.</p>
   <ol>
-    <li>Open BeyondRep and, on the <strong>Today</strong> tab, tap the <strong>Account and backup</strong> button at the top.</li>
-    <li>Tap <strong>Permanently delete account</strong>. If you want a copy of your workouts, export them first when asked.</li>
-    <li>Enter the six-digit code we email you to confirm it’s you.</li>
+    <li>Open BeyondRep and, on the <strong>Today</strong> tab, tap the account icon at the top right (<em>Account and backup</em>).</li>
+    <li>Tap <strong>Permanently delete account</strong>, read the warning and tap <strong>Send deletion code</strong>.</li>
+    <li>Enter the six-digit code we email you and tap <strong>Verify and permanently delete</strong>.</li>
+    <li>Tap <strong>Delete permanently</strong> to confirm.</li>
   </ol>
-  <p>Your account and backed-up workouts are deleted straight away, and the app erases this account’s data from your phone.</p>
+  <p>
+    Your account and backed-up workouts are deleted straight away, and the app erases this account’s data from your
+    phone. If the app can’t confirm the deletion finished (for example, the connection drops), it locks that data instead
+    of erasing it, and you can try again.
+  </p>
 
   <h2>Can’t use the app?</h2>
   <p>
@@ -32,8 +38,9 @@ const subject = encodeURIComponent('Delete my BeyondRep account');
 
   <h2>What may remain for a limited time</h2>
   <ul>
-    <li>Security logs and email delivery logs held by our service providers. How long these are kept is <em>to be confirmed</em>.</li>
-    <li>BeyondRep data stored on other phones you signed in on. Remove it by uninstalling the app on those phones.</li>
+    <li>Security logs held by our authentication provider, which include your email address and IP address, and email delivery logs. How long these are kept is <em>to be confirmed</em>.</li>
+    <li>Database backups held by our hosting provider, until they roll off its backup window (period <em>to be confirmed</em>).</li>
+    <li>BeyondRep data stored on other phones you signed in on. Remove it by uninstalling the app on those phones. On iOS, the sign-in token in the Keychain can survive an uninstall.</li>
     <li>Any export files you saved yourself.</li>
   </ul>
   <p>

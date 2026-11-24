@@ -19,7 +19,7 @@ Pages live in `src/pages/`. Shared facts (contact addresses, store links, legal 
 3. Environment variable `NODE_VERSION` = `22.23.4` or newer.
 4. Build watch paths: include `apps/website/*`, so app-only commits don't rebuild the site.
 5. Custom domains: add `beyondrep.in` and `www.beyondrep.in` (with the domain's DNS on Cloudflare, HTTPS is automatic). Redirect `www` to the apex with a Redirect Rule.
-6. Optional: enable Web Analytics for the project.
-7. Set up `hello@` and `privacy@beyondrep.in` with Cloudflare Email Routing, since the site links to both.
+6. Leave Cloudflare Web Analytics **off**. It injects a third-party script, and the site and privacy policy promise no analytics. Turning it on needs its own reviewed change that updates the privacy page.
+7. Set up `hello@` and `privacy@beyondrep.in` with Cloudflare Email Routing, since the site links to both. Email Routing only receives mail: to reply from these addresses (the delete-account page promises replies from `privacy@`), also set up sending, for example a Brevo sender for the domain.
 
 Then submit `https://beyondrep.in/sitemap-index.xml` in Google Search Console and Bing Webmaster Tools.

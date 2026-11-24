@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { checkPage } from './check-links.mjs';
+import { checkPage, isMain } from './check-links.mjs';
+import { pathToFileURL } from 'node:url';
 
 const head =
   '<title>t</title><meta name="description" content="d"><link rel="canonical" href="x">' +
@@ -40,4 +41,20 @@ test('reports missing SEO tags', () => {
   const problems = checkPage(dist, join(dist, 'index.html'), '<title>t</title>');
   assert.equal(problems.length, 4);
   assert.ok(problems.includes('index.html: missing rel="canonical"'));
+});
+
+test('a noindex page needs no canonical but must not carry one', () => {
+  const dist = site();
+  const base = '<title>t</title><meta name="description" content="d"><meta name="robots" content="noindex">' +
+    '<meta property="og:image" content="x"><script type="application/ld+json">{}</script>';
+  assert.deepEqual(checkPage(dist, join(dist, 'index.html'), base), []);
+  assert.deepEqual(checkPage(dist, join(dist, 'index.html'), `${base}<link rel="canonical" href="x">`), [
+    'index.html: noindex page has a canonical link',
+  ]);
+});
+
+test('runs as a script even when its path contains a space', () => {
+  const path = '/tmp/my site/scripts/check-links.mjs';
+  assert.equal(isMain(pathToFileURL(path).href, path), true);
+  assert.equal(isMain(pathToFileURL(path).href, '/tmp/other.mjs'), false);
 });

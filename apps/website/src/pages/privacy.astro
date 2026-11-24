@@ -31,7 +31,8 @@ import { SITE } from '../site';
     <tbody>
       <tr><td>Email address</td><td>To create your account and send you one-time sign-in codes. Never used for marketing.</td></tr>
       <tr><td>Account ID (a random identifier)</td><td>To tie your backed-up workouts to your account.</td></tr>
-      <tr><td>Sign-in codes and session tokens</td><td>To keep you signed in securely. Tokens are kept in your phone’s secure storage (Keychain on iOS, Keystore on Android).</td></tr>
+      <tr><td>One-time sign-in codes</td><td>To confirm it’s you. Stored only in hashed form by our authentication provider and valid for 10 minutes.</td></tr>
+      <tr><td>Session tokens</td><td>To keep you signed in securely. Kept in your phone’s secure storage (Keychain on iOS, Keystore on Android).</td></tr>
       <tr><td>Sign-in times, IP address and device type of sign-in requests</td><td>Recorded by our authentication provider to keep accounts secure and prevent abuse.</td></tr>
     </tbody>
   </table>
@@ -82,7 +83,8 @@ import { SITE } from '../site';
     <thead><tr><th>Provider</th><th>What it does</th><th>Data it handles</th></tr></thead>
     <tbody>
       <tr><td><a href="https://supabase.com/privacy">Supabase</a></td><td>Sign-in, database and account deletion, hosted in Mumbai, India (AWS ap-south-1)</td><td>Email, account ID, tokens, sign-in IP and device type, finished workouts, upload receipts</td></tr>
-      <tr><td><a href="https://www.brevo.com/legal/privacypolicy/">Brevo</a></td><td>Sends sign-in code emails</td><td>Email address and the code email</td></tr>
+      <tr><td><a href="https://www.brevo.com/legal/privacypolicy/">Brevo</a></td><td>Sends sign-in code emails</td><td>Email address, the code email, and delivery and open logs</td></tr>
+      <tr><td><a href="https://www.cloudflare.com/privacypolicy/">Cloudflare</a></td><td>Hosts this website and receives email sent to our addresses</td><td>Website visitors’ IP addresses and browser details in request logs; emails you send us</td></tr>
       <tr><td>Apple and Google</td><td>App distribution, and Apple Health or Health Connect on your phone</td><td>Handled under their own privacy policies. Health data stays on your phone.</td></tr>
     </tbody>
   </table>
@@ -96,11 +98,28 @@ import { SITE } from '../site';
       <tr><td>Records of deleted workouts</td><td>You delete your account</td></tr>
       <tr><td>Upload receipts</td><td>90 days, removed daily after that</td></tr>
       <tr><td>Account, sessions and tokens</td><td>You delete your account</td></tr>
-      <tr><td>Security logs and email delivery logs held by our providers</td><td><em>To be confirmed</em></td></tr>
-      <tr><td>Data on your phone</td><td>You delete your account or uninstall the app</td></tr>
+      <tr><td>Security logs held by our authentication provider (these include your email address and IP address) and email delivery logs</td><td><em>To be confirmed</em></td></tr>
+      <tr><td>Database backups held by our hosting provider</td><td>Until they roll off the provider’s backup window (period <em>to be confirmed</em>)</td></tr>
+      <tr><td>Data on your phone</td><td>You delete your account or uninstall the app. On iOS, the sign-in token in the Keychain can survive an uninstall.</td></tr>
       <tr><td>Apple Health and Health Connect values</td><td>Not kept</td></tr>
     </tbody>
   </table>
+
+  <h2>This website and emails you send us</h2>
+  <p>
+    This website uses no cookies, analytics or tracking. Our host, Cloudflare, processes visitors’ IP addresses and browser
+    details to serve pages and protect against abuse.
+  </p>
+  <p>
+    If you email us, including to ask to be told when BeyondRep launches, we use your address only to reply or send that
+    one launch email. Launch-notification addresses are deleted after the launch email is sent, or sooner if you ask.
+  </p>
+
+  <h2>Where data is processed</h2>
+  <p>
+    Account and workout data is stored in India. Our email provider, Brevo, is based in the European Union. Which other
+    countries’ rules apply is <em>to be confirmed</em>.
+  </p>
 
   <h2>Your choices and rights</h2>
   <ul>
@@ -123,6 +142,6 @@ import { SITE } from '../site';
   <h2>Changes to this policy</h2>
   <p>
     If we change how BeyondRep handles your data, we will update this page and its date first, and tell you in the app
-    before a significant change takes effect.
+    or by email before a significant change takes effect.
   </p>
 </Legal>
