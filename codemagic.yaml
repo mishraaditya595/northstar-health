@@ -136,6 +136,16 @@ workflows:
     # Store. Setup and limits: docs/IOS_TESTFLIGHT_CODEMAGIC.md.
     integrations:
       app_store_connect: Codemagic Signing
+    inputs:
+      version_name:
+        description: "Version name such as 1.2.0, or AUTO for the pubspec version"
+        type: string
+        # Codemagic environment.vars rejects empty interpolated input values.
+        default: "AUTO"
+      build_number:
+        description: "Build number above the latest TestFlight build, or AUTO for latest + 1"
+        type: string
+        default: "AUTO"
     environment:
       flutter: "3.47.7"
       xcode: latest
@@ -144,6 +154,9 @@ workflows:
         bundle_identifier: in.beyondrep.app
       groups:
         - ns_mobile_supabase_public
+      vars:
+        NS_VERSION_NAME: "${{ inputs.version_name }}"
+        NS_BUILD_NUMBER: "${{ inputs.build_number }}"
     scripts:
       - name: "Check public Supabase client settings"
         script: |
@@ -156,6 +169,9 @@ workflows:
             sb_publishable_*) ;;
             *) echo "SUPABASE_PUBLISHABLE_KEY must be a publishable (public) key."; exit 1 ;;
           esac
+      - name: "Resolve version name and build number"
+        script: |
+          python3 ../../scripts/codemagic_ios_version.py pubspec.yaml
       - name: "Install locked dependencies"
         script: |
           flutter pub get --enforce-lockfile
@@ -169,7 +185,8 @@ workflows:
           trap 'rm -f "$defines"' EXIT
           python3 -c 'import json, os; print(json.dumps({k: os.environ[k] for k in ("SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY")}))' > "$defines"
           flutter build ipa --release \
-            --build-number="$BUILD_NUMBER" \
+            --build-name="$BEYONDREP_VERSION_NAME" \
+            --build-number="$BEYONDREP_BUILD_NUMBER" \
             --dart-define-from-file="$defines" \
             --export-options-plist=/Users/builder/export_options.plist
     artifacts:

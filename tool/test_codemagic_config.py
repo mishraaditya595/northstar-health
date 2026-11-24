@@ -145,7 +145,19 @@ class CodemagicTemplateTest(unittest.TestCase):
             },
         )
         self.assertEqual(env["groups"], ["ns_mobile_supabase_public"])
-        self.assertNotIn("vars", env)
+        self.assertEqual(
+            env["vars"],
+            {
+                "NS_VERSION_NAME": "${{ inputs.version_name }}",
+                "NS_BUILD_NUMBER": "${{ inputs.build_number }}",
+            },
+        )
+        inputs = workflow["inputs"]
+        self.assertEqual(set(inputs), {"version_name", "build_number"})
+        for name in ("version_name", "build_number"):
+            self.assertEqual(inputs[name]["type"], "string")
+            # Codemagic rejects empty interpolated inputs; AUTO is the default.
+            self.assertEqual(inputs[name]["default"], "AUTO")
         self.assertEqual(
             workflow["publishing"],
             {
@@ -160,6 +172,16 @@ class CodemagicTemplateTest(unittest.TestCase):
         scripts = "\n".join(step["script"] for step in workflow["scripts"])
         self.assertIn("flutter pub get --enforce-lockfile", scripts)
         self.assertIn("flutter build ipa --release", scripts)
+        # Issue #49: never use Codemagic's per-workflow run counter.
+        self.assertNotIn("$BUILD_NUMBER", scripts)
+        self.assertIn("python3 ../../scripts/codemagic_ios_version.py", scripts)
+        self.assertIn('--build-name="$BEYONDREP_VERSION_NAME"', scripts)
+        self.assertIn('--build-number="$BEYONDREP_BUILD_NUMBER"', scripts)
+        names = [step["name"] for step in workflow["scripts"]]
+        self.assertLess(
+            names.index("Resolve version name and build number"),
+            names.index("Build signed IPA"),
+        )
         self.assertIn("sb_publishable_", scripts)
         for forbidden in (
             "SERVICE_ROLE",
