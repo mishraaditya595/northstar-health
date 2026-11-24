@@ -24,6 +24,23 @@ class _Owner extends Notifier<String?> {
 
 final _ownerProvider = NotifierProvider<_Owner, String?>(_Owner.new);
 
+/// Delegates to [inner]; [connectedAt] throws while [fail] is set.
+class _FlakyRepo implements HealthConnectionRepository {
+  _FlakyRepo(this.inner);
+  final HealthConnectionRepository inner;
+  bool fail = false;
+
+  @override
+  bool isConnected(String owner) => inner.isConnected(owner);
+  @override
+  DateTime? connectedAt(String owner) =>
+      fail ? throw StateError('synthetic store bug') : inner.connectedAt(owner);
+  @override
+  void connect(String owner, DateTime at) => inner.connect(owner, at);
+  @override
+  void disconnect(String owner) => inner.disconnect(owner);
+}
+
 SleepSegment _seg(DateTime from, DateTime to, SleepStage stage) =>
     (from: from, to: to, stage: stage, source: 'Synthetic watch');
 
@@ -235,6 +252,33 @@ void main() {
     expect((overview.activity as SectionGap).gap, MetricGap.noData);
   });
 
+  test('needsAccess outranks failed when a section has no data', () async {
+    fake
+      ..seriesResults[HealthSeriesType.restingHeartRate] = const SeriesFailed()
+      ..seriesResults[HealthSeriesType.hrv] = const SeriesNeedsAccess();
+    final c = container();
+    final overview = (await c.read(healthOverviewProvider.future))!;
+
+    expect((overview.heart as SectionGap).gap, MetricGap.needsAccess);
+  });
+
+  test('overnight HRV does not feed the previous day mean', () async {
+    fake
+      ..sleep = _night(_day(0))
+      ..series[HealthSeriesType.hrv] = [
+        _sample(DateTime(2026, 11, 23, 14), 40),
+        _sample(DateTime(2026, 11, 23, 23, 30), 90),
+      ];
+    final c = container();
+    final overview = (await c.read(healthOverviewProvider.future))!;
+    final heart = (overview.heart as SectionData<HeartOverview>).value;
+
+    expect(heart.hrvDaily, [
+      (day: _day(-1), value: 40.0),
+      (day: _day(0), value: 90.0),
+    ]);
+  });
+
   test('Android without history, connected 10 days ago', () async {
     fake = FakeHealthReader(platform: HealthPlatformKind.healthConnect)
       ..history = false;
@@ -276,6 +320,48 @@ void main() {
 
     expect(await c.read(healthOverviewProvider.future), isNull);
     expect(c.read(healthOverviewProvider).value, isNull);
+  });
+
+  test("switching to a connected account never exposes A's overview", () async {
+    syntheticWeek();
+    repo.connect(_ownerB, DateTime(2026, 11, 1));
+    final c = container();
+    final a = (await c.read(healthOverviewProvider.future))!;
+    expect(a.ownerId, _ownerA);
+
+    fake.sleepGate = Completer<void>();
+    c.read(_ownerProvider.notifier).set(_ownerB);
+    while (fake.sleepCalls.length < 2) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    final mid = c.read(healthOverviewProvider);
+    expect(mid.isLoading, true);
+    expect(mid.value, isNull);
+
+    fake.sleepGate!.complete();
+    final b = (await c.read(healthOverviewProvider.future))!;
+    expect(b.ownerId, _ownerB);
+  });
+
+  test('refreshIfStale re-reads after an error', () async {
+    final flaky = _FlakyRepo(repo)..fail = true;
+    final c = ProviderContainer(
+      overrides: [
+        healthReaderProvider.overrideWithValue(fake),
+        healthConnectionRepositoryProvider.overrideWithValue(flaky),
+        healthOwnerIdProvider.overrideWith((ref) => ref.watch(_ownerProvider)),
+        healthClockProvider.overrideWithValue(() => now),
+      ],
+    );
+    addTearDown(c.dispose);
+    c.listen(healthOverviewProvider, (_, _) {});
+    await expectLater(c.read(healthOverviewProvider.future), throwsStateError);
+    expect(c.read(healthOverviewProvider).hasError, true);
+
+    flaky.fail = false;
+    await c.read(healthOverviewProvider.notifier).refreshIfStale();
+
+    expect((await c.read(healthOverviewProvider.future))!.ownerId, _ownerA);
   });
 
   test('refreshIfStale does not re-read within 5 minutes', () async {

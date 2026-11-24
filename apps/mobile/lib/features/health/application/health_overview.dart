@@ -114,6 +114,7 @@ class BodyOverview {
 /// Read fresh and held in memory only; never written anywhere.
 class HealthOverview {
   const HealthOverview({
+    required this.ownerId,
     required this.readAt,
     required this.platform,
     required this.readableFrom,
@@ -124,6 +125,8 @@ class HealthOverview {
     required this.body,
   });
 
+  /// The account this was read for; never shown under another account.
+  final String ownerId;
   final DateTime readAt;
   final HealthPlatformKind platform;
 
@@ -142,6 +145,14 @@ class HealthOverviewController extends AsyncNotifier<HealthOverview?> {
   @override
   Future<HealthOverview?> build() async {
     final owner = ref.watch(healthOwnerIdProvider);
+    // Riverpod keeps the previous value while a rebuild loads, and a plain
+    // AsyncLoading copies it too. Replacing it with null first, then loading
+    // again, means another account's overview is never exposed while this
+    // account's read runs.
+    if (state.value case final previous? when previous.ownerId != owner) {
+      state = const AsyncData(null);
+      state = const AsyncLoading();
+    }
     // Rebuilds only when the connection flips, not on every summary reload.
     final connected = await ref.watch(
       healthSummaryProvider.selectAsync((s) => s is HealthConnected),
@@ -152,6 +163,7 @@ class HealthOverviewController extends AsyncNotifier<HealthOverview?> {
         .read(healthConnectionRepositoryProvider)
         .connectedAt(owner);
     final overview = await _read(
+      owner,
       reader,
       ref.read(healthClockProvider)(),
       connectedAt,
@@ -166,11 +178,15 @@ class HealthOverviewController extends AsyncNotifier<HealthOverview?> {
     await future;
   }
 
+  /// Re-reads after an error, or when the overview is older than 5 minutes.
   Future<void> refreshIfStale() async {
-    final readAt = state.value?.readAt;
-    if (readAt == null) return;
-    final age = ref.read(healthClockProvider)().difference(readAt);
-    if (age > _staleAfter) await refresh();
+    if (!state.hasError) {
+      final readAt = state.value?.readAt;
+      if (readAt == null) return;
+      final age = ref.read(healthClockProvider)().difference(readAt);
+      if (age <= _staleAfter) return;
+    }
+    await refresh();
   }
 
   /// Never throws; re-reads afterwards.
@@ -222,12 +238,19 @@ Section<T> _section<T>(
 ) {
   final value = build();
   if (value != null) return SectionData(value);
-  for (final r in results) {
-    final gap = _gapOf(r);
-    if (gap != null) return SectionGap(gap);
-  }
-  return const SectionGap(MetricGap.noData);
+  final gaps = {for (final r in results) ?_gapOf(r)};
+  return SectionGap(
+    _gapRank.firstWhere(gaps.contains, orElse: () => MetricGap.noData),
+  );
 }
+
+/// needsAccess first so "Allow more data" is never hidden by another gap.
+const _gapRank = [
+  MetricGap.needsAccess,
+  MetricGap.notAllowed,
+  MetricGap.failed,
+  MetricGap.unsupported,
+];
 
 double? _mean(Iterable<double> values) =>
     values.isEmpty ? null : values.reduce((a, b) => a + b) / values.length;
@@ -248,9 +271,12 @@ TrendResult? _vsPrior(TrendMetric metric, List<DayValue> daily, int min) {
   return trendOf(metric, daily.last.value, _mean(prior)!);
 }
 
-/// Per day the mean of samples inside that day's night, else the day mean.
+/// Per day the mean of samples inside that day's night, else the mean of the
+/// day's samples outside any night.
 List<DayValue> _hrvDaily(List<HealthSample> samples, List<SleepNight> nights) {
   final overnight = <HealthSample>[];
+  final daytime = <HealthSample>[];
+  outer:
   for (final s in samples) {
     for (final n in nights) {
       if (!s.from.isBefore(n.start) && !s.to.isAfter(n.end)) {
@@ -260,12 +286,13 @@ List<DayValue> _hrvDaily(List<HealthSample> samples, List<SleepNight> nights) {
           value: s.value,
           source: s.source,
         ));
-        break;
+        continue outer;
       }
     }
+    daytime.add(s);
   }
   final byDay = {
-    for (final d in reduceDaily(samples, DailyReduction.mean)) d.day: d.value,
+    for (final d in reduceDaily(daytime, DailyReduction.mean)) d.day: d.value,
     for (final d in reduceDaily(overnight, DailyReduction.mean)) d.day: d.value,
   };
   return [
@@ -275,6 +302,7 @@ List<DayValue> _hrvDaily(List<HealthSample> samples, List<SleepNight> nights) {
 }
 
 Future<HealthOverview> _read(
+  String ownerId,
   HealthReader reader,
   DateTime now,
   DateTime? connectedAt,
@@ -420,6 +448,7 @@ Future<HealthOverview> _read(
   });
 
   return HealthOverview(
+    ownerId: ownerId,
     readAt: now,
     platform: platform,
     readableFrom: !await historyF && connectedAt != null
