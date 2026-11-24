@@ -48,6 +48,16 @@ These rules apply to every pull request from someone other than the maintainer, 
 - Permission revocation invalidates cached health reads. Platform health data can **never** flow into cloud workout backups or Firebase telemetry.
 - Respect ObjectBox stable model UIDs; commit generated code and `apps/mobile/lib/objectbox-model.json`; test migrations with old databases.
 
+## Secrets in a public repository
+
+This repository is **public**. Anything committed, including in later-deleted commits, PR text, issue comments and CI logs, should be treated as published.
+
+- **Never commit** signing material or credentials: Apple `.p8`/`.p12`/`.cer`/provisioning profiles, Android keystores and `key.properties`, `.env` files, `supabase.local.json`, Supabase service-role/secret keys, database passwords, personal access tokens, SMTP/Brevo keys, Firebase config files or service-account JSON. `.gitignore` blocks these and `tool/test_repository_layout.py` fails CI if one is tracked; never weaken either to make a commit pass.
+- **Where secrets live:** Codemagic protected variable groups and integrations (signing, `ns_supabase_deploy`, `ns_mobile_supabase_public`), the Supabase dashboard (Auth/SMTP) and GitHub Actions secrets. Reference them by name only.
+- **Hosted identifiers stay out of the source too:** do not hard-code the hosted Supabase project ref/URL or the publishable key. The publishable key is public in the shipped binary, but it is injected at build time via `--dart-define`, never committed. Use placeholders like `YOUR_PROJECT_REF` in docs.
+- **No real personal data:** use synthetic users, emails and workouts in tests, fixtures, docs and screenshots. Never paste real user emails, JWTs, OTP codes or exported health data into commits, PRs or logs.
+- **Agents:** before committing, check `git status` for unexpected files, and never print secret values in commands, logs or PR descriptions. If a secret is ever pushed, tell the owner immediately: **rotate it first** (deleting the commit is not enough), and only rewrite history with explicit owner approval.
+
 ## Review completion checklist
 
 **Why / changed behavior / data ownership / privacy / offline+sync state / UI light+dark+tablet evidence / tests actually run / failure and rollback / deferred functionality**. A reviewer challenges serialization contracts, migration, RLS and replays separately. Changes to policies, provider choices, backup scope or watch ownership need a numbered ADR.
