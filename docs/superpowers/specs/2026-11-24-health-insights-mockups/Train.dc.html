@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Train tab with readiness</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#D6FF60;text-decoration:none}a:hover{color:#E6FF9A}
+</style>
+</helmet>
+<div style="width: 390px; height: 980px; box-sizing: border-box; background: #0B0F13; color: #F5F7F6; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; padding: 20px 16px 32px; display: flex; flex-direction: column; gap: 14px">
+  <h1 style="margin: 0; padding-top: 24px; font-size: 34px; font-weight: 850">Train</h1>
+
+  <div style="border-radius: 20px; padding: 16px; background: #2A2416; border: 1px solid #5A4A26; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <div style="width: 44px; height: 44px; border-radius: 50%; border: 3px solid #FFD18B; display: flex; align-items: center; justify-content: center; font-weight: 850">48</div>
+      <div>
+        <div style="font-size: 15px; font-weight: 800">Recovery is low today</div>
+        <div style="font-size: 13px; color: #D9CBB0">HRV 38 ms, below your 41–50 normal · slept 5h 40m</div>
+      </div>
+    </div>
+    <div style="font-size: 14px; line-height: 1.4; color: #F5F7F6">Consider dropping a set per exercise or keeping effort around RPE 7.</div>
+    <div style="display: flex; justify-content: space-between; align-items: center">
+      <a href="Main.dc.html" style="font-size: 13px; font-weight: 700">See why ›</a>
+      <span style="font-size: 12px; color: #A5B0B8">Your plans are not changed</span>
+    </div>
+  </div>
+
+  <div style="font-size: 13px; font-weight: 700; letter-spacing: 1px; color: #A5B0B8; margin-top: 4px">BETTER FIT TODAY</div>
+  <div style="border-radius: 20px; padding: 16px; background: #171E24; border: 2px solid #D6FF60; display: flex; flex-direction: column; gap: 8px">
+    <div style="display: flex; justify-content: space-between; align-items: center">
+      <span style="font-size: 18px; font-weight: 800">Upper A</span>
+      <span style="font-size: 12px; background: #2C3A1C; color: #D6FF60; padding: 4px 10px; border-radius: 10px; font-weight: 700">Suggested</span>
+    </div>
+    <div style="font-size: 13px; color: #A5B0B8">Bench press · Row · Overhead press · Pull-up · 6 exercises</div>
+    <div style="font-size: 13px; color: #C9D2D8">Chest, back and shoulders are recovered. Legs were trained hard on Monday.</div>
+    <button style="margin-top: 4px; height: 48px; border-radius: 14px; border: 0; background: #D6FF60; color: #0B0F13; font-size: 16px; font-weight: 800">Start Upper A</button>
+  </div>
+
+  <div style="font-size: 13px; font-weight: 700; letter-spacing: 1px; color: #A5B0B8; margin-top: 4px">YOUR PLANS</div>
+  <div style="border-radius: 18px; padding: 14px 16px; background: #171E24; border: 1px solid #34404A; display: flex; justify-content: space-between; align-items: center">
+    <div><div style="font-size: 16px; font-weight: 700">Legs</div><div style="font-size: 12px; color: #FFD18B">Quads and glutes still recovering · 2 days ago</div></div>
+    <span style="color: #A5B0B8">›</span>
+  </div>
+  <div style="border-radius: 18px; padding: 14px 16px; background: #171E24; border: 1px solid #34404A; display: flex; justify-content: space-between; align-items: center">
+    <div><div style="font-size: 16px; font-weight: 700">Lower B</div><div style="font-size: 12px; color: #FFD18B">Hamstrings still recovering</div></div>
+    <span style="color: #A5B0B8">›</span>
+  </div>
+  <div style="border-radius: 18px; padding: 14px 16px; background: #171E24; border: 1px solid #34404A; display: flex; justify-content: space-between; align-items: center">
+    <div><div style="font-size: 16px; font-weight: 700">Upper B</div><div style="font-size: 12px; color: #A5B0B8">Last done 4 days ago</div></div>
+    <span style="color: #A5B0B8">›</span>
+  </div>
+
+  <div style="border-radius: 16px; padding: 14px; background: #202932; font-size: 13px; color: #C9D2D8; line-height: 1.4">
+    Before a workout starts, the same note shows once on the start sheet. It never appears when readiness can't be worked out.
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":980}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

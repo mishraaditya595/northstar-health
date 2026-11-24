@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Heart detail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#D6FF60;text-decoration:none}a:hover{color:#E6FF9A}
+</style>
+</helmet>
+<div style="width: 390px; height: 1160px; box-sizing: border-box; background: #0B0F13; color: #F5F7F6; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; padding: 20px 16px 32px; display: flex; flex-direction: column; gap: 14px">
+  <div style="display: flex; align-items: center; gap: 8px; padding-top: 24px">
+    <a href="Main.dc.html" aria-label="Back to Health" style="width: 44px; height: 44px; border-radius: 14px; border: 1px solid #34404A; background: #171E24; color: #F5F7F6; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></a>
+    <h1 style="margin: 0; font-size: 28px; font-weight: 850">Heart</h1>
+  </div>
+  <div style="display: flex; gap: 6px">
+    <button style="height: 36px; padding: 0 14px; border-radius: 18px; border: 0; background: #202932; color: #F5F7F6; font-weight: 700">7 days</button>
+    <button style="height: 36px; padding: 0 14px; border-radius: 18px; border: 0; background: #D6FF60; color: #0B0F13; font-weight: 700">30 days</button>
+  </div>
+
+  <div style="border-radius: 20px; padding: 16px; background: #171E24; border: 1px solid #34404A">
+    <div style="display: flex; justify-content: space-between; align-items: baseline">
+      <span style="font-size: 15px; font-weight: 700">Resting heart rate</span>
+      <span style="font-size: 13px; color: #A5B0B8">Lower is better</span>
+    </div>
+    <div style="margin-top: 6px; display: flex; align-items: baseline; gap: 8px">
+      <span style="font-size: 30px; font-weight: 850">54</span><span style="font-size: 14px">bpm today</span>
+      <span style="font-size: 13px; color: #D6FF60">▼ 3 bpm vs 30 days ago</span>
+    </div>
+    <svg width="326" height="120" viewBox="0 0 326 120" role="img" aria-label="Resting heart rate over 30 days, trending down from 57 to 54">
+      <rect x="0" y="40" width="326" height="34" fill="#202932"></rect>
+      <text x="4" y="36" fill="#A5B0B8" font-size="10">your normal 53–57</text>
+      <polyline points="0,30 22,34 44,28 66,40 88,36 110,44 132,42 154,50 176,46 198,52 220,58 242,54 264,60 286,62 308,58 326,64" fill="none" stroke="#D6FF60" stroke-width="2"></polyline>
+      <circle cx="326" cy="64" r="4" fill="#D6FF60"></circle>
+      <text x="0" y="114" fill="#A5B0B8" font-size="10">26 Oct</text>
+      <text x="290" y="114" fill="#A5B0B8" font-size="10">Today</text>
+    </svg>
+  </div>
+
+  <div style="border-radius: 20px; padding: 16px; background: #171E24; border: 1px solid #34404A">
+    <div style="display: flex; justify-content: space-between; align-items: baseline">
+      <span style="font-size: 15px; font-weight: 700">Heart rate variability</span>
+      <span style="font-size: 13px; color: #A5B0B8">Higher is better</span>
+    </div>
+    <div style="margin-top: 6px; display: flex; align-items: baseline; gap: 8px">
+      <span style="font-size: 30px; font-weight: 850">52</span><span style="font-size: 14px">ms overnight</span>
+      <span style="font-size: 13px; color: #D6FF60">▲ 6 ms vs your normal</span>
+    </div>
+    <svg width="326" height="110" viewBox="0 0 326 110" role="img" aria-label="Daily HRV over 30 days within or above normal band">
+      <rect x="0" y="36" width="326" height="36" fill="#202932"></rect>
+      <text x="4" y="32" fill="#A5B0B8" font-size="10">your normal 41–50 ms</text>
+      <g fill="#C1A9FF">
+        <circle cx="10" cy="60" r="3"></circle><circle cx="30" cy="52" r="3"></circle><circle cx="50" cy="66" r="3"></circle><circle cx="70" cy="48" r="3"></circle><circle cx="90" cy="58" r="3"></circle><circle cx="110" cy="70" r="3"></circle><circle cx="130" cy="54" r="3"></circle><circle cx="150" cy="44" r="3"></circle><circle cx="170" cy="50" r="3"></circle><circle cx="190" cy="62" r="3"></circle><circle cx="210" cy="40" r="3"></circle><circle cx="230" cy="46" r="3"></circle><circle cx="250" cy="38" r="3"></circle><circle cx="270" cy="52" r="3"></circle><circle cx="290" cy="34" r="3"></circle><circle cx="310" cy="30" r="3"></circle>
+      </g>
+      <polyline points="10,58 50,58 90,57 130,56 170,52 210,48 250,44 290,40 316,36" fill="none" stroke="#F5F7F6" stroke-width="1.5" stroke-dasharray="4 3"></polyline>
+    </svg>
+    <div style="font-size: 12px; color: #A5B0B8">Apple Watch measures SDNN. Android watches report RMSSD, so numbers aren't comparable across phones.</div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+    <div style="border-radius: 20px; padding: 14px; background: #171E24; border: 1px solid #34404A">
+      <div style="font-size: 13px; color: #A5B0B8">Cardio fitness (VO₂ max)</div>
+      <div style="font-size: 24px; font-weight: 850; margin-top: 4px">44.1</div>
+      <div style="font-size: 12px; color: #A5B0B8">ml/kg/min · 19 Nov</div>
+      <div style="font-size: 12px; color: #D6FF60; margin-top: 4px">▲ 0.8 since October</div>
+    </div>
+    <div style="border-radius: 20px; padding: 14px; background: #171E24; border: 1px solid #34404A">
+      <div style="font-size: 13px; color: #A5B0B8">Walking heart rate</div>
+      <div style="font-size: 24px; font-weight: 850; margin-top: 4px">96</div>
+      <div style="font-size: 12px; color: #A5B0B8">bpm avg today</div>
+      <div style="font-size: 12px; color: #A5B0B8; margin-top: 4px">iPhone only</div>
+    </div>
+  </div>
+
+  <div style="border-radius: 16px; padding: 14px; background: #202932; font-size: 13px; color: #C9D2D8; line-height: 1.4">
+    <b style="color: #F5F7F6">From your training</b> · Resting HR ran 4 bpm above normal the morning after your two heaviest sessions this month (Mon 9 Nov, Thu 19 Nov).
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1160}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
