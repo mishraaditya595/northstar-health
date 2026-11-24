@@ -13,7 +13,7 @@ The Health tab and the Today "Recent health" row show hardcoded fictional values
 
    | Metric | Window |
    | --- | --- |
-   | Sleep | Asleep stages only, sleep that ended between 18:00 yesterday and now |
+   | Sleep | Asleep stages only (asleep, light, deep, REM), from local 18:00 the previous day until now, overlapping intervals merged once. Initial definition, confirmed at implementation and implemented this way |
    | Steps | Since local midnight today (platform de-duplicated aggregate) |
    | Resting heart rate | Newest sample in the last 7 days |
    | Weight | Newest sample in the last 30 days, shown in kg |
@@ -33,7 +33,7 @@ The Health tab and the Today "Recent health" row show hardcoded fictional values
 
 4. **Per-account opt-in flag.** "Connected" is stored as a single-row ObjectBox entity `HealthConnectionEntity { id, connectedAt }` in the account-partitioned store. The OS grants access to the app, not to a BeyondRep account, so without the flag a second account on the same phone would see the first person's data without tapping Connect. The flag holds no health values, is erased with the partition on account deletion, and returns when the same account signs back in. Permission is requested only when the person taps Connect. Disconnect deletes the flag; it cannot revoke OS access.
 
-5. **iOS denial is indistinguishable from no data.** HealthKit hides read denial: a denied read returns empty results and steps of `0`. iOS therefore shows "No data" (never "Not allowed"), treats steps `0` as no data, and adds a one-line hint to check access in the Health app. Android reports denial per type and shows "Not allowed". Missing values always show `—`, never `0`.
+5. **iOS denial is indistinguishable from no data.** HealthKit hides read denial: a denied read returns empty results and steps of `0`. iOS therefore shows "No data" (never "Not allowed"), treats steps `0` as no data, and adds a one-line hint to check access in the Health app. Android reports denial per type and shows "Not allowed". On Android a partial grant counts as connected when at least one type is granted; the other types show "Not allowed". Android 8 (API 26-27) has no Health Connect, so the summary shows "not available" there. Missing values always show `—`, never `0`.
 
 6. **Dropped per-value fields.** `HEALTH_DATA.md` asks for a platform sample ID and date imported on each value. A no-cache daily glance needs neither, so they are dropped. Type, unit, measured time and source are kept.
 
@@ -48,4 +48,4 @@ The Health tab and the Today "Recent health" row show hardcoded fictional values
 - A new ObjectBox entity requires stable UIDs, committed `objectbox.g.dart` and `objectbox-model.json`, and a test that opens a pre-change database.
 - The workout logger, sign-in and sync must keep working when health is unavailable, denied or throwing.
 - Adding a cache, more metrics, history, writes or any cloud path needs a new ADR.
-- This ADR records the decision only. Phase 3 is not implemented until the later tasks land and pass owner device QA (iPhone with and without Watch, Android 14+, Android 9-13 with and without Health Connect).
+- Implemented in source (Tasks 1-5, see [p3-01](../implementation/phase-3/p3-01-daily-health-summary.md)). Not released or device-verified: owner device QA (iPhone with and without Watch, Android 14+, Android 9-13 with and without Health Connect) has not been run.
