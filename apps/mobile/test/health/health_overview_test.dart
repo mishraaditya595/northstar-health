@@ -312,9 +312,14 @@ void main() {
       ..seriesResults[HealthSeriesType.restingHeartRate] =
           const SeriesNotAllowed()
       ..seriesResults[HealthSeriesType.vo2Max] = const SeriesFailed()
-      ..seriesResults[HealthSeriesType.bodyFat] = const SeriesNotAllowed();
+      ..seriesResults[HealthSeriesType.bodyFat] = const SeriesNotAllowed()
+      ..seriesResults[HealthSeriesType.heartRate] = const SeriesNotAllowed();
     final c = container();
     final overview = (await c.read(healthOverviewProvider.future))!;
+
+    final sleep = (overview.sleep as SectionData<SleepOverview>).value;
+    expect(sleep.sleepHrGap, MetricGap.notAllowed);
+    expect(sleep.sleepAvgHr, isNull);
 
     final activity = (overview.activity as SectionData<ActivityOverview>).value;
     expect(activity.stepsGap, MetricGap.notAllowed);

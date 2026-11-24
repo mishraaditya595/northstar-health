@@ -12,6 +12,7 @@ import 'metric_unavailable.dart';
 
 const _title = 'Heart';
 const _icon = Icons.favorite_border;
+const _none = 'None in 30 days';
 
 /// Resting HR and HRV side by side, each with a 30-day sparkline and trend;
 /// VO2 max underneath when present.
@@ -58,10 +59,15 @@ class HeartCard extends StatelessWidget {
     final vo2 = value.vo2Max?.value.toStringAsFixed(1);
     final rhrTrend = value.restingHrVsMonth;
     final hrvTrend = value.hrvVsNormal;
+    // A metric with no value says why when its read failed or was declined.
+    String none(MetricGap? gap) =>
+        gap == null ? _none : metricUnavailableText(gap, _title, platform);
+    final rhrNone = none(value.restingHrGap);
+    final hrvNone = none(value.hrvGap);
     final label = [
-      'Heart: resting heart rate ${rhr == null ? 'no data' : '$rhr bpm'}'
+      'Heart: resting heart rate ${rhr == null ? rhrNone : '$rhr bpm'}'
           '${rhrTrend == null ? '' : ', ${formatTrendSpoken(TrendMetric.restingHr, rhrTrend)}'}.',
-      '$hrvName ${hrv == null ? 'no data' : '$hrv ms'}'
+      '$hrvName ${hrv == null ? hrvNone : '$hrv ms'}'
           '${hrvTrend == null ? '' : ', ${formatTrendSpoken(TrendMetric.hrv, hrvTrend)}'}.',
       if (vo2 != null) 'VO₂ max $vo2.',
     ].join(' ');
@@ -83,6 +89,7 @@ class HeartCard extends StatelessWidget {
                 trend: rhrTrend,
                 daily: value.restingHrDaily,
                 today: today,
+                none: rhrNone,
               ),
             ),
             const SizedBox(width: 12),
@@ -95,6 +102,7 @@ class HeartCard extends StatelessWidget {
                 trend: hrvTrend,
                 daily: value.hrvDaily,
                 today: today,
+                none: hrvNone,
               ),
             ),
           ],
@@ -117,6 +125,7 @@ class _Metric extends StatelessWidget {
     required this.trend,
     required this.daily,
     required this.today,
+    required this.none,
   });
 
   final String name;
@@ -126,6 +135,9 @@ class _Metric extends StatelessWidget {
   final TrendResult? trend;
   final List<DayValue> daily;
   final DateTime today;
+
+  /// Caption when [value] is null.
+  final String none;
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +152,7 @@ class _Metric extends StatelessWidget {
         ),
         HealthValue(value, unit: unit),
         if (value == null)
-          const HealthCaption('None in 30 days')
+          HealthCaption(none)
         else if (trend != null)
           healthTrendLabel(metric, trend),
         if (daily.length > 1) ...[

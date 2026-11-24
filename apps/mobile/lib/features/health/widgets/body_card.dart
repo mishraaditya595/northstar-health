@@ -56,12 +56,21 @@ class BodyCard extends StatelessWidget {
     final weightText = weight?.value.toStringAsFixed(1);
     final trend = value.weightVsMonth;
     final fat = value.bodyFat;
-    final fatText = fat == null
-        ? null
-        : 'Body fat ${fat.value.toStringAsFixed(1)}%';
+    String? why(MetricGap? gap) =>
+        gap == null ? null : metricUnavailableText(gap, _title, platform);
+    final weightNone = switch (why(value.weightGap)) {
+      final text? => 'Weight: $text',
+      null => 'No weight in 30 days',
+    };
+    final fatText = fat != null
+        ? 'Body fat ${fat.value.toStringAsFixed(1)}%'
+        : switch (why(value.bodyFatGap)) {
+            final text? => 'Body fat: $text',
+            null => null,
+          };
     final label = [
       if (weight == null)
-        'Body: no weight in 30 days.'
+        'Body: $weightNone.'
       else
         'Body: weight $weightText kg, ${formatHealthDate(weight.day)}'
             '${trend == null ? '' : ', ${formatTrendSpoken(TrendMetric.weight, trend)}'}.',
@@ -76,7 +85,7 @@ class BodyCard extends StatelessWidget {
         HealthValue(weightText, unit: 'kg'),
         HealthCaption(
           weight == null
-              ? 'No weight in 30 days'
+              ? weightNone
               : 'Weighed ${formatHealthDate(weight.day)}',
         ),
         if (trend != null) healthTrendLabel(TrendMetric.weight, trend),

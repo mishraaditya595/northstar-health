@@ -32,6 +32,7 @@ class SleepOverview {
     required this.sleepAvgHr,
     required this.nights,
     required this.vsWeek,
+    this.sleepHrGap,
   });
 
   /// The most recent night in the window.
@@ -49,6 +50,10 @@ class SleepOverview {
   /// Last night's asleep minutes vs the mean of the nights in the 7 dates
   /// before it; null with fewer than 3 such nights.
   final TrendResult? vsWeek;
+
+  /// Why heart rate inside [lastNight] could not be read; null when the read
+  /// succeeded, even with no samples.
+  final MetricGap? sleepHrGap;
 }
 
 class HeartOverview {
@@ -413,6 +418,7 @@ Future<HealthOverview> _read(
               lastNight.asleep.inMinutes.toDouble(),
               _mean(week)!,
             ),
+      sleepHrGap: _gapOf(heartRate),
     );
   });
 

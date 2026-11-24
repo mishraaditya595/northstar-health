@@ -239,6 +239,99 @@ void main() {
     expect(c.refreshCalls, 1);
   });
 
+  testWidgets('Android Phase 3 upgrade: a declined metric reads Not allowed '
+      'on its card', (tester) async {
+    // HRV and active calories were declined; resting HR and steps are read.
+    await pumpHealth(
+      tester,
+      overview(
+        platform: HealthPlatformKind.healthConnect,
+        heart: SectionData(
+          HeartOverview(
+            restingHr: (day: DateTime(2026, 11, 24), value: 54),
+            restingHrDaily: daily(10, (i) => 56),
+            hrv: null,
+            hrvDaily: const [],
+            vo2Max: null,
+            vo2MaxDaily: const [],
+            restingHrVsMonth: null,
+            hrvVsNormal: null,
+            hrvIsSdnn: false,
+            hrvGap: MetricGap.notAllowed,
+          ),
+        ),
+        activity: SectionData(
+          ActivityOverview(
+            stepsToday: 8214,
+            stepsDaily: daily(7, (i) => 8000),
+            activeEnergyToday: null,
+            activeEnergyDaily: const [],
+            stepsWeekAverage: 8000,
+            energyGap: MetricGap.notAllowed,
+          ),
+        ),
+        body: SectionData(
+          BodyOverview(
+            weight: null,
+            weightDaily: const [],
+            bodyFat: (day: DateTime(2026, 11, 22), value: 17.2),
+            weightVsMonth: null,
+            weightGap: MetricGap.failed,
+          ),
+        ),
+        sleep: SectionData(
+          SleepOverview(
+            lastNight: night(),
+            score: null,
+            sleepAvgHr: null,
+            nights: [night()],
+            vsWeek: null,
+            sleepHrGap: MetricGap.notAllowed,
+          ),
+        ),
+      ),
+      platform: HealthPlatformKind.healthConnect,
+    );
+    expect(find.text('None in 30 days'), findsNothing);
+    expect(find.text('Not allowed · Manage'), findsOneWidget);
+    expect(find.text('Active calories need a watch'), findsNothing);
+    expect(find.text('Active calories: Not allowed · Manage'), findsOneWidget);
+    expect(find.text('No weight in 30 days'), findsNothing);
+    expect(find.text("Weight: Couldn't read · Try again"), findsOneWidget);
+    expect(find.text('Sleep HR: Not allowed · Manage'), findsOneWidget);
+  });
+
+  testWidgets('body fat that could not be read says why on the card', (
+    tester,
+  ) async {
+    await pumpHealth(
+      tester,
+      overview(
+        body: SectionData(
+          BodyOverview(
+            weight: (day: DateTime(2026, 11, 24), value: 78.4),
+            weightDaily: daily(30, (i) => 78),
+            bodyFat: null,
+            weightVsMonth: null,
+            bodyFatGap: MetricGap.needsAccess,
+          ),
+        ),
+      ),
+    );
+    expect(
+      find.text("Body fat: BeyondRep isn't allowed to read this yet."),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('no active calories and no gap still says it needs a watch', (
+    tester,
+  ) async {
+    await pumpHealth(tester, phoneOnly());
+    expect(find.text('Active calories need a watch'), findsOneWidget);
+    expect(find.textContaining('Not allowed'), findsNothing);
+  });
+
   testWidgets('loading overview shows placeholders, no values', (tester) async {
     await pumpHealth(tester, null, pending: true);
     expect(find.bySemanticsLabel('Sleep loading'), findsOneWidget);

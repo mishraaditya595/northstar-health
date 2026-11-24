@@ -53,22 +53,32 @@ class ActivityCard extends StatelessWidget {
     final steps = value.stepsToday;
     final stepsText = steps == null ? null : formatCount(steps);
     final average = value.stepsWeekAverage;
+    final stepsGap = value.stepsGap;
     final caption = steps == null
-        ? 'No steps yet today'
+        ? stepsGap == null
+              ? 'No steps yet today'
+              : 'Steps: ${metricUnavailableText(stepsGap, _title, platform)}'
         : average == null
         ? 'steps'
         : 'steps · avg ${formatCount(average)}';
     final energy = value.activeEnergyToday;
+    final energyGap = value.energyGap;
     final energyText = energy != null
         ? '${energy.round()} active kcal'
+        : energyGap != null
+        ? 'Active calories: '
+              '${metricUnavailableText(energyGap, _title, platform)}'
         : value.activeEnergyDaily.isEmpty
         ? 'Active calories need a watch'
         : null;
     final week = dailySlots(value.stepsDaily, today, 7);
     final border = theme.extension<BeyondRepColors>()!.border;
     final label = [
-      'Activity: ${stepsText == null ? 'no steps yet' : '$stepsText steps'} '
-          'today${average == null ? '' : ', 7-day average ${formatCount(average)}'}.',
+      if (stepsText == null && stepsGap != null)
+        'Activity: $caption.'
+      else
+        'Activity: ${stepsText == null ? 'no steps yet' : '$stepsText steps'} '
+            'today${average == null ? '' : ', 7-day average ${formatCount(average)}'}.',
       ?energyText,
     ].join(' ');
     return HealthCardFrame(
