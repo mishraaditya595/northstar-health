@@ -56,6 +56,8 @@ Future<void> pumpPage(
   addTearDown(tester.view.resetDevicePixelRatio);
   await tester.pumpWidget(
     ProviderScope(
+      // Fresh scope per pump so a second pump uses its own fakes.
+      key: UniqueKey(),
       overrides: [
         fakeHealthSummary(controller),
         fakeHealthOverview(
@@ -255,6 +257,19 @@ void main() {
     expect(o.refreshCalls, 1);
   });
 
+  testWidgets('a failed overview refresh does not escape pull to refresh', (
+    tester,
+  ) async {
+    final c = FakeHealthSummaryController(mixed);
+    final o = _FailingRefresh(overview());
+    await pumpPage(tester, c, overviewController: o);
+    await tester.fling(find.byType(ListView), const Offset(0, 400), 1000);
+    await tester.pumpAndSettle();
+    expect(o.refreshCalls, 1);
+    expect(c.refreshCalls, 1);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('double tap on Connect fires once while in flight', (
     tester,
   ) async {
@@ -350,10 +365,21 @@ void main() {
       overviewController: o,
     );
     expect(find.text("Couldn't read health data."), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('loading')), findsNothing);
     await tester.tap(find.text('Try again'));
     await tester.pumpAndSettle();
     expect(o.refreshCalls, 1);
   });
+}
+
+class _FailingRefresh extends FakeHealthOverviewController {
+  _FailingRefresh(super.initial);
+
+  @override
+  Future<void> refresh() async {
+    await super.refresh();
+    throw StateError('read failed');
+  }
 }
 
 class _ThrowingOverview extends FakeHealthOverviewController {

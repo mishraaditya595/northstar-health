@@ -31,8 +31,8 @@ String metricUnavailableText(
   MetricGap.unsupported => 'Not available on this device',
 };
 
-/// `—` plus the reason; "Allow more data" for [MetricGap.needsAccess] when
-/// [onAction] is set. Not allowed / Couldn't read are handled by tapping the
+/// `—` plus the reason; "Allow more data" for [MetricGap.needsAccess],
+/// disabled while [onAction] is null. Not allowed / Couldn't read are handled by tapping the
 /// card, as on the Phase 3 cards.
 class MetricUnavailable extends StatelessWidget {
   const MetricUnavailable({
@@ -66,7 +66,7 @@ class MetricUnavailable extends StatelessWidget {
             ],
           ),
         ),
-        if (gap == MetricGap.needsAccess && onAction != null)
+        if (gap == MetricGap.needsAccess)
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: TextButton(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:beyondrep/app/beyondrep_app.dart';
 import 'package:beyondrep/app/floating_nav_bar.dart';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
@@ -56,6 +58,9 @@ Future<FakeHealthOverviewController> pumpHealth(
   addTearDown(router.dispose);
   await tester.pumpWidget(
     ProviderScope(
+      // A fresh scope per pump, so a second pump in one test uses its own
+      // fakes instead of keeping the first scope's.
+      key: UniqueKey(),
       overrides: [
         fakeHealthSummary(
           summaryController ?? FakeHealthSummaryController(summary(platform)),
@@ -240,6 +245,91 @@ void main() {
     expect(find.bySemanticsLabel('Body loading'), findsOneWidget);
     expect(find.text('6h 12m'), findsNothing);
     expect(find.text('—'), findsNothing);
+  });
+
+  testWidgets('iOS steps of 0 today show no steps, never 0', (tester) async {
+    await pumpHealth(
+      tester,
+      overview(
+        activity: SectionData(
+          ActivityOverview(
+            stepsToday: null,
+            stepsDaily: daily(7, (i) => 7000 + i * 100),
+            activeEnergyToday: 300,
+            activeEnergyDaily: daily(7, (i) => 300),
+            stepsWeekAverage: 7300,
+          ),
+        ),
+      ),
+    );
+    expect(find.text('No steps yet today'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+    expect(find.text('0'), findsNothing);
+    expect(
+      find.bySemanticsLabel(RegExp(r'^Activity: no steps yet today')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Allow more data stays visible but disabled while busy', (
+    tester,
+  ) async {
+    final summaryController = FakeHealthSummaryController(
+      summary(HealthPlatformKind.appleHealth),
+    );
+    await pumpHealth(
+      tester,
+      overview(heart: const SectionGap(MetricGap.needsAccess)),
+      summaryController: summaryController,
+    );
+    final button = find.widgetWithText(TextButton, 'Allow more data');
+    expect(tester.widget<TextButton>(button).onPressed, isNotNull);
+    summaryController.buildGate = Completer<void>();
+    ProviderScope.containerOf(tester.element(find.byType(HealthPage)))
+        .invalidate(healthSummaryProvider);
+    await tester.pump();
+    expect(button, findsOneWidget);
+    expect(tester.widget<TextButton>(button).onPressed, isNull);
+    summaryController.buildGate!.complete();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('sleep semantics skip sleep heart rate when unknown', (
+    tester,
+  ) async {
+    await pumpHealth(
+      tester,
+      overview(
+        sleep: SectionData(
+          SleepOverview(
+            lastNight: night(),
+            score: null,
+            sleepAvgHr: null,
+            nights: [night()],
+            vsWeek: null,
+          ),
+        ),
+      ),
+    );
+    final label = tester.getSemantics(find.byType(SleepCard)).label;
+    expect(label, startsWith('Sleep: 6h 12m asleep.'));
+    expect(label, isNot(contains('heart rate')));
+    expect(label, isNot(contains('—')));
+  });
+
+  testWidgets('stage label is Core on Apple Health, Light on Health Connect', (
+    tester,
+  ) async {
+    await pumpHealth(tester, overview());
+    expect(find.text('Core'), findsOneWidget);
+    expect(find.text('Light'), findsNothing);
+    await pumpHealth(
+      tester,
+      overview(platform: HealthPlatformKind.healthConnect),
+      platform: HealthPlatformKind.healthConnect,
+    );
+    expect(find.text('Light'), findsOneWidget);
+    expect(find.text('Core'), findsNothing);
   });
 
   testWidgets('tapping Sleep navigates to /health/sleep', (tester) async {

@@ -39,10 +39,16 @@ class _HealthPageState extends ConsumerState<HealthPage>
     final state = async.value;
     final loading = async.isLoading;
     return RefreshIndicator(
-      onRefresh: () => Future.wait([
-        ref.read(healthSummaryProvider.notifier).refresh(),
-        ref.read(healthOverviewProvider.notifier).refresh(),
-      ]),
+      onRefresh: () async {
+        try {
+          await Future.wait([
+            ref.read(healthSummaryProvider.notifier).refresh(),
+            ref.read(healthOverviewProvider.notifier).refresh(),
+          ]);
+        } catch (_) {
+          // The failure shows as the overview's error state (Try again).
+        }
+      },
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
@@ -205,32 +211,33 @@ class _HealthPageState extends ConsumerState<HealthPage>
         ),
         const SizedBox(height: 14),
       ],
-      LayoutBuilder(
-        builder: (context, box) {
-          final wide = box.maxWidth >= 560;
-          // Activity and Body pair up on phones too, unless large text
-          // leaves each half too narrow.
-          final pairSmall =
-              box.maxWidth >= MediaQuery.textScalerOf(context).scale(300);
-          Widget pair(Widget a, Widget b, bool side) => side
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: a),
-                    const SizedBox(width: 10),
-                    Expanded(child: b),
-                  ],
-                )
-              : Column(children: [a, const SizedBox(height: 10), b]);
-          return Column(
-            children: [
-              pair(cards[0], cards[1], wide),
-              const SizedBox(height: 10),
-              pair(cards[2], cards[3], wide || pairSmall),
-            ],
-          );
-        },
-      ),
+      if (overview != null || !async.hasError)
+        LayoutBuilder(
+          builder: (context, box) {
+            final wide = box.maxWidth >= 560;
+            // Activity and Body pair up on phones too, unless large text
+            // leaves each half too narrow.
+            final pairSmall =
+                box.maxWidth >= MediaQuery.textScalerOf(context).scale(300);
+            Widget pair(Widget a, Widget b, bool side) => side
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: a),
+                      const SizedBox(width: 10),
+                      Expanded(child: b),
+                    ],
+                  )
+                : Column(children: [a, const SizedBox(height: 10), b]);
+            return Column(
+              children: [
+                pair(cards[0], cards[1], wide),
+                const SizedBox(height: 10),
+                pair(cards[2], cards[3], wide || pairSmall),
+              ],
+            );
+          },
+        ),
       if (state.platform == HealthPlatformKind.appleHealth &&
           hasGap(MetricGap.noData)) ...[
         const SizedBox(height: 12),

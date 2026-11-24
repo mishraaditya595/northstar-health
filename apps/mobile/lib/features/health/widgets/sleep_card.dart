@@ -85,9 +85,13 @@ class SleepCard extends StatelessWidget {
     final hrText = hr == null ? '—' : '${hr.round()} bpm';
     final source =
         '${night.source} · ${formatTimeRange(night.start, night.end)}';
+    // Apple Health calls light sleep "Core"; Health Connect calls it "Light".
+    final lightName = platform == HealthPlatformKind.appleHealth
+        ? 'Core'
+        : 'Light';
     final stats = [
       ('Deep', formatDuration(night.deep)),
-      ('Core', formatDuration(night.light)),
+      (lightName, formatDuration(night.light)),
       ('REM', formatDuration(night.rem)),
       ('Sleep HR', hrText),
     ];
@@ -96,8 +100,9 @@ class SleepCard extends StatelessWidget {
       if (trend != null)
         '${formatTrendSpoken(TrendMetric.sleepDuration, trend)}.',
       if (night.hasStages)
-        'Deep ${stats[0].$2}, core ${stats[1].$2}, REM ${stats[2].$2}, '
-            'sleep heart rate $hrText.'
+        'Deep ${stats[0].$2}, ${lightName.toLowerCase()} ${stats[1].$2}, '
+            'REM ${stats[2].$2}'
+            '${hr == null ? '' : ', sleep heart rate $hrText'}.'
       else
         'Stages need a watch or ring that records them.',
       '${night.source}, ${formatTimeRange(night.start, night.end)}.',

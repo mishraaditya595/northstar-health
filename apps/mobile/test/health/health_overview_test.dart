@@ -223,6 +223,45 @@ void main() {
     );
   });
 
+  group('steps today of 0', () {
+    void zeroToday() {
+      fake.totals[HealthTotalType.steps] = [
+        (
+          from: _day(-1).add(const Duration(hours: 10)),
+          to: _day(-1).add(const Duration(hours: 11)),
+          value: 6400,
+          source: 'Synthetic phone',
+        ),
+        (
+          from: DateTime(2026, 11, 24, 6),
+          to: DateTime(2026, 11, 24, 7),
+          value: 0,
+          source: 'Synthetic phone',
+        ),
+      ];
+    }
+
+    test('is no data on iOS', () async {
+      zeroToday();
+      final c = container();
+      final overview = (await c.read(healthOverviewProvider.future))!;
+      final activity =
+          (overview.activity as SectionData<ActivityOverview>).value;
+      expect(activity.stepsToday, isNull);
+      expect(activity.stepsDaily, isNotEmpty);
+    });
+
+    test('stays 0 on Health Connect', () async {
+      fake = FakeHealthReader(platform: HealthPlatformKind.healthConnect);
+      zeroToday();
+      final c = container();
+      final overview = (await c.read(healthOverviewProvider.future))!;
+      final activity =
+          (overview.activity as SectionData<ActivityOverview>).value;
+      expect(activity.stepsToday, 0);
+    });
+  });
+
   test('Phase 3 account', () async {
     fake
       ..needsMore = true
