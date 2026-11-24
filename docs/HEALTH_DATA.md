@@ -2,6 +2,10 @@
 
 **Authority:** [ADR-0003](adr/0003-data-cloud-health.md), with account and sync scope superseded by [ADR-0005](adr/0005-mandatory-auth-and-workout-sync.md). Mobile Flutter demo currently shows **fictional** values only.
 
+## Phase 3 scope
+
+Phase 3 is limited to a read-only daily summary of four metrics: sleep, steps, resting heart rate and weight. It keeps **no on-disk cache of health values** and stores only a per-account opt-in flag in the account's ObjectBox partition, which narrows the optional cache described below for this phase. Permission is requested only when the person taps Connect. See [ADR-0008](adr/0008-daily-health-summary-reads.md).
+
 ## Data ownership
 
 - **BeyondRep** owns detailed workouts it records: sets, reps, weights, rest, RPE/RIR, exercise snapshots and notes. Mobile ObjectBox persists them, and Supabase synchronizes authenticated, completed BeyondRep phone workouts under ADR-0005; unfinished sessions, local rest/recovery checkpoints and physiological data remain outside cloud.
