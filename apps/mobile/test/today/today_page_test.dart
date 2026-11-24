@@ -75,7 +75,7 @@ void main() {
     WidgetTester tester, {
     Future<List<WorkoutPlanRecord>>? plans,
     Future<List<WorkoutSessionRecord>>? sessions,
-    ActiveWorkoutView? unfinished,
+    AsyncValue<ActiveWorkoutView?> unfinished = const AsyncData(null),
     bool settle = true,
   }) async {
     actions = _FakeActions();
@@ -119,7 +119,7 @@ void main() {
       ProviderScope(
         overrides: [
           localNowProvider.overrideWithValue(_now),
-          activeWorkoutProvider.overrideWithValue(AsyncData(unfinished)),
+          activeWorkoutProvider.overrideWithValue(unfinished),
           workoutActionsProvider.overrideWithValue(actions),
           trainLibraryProvider.overrideWith(
             (ref) async => WorkoutLibrarySnapshot(
@@ -191,18 +191,20 @@ void main() {
     await show(
       tester,
       plans: Future.value([_plan('a', 'Push day', 2)]),
-      unfinished: ActiveWorkoutView(
-        WorkoutSessionRecord(
-          uuid: 'open',
-          name: 'Morning lift',
-          status: WorkoutStatus.paused,
-          startedAtUtc: DateTime.utc(2026, 11, 24, 7),
-          originalOffsetMinutes: 0,
-          revision: 2,
-        ),
-        const WorkoutRecoveryCheckpoint(
-          sessionUuid: 'open',
-          checkpointRevision: 1,
+      unfinished: AsyncData(
+        ActiveWorkoutView(
+          WorkoutSessionRecord(
+            uuid: 'open',
+            name: 'Morning lift',
+            status: WorkoutStatus.paused,
+            startedAtUtc: DateTime.utc(2026, 11, 24, 7),
+            originalOffsetMinutes: 0,
+            revision: 2,
+          ),
+          const WorkoutRecoveryCheckpoint(
+            sessionUuid: 'open',
+            checkpointRevision: 1,
+          ),
         ),
       ),
     );
@@ -213,6 +215,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(actions.started, isEmpty);
     expect(pushed, ['/train/workout']);
+  });
+
+  testWidgets('a broken workout recovery is not hidden behind Start', (
+    tester,
+  ) async {
+    await show(
+      tester,
+      plans: Future.value([_plan('a', 'Push day', 2)]),
+      unfinished: AsyncError(StateError('checkpoint'), StackTrace.empty),
+    );
+    expect(find.text('Workout recovery needs attention'), findsOneWidget);
+    expect(find.text('Start workout'), findsNothing);
+    await tester.tap(find.text('Open Train'));
+    await tester.pumpAndSettle();
+    expect(actions.started, isEmpty);
+    expect(pushed, ['/train']);
   });
 
   testWidgets('a failed load offers retry', (tester) async {

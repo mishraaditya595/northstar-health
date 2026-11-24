@@ -28,9 +28,10 @@ class MuscleRecovery {
 
   final Map<Muscle, double> load;
 
-  /// The logged muscle groups behind [load], by display name, with the same
-  /// 0..1 value. Exercises only record a group ("Legs"), so this, not the
-  /// individual drawn muscles, is what the card names as trained.
+  /// The logged muscle groups, by display name, with the same 0..1 value.
+  /// Exercises only record a group ("Legs"), so this, not the individual
+  /// drawn muscles, is what the card names as trained. It includes custom
+  /// groups that map to no drawn muscle.
   final Map<String, double> groups;
 
   double loadOf(Muscle muscle) => (load[muscle] ?? 0).clamp(0.0, 1.0);
@@ -81,7 +82,9 @@ class MuscleRecovery {
               for (final m in Muscle.values)
                 if (m.name.toLowerCase() == group) m,
             ];
-        if (muscles.isEmpty) continue;
+        if (group.isEmpty) continue;
+        // Named even when no drawn muscle matches, so the card never says
+        // nothing was trained after a workout of custom groups.
         final name = group[0].toUpperCase() + group.substring(1);
         if (value > (groups[name] ?? 0)) groups[name] = value;
         for (final m in muscles) {

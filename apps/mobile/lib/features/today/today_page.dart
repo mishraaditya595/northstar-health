@@ -60,7 +60,8 @@ class _TodayPageState extends ConsumerState<TodayPage> {
     final today = DateTime.utc(now.year, now.month, now.day);
     final library = ref.watch(trainLibraryProvider);
     final history = ref.watch(completedWorkoutHistoryProvider);
-    final unfinished = ref.watch(activeWorkoutProvider).value;
+    final active = ref.watch(activeWorkoutProvider);
+    final unfinished = active.value;
     return ListView(
       padding: EdgeInsets.fromLTRB(
         16,
@@ -98,6 +99,14 @@ class _TodayPageState extends ConsumerState<TodayPage> {
             actions: [
               _HeroButton('Resume', () => context.push('/train/workout')),
             ],
+          )
+        // Starting would fail while an unfinished workout can't be recovered.
+        else if (active.hasError)
+          _HeroFrame(
+            eyebrow: 'UNFINISHED WORKOUT',
+            title: 'Workout recovery needs attention',
+            subtitle: 'No local data has been deleted.',
+            actions: [_HeroButton('Open Train', () => context.go('/train'))],
           )
         // A reload keeps showing the last value instead of a spinner.
         else if (library.hasValue && history.hasValue)

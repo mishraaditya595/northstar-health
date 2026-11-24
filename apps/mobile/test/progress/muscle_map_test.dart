@@ -95,7 +95,7 @@ void main() {
       expect(recovery.loadOf(Muscle.lats), closeTo(1 - 6 / 72, .001));
     });
 
-    test('ignores old, unfinished, skipped, warm-up and unknown work', () {
+    test('ignores old, unfinished, skipped and warm-up work', () {
       final recovery = MuscleRecovery.fromWorkouts([
         _workout('old', const Duration(hours: 73), {
           'Arms': WorkoutSetStatus.completed,
@@ -109,12 +109,20 @@ void main() {
         _workout('warmup', const Duration(hours: 1), {
           'Chest': WorkoutSetStatus.completed,
         }, kind: WorkoutSetKind.warmup),
-        _workout('custom', const Duration(hours: 1), {
-          'Full body': WorkoutSetStatus.completed,
-        }),
       ], _now);
       expect(recovery.load, isEmpty);
       expect(recovery.groups, isEmpty);
+    });
+
+    test('names a custom group it cannot draw instead of saying none', () {
+      final recovery = MuscleRecovery.fromWorkouts([
+        _workout('custom', const Duration(hours: 1), {
+          'Full body': WorkoutSetStatus.completed,
+          '  ': WorkoutSetStatus.completed,
+        }),
+      ], _now);
+      expect(recovery.load, isEmpty);
+      expect(recovery.groups.keys, ['Full body']);
     });
 
     test('accepts a custom group named after a drawn muscle', () {
