@@ -73,7 +73,7 @@ class BodyCard extends StatelessWidget {
         'Body: $weightNone.'
       else
         'Body: weight $weightText kg, ${formatHealthDate(weight.day)}'
-            '${trend == null ? '' : ', ${formatTrendSpoken(TrendMetric.weight, trend)}'}.',
+            '${trend == null ? '' : ', ${formatTrendSpoken(TrendMetric.weight, trend, since: value.weightSince)}'}.',
       if (fatText != null) '$fatText.',
     ].join(' ');
     return HealthCardFrame(
@@ -88,7 +88,8 @@ class BodyCard extends StatelessWidget {
               ? weightNone
               : 'Weighed ${formatHealthDate(weight.day)}',
         ),
-        if (trend != null) healthTrendLabel(TrendMetric.weight, trend),
+        if (trend != null)
+          healthTrendLabel(TrendMetric.weight, trend, since: value.weightSince),
         if (value.weightDaily.length > 1) ...[
           const SizedBox(height: 8),
           LayoutBuilder(

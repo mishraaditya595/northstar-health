@@ -186,6 +186,7 @@ void main() {
       final body = (overview.body as SectionData<BodyOverview>).value;
       expect(body.weight!.value, 79);
       expect(body.weightVsMonth!.delta, -1);
+      expect(body.weightSince, isNull, reason: '2 Nov is 21 days earlier');
       expect(body.bodyFat, isNull);
 
       expect(fake.sleepCalls.single, (DateTime(2026, 10, 24, 18), now));
@@ -199,6 +200,18 @@ void main() {
       expect(vo2.single.$2, DateTime(2026, 8, 27));
     },
   );
+
+  test('a weight change over a few days names its start date', () async {
+    fake.series[HealthSeriesType.weight] = [
+      _sample(DateTime(2026, 11, 22, 7), 80),
+      _sample(DateTime(2026, 11, 24, 7), 79.5),
+    ];
+    final c = container();
+    final overview = (await c.read(healthOverviewProvider.future))!;
+    final body = (overview.body as SectionData<BodyOverview>).value;
+    expect(body.weightVsMonth!.delta, -0.5);
+    expect(body.weightSince, DateTime(2026, 11, 22));
+  });
 
   test('vsWeek needs at least 3 prior nights', () async {
     fake.sleep = [..._night(_day(-2)), ..._night(_day(-1)), ..._night(_day(0))];

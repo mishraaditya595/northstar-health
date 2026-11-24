@@ -6,6 +6,7 @@ import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
+import 'package:beyondrep/features/health/domain/trend.dart';
 import 'package:beyondrep/features/health/health_page.dart';
 import 'package:beyondrep/features/health/widgets/sleep_card.dart';
 import 'package:beyondrep/features/health/widgets/heart_card.dart';
@@ -331,6 +332,34 @@ void main() {
       find.text("Body fat: BeyondRep isn't allowed to read this yet."),
       findsOneWidget,
     );
+  });
+
+  testWidgets('a weight change over a few days names its start date', (
+    tester,
+  ) async {
+    await pumpHealth(
+      tester,
+      overview(
+        body: SectionData(
+          BodyOverview(
+            weight: (day: DateTime(2026, 11, 24), value: 78.4),
+            weightDaily: [
+              (day: DateTime(2026, 11, 22), value: 79.0),
+              (day: DateTime(2026, 11, 24), value: 78.4),
+            ],
+            bodyFat: null,
+            weightVsMonth: const TrendResult(
+              direction: TrendDirection.down,
+              tone: TrendTone.neutral,
+              delta: -0.6,
+            ),
+            weightSince: DateTime(2026, 11, 22),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('▼ 0.6 kg since 22 Nov'), findsOneWidget);
+    expect(find.textContaining('in 30 days'), findsNothing);
   });
 
   testWidgets('no active calories and no gap still says it needs a watch', (

@@ -62,6 +62,22 @@ void main() {
     );
     expect(
       formatTrend(
+        TrendMetric.weight,
+        r(TrendDirection.down, TrendTone.neutral, -0.9),
+        since: DateTime(2026, 11, 22),
+      ),
+      '0.9 kg since 22 Nov',
+    );
+    expect(
+      formatTrend(
+        TrendMetric.weight,
+        r(TrendDirection.flat, TrendTone.same, 0),
+        since: DateTime(2026, 11, 22),
+      ),
+      'steady since 22 Nov',
+    );
+    expect(
+      formatTrend(
         TrendMetric.sleepDuration,
         r(TrendDirection.flat, TrendTone.same, 4),
       ),

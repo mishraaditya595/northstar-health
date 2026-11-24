@@ -149,7 +149,11 @@ class _BodyView extends ConsumerWidget {
           unit: 'kg',
           trend: trend == null
               ? null
-              : healthTrendLabel(TrendMetric.weight, trend),
+              : healthTrendLabel(
+                  TrendMetric.weight,
+                  trend,
+                  since: body.weightSince,
+                ),
         ),
         HealthCaption(
           latest == null

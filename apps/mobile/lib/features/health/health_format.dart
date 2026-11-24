@@ -61,9 +61,11 @@ String formatCount(double v) => _grouped(v.round());
 
 /// Size of the change plus what it is compared with, without the arrow
 /// ([NsTrendLabel] adds it): `36m vs 7-day avg`, `3 bpm this month · better`.
-String formatTrend(TrendMetric metric, TrendResult trend) {
+/// [since] replaces a weight's "in 30 days" with the compared reading's date.
+String formatTrend(TrendMetric metric, TrendResult trend, {DateTime? since}) {
   final d = trend.delta.abs();
   if (trend.direction == TrendDirection.flat) {
+    if (since != null) return 'steady since ${_date(since)}';
     return switch (metric) {
       TrendMetric.sleepDuration => 'same as 7-day avg',
       TrendMetric.restingHr => 'steady this month',
@@ -86,6 +88,7 @@ String formatTrend(TrendMetric metric, TrendResult trend) {
     TrendMetric.sleepScore => '${d.round()}',
   };
   final context = switch (metric) {
+    _ when since != null => 'since ${_date(since)}',
     TrendMetric.sleepDuration => 'vs 7-day avg',
     TrendMetric.restingHr => 'this month',
     TrendMetric.hrv => 'vs normal',
@@ -102,13 +105,17 @@ String formatTrend(TrendMetric metric, TrendResult trend) {
 }
 
 /// [formatTrend] for screen readers: `down 36m vs 7-day avg`.
-String formatTrendSpoken(TrendMetric metric, TrendResult trend) {
+String formatTrendSpoken(
+  TrendMetric metric,
+  TrendResult trend, {
+  DateTime? since,
+}) {
   final word = switch (trend.direction) {
     TrendDirection.up => 'up',
     TrendDirection.down => 'down',
     TrendDirection.flat => 'no change,',
   };
-  return '$word ${formatTrend(metric, trend)}';
+  return '$word ${formatTrend(metric, trend, since: since)}';
 }
 
 /// The kit's arrow and colour for a domain trend.
@@ -127,12 +134,16 @@ String formatTrendSpoken(TrendMetric metric, TrendResult trend) {
 );
 
 /// Arrow + words + colour for [trend].
-NsTrendLabel healthTrendLabel(TrendMetric metric, TrendResult trend) {
+NsTrendLabel healthTrendLabel(
+  TrendMetric metric,
+  TrendResult trend, {
+  DateTime? since,
+}) {
   final t = nsTrendOf(trend);
   return NsTrendLabel(
     direction: t.direction,
     tone: t.tone,
-    text: formatTrend(metric, trend),
+    text: formatTrend(metric, trend, since: since),
   );
 }
 

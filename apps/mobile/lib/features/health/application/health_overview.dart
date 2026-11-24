@@ -122,6 +122,7 @@ class BodyOverview {
     required this.weightDaily,
     required this.bodyFat,
     required this.weightVsMonth,
+    this.weightSince,
     this.weightGap,
     this.bodyFatGap,
   });
@@ -132,6 +133,10 @@ class BodyOverview {
 
   /// Latest vs the earliest weight in the window (needs ≥2 days).
   final TrendResult? weightVsMonth;
+
+  /// The earliest weight's day when it is under 21 days before the latest,
+  /// so the change is labelled "since 22 Nov" rather than "in 30 days".
+  final DateTime? weightSince;
 
   /// As on [HeartOverview]: why a metric could not be read.
   final MetricGap? weightGap, bodyFatGap;
@@ -494,6 +499,11 @@ Future<HealthOverview> _read(
       weightVsMonth: weight.length < 2
           ? null
           : trendOf(TrendMetric.weight, weight.last.value, weight.first.value),
+      weightSince:
+          weight.length >= 2 &&
+              weight.last.day.difference(weight.first.day).inDays < 21
+          ? weight.first.day
+          : null,
       weightGap: _gapOf(weightResult),
       bodyFatGap: _gapOf(bodyFatResult),
     );
