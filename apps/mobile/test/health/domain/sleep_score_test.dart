@@ -123,4 +123,38 @@ void main() {
     final s = scoreSleep(n, priorNights: prior(7, hour: 23, minute: 50))!;
     expect(s.contributors[SleepContributor.timing]!.score, 1.0);
   });
+
+  test('bedtimeOffsetMinutes is signed across midnight', () {
+    final late = night(
+      start: DateTime(2026, 3, 11, 0, 10),
+      asleep: 450,
+      deep: 90,
+      rem: 99,
+    );
+    expect(bedtimeOffsetMinutes(late, prior(7, minute: 50)), 20);
+    final early = night(
+      start: DateTime(2026, 3, 10, 22, 30),
+      asleep: 450,
+      deep: 90,
+      rem: 99,
+    );
+    expect(bedtimeOffsetMinutes(early, prior(7)), -30);
+    expect(bedtimeOffsetMinutes(early, prior(4)), isNull);
+  });
+
+  test('usualBedtime is the median start ± median deviation', () {
+    final nights = [
+      for (final (h, m) in [(23, 0), (23, 10), (23, 20), (0, 30), (22, 50)])
+        night(
+          start: DateTime(2026, 3, h < 12 ? 11 : 10, h, m),
+          asleep: 450,
+          deep: 90,
+          rem: 99,
+        ),
+    ];
+    // Starts 22:50, 23:00, 23:10, 23:20, 00:30 -> median 23:10; deviations
+    // 20, 10, 0, 10, 80 -> 10.
+    expect(usualBedtime(nights), (minutes: 23 * 60 + 10, spread: 10));
+    expect(usualBedtime(nights.take(4).toList()), isNull);
+  });
 }

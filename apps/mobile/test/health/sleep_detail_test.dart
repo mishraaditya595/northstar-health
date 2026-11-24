@@ -204,7 +204,47 @@ void main() {
       FakeHealthReader(platform: HealthPlatformKind.healthConnect),
     );
 
-    expect(find.text('Light'), findsOneWidget);
+    expect(find.text('Light'), findsNWidgets(2));
+    expect(find.text('Core'), findsNothing);
+  });
+
+  testWidgets('Android heart rate not allowed reads Not allowed', (
+    tester,
+  ) async {
+    final reader = FakeHealthReader(platform: HealthPlatformKind.healthConnect)
+      ..seriesResults[HealthSeriesType.heartRate] = const SeriesNotAllowed();
+    await _pump(
+      tester,
+      _overview(_history(14), platform: HealthPlatformKind.healthConnect),
+      reader,
+    );
+
+    expect(find.text('Not allowed · Manage'), findsOneWidget);
+    expect(find.text('No heart rate recorded while asleep.'), findsNothing);
+  });
+
+  testWidgets('a failed heart rate read offers Try again', (tester) async {
+    final reader = FakeHealthReader()
+      ..throwOnSeries = {HealthSeriesType.heartRate};
+    await _pump(tester, _overview(_history(14)), reader);
+
+    expect(find.text("Couldn't read · Try again"), findsOneWidget);
+    expect(find.text('No heart rate recorded while asleep.'), findsNothing);
+
+    reader.throwOnSeries = {};
+    reader.series[HealthSeriesType.heartRate] = [
+      _sample(DateTime(2026, 11, 24, 3, 10), 46),
+    ];
+    await tester.tap(find.text("Couldn't read · Try again"));
+    await tester.pumpAndSettle();
+    expect(find.text('Avg 46 · lowest 46 bpm at 3:10 AM'), findsOneWidget);
+  });
+
+  testWidgets('no timing row without 5 earlier nights', (tester) async {
+    await _pump(tester, _overview(_history(3)), FakeHealthReader());
+
+    expect(find.text('Bedtime consistency'), findsNothing);
+    expect(find.text('At your usual time'), findsNothing);
   });
 
   testWidgets('extras absent hides breathing/oxygen/temperature tiles', (

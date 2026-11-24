@@ -116,12 +116,16 @@ class NsStageTimeline extends StatelessWidget {
     required this.startLabel,
     required this.endLabel,
     required this.semanticsLabel,
+    this.coreLabel = 'Core',
   });
 
   final List<({DateTime from, DateTime to, NsStage stage})> segments;
   final String startLabel;
   final String endLabel;
   final String semanticsLabel;
+
+  /// Name of the [NsStage.core] row ("Light" on Health Connect).
+  final String coreLabel;
 
   static const _rows = [
     (NsStage.awake, 'Awake'),
@@ -152,7 +156,10 @@ class NsStageTimeline extends StatelessWidget {
                       Flexible(
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
-                          child: Text(r.$2, style: small),
+                          child: Text(
+                            r.$1 == NsStage.core ? coreLabel : r.$2,
+                            style: small,
+                          ),
                         ),
                       ),
                   ],

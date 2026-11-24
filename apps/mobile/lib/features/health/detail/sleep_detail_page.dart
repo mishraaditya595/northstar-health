@@ -12,6 +12,7 @@ import '../../../core/design/inputs.dart';
 import '../../../core/design/page_header.dart';
 import '../application/health_details.dart';
 import '../application/health_overview.dart';
+import '../application/health_summary_controller.dart';
 import '../data/health_reader.dart';
 import '../domain/health_types.dart';
 import '../domain/sleep_nights.dart';
@@ -308,7 +309,7 @@ class _LastNight extends ConsumerWidget {
       children: [
         _summary(context, night, score),
         _stages(night),
-        _heartRate(extrasAsync.isLoading, extras),
+        _heartRate(ref, extrasAsync.isLoading, extras),
         if (score != null) _contributors(night, score),
         if (extras != null) ?_extras(extras),
       ],
@@ -378,6 +379,7 @@ class _LastNight extends ConsumerWidget {
       title: 'Stages',
       children: [
         NsStageTimeline(
+          coreLabel: light,
           segments: [
             for (final s in night.segments)
               if (_nsStage(s.stage) case final stage?)
@@ -427,11 +429,40 @@ class _LastNight extends ConsumerWidget {
     SleepStage.asleepUnspecified || SleepStage.inBed => null,
   };
 
-  Widget _heartRate(bool loading, SleepNightExtras? extras) {
+  Widget _heartRate(WidgetRef ref, bool loading, SleepNightExtras? extras) {
     const title = 'Heart rate while asleep';
     final samples = extras?.heartRate ?? const <HealthSample>[];
     if (loading) {
       return const _Panel(title: title, children: [_Loading()]);
+    }
+    if (extras?.heartRateGap case final gap?) {
+      // Same actions as the overview cards: Not allowed -> Manage,
+      // Couldn't read -> Try again.
+      final VoidCallback? onTap = switch (gap) {
+        MetricGap.notAllowed =>
+          () => ref.read(healthSummaryProvider.notifier).manage(),
+        MetricGap.failed => () => ref.invalidate(sleepNightExtrasProvider),
+        _ => null,
+      };
+      final unavailable = MetricUnavailable(
+        gap: gap,
+        metricName: 'heart rate',
+        platform: overview.platform,
+        onAction: () =>
+            ref.read(healthOverviewProvider.notifier).requestMoreAccess(),
+      );
+      return _Panel(
+        title: title,
+        children: [
+          if (onTap == null)
+            unavailable
+          else
+            Semantics(
+              button: true,
+              child: InkWell(onTap: onTap, child: unavailable),
+            ),
+        ],
+      );
     }
     if (samples.isEmpty) {
       return const _Panel(
@@ -470,13 +501,14 @@ class _LastNight extends ConsumerWidget {
       for (final n in sleep.nights)
         if (n.date.isBefore(night.date)) n,
     ];
-    String timing() {
-      final d = bedtimeOffset(night, prior) ?? 0;
+    String? timing() {
+      final d = bedtimeOffsetMinutes(night, prior)?.round();
+      if (d == null) return null;
       if (d == 0) return 'At your usual time';
       return d > 0 ? '$d min later than usual' : '${-d} min earlier than usual';
     }
 
-    String value(SleepContributor c, ContributorRating r) => switch (c) {
+    String? value(SleepContributor c, ContributorRating r) => switch (c) {
       SleepContributor.duration when r != ContributorRating.good =>
         'Short · ${formatDuration(night.asleep)} of ~'
             '${formatDuration(_reference)}',
@@ -507,7 +539,7 @@ class _LastNight extends ConsumerWidget {
       children: [
         for (final c in SleepContributor.values)
           if (contributors[c] case final r?)
-            _Row(labels[c]!, value(c, r.rating)),
+            if (value(c, r.rating) case final v?) _Row(labels[c]!, v),
         if (unused.isNotEmpty) ...[
           const SizedBox(height: 6),
           HealthCaption('Not scored: ${unused.join('; ')}.'),

@@ -59,17 +59,36 @@ int _minutesAfterNoon(DateTime t) {
   return (l.hour * 60 + l.minute - 720) % 1440;
 }
 
-double? _timing(SleepNight night, List<SleepNight> priorNights) {
+double _median(List<num> values) {
+  final sorted = [...values]..sort();
+  final mid = sorted.length ~/ 2;
+  return sorted.length.isOdd
+      ? sorted[mid].toDouble()
+      : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/// Minutes [night] started after (negative: before) the median start of the
+/// 14 most recent [priorNights]; null with fewer than 5 of them.
+double? bedtimeOffsetMinutes(SleepNight night, List<SleepNight> priorNights) {
   final recent = [...priorNights]..sort((a, b) => b.date.compareTo(a.date));
-  final starts = [for (final n in recent.take(14)) _minutesAfterNoon(n.start)]
-    ..sort();
+  final starts = [for (final n in recent.take(14)) _minutesAfterNoon(n.start)];
   if (starts.length < 5) return null;
-  final mid = starts.length ~/ 2;
-  final median = starts.length.isOdd
-      ? starts[mid].toDouble()
-      : (starts[mid - 1] + starts[mid]) / 2;
-  final d = (_minutesAfterNoon(night.start) - median).abs();
-  return _clamp01((120 - d) / 90);
+  return _minutesAfterNoon(night.start) - _median(starts);
+}
+
+/// Median start of [nights] as minutes after local midnight, ± the median
+/// absolute deviation in minutes; null with fewer than 5 nights.
+({int minutes, int spread})? usualBedtime(List<SleepNight> nights) {
+  if (nights.length < 5) return null;
+  final starts = [for (final n in nights) _minutesAfterNoon(n.start)];
+  final median = _median(starts);
+  final spread = _median([for (final s in starts) (s - median).abs()]);
+  return (minutes: (median.round() + 720) % 1440, spread: spread.round());
+}
+
+double? _timing(SleepNight night, List<SleepNight> priorNights) {
+  final d = bedtimeOffsetMinutes(night, priorNights);
+  return d == null ? null : _clamp01((120 - d.abs()) / 90);
 }
 
 /// On-device sleep score, or null when the night has no sleep stages.

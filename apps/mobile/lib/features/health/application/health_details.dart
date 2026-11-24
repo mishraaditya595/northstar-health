@@ -23,6 +23,7 @@ extension SleepRangeLength on SleepRange {
 class SleepNightExtras {
   const SleepNightExtras({
     required this.heartRate,
+    required this.heartRateGap,
     required this.respiratoryRate,
     required this.bloodOxygen,
     required this.wristTemp,
@@ -31,6 +32,10 @@ class SleepNightExtras {
 
   /// Samples inside last night's window, ascending.
   final List<HealthSample> heartRate;
+
+  /// Why heart rate could not be read (not allowed, failed, ...); null when
+  /// the read succeeded, even with no samples.
+  final MetricGap? heartRateGap;
 
   /// Breaths per minute, mean over the night.
   final double? respiratoryRate;
@@ -58,19 +63,37 @@ double? _meanDuring(List<HealthSample> samples, SleepNight n) => _mean([
     if (_during(s, n)) s.value,
 ]);
 
-Future<List<HealthSample>> _readSeries(
+Future<SeriesResult<List<HealthSample>>> _readResult(
   HealthReader reader,
   HealthSeriesType type,
   DateTime from,
   DateTime to,
 ) async {
   try {
-    final r = await reader.readSeries(type, from, to);
-    return r is SeriesData<List<HealthSample>> ? r.data : const [];
+    return await reader.readSeries(type, from, to);
   } catch (_) {
-    return const [];
+    return const SeriesFailed();
   }
 }
+
+List<HealthSample> _samples(SeriesResult<List<HealthSample>> r) =>
+    r is SeriesData<List<HealthSample>> ? r.data : const [];
+
+/// Tiles that only show when present treat any gap as absent.
+Future<List<HealthSample>> _readSeries(
+  HealthReader reader,
+  HealthSeriesType type,
+  DateTime from,
+  DateTime to,
+) async => _samples(await _readResult(reader, type, from, to));
+
+MetricGap? _gapOf(SeriesResult<Object?> r) => switch (r) {
+  SeriesData() => null,
+  SeriesNotAllowed() => MetricGap.notAllowed,
+  SeriesNeedsAccess() => MetricGap.needsAccess,
+  SeriesFailed() => MetricGap.failed,
+  SeriesUnsupported() => MetricGap.unsupported,
+};
 
 /// The overview and its sleep for the signed-in account; null otherwise.
 /// Watching the owner as the overview does means an account switch rebuilds
@@ -108,7 +131,12 @@ final sleepNightExtrasProvider = FutureProvider.autoDispose<SleepNightExtras?>((
   ];
   Future<List<HealthSample>> read(HealthSeriesType type, DateTime from) =>
       _readSeries(reader, type, from, night.end);
-  final hrF = read(HealthSeriesType.heartRate, night.start);
+  final hrF = _readResult(
+    reader,
+    HealthSeriesType.heartRate,
+    night.start,
+    night.end,
+  );
   final breathingF = read(HealthSeriesType.respiratoryRate, night.start);
   final oxygenF = read(HealthSeriesType.bloodOxygen, night.start);
   final tempF = read(
@@ -117,8 +145,9 @@ final sleepNightExtrasProvider = FutureProvider.autoDispose<SleepNightExtras?>((
         : HealthSeriesType.skinTemperature,
     prior.isEmpty ? night.start : prior.first.start,
   );
+  final hrResult = await hrF;
   final heartRate = [
-    for (final s in await hrF)
+    for (final s in _samples(hrResult))
       if (_during(s, night)) s,
   ]..sort((a, b) => a.from.compareTo(b.from));
   final breathing = await breathingF;
@@ -130,6 +159,7 @@ final sleepNightExtrasProvider = FutureProvider.autoDispose<SleepNightExtras?>((
   final priorTemps = [for (final n in prior) ?_meanDuring(temp, n)];
   return SleepNightExtras(
     heartRate: heartRate,
+    heartRateGap: _gapOf(hrResult),
     respiratoryRate: _meanDuring(breathing, night),
     bloodOxygen: _meanDuring(oxygen, night),
     wristTemp: wristTemp,
@@ -206,40 +236,6 @@ final sleepRangeHrProvider = FutureProvider.autoDispose
 /// First night date of [range] ending on the date of [readAt].
 DateTime currentRangeStart(DateTime readAt, SleepRange range) =>
     DateTime(readAt.year, readAt.month, readAt.day - (range.nights - 1));
-
-/// Minutes after 12:00 local, so evening and after-midnight starts are close.
-int _minutesAfterNoon(DateTime t) {
-  final l = t.toLocal();
-  return (l.hour * 60 + l.minute - 720) % 1440;
-}
-
-double _median(List<num> values) {
-  final sorted = [...values]..sort();
-  final mid = sorted.length ~/ 2;
-  return sorted.length.isOdd
-      ? sorted[mid].toDouble()
-      : (sorted[mid - 1] + sorted[mid]) / 2;
-}
-
-/// How many minutes later (negative: earlier) [night] started than the
-/// median of the 14 most recent [priorNights]; null with fewer than 5, as in
-/// the sleep score's timing.
-int? bedtimeOffset(SleepNight night, List<SleepNight> priorNights) {
-  final recent = [...priorNights]..sort((a, b) => b.date.compareTo(a.date));
-  final starts = [for (final n in recent.take(14)) _minutesAfterNoon(n.start)];
-  if (starts.length < 5) return null;
-  return (_minutesAfterNoon(night.start) - _median(starts)).round();
-}
-
-/// Median bedtime as minutes after midnight, ± the median absolute
-/// deviation; null with fewer than 5 nights.
-({int minutes, int spread})? usualBedtime(List<SleepNight> nights) {
-  if (nights.length < 5) return null;
-  final starts = [for (final n in nights) _minutesAfterNoon(n.start)];
-  final median = _median(starts);
-  final spread = _median([for (final s in starts) (s - median).abs()]);
-  return (minutes: (median.round() + 720) % 1440, spread: spread.round());
-}
 
 /// What the 7 and 30 day tabs show, computed in memory.
 class SleepRangeStats {

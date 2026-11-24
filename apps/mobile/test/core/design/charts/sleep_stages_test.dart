@@ -134,6 +134,22 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('NsStageTimeline names the core row coreLabel', (tester) async {
+    await tester.pumpWidget(
+      _host(
+        NsStageTimeline(
+          segments: _segs(),
+          startLabel: '23:00',
+          endLabel: '07:00',
+          semanticsLabel: 'Stages timeline',
+          coreLabel: 'Light',
+        ),
+      ),
+    );
+    expect(find.text('Light'), findsOneWidget);
+    expect(find.text('Core'), findsNothing);
+  });
+
   testWidgets('NsStageTimeline single and empty segments', (tester) async {
     await tester.pumpWidget(
       _host(
