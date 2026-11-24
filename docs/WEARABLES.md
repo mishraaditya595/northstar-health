@@ -1,11 +1,11 @@
-# Northstar watch architecture: watchOS and Wear OS
+# BeyondRep watch architecture: watchOS and Wear OS
 
-**Status:** Native SwiftUI/Wear OS non-recording UI scaffolds exist under `apps/watch_os/` and `apps/wear_os/`. Real workout sessions, pairing, native HealthKit/Health Services and watch-to-phone sync remain unimplemented. Based on the attached “NorthStar Health — Flutter Smartwatch Development Research” (23 October 2026). Revalidate current third-party compatibility immediately before any spike.
+**Status:** Native SwiftUI/Wear OS non-recording UI scaffolds exist under `apps/watch_os/` and `apps/wear_os/`. Real workout sessions, pairing, native HealthKit/Health Services and watch-to-phone sync remain unimplemented. Based on the attached “BeyondRep — Flutter Smartwatch Development Research” (23 October 2026). Revalidate current third-party compatibility immediately before any spike.
 
 ## Separate the three capabilities
 
-1. Flutter mobile **reads** available Apple HealthKit/Android Health Connect metrics; this alone **does not require** a Northstar watch app, nor guarantee a watch's provider has synchronized everything.
-2. A Northstar watch **UI** selects plans and logs sets. Flutter on Wear OS may be feasible; third-party FlutterWatch on watchOS remains experimental; native Compose/SwiftUI always available.
+1. Flutter mobile **reads** available Apple HealthKit/Android Health Connect metrics; this alone **does not require** a BeyondRep watch app, nor guarantee a watch's provider has synchronized everything.
+2. A BeyondRep watch **UI** selects plans and logs sets. Flutter on Wear OS may be feasible; third-party FlutterWatch on watchOS remains experimental; native Compose/SwiftUI always available.
 3. The watch **runs live background workouts** when wrist is down, screen off or Flutter UI is gone. That requires native OS services, not a widget timer or connectivity plugin.
 
 ## Required watch-first features
@@ -24,14 +24,14 @@ Stock Flutter does not officially target watchOS. `flutter_watchos` package is *
 
 ## Data ownership and backend handoff
 
-The watch owns its **recording session and local pending journal**, not the mobile database or cloud record. The phone is the first Supabase backup coordinator after a durable watch->phone ACK. Apple Watch sessions saved by the watch in HealthKit carry origin and external record references so phone **does not export a duplicate HKWorkout**. Wear OS uses exactly one designated health-platform writer, generally the Android phone. Raw heart-rate streams are not backed up to Supabase; only detailed NorthStar workout sets become authenticated completed-workout backups. Watch local data survives phone disconnect but may be lost on watch reset before acknowledged; show pending sync state. See [ADR-0003](adr/0003-data-cloud-health.md), [SYNC_PROTOCOL](SYNC_PROTOCOL.md), and [CLOUD_SYNC](CLOUD_SYNC.md).
+The watch owns its **recording session and local pending journal**, not the mobile database or cloud record. The phone is the first Supabase backup coordinator after a durable watch->phone ACK. Apple Watch sessions saved by the watch in HealthKit carry origin and external record references so phone **does not export a duplicate HKWorkout**. Wear OS uses exactly one designated health-platform writer, generally the Android phone. Raw heart-rate streams are not backed up to Supabase; only detailed BeyondRep workout sets become authenticated completed-workout backups. Watch local data survives phone disconnect but may be lost on watch reset before acknowledged; show pending sync state. See [ADR-0003](adr/0003-data-cloud-health.md), [SYNC_PROTOCOL](SYNC_PROTOCOL.md), and [CLOUD_SYNC](CLOUD_SYNC.md).
 
 ## Package decisions
 
 - `health`: candidate for **phone** permissions / HealthKit and Health Connect; not a watch workout service.
 - `watch_connectivity`: candidate cross-platform transport; not durable/exactly-once sync.
 - `flutter_watch_link`: only for specific FlutterWatch/iPhone scenario; experimental.
-- `flutter_workoutkit`: optional scheduling into Apple's Workout app, not logging Northstar strength sets.
+- `flutter_workoutkit`: optional scheduling into Apple's Workout app, not logging BeyondRep strength sets.
 - `flutter_watchos`: UI helpers usable only with approved custom watchOS runtime.
 - No watch-specific runtime package added to `pubspec.yaml` until PoC validated.
 

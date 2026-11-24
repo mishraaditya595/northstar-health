@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/design/inputs.dart';
-import '../../core/design/northstar_theme.dart';
+import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 import '../../core/units/load_units.dart';
@@ -401,7 +401,7 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
         ],
         const SizedBox(height: 18),
         Text(
-          'Only finished NorthStar workouts appear here. '
+          'Only finished BeyondRep workouts appear here. '
           'Paused, discarded and imported health workouts are excluded. '
           'Cloud backup is not available in Phase 1.',
           style: theme.textTheme.bodySmall,
@@ -440,8 +440,8 @@ class _SummaryCard extends StatelessWidget {
             height: 27,
             decoration: BoxDecoration(
               color: Theme.of(context).brightness == Brightness.dark
-                  ? NorthstarPalette.forestSoftDark
-                  : NorthstarPalette.forestSoftLight,
+                  ? BeyondRepPalette.forestSoftDark
+                  : BeyondRepPalette.forestSoftLight,
               borderRadius: BorderRadius.circular(9),
             ),
             child: Icon(

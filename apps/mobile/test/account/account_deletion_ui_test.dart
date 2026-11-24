@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/core/design/northstar_theme.dart';
-import 'package:northstar_health/features/account/account_auth_provider.dart';
-import 'package:northstar_health/features/account/account_sync_page.dart';
-import 'package:northstar_health/features/account/account_sign_in_page.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_workout_outbox.dart';
+import 'package:beyondrep/core/design/beyondrep_theme.dart';
+import 'package:beyondrep/features/account/account_auth_provider.dart';
+import 'package:beyondrep/features/account/account_sync_page.dart';
+import 'package:beyondrep/features/account/account_sign_in_page.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_workout_outbox.dart';
 
 import '../support/fake_account_auth.dart';
 
@@ -167,7 +167,7 @@ void main() {
           }),
         ],
         child: MaterialApp(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           home: const AccountSyncPage(),
         ),
       ),
@@ -226,7 +226,7 @@ void main() {
       ProviderScope(
         overrides: [accountAuthControllerProvider.overrideWithValue(auth)],
         child: MaterialApp(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           home: const AccountSyncPage(),
         ),
       ),

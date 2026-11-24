@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// The only text input for NorthStar screens, dialogs and sheets. Look comes
-/// from `NorthstarTheme` (filled, rounded, accent focus ring); do not restyle
+/// The only text input for BeyondRep screens, dialogs and sheets. Look comes
+/// from `BeyondRepTheme` (filled, rounded, accent focus ring); do not restyle
 /// per screen and do not use a raw `TextField`/`TextFormField` in features.
 class NsTextField extends StatelessWidget {
   const NsTextField({

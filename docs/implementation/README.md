@@ -1,4 +1,4 @@
-# NorthStar implementation notes
+# BeyondRep implementation notes
 
 The [roadmap](../ROADMAP.md) tracks milestone state. These notes describe source behavior, data ownership, PR evidence and outstanding QA; they are not production approval. **As of 27 October 2026, P2-01–P2-07 are merged in source; P2-08 release validation has not passed.**
 

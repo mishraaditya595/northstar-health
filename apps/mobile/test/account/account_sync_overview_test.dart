@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/features/account/account_sync_overview.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_workout_outbox.dart';
+import 'package:beyondrep/features/account/account_sync_overview.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_workout_outbox.dart';
 
 void main() {
   test('unique workout flags count once per most severe state', () {

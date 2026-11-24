@@ -26,7 +26,7 @@ class WearMainActivity : ComponentActivity() {
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("NORTHSTAR", fontWeight = FontWeight.Bold)
+                Text("BEYONDREP", fontWeight = FontWeight.Bold)
                 Text("Workout tracking coming soon")
                 Text("Preview only — no workout is recording")
             }

@@ -1,4 +1,4 @@
-# NorthStar Health - Codemagic CI/CD workflow skeletons
+# BeyondRep - Codemagic CI/CD workflow skeletons
 # https://docs.codemagic.io/yaml-basic-configuration/yaml-getting-started/
 #
 # Other mobile/watch workflows are intentionally failing templates. The two real
@@ -135,7 +135,7 @@ workflows:
     # INTERNAL TestFlight testing; never submits to Beta App Review or the App
     # Store. Setup and limits: docs/IOS_TESTFLIGHT_CODEMAGIC.md.
     integrations:
-      app_store_connect: NorthStar App Store Connect
+      app_store_connect: BeyondRep App Store Connect
     environment:
       flutter: "3.47.7"
       xcode: latest
@@ -220,7 +220,7 @@ workflows:
       xcode: latest
     # No triggering block: manual-only; do NOT add push/PR triggers yet.
     # TODO command example (commented-out; verify before enabling):
-    #   xcodegen generate --spec project.yml && xcodebuild -project NorthStarWatch.xcodeproj -scheme NorthStarWatch -sdk watchsimulator CODE_SIGNING_ALLOWED=NO build
+    #   xcodegen generate --spec project.yml && xcodebuild -project BeyondRepWatch.xcodeproj -scheme BeyondRepWatch -sdk watchsimulator CODE_SIGNING_ALLOWED=NO build
     scripts:
       - name: "Not configured - do not treat as a build"
         script: |

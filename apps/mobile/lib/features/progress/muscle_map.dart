@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/design/northstar_theme.dart';
+import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
 import 'muscle_recovery.dart';
 

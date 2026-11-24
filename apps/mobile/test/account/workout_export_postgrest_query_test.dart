@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:northstar_health/features/account/workout_history_export.dart';
+import 'package:beyondrep/features/account/workout_history_export.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../support/fake_account_auth.dart';
@@ -18,7 +18,7 @@ void main() {
     () async {
       final requests = <Uri>[];
       final client = SupabaseClient(
-        'https://northstar.invalid',
+        'https://beyondrep.invalid',
         'test-publishable-key',
         httpClient: MockClient((req) async {
           requests.add(req.url);
@@ -58,7 +58,7 @@ void main() {
   test('real head query includes tombstones and is owner scoped', () async {
     final requests = <Uri>[];
     final client = SupabaseClient(
-      'https://northstar.invalid',
+      'https://beyondrep.invalid',
       'test-publishable-key',
       httpClient: MockClient((req) async {
         requests.add(req.url);

@@ -5,7 +5,7 @@ merge block for P2-07b PR #27. It does not assert the feature is safe to ship
 or that native / hosted checks have already passed.
 
 **Owner:** Human maintainer, using disposable test accounts and synthetic
-completed NorthStar phone workouts only. Record hardware/OS builds and results
+completed BeyondRep phone workouts only. Record hardware/OS builds and results
 before approving a release. Never commit test JWTs, export files or PII.
 
 ## 1. Bounded export / peak-memory measurement
@@ -36,7 +36,7 @@ measured** in app heap or process RSS on hardware.
   uploads, custom plans or physiological data. Check cancellation creates no
   claimed successful export.
 - Confirm peak memory stays flat as history grows, the temporary
-  `northstar-export-*` folder is gone after save, cancel and failure, and a
+  `beyondrep-export-*` folder is gone after save, cancel and failure, and a
   process kill mid-stream leaves no folder after next launch. Lock the iPhone
   mid-stream: the export must fail, never report saved.
 - The user-selected SAF/iOS destination can be unencrypted or backed up by
@@ -63,7 +63,7 @@ cannot be confused:
    best-effort cleanup of the selected incomplete document. Repeat when the
    provider refuses `DocumentsContract.deleteDocument` or URI permission
    has expired; document the remaining external partial-file risk (not
-   controllable by NorthStar).
+   controllable by BeyondRep).
 3. Restart while an abandoned-export cleanup is active. Attempt a new export.
    It must be blocked until the cleanup finishes; the old marker must not
    clear or delete the new export's marker/file.
@@ -83,7 +83,7 @@ review, **not physical device results**.
   cancelled sheet, dismissal without delegate callback, failed presentation
   and app kill while the picker is open.
 - Confirm temporary JSON uses atomic **complete file protection** at first
-  write and the app cleans its own `northstar-export-*` temp folders after
+  write and the app cleans its own `beyondrep-export-*` temp folders after
   completion and on next launch. Confirm it never touches ObjectBox folders.
 - Check re-entry after an interrupted presentation and verify the Account
   export action does not remain stuck on “Preparing export…”.

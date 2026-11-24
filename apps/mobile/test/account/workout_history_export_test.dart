@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/features/account/workout_history_export.dart';
+import 'package:beyondrep/features/account/workout_history_export.dart';
 
 import '../support/fake_account_auth.dart';
 import '../support/workout_export_fakes.dart';

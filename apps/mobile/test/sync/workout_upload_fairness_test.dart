@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_workout_outbox.dart';
-import 'package:northstar_health/features/workouts/data/workout_entities.dart';
-import 'package:northstar_health/objectbox.g.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_workout_outbox.dart';
+import 'package:beyondrep/features/workouts/data/workout_entities.dart';
+import 'package:beyondrep/objectbox.g.dart';
 
 String uuid(int n) =>
     '00000000-0000-4000-8000-${n.toRadixString(16).padLeft(12, '0')}';
@@ -42,7 +42,7 @@ void main() {
   );
 
   setUp(() {
-    dir = Directory.systemTemp.createTempSync('northstar-upload-fair-');
+    dir = Directory.systemTemp.createTempSync('beyondrep-upload-fair-');
     store = Store(getObjectBoxModel(), directory: dir.path);
     outbox = ObjectBoxWorkoutOutbox(store);
   });
@@ -302,7 +302,7 @@ void main() {
 
   test('ordered scan remains owner-isolated across two physical Stores', () {
     store.box<WorkoutSyncOutboxEntity>().put(operation(id: 1));
-    final otherDir = Directory.systemTemp.createTempSync('northstar-fair-b-');
+    final otherDir = Directory.systemTemp.createTempSync('beyondrep-fair-b-');
     final other = Store(getObjectBoxModel(), directory: otherDir.path);
     try {
       final otherOutbox = ObjectBoxWorkoutOutbox(other);

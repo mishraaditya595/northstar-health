@@ -1,6 +1,6 @@
-# Contributing to NorthStar Health
+# Contributing to BeyondRep
 
-Thanks for helping. NorthStar handles workout and account data, so a few areas need extra care. This page tells you what to work on, how to set up, and what a mergeable PR looks like.
+Thanks for helping. BeyondRep handles workout and account data, so a few areas need extra care. This page tells you what to work on, how to set up, and what a mergeable PR looks like.
 
 ## Before you start
 

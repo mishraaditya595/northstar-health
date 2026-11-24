@@ -13,7 +13,7 @@ class LayoutTest(unittest.TestCase):
             "apps/mobile/lib/main.dart",
             "apps/mobile/test/app_test.dart",
             "apps/watch_os/project.yml",
-            "apps/watch_os/Sources/App/NorthStarWatchApp.swift",
+            "apps/watch_os/Sources/App/BeyondRepWatchApp.swift",
             "apps/wear_os/app/build.gradle.kts",
             "apps/wear_os/app/src/main/AndroidManifest.xml",
             "contracts/workout_sync/v1/envelope.schema.json",

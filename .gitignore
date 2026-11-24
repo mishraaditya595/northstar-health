@@ -37,7 +37,7 @@ ios/Flutter/flutter_export_environment.sh
 **/xcuserdata/
 apps/mobile/ios/Flutter/Generated.xcconfig
 apps/mobile/ios/Flutter/flutter_export_environment.sh
-apps/watch_os/NorthStarWatch.xcodeproj/
+apps/watch_os/BeyondRepWatch.xcodeproj/
 
 # Test-only ObjectBox macOS native library; downloaded and removed by script.
 apps/mobile/libobjectbox.dylib

@@ -1,4 +1,4 @@
-# NorthStar Supabase — development backend
+# BeyondRep Supabase — development backend
 
 **Status (27 October 2026):** 11 ordered SQL migrations and the P2-07c `delete-account` Edge Function are **merged in source**. P2-01–P2-07 implementation is complete in the repository, but hosted development/production deployment, real-user Auth/RLS and second-device validation, and deletion security acceptance are **not established**. Historical observations of a connected development instance recorded six applied P2-01 versions; this is **not a current migration audit**. Reconcile against the actual hosted `supabase_migrations.schema_migrations` before deploying. See [CLOUD_SYNC.md](../docs/CLOUD_SYNC.md), [ROADMAP.md](../docs/ROADMAP.md), [RELEASE.md](../docs/RELEASE.md) and [ADR-0005](../docs/adr/0005-mandatory-auth-and-workout-sync.md).
 

@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/design/stats.dart';
 import '../../core/design/section.dart';
-import '../../core/design/northstar_theme.dart';
+import '../../core/design/beyondrep_theme.dart';
 import 'domain/progress_overview.dart';
 import '../../core/units/load_units.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';

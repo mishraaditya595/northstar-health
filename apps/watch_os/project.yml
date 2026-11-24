@@ -1,4 +1,4 @@
-name: NorthStarWatch
+name: BeyondRepWatch
 options:
   bundleIdPrefix: dev.northstar
   deploymentTarget:
@@ -8,7 +8,7 @@ settings:
     SWIFT_VERSION: "5.9"
     CODE_SIGN_STYLE: Automatic
 targets:
-  NorthStarWatch:
+  BeyondRepWatch:
     type: application
     platform: watchOS
     deploymentTarget: "10.0"
@@ -19,6 +19,6 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: dev.northstar.northstarwatch.dev
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_WKWatchOnly: YES
-        INFOPLIST_KEY_CFBundleDisplayName: NorthStar
+        INFOPLIST_KEY_CFBundleDisplayName: BeyondRep
         TARGETED_DEVICE_FAMILY: "4"
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: NO

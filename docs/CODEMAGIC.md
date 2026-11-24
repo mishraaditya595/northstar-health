@@ -1,4 +1,4 @@
-# NorthStar Codemagic CI/CD and manual Supabase deployments
+# BeyondRep Codemagic CI/CD and manual Supabase deployments
 
 **Status:** 10 of the original 11 app/watch workflows remain intentionally failing, manual templates. `mobile-ios-testflight` is now a real **manual** job that signs the iOS app and uploads it for **internal** TestFlight testing only; see [iOS TestFlight runbook](IOS_TESTFLIGHT_CODEMAGIC.md). It has not yet run on hosted Codemagic. Two additional **manual Supabase workflows** handle database migrations and selected Edge Functions via build inputs, using a private Codemagic group bound to a single target project. None has been run on hosted Codemagic or used to deploy a database. See [Supabase Codemagic deployment runbook](SUPABASE_CODEMAGIC_DEPLOY.md). No other mobile build, signing or store release is enabled.
 

@@ -2,7 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-import '../core/design/northstar_theme.dart';
+import '../core/design/beyondrep_theme.dart';
 
 /// Compact-width bottom nav: floating pill from the Performance V2 prototype
 /// (`.bottom-nav` / `.nav-item` in prototypes/performance-v2/performance-v2.css).
@@ -25,9 +25,9 @@ class FloatingNavBar extends StatelessWidget {
     final border = dark ? const Color(0x33B2C7C2) : const Color(0x2150645F);
     final inactive = dark ? const Color(0xFF9DAAAA) : const Color(0xFF647674);
     final activeBackground = dark
-        ? NorthstarPalette.lime.withValues(alpha: .12)
+        ? BeyondRepPalette.lime.withValues(alpha: .12)
         : const Color(0xFFE0EACA);
-    final activeColor = dark ? NorthstarPalette.lime : const Color(0xFF273C29);
+    final activeColor = dark ? BeyondRepPalette.lime : const Color(0xFF273C29);
 
     return SafeArea(
       top: false,

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NorthStar workout event envelope, v1",
+  "title": "BeyondRep workout event envelope, v1",
   "description": "Portable watch-to-phone event (not a cloud workout aggregate).",
   "type": "object",
   "required": [

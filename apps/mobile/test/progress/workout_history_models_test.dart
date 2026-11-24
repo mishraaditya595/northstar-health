@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/core/units/load_units.dart';
-import 'package:northstar_health/features/progress/domain/workout_history_models.dart';
-import 'package:northstar_health/features/workouts/domain/workout_models.dart';
+import 'package:beyondrep/core/units/load_units.dart';
+import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 
 WorkoutSetRecord set({
   required String id,

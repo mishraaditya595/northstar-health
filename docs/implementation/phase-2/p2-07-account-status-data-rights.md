@@ -68,7 +68,7 @@ Required by ADR-0005 before release. Implementation and review requirements:
    exports from stale startup cleanup. Native iOS
    atomic write uses complete file protection (without redundant after-write
    protection changes) and stale temporary export folders are purged on launch. Both pickers require physical-device QA.
-   The user-selected destination is outside NorthStar's control; warn that
+   The user-selected destination is outside BeyondRep's control; warn that
    the exported file is sensitive. Test native delivery on physical iOS
    and Android before release.
 4. Dart synthetic unit/widget tests cover empty accounts, 1,201 workouts

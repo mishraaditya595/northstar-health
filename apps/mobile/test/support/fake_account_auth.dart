@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:northstar_health/features/account/account_auth_controller.dart';
+import 'package:beyondrep/features/account/account_auth_controller.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 const accountA = '00000000-0000-4000-8000-0000000000a1';

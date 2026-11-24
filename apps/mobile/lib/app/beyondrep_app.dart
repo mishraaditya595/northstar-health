@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../core/design/northstar_theme.dart';
+import '../core/design/beyondrep_theme.dart';
 import '../features/health/health_page.dart';
 import '../features/account/account_sync_page.dart';
 import '../features/sync/workout_conflict_review_page.dart';
@@ -107,18 +107,18 @@ final routerProvider = Provider<GoRouter>((ref) {
   return router;
 });
 
-class NorthstarApp extends ConsumerWidget {
-  const NorthstarApp({super.key});
+class BeyondRepApp extends ConsumerWidget {
+  const BeyondRepApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeControllerProvider);
     return MaterialApp.router(
-      title: 'Northstar Health',
+      title: 'BeyondRep',
       debugShowCheckedModeBanner: false,
       themeMode: mode,
-      theme: NorthstarTheme.build(Brightness.light),
-      darkTheme: NorthstarTheme.build(Brightness.dark),
+      theme: BeyondRepTheme.build(Brightness.light),
+      darkTheme: BeyondRepTheme.build(Brightness.dark),
       routerConfig: ref.watch(routerProvider),
     );
   }

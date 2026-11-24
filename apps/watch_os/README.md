@@ -1,4 +1,4 @@
-# NorthStar Apple Watch (watchOS)
+# BeyondRep Apple Watch (watchOS)
 
 **Current state: independently located SwiftUI source scaffold and reproducible XcodeGen project spec, not a shipped or embedded watch companion.** Screen is an explicit placeholder; workout capture, pairing, HealthKit entitlements and durable event storage are not enabled.
 
@@ -11,11 +11,11 @@ On a Mac with Xcode and XcodeGen:
 ```sh
 cd apps/watch_os
 xcodegen generate --spec project.yml
-xcodebuild -list -project NorthStarWatch.xcodeproj
+xcodebuild -list -project BeyondRepWatch.xcodeproj
 # Inspect available watchOS simulators/SDKs before selecting a build destination.
 ```
 
-The generated `NorthStarWatch.xcodeproj` from this standalone spec is **not** the embedded companion configuration. A later packaging PR must test actual iPhone + watch pairing and TestFlight archive. `Sources/` should remain the single source in both projects.
+The generated `BeyondRepWatch.xcodeproj` from this standalone spec is **not** the embedded companion configuration. A later packaging PR must test actual iPhone + watch pairing and TestFlight archive. `Sources/` should remain the single source in both projects.
 
 ## Planned modules
 

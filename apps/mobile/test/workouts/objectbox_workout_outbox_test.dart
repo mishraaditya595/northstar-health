@@ -4,14 +4,14 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/core/ids/uuid_factory.dart';
-import 'package:northstar_health/core/units/load_units.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_live_workout_engine.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_workout_outbox.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_workout_repository.dart';
-import 'package:northstar_health/features/workouts/data/workout_entities.dart';
-import 'package:northstar_health/features/workouts/domain/workout_models.dart';
-import 'package:northstar_health/objectbox.g.dart';
+import 'package:beyondrep/core/ids/uuid_factory.dart';
+import 'package:beyondrep/core/units/load_units.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_live_workout_engine.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_workout_outbox.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_workout_repository.dart';
+import 'package:beyondrep/features/workouts/data/workout_entities.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
+import 'package:beyondrep/objectbox.g.dart';
 
 import 'fixtures/objectbox_pre_outbox.g.dart' as pre_outbox;
 import 'fixtures/objectbox_pre_restore_skip.g.dart' as pre_restore_skip;
@@ -34,7 +34,7 @@ void main() {
   late ObjectBoxWorkoutRepository repository;
 
   setUp(() {
-    directory = Directory.systemTemp.createTempSync('northstar-outbox-');
+    directory = Directory.systemTemp.createTempSync('beyondrep-outbox-');
     store = Store(getObjectBoxModel(), directory: directory.path);
     outbox = ObjectBoxWorkoutOutbox(store, uuidFactory: SingleUuid());
     engine = ObjectBoxLiveWorkoutEngine(store, outbox: outbox);
@@ -432,7 +432,7 @@ void main() {
 
   test('populated owner A/B stores remain isolated across reopen', () {
     final otherDirectory = Directory.systemTemp.createTempSync(
-      'northstar-other-owner-',
+      'beyondrep-other-owner-',
     );
     try {
       final active = withSet();
@@ -547,7 +547,7 @@ void main() {
 
   test('exact base (PR14) DB schema upgrades with unchanged IDs', () {
     final upgradeDir = Directory.systemTemp.createTempSync(
-      'northstar-outbox-upgrade-',
+      'beyondrep-outbox-upgrade-',
     );
     try {
       final old = Store(
@@ -584,7 +584,7 @@ void main() {
 
   test('pre-skip (PR #22 18aa4e4) DB upgrades and keeps restore state', () {
     final upgradeDir = Directory.systemTemp.createTempSync(
-      'northstar-skip-upgrade-',
+      'beyondrep-skip-upgrade-',
     );
     try {
       final old = Store(

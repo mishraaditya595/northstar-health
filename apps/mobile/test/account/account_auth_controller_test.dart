@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/core/storage/account_store.dart';
-import 'package:northstar_health/features/account/account_gate.dart';
+import 'package:beyondrep/core/storage/account_store.dart';
+import 'package:beyondrep/features/account/account_gate.dart';
 
 import '../support/fake_account_auth.dart';
 

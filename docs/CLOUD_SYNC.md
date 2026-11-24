@@ -1,4 +1,4 @@
-# NorthStar authenticated completed-workout synchronization
+# BeyondRep authenticated completed-workout synchronization
 
 **Policy:** [ADR-0005](adr/0005-mandatory-auth-and-workout-sync.md) (accepted by the owner 2026-10-25) supersedes ADR-0003's optional-login and guest assumptions and keeps its completed-only backup scope. This is a *new product decision*, not an observation about the shipping Flutter app.
 
@@ -12,9 +12,9 @@ The in-app flow offers cloud-history JSON export before deletion, then sends an 
 
 ## Data classification and account gating
 
-Everyone must register/sign in before using workout features (no guest mode); first authentication requires internet. A securely authenticated account may continue offline, save locally and enqueue changes until the network and auth session can resume. Supabase Auth anonymous accounts are not valid NorthStar accounts.
+Everyone must register/sign in before using workout features (no guest mode); first authentication requires internet. A securely authenticated account may continue offline, save locally and enqueue changes until the network and auth session can resume. Supabase Auth anonymous accounts are not valid BeyondRep accounts.
 
-Cloud accepts *versioned NorthStar-authored phone workouts* only in `completed` state (finished by the user), and deletion tombstones. In-progress, paused and discarded sessions are rejected by the RPC and the table constraint. One aggregate contains session metadata, exercise name/muscle/equipment snapshots, and per-set position/status/type/reps/gram load/unit/RPE/completion time. **This is not a full active-workout checkpoint or plan backup.**
+Cloud accepts *versioned BeyondRep-authored phone workouts* only in `completed` state (finished by the user), and deletion tombstones. In-progress, paused and discarded sessions are rejected by the RPC and the table constraint. One aggregate contains session metadata, exercise name/muscle/equipment snapshots, and per-set position/status/type/reps/gram load/unit/RPE/completion time. **This is not a full active-workout checkpoint or plan backup.**
 
 **Never upload:** HealthKit/Health Connect physiological data (HR, HRV, sleep, steps, SpO₂, GPS, etc), imported workouts, raw watch sensor streams, full ObjectBox databases, platform access tokens, app telemetry or device secrets; local recovery timers and editor state; custom plans/templates/catalogs or preferences. Any expansion to exercise notes/durations/RIR requires an explicit versioned DTO change plus privacy/tests.
 

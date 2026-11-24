@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'northstar_theme.dart';
+import 'beyondrep_theme.dart';
 
 class SectionHeading extends StatelessWidget {
   const SectionHeading(this.title, {this.action, super.key});

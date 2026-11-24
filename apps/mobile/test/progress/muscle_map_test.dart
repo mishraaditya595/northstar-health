@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/features/progress/muscle_map.dart';
-import 'package:northstar_health/features/progress/muscle_recovery.dart';
+import 'package:beyondrep/features/progress/muscle_map.dart';
+import 'package:beyondrep/features/progress/muscle_recovery.dart';
 
 void main() {
   test('sample data is flagged and clamps unknown muscles to recovered', () {

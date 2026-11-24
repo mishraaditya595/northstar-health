@@ -53,7 +53,7 @@ jobs:
       - name: Build unsigned watchOS Simulator proof target
         working-directory: apps/watch_os
         run: |
-          xcodebuild -project NorthStarWatch.xcodeproj -scheme NorthStarWatch \
+          xcodebuild -project BeyondRepWatch.xcodeproj -scheme BeyondRepWatch \
             -configuration Debug -sdk watchsimulator \
             -destination 'generic/platform=watchOS Simulator' \
             CODE_SIGNING_ALLOWED=NO build

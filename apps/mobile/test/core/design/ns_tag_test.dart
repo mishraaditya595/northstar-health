@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/core/design/northstar_theme.dart';
-import 'package:northstar_health/core/design/page_header.dart';
+import 'package:beyondrep/core/design/beyondrep_theme.dart';
+import 'package:beyondrep/core/design/page_header.dart';
 
 void main() {
   for (final brightness in Brightness.values) {
@@ -10,7 +10,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: NorthstarTheme.build(brightness),
+          theme: BeyondRepTheme.build(brightness),
           home: const Scaffold(body: NsTag('Needs review', warning: true)),
         ),
       );
@@ -18,8 +18,8 @@ void main() {
       expect(
         text.style!.color,
         brightness == Brightness.dark
-            ? NorthstarPalette.amberDark
-            : NorthstarPalette.amberLight,
+            ? BeyondRepPalette.amberDark
+            : BeyondRepPalette.amberLight,
       );
     });
   }

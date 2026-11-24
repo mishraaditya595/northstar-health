@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/core/ids/uuid_factory.dart';
-import 'package:northstar_health/core/units/load_units.dart';
-import 'package:northstar_health/features/workouts/domain/workout_models.dart';
+import 'package:beyondrep/core/ids/uuid_factory.dart';
+import 'package:beyondrep/core/units/load_units.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 
 void main() {
   test('UUIDs are distinct RFC-4122 version 4 strings', () {

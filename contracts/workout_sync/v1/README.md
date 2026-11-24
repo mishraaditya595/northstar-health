@@ -1,4 +1,4 @@
-# NorthStar workout sync wire protocol v1
+# BeyondRep workout sync wire protocol v1
 
 **Source of truth:** [envelope.schema.json](envelope.schema.json). This schema is the **watch -> phone** event envelope for planned future integration, not proof that either watch app currently transmits events. Implement domain operations/repositories separately from platform transport.
 

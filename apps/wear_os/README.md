@@ -1,4 +1,4 @@
-# NorthStar Wear OS
+# BeyondRep Wear OS
 
 A **native Kotlin/Jetpack Compose watch application foundation**. The current activity displays a clearly labelled non-recording preview. No Health Services session, offline workout logger, wearable pairing or physiological data collection exists yet.
 

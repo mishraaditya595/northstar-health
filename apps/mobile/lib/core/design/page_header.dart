@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme_controller.dart';
-import 'northstar_theme.dart';
+import 'beyondrep_theme.dart';
 
 /// Prototype `.app-topbar`: eyebrow, large title, theme switch and avatar.
 class PageHeader extends ConsumerWidget {
@@ -66,7 +66,7 @@ class PageHeader extends ConsumerWidget {
           height: 44,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: dark ? NorthstarPalette.lime : const Color(0xFFE5EDDF),
+            color: dark ? BeyondRepPalette.lime : const Color(0xFFE5EDDF),
             border: dark ? null : Border.all(color: const Color(0xFFD2DFD0)),
             borderRadius: BorderRadius.circular(16),
           ),
@@ -75,7 +75,7 @@ class PageHeader extends ConsumerWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w900,
-              color: dark ? NorthstarPalette.heroDark : const Color(0xFF245137),
+              color: dark ? BeyondRepPalette.heroDark : const Color(0xFF245137),
             ),
           ),
         ),
@@ -153,8 +153,8 @@ class NsListCard extends StatelessWidget {
                 height: 42,
                 decoration: BoxDecoration(
                   color: dark
-                      ? NorthstarPalette.forestSoftDark
-                      : NorthstarPalette.forestSoftLight,
+                      ? BeyondRepPalette.forestSoftDark
+                      : BeyondRepPalette.forestSoftLight,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(icon, size: 20, color: theme.colorScheme.primary),
@@ -207,11 +207,11 @@ class NsTag extends StatelessWidget {
       decoration: BoxDecoration(
         color: warning
             ? (dark
-                  ? NorthstarPalette.amberSoftDark
-                  : NorthstarPalette.amberSoftLight)
+                  ? BeyondRepPalette.amberSoftDark
+                  : BeyondRepPalette.amberSoftLight)
             : (dark
-                  ? NorthstarPalette.forestSoftDark
-                  : NorthstarPalette.forestSoftLight),
+                  ? BeyondRepPalette.forestSoftDark
+                  : BeyondRepPalette.forestSoftLight),
         borderRadius: BorderRadius.circular(99),
       ),
       child: Text(
@@ -221,9 +221,9 @@ class NsTag extends StatelessWidget {
           fontWeight: FontWeight.w800,
           color: warning
               ? (dark
-                    ? NorthstarPalette.amberDark
-                    : NorthstarPalette.amberLight)
-              : (dark ? NorthstarPalette.lime : const Color(0xFF253F2C)),
+                    ? BeyondRepPalette.amberDark
+                    : BeyondRepPalette.amberLight)
+              : (dark ? BeyondRepPalette.lime : const Color(0xFF253F2C)),
         ),
       ),
     );
@@ -252,7 +252,7 @@ class InsightCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(15, 14, 15, 14),
       decoration: BoxDecoration(
-        color: dark ? NorthstarPalette.darkSoft : NorthstarPalette.lightSoft,
+        color: dark ? BeyondRepPalette.darkSoft : BeyondRepPalette.lightSoft,
         borderRadius: BorderRadius.circular(22),
       ),
       child: Row(
@@ -262,16 +262,16 @@ class InsightCard extends StatelessWidget {
             height: 30,
             decoration: BoxDecoration(
               color: dark
-                  ? NorthstarPalette.sleepSoftDark
-                  : NorthstarPalette.sleepSoftLight,
+                  ? BeyondRepPalette.sleepSoftDark
+                  : BeyondRepPalette.sleepSoftLight,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               icon,
               size: 16,
               color: dark
-                  ? NorthstarPalette.sleepDark
-                  : NorthstarPalette.sleepLight,
+                  ? BeyondRepPalette.sleepDark
+                  : BeyondRepPalette.sleepLight,
             ),
           ),
           const SizedBox(width: 12),

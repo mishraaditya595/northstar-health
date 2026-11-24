@@ -1,4 +1,4 @@
-# NorthStar Semgrep target exclusions.
+# BeyondRep Semgrep target exclusions.
 # A root .semgrepignore overrides Semgrep's built-in default ignore list.
 # Preserve the built-in defaults below (as reviewed in Semgrep's
 # src/targeting/default.semgrepignore) and keep Git's ignore rules.
@@ -34,6 +34,6 @@ tests/
 testsuite/
 *_test.go
 
-# NorthStar: generated Dart serializers and frozen design reference
+# BeyondRep: generated Dart serializers and frozen design reference
 **/*.g.dart
 /prototypes/performance-v2/

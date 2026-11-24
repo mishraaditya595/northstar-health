@@ -8,7 +8,7 @@ the final release record. Never merge/deploy automatically.
 
 ## Current hosted inventory (read-only observation, 27 October 2026)
 
-The connected **NorthStar-Health** Supabase project returned:
+The connected **BeyondRep-Health** Supabase project returned:
 
 **Inventory provenance:** live read-only Supabase integration calls to
 `list_migrations`, `list_edge_functions`, `list_tables` (public and

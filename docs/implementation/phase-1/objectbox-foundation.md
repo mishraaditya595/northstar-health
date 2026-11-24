@@ -36,7 +36,7 @@ with `docs/OBJECTBOX.md`'s rule against assigning guest data silently.
 
 **Phase 2 association/backfill proposal (not implemented in this PR):**
 1. Require login and **explicit consent** to associate this device's existing
-   completed NorthStar sessions with the signed-in account.
+   completed BeyondRep sessions with the signed-in account.
 2. In one ObjectBox transaction, mark the eligible completed session(s) as
    associated with that owner and enqueue idempotent, versioned portable
    aggregate snapshots in a durable outbox, with stable operation IDs.

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/northstar_app.dart';
-import '../../core/design/northstar_theme.dart';
+import '../../app/beyondrep_app.dart';
+import '../../core/design/beyondrep_theme.dart';
 import '../../core/storage/account_store.dart';
 import '../../core/storage/objectbox_store_provider.dart';
 import '../../objectbox.g.dart';
@@ -33,10 +33,10 @@ class AccountGate extends StatelessWidget {
       final id = controller.userId;
       if (id != null) return authenticatedBuilder(id);
       return MaterialApp(
-        title: 'Northstar Health · Sign in',
+        title: 'BeyondRep · Sign in',
         debugShowCheckedModeBanner: false,
-        theme: NorthstarTheme.build(Brightness.light),
-        darkTheme: NorthstarTheme.build(Brightness.dark),
+        theme: BeyondRepTheme.build(Brightness.light),
+        darkTheme: BeyondRepTheme.build(Brightness.dark),
         home: AccountSignInPage(controller: controller),
       );
     },
@@ -124,13 +124,13 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
               (ref) => ref.watch(workoutOutboxProvider).syncFlags(),
             ),
           ],
-          child: const AccountWorkoutUploadHost(child: NorthstarApp()),
+          child: const AccountWorkoutUploadHost(child: BeyondRepApp()),
         );
       }
       return MaterialApp(
-        title: 'Northstar Health',
-        theme: NorthstarTheme.build(Brightness.light),
-        darkTheme: NorthstarTheme.build(Brightness.dark),
+        title: 'BeyondRep',
+        theme: BeyondRepTheme.build(Brightness.light),
+        darkTheme: BeyondRepTheme.build(Brightness.dark),
         home: Scaffold(
           body: SafeArea(
             child: Center(

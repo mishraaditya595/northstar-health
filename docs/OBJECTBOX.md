@@ -14,7 +14,7 @@ Phase 3 platform permissions and measurements are implemented. **ObjectBox's own
 
 | Entity | Lifetime | Cloud backup? |
 | --- | --- | --- |
-| `WorkoutSession` / `WorkoutExercise` / `WorkoutSet` | Durable until user deletes | Completed NorthStar phone workouts only, after authentication; no unfinished sessions or local recovery checkpoint |
+| `WorkoutSession` / `WorkoutExercise` / `WorkoutSet` | Durable until user deletes | Completed BeyondRep phone workouts only, after authentication; no unfinished sessions or local recovery checkpoint |
 | `WorkoutSessionState` | Durable checkpoint until finished/recovered | No |
 | `WorkoutPlan` / `PlanExercise` / `ExerciseDefinition` | Durable local, owner-scoped | **Not in MVP**; embed names in backed-up historical logs |
 | `WorkoutSyncOutboxEntity` | Completed phone workout snapshots remain pending until matched server ACK; retain ack receipts as needed for retry and conflict | Completed-workout DTOs use authenticated Supabase RPC in foreground; local outbox records remain device-only |

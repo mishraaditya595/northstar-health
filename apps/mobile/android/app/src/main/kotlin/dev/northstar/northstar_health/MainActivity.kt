@@ -34,15 +34,15 @@ class MainActivity : FlutterActivity() {
     private val pendingUriKey = "unfinished_document_uri"
 
     // App-private, excluded from Auto Backup. Dart writes here, never chooses
-    // the location; each export gets its own northstar-export-* folder.
+    // the location; each export gets its own beyondrep-export-* folder.
     private val exportTempRoot get() = noBackupFilesDir.canonicalFile
 
     private fun exportTempFile(path: String?): File? {
         val file = File(path ?: return null).canonicalFile
         val folder = file.parentFile ?: return null
         return file.takeIf {
-            it.name == "northstar-workouts.json" && it.isFile &&
-                folder.name.startsWith("northstar-export-") &&
+            it.name == "beyondrep-workouts.json" && it.isFile &&
+                folder.name.startsWith("beyondrep-export-") &&
                 folder.parentFile == exportTempRoot
         }
     }
@@ -52,7 +52,7 @@ class MainActivity : FlutterActivity() {
         synchronized(exportStateLock) {
             if (!tempPurged) {
                 tempPurged = true
-                exportTempRoot.listFiles { f -> f.name.startsWith("northstar-export-") }
+                exportTempRoot.listFiles { f -> f.name.startsWith("beyondrep-export-") }
                     ?.forEach { it.deleteRecursively() }
             }
         }
@@ -106,8 +106,8 @@ class MainActivity : FlutterActivity() {
         ).setMethodCallHandler { call, result ->
             if (call.method == "prepareFile") {
                 try {
-                    val folder = File(exportTempRoot, "northstar-export-${UUID.randomUUID()}")
-                    val file = File(folder, "northstar-workouts.json")
+                    val folder = File(exportTempRoot, "beyondrep-export-${UUID.randomUUID()}")
+                    val file = File(folder, "beyondrep-workouts.json")
                     if (!folder.mkdirs() || !file.createNewFile()) throw IllegalStateException()
                     result.success(file.path)
                 } catch (_: Exception) {
@@ -126,7 +126,7 @@ class MainActivity : FlutterActivity() {
                 activeWrites > 0 || cleanupInProgress
             }
             if (pendingExport != null || recoveryBusy ||
-                filename != "northstar-workouts.json" ||
+                filename != "beyondrep-workouts.json" ||
                 file == null || file.length() < 2) {
                 result.error("export_unavailable", "Cannot start document export", null)
                 return@setMethodCallHandler

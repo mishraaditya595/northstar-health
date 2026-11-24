@@ -1,4 +1,4 @@
-# NorthStar release-readiness gates
+# BeyondRep release-readiness gates
 
 **Status (27 October 2026):** Phase 1 and P2-01–P2-07 source features are merged, **not released or verified for production**. P2-08 hosted security, native-device and large-history/data-rights acceptance is outstanding. Watch recording and health integration remain unimplemented; neither mobile nor watch app is ready for store distribution.
 

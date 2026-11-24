@@ -16,8 +16,8 @@ const _secureStorage = FlutterSecureStorage(
 
 /// Persists Supabase session credentials in OS-protected storage, not
 /// SharedPreferences, ObjectBox, files, analytics, or application logs.
-class NorthstarSecureSessionStorage extends LocalStorage {
-  NorthstarSecureSessionStorage({required String projectHost})
+class BeyondRepSecureSessionStorage extends LocalStorage {
+  BeyondRepSecureSessionStorage({required String projectHost})
     : _key = 'northstar.supabase.session.v1.$projectHost';
 
   final String _key;

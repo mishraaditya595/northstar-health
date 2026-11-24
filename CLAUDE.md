@@ -48,7 +48,7 @@ cd apps/wear_os && ./gradlew :app:assembleDebug
 
 # watchOS proof target (macOS)
 cd apps/watch_os && xcodegen generate --spec project.yml
-xcodebuild -project NorthStarWatch.xcodeproj -scheme NorthStarWatch -configuration Debug \
+xcodebuild -project BeyondRepWatch.xcodeproj -scheme BeyondRepWatch -configuration Debug \
   -sdk watchsimulator -destination 'generic/platform=watchOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 

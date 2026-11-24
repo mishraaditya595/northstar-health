@@ -27,7 +27,7 @@
 ### Codemagic
 
 1. Add `mishraaditya595/northstar-health` as a Codemagic app using **codemagic.yaml** configuration.
-2. **Team settings → Integrations → Developer Portal → Manage keys:** add the API key with the exact name `NorthStar App Store Connect`, which must match `integrations.app_store_connect` in the YAML.
+2. **Team settings → Integrations → Developer Portal → Manage keys:** add the API key with the exact name `BeyondRep App Store Connect`, which must match `integrations.app_store_connect` in the YAML.
 3. **Team settings → codemagic.yaml settings → Code signing identities:**
    - **iOS certificates:** generate or upload an *Apple Distribution* certificate using the key above.
    - **iOS provisioning profiles:** fetch or create an *App Store* profile for `dev.northstar.northstarHealth`.

@@ -3,13 +3,13 @@ import 'dart:io';
 import 'fixtures/objectbox_pre_status_index.g.dart' as legacy;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/features/progress/data/objectbox_workout_history_repository.dart';
-import 'package:northstar_health/features/progress/domain/workout_history_models.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_live_workout_engine.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_workout_repository.dart';
-import 'package:northstar_health/features/workouts/data/workout_entities.dart';
-import 'package:northstar_health/features/workouts/domain/workout_models.dart';
-import 'package:northstar_health/objectbox.g.dart';
+import 'package:beyondrep/features/progress/data/objectbox_workout_history_repository.dart';
+import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_live_workout_engine.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_workout_repository.dart';
+import 'package:beyondrep/features/workouts/data/workout_entities.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
+import 'package:beyondrep/objectbox.g.dart';
 
 void main() {
   late Directory directory;
@@ -19,7 +19,7 @@ void main() {
   late ObjectBoxWorkoutHistoryRepository history;
 
   setUp(() {
-    directory = Directory.systemTemp.createTempSync('northstar-history-');
+    directory = Directory.systemTemp.createTempSync('beyondrep-history-');
     store = Store(getObjectBoxModel(), directory: directory.path);
     engine = ObjectBoxLiveWorkoutEngine(store);
     editor = ObjectBoxWorkoutRepository(store);
@@ -85,7 +85,7 @@ void main() {
       // the pre-PR11 generated bindings, closes it, then opens it with the new
       // indexed model. The fixture must remain frozen when models regenerate.
       final oldDir = Directory.systemTemp.createTempSync(
-        'northstar-v1-upgrade-',
+        'beyondrep-v1-upgrade-',
       );
       final begun = DateTime.utc(2026, 9, 1, 23, 40).millisecondsSinceEpoch;
       final finished = DateTime.utc(2026, 9, 2, 0, 15).millisecondsSinceEpoch;
@@ -214,7 +214,7 @@ void main() {
     expect(original.map((s) => s.uuid), ['complete']);
     final raw = store.box<WorkoutSessionEntity>();
     final complete = raw.getAll().singleWhere((e) => e.uuid == 'complete');
-    // An imported platform record must not masquerade as a NorthStar log.
+    // An imported platform record must not masquerade as a BeyondRep log.
     complete.origin = 'health_connect_import';
     raw.put(complete);
     expect(history.readCompleted().sessions, isEmpty);

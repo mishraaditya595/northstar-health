@@ -3,16 +3,16 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/core/design/northstar_theme.dart';
-import 'package:northstar_health/core/storage/objectbox_store_provider.dart';
-import 'package:northstar_health/features/account/account_auth_controller.dart';
-import 'package:northstar_health/features/progress/data/objectbox_workout_history_repository.dart';
-import 'package:northstar_health/features/progress/domain/workout_history_models.dart';
-import 'package:northstar_health/features/progress/workout_history_detail_page.dart';
-import 'package:northstar_health/features/sync/workout_upload_coordinator.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_workout_outbox.dart';
-import 'package:northstar_health/features/workouts/data/workout_entities.dart';
-import 'package:northstar_health/objectbox.g.dart';
+import 'package:beyondrep/core/design/beyondrep_theme.dart';
+import 'package:beyondrep/core/storage/objectbox_store_provider.dart';
+import 'package:beyondrep/features/account/account_auth_controller.dart';
+import 'package:beyondrep/features/progress/data/objectbox_workout_history_repository.dart';
+import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
+import 'package:beyondrep/features/progress/workout_history_detail_page.dart';
+import 'package:beyondrep/features/sync/workout_upload_coordinator.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_workout_outbox.dart';
+import 'package:beyondrep/features/workouts/data/workout_entities.dart';
+import 'package:beyondrep/objectbox.g.dart';
 
 import '../support/fake_account_auth.dart';
 
@@ -41,7 +41,7 @@ void main() {
   late WorkoutUploadCoordinator worker;
 
   setUp(() {
-    dir = Directory.systemTemp.createTempSync('northstar-delete-ui-');
+    dir = Directory.systemTemp.createTempSync('beyondrep-delete-ui-');
     store = Store(getObjectBoxModel(), directory: dir.path);
     final time = DateTime.utc(2026, 10, 24, 9).millisecondsSinceEpoch;
     store.box<WorkoutSessionEntity>().put(
@@ -88,7 +88,7 @@ void main() {
           workoutUploadCoordinatorProvider.overrideWithValue(worker),
         ],
         child: MaterialApp(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           home: const WorkoutHistoryDetailPage(sessionUuid: workout),
         ),
       ),

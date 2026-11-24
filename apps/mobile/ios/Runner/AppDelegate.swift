@@ -11,7 +11,7 @@ import UIKit
     guard let entries = try? FileManager.default.contentsOfDirectory(
       at: temporary, includingPropertiesForKeys: [.isDirectoryKey]
     ) else { return }
-    for entry in entries where entry.lastPathComponent.hasPrefix("northstar-export-") {
+    for entry in entries where entry.lastPathComponent.hasPrefix("beyondrep-export-") {
       // Only directories owned by this export workflow, never ObjectBox or
       // other temporary data. Cleanup is best effort if files are locked.
       try? FileManager.default.removeItem(at: entry)
@@ -50,8 +50,8 @@ import UIKit
 
   private func prepareFile(result: @escaping FlutterResult) {
     let parent = FileManager.default.temporaryDirectory
-      .appendingPathComponent("northstar-export-\(UUID().uuidString)", isDirectory: true)
-    let file = parent.appendingPathComponent("northstar-workouts.json")
+      .appendingPathComponent("beyondrep-export-\(UUID().uuidString)", isDirectory: true)
+    let file = parent.appendingPathComponent("beyondrep-workouts.json")
     // Complete protection is set at creation; Dart truncates and streams into
     // this same file, which keeps its protection class.
     do {
@@ -59,7 +59,7 @@ import UIKit
       guard FileManager.default.createFile(
         atPath: file.path, contents: nil,
         attributes: [.protectionKey: FileProtectionType.complete]
-      ) else { throw NSError(domain: "NorthstarExport", code: 2) }
+      ) else { throw NSError(domain: "BeyondRepExport", code: 2) }
       result(file.path)
     } catch {
       try? FileManager.default.removeItem(at: parent)
@@ -71,7 +71,7 @@ import UIKit
     let temporary = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
     guard exportResult == nil,
           let args = call.arguments as? [String: Any],
-          args["name"] as? String == "northstar-workouts.json",
+          args["name"] as? String == "beyondrep-workouts.json",
           let path = args["path"] as? String
     else {
       result(FlutterError(code: "export_unavailable", message: "Cannot start document export", details: nil))
@@ -79,8 +79,8 @@ import UIKit
     }
     let file = URL(fileURLWithPath: path).resolvingSymlinksInPath()
     let parent = file.deletingLastPathComponent()
-    guard file.lastPathComponent == "northstar-workouts.json",
-          parent.lastPathComponent.hasPrefix("northstar-export-"),
+    guard file.lastPathComponent == "beyondrep-workouts.json",
+          parent.lastPathComponent.hasPrefix("beyondrep-export-"),
           parent.deletingLastPathComponent().pathComponents == temporary.pathComponents,
           let size = (try? file.resourceValues(forKeys: [.fileSizeKey]))?.fileSize,
           size >= 2
@@ -94,7 +94,7 @@ import UIKit
         .compactMap({ $0 as? UIWindowScene })
         .flatMap({ $0.windows })
         .first(where: { $0.isKeyWindow })?.rootViewController else {
-        throw NSError(domain: "NorthstarExport", code: 1)
+        throw NSError(domain: "BeyondRepExport", code: 1)
       }
       var presenter = root
       while let displayed = presenter.presentedViewController { presenter = displayed }

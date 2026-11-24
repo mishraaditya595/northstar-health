@@ -140,7 +140,7 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
           : '';
       final confirmed = await showNsConfirm(
         context,
-        title: 'Sign out of NorthStar?',
+        title: 'Sign out of BeyondRep?',
         message:
             '${warning}All workouts, unfinished sessions and custom plans '
             'remain on this device. Signing out locks their local account '
@@ -226,7 +226,7 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
                         Text(
                           online
                               ? 'Signed in on this device. Only completed '
-                                    'NorthStar phone workouts are eligible for '
+                                    'BeyondRep phone workouts are eligible for '
                                     'automatic cloud backup while the app is active.'
                               : 'Your saved workouts remain available on this '
                                     'device. Cloud transfers need a renewed sign-in '

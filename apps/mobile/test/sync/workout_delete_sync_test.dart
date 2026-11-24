@@ -1,14 +1,14 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/core/ids/uuid_factory.dart';
-import 'package:northstar_health/features/sync/objectbox_workout_restore_importer.dart';
-import 'package:northstar_health/features/sync/workout_restore_feed.dart';
-import 'package:northstar_health/features/sync/workout_restore_transport.dart';
-import 'package:northstar_health/features/sync/workout_upload_coordinator.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_workout_outbox.dart';
-import 'package:northstar_health/features/workouts/data/workout_entities.dart';
-import 'package:northstar_health/objectbox.g.dart';
+import 'package:beyondrep/core/ids/uuid_factory.dart';
+import 'package:beyondrep/features/sync/objectbox_workout_restore_importer.dart';
+import 'package:beyondrep/features/sync/workout_restore_feed.dart';
+import 'package:beyondrep/features/sync/workout_restore_transport.dart';
+import 'package:beyondrep/features/sync/workout_upload_coordinator.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_workout_outbox.dart';
+import 'package:beyondrep/features/workouts/data/workout_entities.dart';
+import 'package:beyondrep/objectbox.g.dart';
 
 import '../support/fake_account_auth.dart';
 
@@ -123,7 +123,7 @@ void main() {
   }
 
   setUp(() {
-    dir = Directory.systemTemp.createTempSync('northstar-delete-');
+    dir = Directory.systemTemp.createTempSync('beyondrep-delete-');
     store = Store(getObjectBoxModel(), directory: dir.path);
     outbox = ObjectBoxWorkoutOutbox(store);
   });

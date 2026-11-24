@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/design/dialogs.dart';
-import '../../core/design/northstar_theme.dart';
+import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 import '../account/account_auth_provider.dart';
@@ -34,7 +34,7 @@ class _TodayPageState extends ConsumerState<TodayPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
-    final colors = theme.extension<NorthstarColors>()!;
+    final colors = theme.extension<BeyondRepColors>()!;
     return ListView(
       padding: EdgeInsets.fromLTRB(
         16,
@@ -170,8 +170,8 @@ class _TodayPageState extends ConsumerState<TodayPage> {
                     value: 2 / 3,
                     minHeight: 8,
                     backgroundColor: dark
-                        ? NorthstarPalette.darkSoft
-                        : NorthstarPalette.lightSoft,
+                        ? BeyondRepPalette.darkSoft
+                        : BeyondRepPalette.lightSoft,
                   ),
                 ),
                 const SizedBox(height: 11),
@@ -212,8 +212,8 @@ class _Hero extends StatelessWidget {
       borderRadius: BorderRadius.circular(25),
       child: Container(
         decoration: BoxDecoration(
-          color: dark ? NorthstarPalette.heroDark : NorthstarPalette.heroLight,
-          border: Border.all(color: NorthstarPalette.heroBorder),
+          color: dark ? BeyondRepPalette.heroDark : BeyondRepPalette.heroLight,
+          border: Border.all(color: BeyondRepPalette.heroBorder),
           borderRadius: BorderRadius.circular(25),
         ),
         child: Stack(
@@ -228,15 +228,15 @@ class _Hero extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: NorthstarPalette.lime.withValues(alpha: .25),
+                      color: BeyondRepPalette.lime.withValues(alpha: .25),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: NorthstarPalette.lime.withValues(alpha: .04),
+                        color: BeyondRepPalette.lime.withValues(alpha: .04),
                         spreadRadius: 22,
                       ),
                       BoxShadow(
-                        color: NorthstarPalette.lime.withValues(alpha: .03),
+                        color: BeyondRepPalette.lime.withValues(alpha: .03),
                         spreadRadius: 44,
                       ),
                     ],
@@ -281,7 +281,7 @@ class _Hero extends StatelessWidget {
                       FilledButton(
                         onPressed: onStart,
                         style: FilledButton.styleFrom(
-                          backgroundColor: NorthstarPalette.lime,
+                          backgroundColor: BeyondRepPalette.lime,
                           foregroundColor: const Color(0xFF111A10),
                           minimumSize: const Size(0, 46),
                           padding: const EdgeInsets.symmetric(horizontal: 17),
@@ -362,7 +362,7 @@ class _EnergyChip extends StatelessWidget {
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   color: selected
-                      ? (dark ? NorthstarPalette.heroDark : Colors.white)
+                      ? (dark ? BeyondRepPalette.heroDark : Colors.white)
                       : theme.colorScheme.onSurface,
                 ),
               ),
@@ -393,16 +393,16 @@ class _Metric extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
-    final muted = theme.extension<NorthstarColors>()!.muted;
+    final muted = theme.extension<BeyondRepColors>()!.muted;
     final iconBg = sleep
         ? (dark
-              ? NorthstarPalette.sleepSoftDark
-              : NorthstarPalette.sleepSoftLight)
+              ? BeyondRepPalette.sleepSoftDark
+              : BeyondRepPalette.sleepSoftLight)
         : (dark
-              ? NorthstarPalette.forestSoftDark
-              : NorthstarPalette.forestSoftLight);
+              ? BeyondRepPalette.forestSoftDark
+              : BeyondRepPalette.forestSoftLight);
     final iconColor = sleep
-        ? (dark ? NorthstarPalette.sleepDark : NorthstarPalette.sleepLight)
+        ? (dark ? BeyondRepPalette.sleepDark : BeyondRepPalette.sleepLight)
         : theme.colorScheme.primary;
     return Semantics(
       label: '$name: $value. $source',
@@ -497,7 +497,7 @@ class _Day extends StatelessWidget {
         Text(
           label,
           style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.extension<NorthstarColors>()!.muted,
+            color: theme.extension<BeyondRepColors>()!.muted,
           ),
         ),
       ],

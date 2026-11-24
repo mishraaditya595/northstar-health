@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'core/design/northstar_theme.dart';
+import 'core/design/beyondrep_theme.dart';
 import 'features/account/account_auth_controller.dart';
 import 'features/account/account_gate.dart';
 import 'features/account/account_local_cleanup.dart';
@@ -43,7 +43,7 @@ class _AuthBootstrapState extends State<_AuthBootstrap> {
       url: _url,
       publishableKey: _publishableKey,
       authOptions: FlutterAuthClientOptions(
-        localStorage: NorthstarSecureSessionStorage(projectHost: uri.host),
+        localStorage: BeyondRepSecureSessionStorage(projectHost: uri.host),
         // Email codes are verified in-app; unexpected auth deep links must
         // never switch the JWT while another account's ObjectBox is open.
         detectSessionInUri: false,
@@ -84,9 +84,9 @@ class _AuthBootstrapState extends State<_AuthBootstrap> {
         );
       }
       return MaterialApp(
-        title: 'Northstar Health',
-        theme: NorthstarTheme.build(Brightness.light),
-        darkTheme: NorthstarTheme.build(Brightness.dark),
+        title: 'BeyondRep',
+        theme: BeyondRepTheme.build(Brightness.light),
+        darkTheme: BeyondRepTheme.build(Brightness.dark),
         home: Scaffold(
           body: SafeArea(
             child: Center(
@@ -99,7 +99,7 @@ class _AuthBootstrapState extends State<_AuthBootstrap> {
                           const Icon(Icons.lock_outline, size: 44),
                           const SizedBox(height: 16),
                           const Text(
-                            'NorthStar authentication is unavailable. '
+                            'BeyondRep authentication is unavailable. '
                             'Check the public build configuration and '
                             'secure storage setup. Workout data is locked.',
                             textAlign: TextAlign.center,

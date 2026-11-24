@@ -2,7 +2,7 @@
 
 **Base:** latest `main` after merged PR #10 at
 `e2c3ddcb895367f3272c00531f581e624600ed77`.
-**Scope:** offline, read-only, factual **NorthStar workout history**.
+**Scope:** offline, read-only, factual **BeyondRep workout history**.
 Adds an ObjectBox **index** on existing `WorkoutSession.status` (a real
 schema change with one new index UID). All existing entity, property and index
 UIDs are retained; no new entity or health measurements.
