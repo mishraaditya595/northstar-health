@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/design/beyondrep_theme.dart';
-import '../../core/design/page_header.dart';
 import 'muscle_recovery.dart';
 
 /// Which side of the body a [MuscleMap] draws.
@@ -282,7 +281,7 @@ class MuscleRecoveryCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final worked = [
       for (final m in Muscle.values)
-        if (recovery.loadOf(m) >= .5) m,
+        if (recovery.loadOf(m) > 0) m,
     ]..sort((a, b) => recovery.loadOf(b).compareTo(recovery.loadOf(a)));
     final workedText = worked.map((m) => _labels[m]!).join(' · ');
     Widget figure(BodySide side, String label) => Flexible(
@@ -321,13 +320,12 @@ class MuscleRecoveryCard extends ConsumerWidget {
                     ),
                   ),
                 ),
-                if (recovery.isSample) const NsTag('Sample data'),
               ],
             ),
             const SizedBox(height: 14),
             Semantics(
               label:
-                  'Body map${recovery.isSample ? ', sample data' : ''}. '
+                  'Body map. '
                   'Recently trained: '
                   '${worked.isEmpty ? 'none' : worked.map((m) => m.name).join(', ')}.',
               excludeSemantics: true,
@@ -370,9 +368,7 @@ class MuscleRecoveryCard extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              recovery.isSample
-                  ? 'Placeholder layout: these values are not from your workouts yet.'
-                  : 'Shaded by how recently each muscle was trained.',
+              'Shaded by finished workouts in the last 3 days.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.mutedColor,

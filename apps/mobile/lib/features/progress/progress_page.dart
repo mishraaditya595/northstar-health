@@ -403,7 +403,7 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
         Text(
           'Only finished BeyondRep workouts appear here. '
           'Paused, discarded and imported health workouts are excluded. '
-          'Cloud backup is not available in Phase 1.',
+          'Finished workouts back up to your account when you are online.',
           style: theme.textTheme.bodySmall,
         ),
       ],

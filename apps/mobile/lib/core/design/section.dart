@@ -38,17 +38,3 @@ class SectionHeading extends StatelessWidget {
     );
   }
 }
-
-class DemoLabel extends StatelessWidget {
-  const DemoLabel({super.key});
-
-  @override
-  Widget build(BuildContext context) => Text(
-    'FICTIONAL DEMO DATA · 23 OCT 2026',
-    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-      color: Theme.of(context).mutedColor,
-      letterSpacing: 1.1,
-      fontWeight: FontWeight.w700,
-    ),
-  );
-}
