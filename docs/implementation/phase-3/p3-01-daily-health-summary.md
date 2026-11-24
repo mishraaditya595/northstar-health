@@ -27,7 +27,7 @@ Each task followed red-then-green TDD; the reports are kept with the plan notes,
 
 - `flutter build apk --debug`: no Android SDK here. The first APK build happens in GitHub Actions on the PR.
 - Any Xcode build or archive. The `Runner.xcodeproj` file reference ID for the entitlements file was written by hand and is unverified.
-- All physical-device checks: iPhone with and without Apple Watch (grant, deny, revoke); Android 14+ and 9-13 with and without the Health Connect app; partial grant; Android workout JSON export after the `FlutterFragmentActivity` change; account A, sign out, account B shows Connect.
+- All physical-device checks: iPhone with and without Apple Watch (grant, deny, revoke); Android 14+ and 9-13 with and without the Health Connect app; partial grant; Android deny twice, then tap Not allowed · Manage (Health Connect may stop showing the sheet); Android source writing only sleep sessions without stages shows No sleep recorded; Android workout JSON export after the `FlutterFragmentActivity` change; account A, sign out, account B shows Connect.
 - Store prerequisites (all owner actions, not done): HealthKit capability on the App ID plus regenerated App Store provisioning profile, privacy policy (#52) and Health Connect rationale wiring, App Store privacy labels, Play Data Safety and Health Connect declaration.
 
 ## Data ownership and rollback

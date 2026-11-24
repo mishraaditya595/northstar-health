@@ -30,7 +30,7 @@ Track evidence in [P2-08 export validation](implementation/phase-2/p2-08-workout
 
 Implemented in source, **not released or device-verified**. Evidence and unrun checks: [p3-01](implementation/phase-3/p3-01-daily-health-summary.md).
 
-- **Apple signing, before the next TestFlight build:** enable the HealthKit capability on the App ID in the Apple developer portal and regenerate the App Store provisioning profile used by the Codemagic TestFlight job. The app now ships a HealthKit entitlement, so signing will fail without this. Not done.
+- **Apple signing, before the next TestFlight build:** enable the HealthKit capability on the App ID in the Apple developer portal and regenerate the App Store provisioning profile used by the Codemagic TestFlight job. The app now ships a HealthKit entitlement, so signing is expected to fail without this. Not done.
 - **Privacy policy live (issue #52)** and wired to the Health Connect rationale screen (currently a `TODO(#52)` that opens the app). Not done.
 - **Store declarations:** App Store privacy labels; Google Play Data Safety form and Health Connect permissions declaration. Not done.
 - **Builds:** the first Android debug APK build happens in GitHub Actions on the PR (not run locally); no Xcode build has been run, and the hand-edited Runner project and entitlements are unverified in Xcode.
@@ -38,6 +38,8 @@ Implemented in source, **not released or device-verified**. Evidence and unrun c
   - iPhone with and without Apple Watch: grant, deny, revoke.
   - Android 14+ and Android 9-13, with and without the Health Connect app.
   - Android partial grant (some types allowed, others denied).
+  - Android: deny twice, then tap Not allowed · Manage (Health Connect may stop showing the sheet).
+  - Android: a source that writes only sleep sessions without stages shows No sleep recorded.
   - Android workout JSON export still saves after the `FlutterFragmentActivity` change (highest risk).
   - Account A, sign out, account B: B sees the Connect card.
 

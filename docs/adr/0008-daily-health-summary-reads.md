@@ -27,7 +27,7 @@ The Health tab and the Today "Recent health" row show hardcoded fictional values
    | A. `health` package | One new dependency, a few hundred lines of Dart; we inherit its release cadence and bugs | **Chosen** |
    | B. Hand-written Swift and Kotlin bridges | Full control; about 3-4x the work, two native codebases to test, still adds Google's `connect-client` | Rejected for a four-number glance |
 
-   Only a small `HealthReader` interface is visible to screens, so B stays possible later without UI changes. `platform_health_reader.dart` is the only importer of `package:health`, enforced by a guard test.
+   Only a small `HealthReader` interface is visible to screens, so B stays possible later without UI changes. `platform_health_reader.dart` and `account_gate.dart` (which provides the reader override) are the only importers of `package:health`, enforced by a guard test.
 
 3. **No health-value cache.** Readings live in Riverpod state for the life of the process and are re-read on view, app resume and pull-to-refresh. This deliberately uses none of the optional expiring cache that `HEALTH_DATA.md` allows, so there is no TTL or stale-purge logic and no health value is ever written to disk.
 
@@ -43,7 +43,7 @@ The Health tab and the Today "Recent health" row show hardcoded fictional values
 
 ## Consequences
 
-- No health value may reach Supabase, the sync outbox, the workout export file, logs or diagnostics. Guard tests enforce that `features/sync`, `features/account` and `core/storage` never import `features/health`, and that export and sync DTOs have no health fields.
+- No health value may reach Supabase, the sync outbox, the workout export file, logs or diagnostics. A guard test enforces that `features/sync`, `features/account` (except `account_gate.dart`), `core/storage` and `features/workouts` never import `features/health`.
 - Errors map to sealed states (no data, not allowed, couldn't read, unsupported); raw exception text is never logged or shown.
 - A new ObjectBox entity requires stable UIDs, committed `objectbox.g.dart` and `objectbox-model.json`, and a test that opens a pre-change database.
 - The workout logger, sign-in and sync must keep working when health is unavailable, denied or throwing.
