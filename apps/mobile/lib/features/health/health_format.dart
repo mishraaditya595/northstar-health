@@ -46,6 +46,9 @@ const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 /// `24 Nov`.
 String formatHealthDate(DateTime t) => _date(t);
 
+/// `3:10 AM`.
+String formatClockTime(DateTime t) => _time(t);
+
 /// `11:48 PM – 6:31 AM`.
 String formatTimeRange(DateTime from, DateTime to) =>
     '${_time(from)} – ${_time(to)}';

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/design/beyondrep_theme.dart';
 import '../features/health/detail/health_detail_placeholder_page.dart';
+import '../features/health/detail/sleep_detail_page.dart';
 import '../features/health/health_page.dart';
 import '../features/account/account_sync_page.dart';
 import '../features/sync/workout_conflict_review_page.dart';
@@ -100,8 +101,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/health',
             pageBuilder: (_, state) => _tabPage(state, const HealthPage()),
           ),
+          GoRoute(
+            path: '/health/sleep',
+            builder: (_, _) => const SleepDetailPage(),
+          ),
           for (final (path, title) in [
-            ('/health/sleep', 'Sleep'),
             ('/health/heart', 'Heart'),
             ('/health/activity', 'Activity'),
             ('/health/body', 'Body'),

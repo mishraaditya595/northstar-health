@@ -117,6 +117,23 @@ void main() {
     expect(find.bySemanticsLabel('No stages'), findsOneWidget);
   });
 
+  testWidgets('NsStageTimeline wraps 12-hour labels at x2 text', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        NsStageTimeline(
+          segments: _segs(),
+          startLabel: '11:48 PM',
+          endLabel: '6:31 AM',
+          semanticsLabel: 'Stages timeline',
+        ),
+        scale: 2,
+      ),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('NsStageTimeline single and empty segments', (tester) async {
     await tester.pumpWidget(
       _host(

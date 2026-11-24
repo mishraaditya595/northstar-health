@@ -172,11 +172,15 @@ class NsStageTimeline extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
+          // Long labels under large text wrap instead of overflowing.
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(startLabel, style: small),
-              Text(endLabel, style: small),
+              Flexible(child: Text(startLabel, style: small)),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(endLabel, style: small, textAlign: TextAlign.end),
+              ),
             ],
           ),
         ],
