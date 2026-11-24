@@ -44,6 +44,8 @@ Apple HealthKit and Android Health Connect for supported types; distinct per-fea
 
 **Phase 3 scope (ADR-0008):** daily summary of four metrics (sleep, steps, resting heart rate, weight), read-only, no health-value cache, per-account opt-in. The "ephemeral local caches" wording above is superseded for this phase: it uses none (ADR-0008). Implemented in source, not released or device-verified; see [p3-01](implementation/phase-3/p3-01-daily-health-summary.md) and the Phase 3 gates in [RELEASE.md](RELEASE.md).
 
+**Health insights extension (ADR-0009, in progress, not released):** richer Health tab, 7/30-day trends and on-device scores, read fresh with nothing stored. Stages: (0) chart kit widgets in `lib/core/design/charts/` (in source on the feature branch only); (1) richer data and trends: reader range reads, domain layer, sleep score, overview cards, four detail screens, permissions update, Today row; (2) readiness score, hero card and Train note; (3) training tie-ins: real muscle recovery, better-fit plan suggestion, joined insights. Stages 1-3 are not implemented. Each stage ships and is reviewed on its own; device QA and store gates remain open.
+
 ## Phase 4 — User-controlled completed-workout export
 
 Opt-in write of one BeyondRep-owned workout summary, export receipts and platform-specific retry/reconciliation. Avoid double writing Apple Watch `HKWorkout` or Android sessions; imported workouts stay read-only. Resolve app-owned edits/deletion UX before shipping.

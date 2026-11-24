@@ -6,6 +6,8 @@
 
 Phase 3 is limited to a read-only daily summary of four metrics: sleep, steps, resting heart rate and weight. It keeps **no on-disk cache of health values** and stores only a per-account opt-in flag in the account's ObjectBox partition, which narrows the optional cache described below for this phase. Permission is requested only when the person taps Connect. See [ADR-0008](adr/0008-daily-health-summary-reads.md).
 
+**Planned extension (ADR-0009, not implemented yet):** [ADR-0009](adr/0009-health-insights-trends.md) widens the read scope beyond these four metrics (sleep stages, heart rate, HRV, activity, body trends and more) and adds scores computed on device. It amends ADR-0008's metric list, cache and Android history items; still no on-disk cache, nothing stored, and nothing in the cloud. Until it is implemented, the four-metric scope above is what the app does.
+
 ## Data ownership
 
 - **BeyondRep** owns detailed workouts it records: sets, reps, weights, rest, RPE/RIR, exercise snapshots and notes. Mobile ObjectBox persists them, and Supabase synchronizes authenticated, completed BeyondRep phone workouts under ADR-0005; unfinished sessions, local rest/recovery checkpoints and physiological data remain outside cloud.
