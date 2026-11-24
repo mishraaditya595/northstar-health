@@ -5,6 +5,7 @@ import 'package:beyondrep/app/floating_nav_bar.dart';
 import 'package:beyondrep/app/beyondrep_app.dart';
 import 'package:beyondrep/features/account/account_auth_controller.dart';
 import 'package:beyondrep/features/account/account_auth_provider.dart';
+import 'package:beyondrep/features/today/today_page.dart';
 
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
@@ -112,7 +113,7 @@ void main() {
     expect(find.byType(BackButton), findsOneWidget);
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
-    expect(find.text('Today'), findsWidgets);
+    expect(find.byType(TodayPage), findsOneWidget);
     expect(find.text('Cloud session ready'), findsNothing);
   });
 

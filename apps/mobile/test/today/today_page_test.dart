@@ -13,7 +13,9 @@ import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
 import 'package:beyondrep/features/progress/workout_history_state.dart';
 import 'package:beyondrep/features/today/today_page.dart';
+import 'package:beyondrep/features/train/active_workout_state.dart';
 import 'package:beyondrep/features/train/train_library_state.dart';
+import 'package:beyondrep/features/workouts/domain/live_workout_engine.dart';
 import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
 import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 
@@ -52,15 +54,31 @@ WorkoutSessionRecord _done(String id, DateTime atUtc, {String? plan}) =>
       planUuid: plan,
     );
 
+class _FakeActions implements WorkoutActions {
+  final started = <String>[];
+
+  @override
+  WorkoutSessionRecord startPlan(String planUuid) {
+    started.add(planUuid);
+    return _done('new', DateTime.utc(2026, 11, 24));
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 void main() {
   late List<String> pushed;
+  late _FakeActions actions;
 
   Future<void> show(
     WidgetTester tester, {
     Future<List<WorkoutPlanRecord>>? plans,
     Future<List<WorkoutSessionRecord>>? sessions,
+    ActiveWorkoutView? unfinished,
     bool settle = true,
   }) async {
+    actions = _FakeActions();
     tester.view.physicalSize = const Size(390, 1600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -101,6 +119,8 @@ void main() {
       ProviderScope(
         overrides: [
           localNowProvider.overrideWithValue(_now),
+          activeWorkoutProvider.overrideWithValue(AsyncData(unfinished)),
+          workoutActionsProvider.overrideWithValue(actions),
           trainLibraryProvider.overrideWith(
             (ref) async => WorkoutLibrarySnapshot(
               exercises: const [],
@@ -148,6 +168,62 @@ void main() {
     expect(pushed, ['/train/plans/new']);
   });
 
+  testWidgets('without plans the hero can go to Train', (tester) async {
+    await show(tester);
+    expect(find.text('Quick workout'), findsNothing);
+    await tester.tap(find.text('Go to Train'));
+    await tester.pumpAndSettle();
+    expect(pushed, ['/train']);
+    expect(find.text('Train route'), findsOneWidget);
+  });
+
+  testWidgets('Start workout starts the suggested plan', (tester) async {
+    await show(tester, plans: Future.value([_plan('a', 'Push day', 2)]));
+    await tester.tap(find.text('Start workout'));
+    await tester.pumpAndSettle();
+    expect(actions.started, ['a']);
+    expect(pushed, ['/train/workout']);
+  });
+
+  testWidgets('an unfinished workout is offered for resume first', (
+    tester,
+  ) async {
+    await show(
+      tester,
+      plans: Future.value([_plan('a', 'Push day', 2)]),
+      unfinished: ActiveWorkoutView(
+        WorkoutSessionRecord(
+          uuid: 'open',
+          name: 'Morning lift',
+          status: WorkoutStatus.paused,
+          startedAtUtc: DateTime.utc(2026, 11, 24, 7),
+          originalOffsetMinutes: 0,
+          revision: 2,
+        ),
+        const WorkoutRecoveryCheckpoint(
+          sessionUuid: 'open',
+          checkpointRevision: 1,
+        ),
+      ),
+    );
+    expect(find.text('UNFINISHED WORKOUT'), findsOneWidget);
+    expect(find.text('Morning lift'), findsOneWidget);
+    expect(find.text('Start workout'), findsNothing);
+    await tester.tap(find.text('Resume'));
+    await tester.pumpAndSettle();
+    expect(actions.started, isEmpty);
+    expect(pushed, ['/train/workout']);
+  });
+
+  testWidgets('a failed load offers retry', (tester) async {
+    await show(
+      tester,
+      plans: Future.delayed(Duration.zero, () => throw StateError('disk')),
+    );
+    expect(find.text('Could not load your plans'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
+  });
+
   testWidgets('hero suggests the next saved plan with real facts', (
     tester,
   ) async {
@@ -177,7 +253,7 @@ void main() {
     final plans = Completer<List<WorkoutPlanRecord>>();
     await show(tester, plans: plans.future, settle: false);
     expect(find.text('No plans yet'), findsNothing);
-    expect(find.byType(CircularProgressIndicator), findsWidgets);
+    expect(find.bySemanticsLabel(RegExp('Loading your plans')), findsOneWidget);
     plans.complete(const []);
     await tester.pumpAndSettle();
     expect(find.text('No plans yet'), findsOneWidget);

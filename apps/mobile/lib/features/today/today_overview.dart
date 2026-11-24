@@ -3,40 +3,6 @@ import '../progress/domain/workout_history_models.dart';
 import '../workouts/domain/workout_library_models.dart';
 import '../workouts/domain/workout_models.dart';
 
-const _weekdays = [
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday',
-];
-
-const _months = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-/// "TUESDAY · 24 NOV 2026" for the device's current local day.
-String todayEyebrow(DateTime local) =>
-    '${_weekdays[local.weekday - 1].toUpperCase()} · ${local.day} '
-    '${_months[local.month - 1].substring(0, 3).toUpperCase()} ${local.year}';
-
-/// "Tuesday, 24 November".
-String longDayLabel(DateTime local) =>
-    '${_weekdays[local.weekday - 1]}, ${local.day} ${_months[local.month - 1]}';
-
 /// Finished sessions on each day of [weekDays] for [today], counted on each
 /// session's original local day like Progress.
 List<int> sessionsPerDay(WorkoutHistorySnapshot snapshot, DateTime today) {

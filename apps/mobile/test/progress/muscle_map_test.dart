@@ -78,6 +78,9 @@ void main() {
       }
       expect(recovery.loadOf(Muscle.chest), closeTo(.25, .001));
       expect(recovery.loadOf(Muscle.lats), 0);
+      // The card names what was logged, not individual muscles.
+      expect(recovery.groups.keys, unorderedEquals(['Legs', 'Chest']));
+      expect(recovery.groups['Legs'], closeTo(.75, .001));
     });
 
     test('keeps the freshest load when a muscle was trained twice', () {
@@ -111,6 +114,7 @@ void main() {
         }),
       ], _now);
       expect(recovery.load, isEmpty);
+      expect(recovery.groups, isEmpty);
     });
 
     test('accepts a custom group named after a drawn muscle', () {
@@ -118,6 +122,7 @@ void main() {
         _workout('g', Duration.zero, {'Glutes': WorkoutSetStatus.completed}),
       ], _now);
       expect(recovery.load, {Muscle.glutes: 1.0});
+      expect(recovery.groups, {'Glutes': 1.0});
     });
   });
 
@@ -142,14 +147,17 @@ void main() {
       ProviderScope(
         overrides: [
           muscleRecoveryProvider.overrideWithValue(
-            const MuscleRecovery({Muscle.quads: 1}),
+            const MuscleRecovery(
+              {Muscle.quads: 1, Muscle.calves: 1},
+              groups: {'Legs': 1},
+            ),
           ),
         ],
         child: const MaterialApp(home: Scaffold(body: MuscleRecoveryCard())),
       ),
     );
     expect(
-      find.bySemanticsLabel(RegExp('Recently trained: quads')),
+      find.bySemanticsLabel(RegExp('Recently trained: Legs')),
       findsOneWidget,
     );
   });
@@ -164,26 +172,23 @@ void main() {
     expect(find.text('BACK'), findsOneWidget);
   });
 
-  testWidgets('lists the recently trained muscles in plain words', (
-    tester,
-  ) async {
+  testWidgets('lists the recently trained muscle groups', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           muscleRecoveryProvider.overrideWithValue(
-            const MuscleRecovery({
-              Muscle.lowerBack: 1,
-              Muscle.chest: .8,
-              Muscle.abs: .2,
-            }),
+            const MuscleRecovery(
+              {Muscle.lats: 1, Muscle.chest: .8, Muscle.abs: .2},
+              groups: {'Core': .2, 'Back': 1, 'Chest': .8},
+            ),
           ),
         ],
         child: const MaterialApp(home: Scaffold(body: MuscleRecoveryCard())),
       ),
     );
     // Most recently trained first; anything inside the window is listed.
-    expect(find.text('Lower back · Chest · Abs'), findsOneWidget);
-    expect(find.textContaining('Calves'), findsNothing);
+    expect(find.text('Back · Chest · Core'), findsOneWidget);
+    expect(find.textContaining('Lats'), findsNothing);
   });
 
   testWidgets('says so when nothing was trained recently', (tester) async {

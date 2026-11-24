@@ -3,13 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/clock.dart';
+import '../../core/date_labels.dart';
 import '../../core/design/inputs.dart';
 import '../../core/design/dialogs.dart';
 import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 import '../progress/domain/progress_overview.dart';
-import '../today/today_overview.dart';
 import '../workouts/domain/workout_library_models.dart';
 import 'active_workout_state.dart';
 import 'train_library_state.dart';
@@ -337,16 +337,6 @@ class _WeekStrip extends StatelessWidget {
   /// The device's local calendar day as a UTC date.
   final DateTime today;
 
-  static const _names = [
-    'Sunday',
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-  ];
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -360,7 +350,7 @@ class _WeekStrip extends StatelessWidget {
           Expanded(
             child: Semantics(
               label:
-                  '${_names[i]} ${days[i].day}'
+                  '${weekdayName(days[i])} ${days[i].day}'
                   '${days[i] == today ? ', today' : ''}',
               excludeSemantics: true,
               child: Container(
@@ -379,7 +369,7 @@ class _WeekStrip extends StatelessWidget {
                 child: Column(
                   children: [
                     Text(
-                      _names[i].substring(0, 1),
+                      weekdayName(days[i]).substring(0, 1),
                       style: TextStyle(
                         fontSize: 10,
                         color: days[i] == today

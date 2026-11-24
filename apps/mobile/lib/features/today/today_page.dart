@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/clock.dart';
+import '../../core/date_labels.dart';
 import '../../core/design/dialogs.dart';
 import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
@@ -59,6 +60,7 @@ class _TodayPageState extends ConsumerState<TodayPage> {
     final today = DateTime.utc(now.year, now.month, now.day);
     final library = ref.watch(trainLibraryProvider);
     final history = ref.watch(completedWorkoutHistoryProvider);
+    final unfinished = ref.watch(activeWorkoutProvider).value;
     return ListView(
       padding: EdgeInsets.fromLTRB(
         16,
@@ -88,13 +90,25 @@ class _TodayPageState extends ConsumerState<TodayPage> {
           onReview: () => context.push('/today/sync/review'),
         ),
         const SizedBox(height: 24),
-        switch ((library, history)) {
-          (AsyncData(value: final lib), AsyncData(value: final done)) => _Hero(
-            next: nextPlan(lib.plans, done.sessions),
+        if (unfinished != null)
+          _HeroFrame(
+            eyebrow: 'UNFINISHED WORKOUT',
+            title: unfinished.session.name,
+            subtitle: 'Saved on this device. Pick up where you left off.',
+            actions: [
+              _HeroButton('Resume', () => context.push('/train/workout')),
+            ],
+          )
+        // A reload keeps showing the last value instead of a spinner.
+        else if (library.hasValue && history.hasValue)
+          _Hero(
+            next: nextPlan(library.value!.plans, history.value!.sessions),
             onStart: _startPlan,
             onOpen: _open,
-          ),
-          (AsyncError(), _) || (_, AsyncError()) => _HeroFrame(
+            onTrain: () => context.go('/train'),
+          )
+        else if (library.hasError || history.hasError)
+          _HeroFrame(
             eyebrow: 'NEXT UP',
             title: 'Could not load your plans',
             subtitle: 'Your local plans and workouts were not changed.',
@@ -104,26 +118,25 @@ class _TodayPageState extends ConsumerState<TodayPage> {
                 ref.invalidate(completedWorkoutHistoryProvider);
               }),
             ],
-          ),
-          _ => const _HeroFrame(
+          )
+        else
+          const _HeroFrame(
             eyebrow: 'NEXT UP',
             title: null,
             subtitle: null,
             actions: [],
           ),
-        },
         const SizedBox(height: 27),
-        const SectionHeading('Recent health', action: 'See all'),
+        const SectionHeading('Recent health'),
         const TodayHealthRow(),
         const SizedBox(height: 27),
         const SectionHeading('This week'),
         _WeekCard(
           today: today,
-          perDay: switch (history) {
-            AsyncData(value: final done) => sessionsPerDay(done, today),
-            _ => null,
-          },
-          failed: history is AsyncError,
+          perDay: history.hasValue
+              ? sessionsPerDay(history.value!, today)
+              : null,
+          failed: !history.hasValue && history.hasError,
         ),
       ],
     );
@@ -142,16 +155,6 @@ class _WeekCard extends StatelessWidget {
   /// Finished sessions per day, Sunday first; null while loading.
   final List<int>? perDay;
   final bool failed;
-
-  static const _names = [
-    'Sunday',
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -191,7 +194,7 @@ class _WeekCard extends StatelessWidget {
                 children: [
                   for (var i = 0; i < days.length; i++)
                     _Day(
-                      name: _names[i],
+                      name: weekdayName(days[i]),
                       isToday: days[i] == today,
                       trained: counts[i] > 0,
                     ),
@@ -217,11 +220,13 @@ class _Hero extends StatelessWidget {
     required this.next,
     required this.onStart,
     required this.onOpen,
+    required this.onTrain,
   });
 
   final NextPlan? next;
   final void Function(String planUuid) onStart;
   final void Function(String route) onOpen;
+  final VoidCallback onTrain;
 
   @override
   Widget build(BuildContext context) {
@@ -230,10 +235,12 @@ class _Hero extends StatelessWidget {
       return _HeroFrame(
         eyebrow: 'GET STARTED',
         title: 'No plans yet',
-        subtitle: 'Create a plan, or start an empty workout and add exercises as you go.',
+        subtitle:
+            'Create a plan, or go to Train for a quick workout and add '
+            'exercises as you go.',
         actions: [
           _HeroButton('Create a plan', () => onOpen('/train/plans/new')),
-          _HeroButton('Quick workout', () => onOpen('/train')),
+          _HeroButton('Go to Train', onTrain),
         ],
       );
     }
@@ -327,18 +334,26 @@ class _HeroFrame extends StatelessWidget {
                   ),
                   const SizedBox(height: 9),
                   if (title == null)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Center(child: CircularProgressIndicator()),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: Semantics(
+                          label: 'Loading your plans',
+                          child: const CircularProgressIndicator(),
+                        ),
+                      ),
                     )
                   else ...[
-                    Text(
-                      title!,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -1.8,
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        title!,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -1.8,
+                        ),
                       ),
                     ),
                     if (subtitle != null) ...[

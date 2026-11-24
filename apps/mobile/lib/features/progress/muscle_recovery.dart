@@ -24,9 +24,14 @@ enum Muscle {
 /// How recently each muscle was trained, 0 (recovered / not trained) to 1
 /// (just trained). Missing means no data, drawn neutral.
 class MuscleRecovery {
-  const MuscleRecovery(this.load);
+  const MuscleRecovery(this.load, {this.groups = const {}});
 
   final Map<Muscle, double> load;
+
+  /// The logged muscle groups behind [load], by display name, with the same
+  /// 0..1 value. Exercises only record a group ("Legs"), so this, not the
+  /// individual drawn muscles, is what the card names as trained.
+  final Map<String, double> groups;
 
   double loadOf(Muscle muscle) => (load[muscle] ?? 0).clamp(0.0, 1.0);
 
@@ -52,6 +57,7 @@ class MuscleRecovery {
     DateTime nowUtc,
   ) {
     final load = <Muscle, double>{};
+    final groups = <String, double>{};
     for (final session in sessions) {
       final finished = session.completedAtUtc;
       if (session.status != WorkoutStatus.completed || finished == null) {
@@ -75,12 +81,15 @@ class MuscleRecovery {
               for (final m in Muscle.values)
                 if (m.name.toLowerCase() == group) m,
             ];
+        if (muscles.isEmpty) continue;
+        final name = group[0].toUpperCase() + group.substring(1);
+        if (value > (groups[name] ?? 0)) groups[name] = value;
         for (final m in muscles) {
           if (value > (load[m] ?? 0)) load[m] = value;
         }
       }
     }
-    return MuscleRecovery(load);
+    return MuscleRecovery(load, groups: groups);
   }
 }
 

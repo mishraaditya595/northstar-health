@@ -7,23 +7,6 @@ import 'muscle_recovery.dart';
 /// Which side of the body a [MuscleMap] draws.
 enum BodySide { front, back }
 
-const _labels = {
-  Muscle.chest: 'Chest',
-  Muscle.shoulders: 'Shoulders',
-  Muscle.biceps: 'Biceps',
-  Muscle.forearms: 'Forearms',
-  Muscle.abs: 'Abs',
-  Muscle.obliques: 'Obliques',
-  Muscle.quads: 'Quads',
-  Muscle.calves: 'Calves',
-  Muscle.traps: 'Traps',
-  Muscle.lats: 'Lats',
-  Muscle.lowerBack: 'Lower back',
-  Muscle.triceps: 'Triceps',
-  Muscle.glutes: 'Glutes',
-  Muscle.hamstrings: 'Hamstrings',
-};
-
 /// Absolute-coordinate SVG path (M L C Q Z) in the 100 x 215 figure space.
 /// Shapes describe the figure's left half; the painter mirrors them.
 Path _svg(String data) {
@@ -270,8 +253,7 @@ class _BodyPainter extends CustomPainter {
 }
 
 /// "Muscle Recovery" card: front and back figures, labels, legend and the
-/// muscles trained recently. Reads [muscleRecoveryProvider]; says so when the
-/// values are placeholders.
+/// muscle groups trained recently. Reads [muscleRecoveryProvider].
 class MuscleRecoveryCard extends ConsumerWidget {
   const MuscleRecoveryCard({super.key});
 
@@ -279,11 +261,9 @@ class MuscleRecoveryCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final recovery = ref.watch(muscleRecoveryProvider);
     final theme = Theme.of(context);
-    final worked = [
-      for (final m in Muscle.values)
-        if (recovery.loadOf(m) > 0) m,
-    ]..sort((a, b) => recovery.loadOf(b).compareTo(recovery.loadOf(a)));
-    final workedText = worked.map((m) => _labels[m]!).join(' · ');
+    final worked = recovery.groups.entries.where((e) => e.value > 0).toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final workedText = worked.map((e) => e.key).join(' · ');
     Widget figure(BodySide side, String label) => Flexible(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 170),
@@ -327,7 +307,7 @@ class MuscleRecoveryCard extends ConsumerWidget {
               label:
                   'Body map. '
                   'Recently trained: '
-                  '${worked.isEmpty ? 'none' : worked.map((m) => m.name).join(', ')}.',
+                  '${worked.isEmpty ? 'none' : worked.map((e) => e.key).join(', ')}.',
               excludeSemantics: true,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -368,7 +348,7 @@ class MuscleRecoveryCard extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Shaded by finished workouts in the last 3 days.',
+              'Shaded by muscle group from workouts finished in the last 3 days.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.mutedColor,
