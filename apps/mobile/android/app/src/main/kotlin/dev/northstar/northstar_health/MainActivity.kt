@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
+import java.io.File
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -18,19 +19,43 @@ class MainActivity : FlutterActivity() {
         private val exportStateLock = Any()
         private var activeWrites = 0
         private var cleanupInProgress = false
+        // Dart streams into a temp file that must survive Activity
+        // recreation; only a new process may purge leftover temp files.
+        private var tempPurged = false
     }
 
     private var pendingExport: MethodChannel.Result? = null
     private var writeInProgress = false
-    private var pendingJson: String? = null
+    private var pendingFile: File? = null
     private val exportRequest = 7411
     private val exportPrefs by lazy {
         getSharedPreferences("northstar_export_recovery", MODE_PRIVATE)
     }
     private val pendingUriKey = "unfinished_document_uri"
 
+    // App-private, excluded from Auto Backup. Dart writes here, never chooses
+    // the location; each export gets its own northstar-export-* folder.
+    private val exportTempRoot get() = noBackupFilesDir.canonicalFile
+
+    private fun exportTempFile(path: String?): File? {
+        val file = File(path ?: return null).canonicalFile
+        val folder = file.parentFile ?: return null
+        return file.takeIf {
+            it.name == "northstar-workouts.json" && it.isFile &&
+                folder.name.startsWith("northstar-export-") &&
+                folder.parentFile == exportTempRoot
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        synchronized(exportStateLock) {
+            if (!tempPurged) {
+                tempPurged = true
+                exportTempRoot.listFiles { f -> f.name.startsWith("northstar-export-") }
+                    ?.forEach { it.deleteRecursively() }
+            }
+        }
         // A process may have been killed after CREATE_DOCUMENT and before a
         // finished write. Delete only the exact previously selected export
         // URI. Some providers revoke grants across process death; deletion is
@@ -79,24 +104,35 @@ class MainActivity : FlutterActivity() {
             flutterEngine.dartExecutor.binaryMessenger,
             "northstar/workout_export",
         ).setMethodCallHandler { call, result ->
-            if (call.method != "saveJson") {
+            if (call.method == "prepareFile") {
+                try {
+                    val folder = File(exportTempRoot, "northstar-export-${UUID.randomUUID()}")
+                    val file = File(folder, "northstar-workouts.json")
+                    if (!folder.mkdirs() || !file.createNewFile()) throw IllegalStateException()
+                    result.success(file.path)
+                } catch (_: Exception) {
+                    result.error("export_unavailable", "Cannot prepare export", null)
+                }
+                return@setMethodCallHandler
+            }
+            if (call.method != "saveFile") {
                 result.notImplemented()
                 return@setMethodCallHandler
             }
             val args = call.arguments as? Map<*, *>
             val filename = args?.get("name") as? String
-            val json = args?.get("json") as? String
+            val file = exportTempFile(args?.get("path") as? String)
             val recoveryBusy = synchronized(exportStateLock) {
                 activeWrites > 0 || cleanupInProgress
             }
             if (pendingExport != null || recoveryBusy ||
                 filename != "northstar-workouts.json" ||
-                json == null || !json.startsWith("{") || !json.endsWith("}")) {
+                file == null || file.length() < 2) {
                 result.error("export_unavailable", "Cannot start document export", null)
                 return@setMethodCallHandler
             }
             pendingExport = result
-            pendingJson = json
+            pendingFile = file
             try {
                 val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
                     addCategory(Intent.CATEGORY_OPENABLE)
@@ -106,7 +142,7 @@ class MainActivity : FlutterActivity() {
                 startActivityForResult(intent, exportRequest)
             } catch (_: Exception) {
                 pendingExport = null
-                pendingJson = null
+                pendingFile = null
                 result.error("picker_unavailable", "Document picker unavailable", null)
             }
         }
@@ -117,8 +153,8 @@ class MainActivity : FlutterActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != exportRequest) return
         val callback = pendingExport
-        val json = pendingJson
-        pendingJson = null
+        val source = pendingFile
+        pendingFile = null
         val uri = data?.data
 
         if (resultCode != Activity.RESULT_OK || uri == null) {
@@ -126,7 +162,7 @@ class MainActivity : FlutterActivity() {
             callback?.success("cancelled")
             return
         }
-        if (callback == null || json == null) {
+        if (callback == null || source == null) {
             // Picker returned after Activity recreation / process death.
             // CREATE_DOCUMENT may already have created an empty file.
             pendingExport = null
@@ -162,8 +198,9 @@ class MainActivity : FlutterActivity() {
             try {
                 val output = contentResolver.openOutputStream(uri, "wt")
                     ?: throw IllegalStateException("Output stream unavailable")
+                // Stream copy keeps memory bounded regardless of history size.
                 output.use { stream ->
-                    stream.writer(Charsets.UTF_8).use { it.write(json) }
+                    source.inputStream().use { it.copyTo(stream) }
                 }
                 saved = true
             } catch (_: Exception) {
@@ -201,7 +238,7 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
-        pendingJson = null
+        pendingFile = null
         if (!writeInProgress) {
             // A picker that hasn't returned cannot complete after teardown.
             // A write already in progress MUST keep its result until the

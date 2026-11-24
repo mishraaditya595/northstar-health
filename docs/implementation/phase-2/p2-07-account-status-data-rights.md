@@ -54,11 +54,10 @@ Required by ADR-0005 before release. Implementation and review requirements:
    picker or iOS's UIDocumentPicker. No extra dependency or app-level
    permanent file is created; iOS writes a protected temporary file deleted
    on picker completion. No clipboard, analytics logging or in-app automatic
-   saving. Native picker cancellation does not say exported. The JSON is
-   materialized in memory with a temporary conservative 4 MiB *output byte*
-   bound (not a measured heap bound); larger accounts fail explicitly and
-   never report success with truncated data. The Dart JSON buffer, channel
-   copy and native picker can hold multiple representations simultaneously.
+   saving. Native picker cancellation does not say exported. (P2-08 update:
+   the original 4 MiB in-memory output bound is replaced by page-by-page
+   streaming through a platform-created temporary file; see the
+   [P2-08 export matrix](p2-08-workout-export-release-validation.md).)
    **No low-memory device peak-RSS figure has been measured yet**; this is a
    **P2-08 release gate, not a P2-07b merge gate**. Native Android streams writing on a background thread
    using truncate mode, with best-effort DocumentsContract deletion for failed,
@@ -68,9 +67,7 @@ Required by ADR-0005 before release. Implementation and review requirements:
    cleanup lock, unique generation marker and compare-and-clear protect new
    exports from stale startup cleanup. Native iOS
    atomic write uses complete file protection (without redundant after-write
-   protection changes) and stale temporary export folders are purged on launch. Both pickers require physical-device QA. Streaming
-   large-account exports beyond 4 MiB remain follow-up work before the
-   all-history requirement can be considered satisfied at arbitrary scale.
+   protection changes) and stale temporary export folders are purged on launch. Both pickers require physical-device QA.
    The user-selected destination is outside NorthStar's control; warn that
    the exported file is sensitive. Test native delivery on physical iOS
    and Android before release.

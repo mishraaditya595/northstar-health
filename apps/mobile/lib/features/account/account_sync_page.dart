@@ -56,8 +56,7 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
           'Other devices will lose access. Once deletion is confirmed, '
           'this device will also erase this account\'s local workouts, '
           'plans and pending uploads. If the response is uncertain, local '
-          'data stays locked instead. Export your cloud workout history FIRST, '
-          'and be aware the current export has a 4 MiB limit. '
+          'data stays locked instead. Export your cloud workout history FIRST. '
           'You must verify a new code sent using the normal Supabase '
           'sign-in email template before deletion.',
       confirmLabel: 'Send deletion code',
@@ -91,13 +90,14 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
     if (_exporting || owner == null || !auth.cloudBackupReady) return;
     setState(() => _exporting = true);
     try {
-      final data = await ref
-          .read(workoutHistoryExporterProvider)(owner)
-          .exportJson();
-      if (!mounted || auth.userId != owner || !auth.cloudBackupReady) return;
+      final exporter = ref.read(workoutHistoryExporterProvider)(owner);
       final saved = await ref
           .read(workoutExportFileWriterProvider)
-          .saveJson(data);
+          .saveStreamedJson(
+            exporter.exportTo,
+            proceed: () =>
+                mounted && auth.userId == owner && auth.cloudBackupReady,
+          );
       if (!mounted || auth.userId != owner) return;
       if (saved) showNsMessage(context, 'Workout history exported.');
     } on WorkoutExportException catch (error) {
@@ -105,9 +105,6 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
         showNsMessage(context, switch (error.code) {
           'history_changed_retry' =>
             'Cloud history changed during export. Please retry.',
-          'export_too_large' =>
-            'This history is too large for safe export on this device. '
-                'A larger export method is not available yet.',
           'invalid_row' ||
           'invalid_order' ||
           'invalid_payload' ||

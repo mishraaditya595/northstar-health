@@ -92,11 +92,9 @@ class CompletedWorkoutHistoryExporter {
     required this.authorized,
     DateTime Function()? now,
     this.pageSize = 100,
-    // Conservative temporary cap until low-memory device profiling is done.
-    this.maxExportBytes = 4 * 1024 * 1024,
   }) : accountId = validAccountId(accountId),
        _now = now ?? DateTime.now {
-    if (pageSize < 1 || pageSize > 100 || maxExportBytes < 1024) {
+    if (pageSize < 1 || pageSize > 100) {
       throw ArgumentError('Invalid export bounds');
     }
   }
@@ -106,7 +104,6 @@ class CompletedWorkoutHistoryExporter {
   final bool Function() authorized;
   final DateTime Function() _now;
   final int pageSize;
-  final int maxExportBytes;
 
   void _checkOwner() {
     if (!authorized()) throw const WorkoutExportException('session_changed');
@@ -120,24 +117,16 @@ class CompletedWorkoutHistoryExporter {
     }
   }
 
-  Future<String> exportJson() async {
+  /// Streams the document to [write] one keyset page at a time, so memory
+  /// scales with [pageSize], not history size. A throw leaves the written
+  /// output incomplete; the caller must discard it.
+  Future<void> exportTo(Future<void> Function(String chunk) write) async {
     _checkOwner();
     final high = await reader.highWatermark();
     _checkOwner();
     if (high < 0) throw const WorkoutExportException('invalid_head');
 
-    final json = StringBuffer();
-    var encodedBytes = 0;
-    void add(String text) {
-      // Encode the exact UTF-8 output size, not the Dart UTF-16 length.
-      encodedBytes += utf8.encode(text).length;
-      if (encodedBytes > maxExportBytes) {
-        throw const WorkoutExportException('export_too_large');
-      }
-      json.write(text);
-    }
-
-    add(
+    await write(
       '{"export_schema_version":1,'
       '"source":"northstar_completed_phone_workouts_cloud",'
       '"owner_id":${jsonEncode(accountId)},'
@@ -162,6 +151,7 @@ class CompletedWorkoutHistoryExporter {
       if (page.length > pageSize) {
         throw const WorkoutExportException('page_too_large');
       }
+      final chunk = StringBuffer();
       for (final row in page) {
         if (row['user_id'] != accountId ||
             row['deleted_at'] != null ||
@@ -190,8 +180,8 @@ class CompletedWorkoutHistoryExporter {
             payload['exercises'] is! List) {
           throw const WorkoutExportException('invalid_payload');
         }
-        if (count != 0) add(',');
-        add(
+        if (count != 0) chunk.write(',');
+        chunk.write(
           jsonEncode({
             'workout_id': id,
             'server_revision': revision,
@@ -205,15 +195,15 @@ class CompletedWorkoutHistoryExporter {
       // A PostgREST server may cap each result below the requested page
       // size; only an *empty* keyset page proves exhaustion.
       if (page.isEmpty) break;
+      await write(chunk.toString());
     }
-    add('],"workout_count":$count}');
+    await write('],"workout_count":$count}');
     _checkOwner();
     final endHigh = await reader.highWatermark();
     _checkOwner();
     if (high != endHigh) {
       throw const WorkoutExportException('history_changed_retry');
     }
-    return json.toString();
   }
 }
 

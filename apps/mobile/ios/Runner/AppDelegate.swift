@@ -48,24 +48,48 @@ import UIKit
     finishExport(urls.isEmpty ? "cancelled" : "saved")
   }
 
-  private func saveJson(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+  private func prepareFile(result: @escaping FlutterResult) {
+    let parent = FileManager.default.temporaryDirectory
+      .appendingPathComponent("northstar-export-\(UUID().uuidString)", isDirectory: true)
+    let file = parent.appendingPathComponent("northstar-workouts.json")
+    // Complete protection is set at creation; Dart truncates and streams into
+    // this same file, which keeps its protection class.
+    do {
+      try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
+      guard FileManager.default.createFile(
+        atPath: file.path, contents: nil,
+        attributes: [.protectionKey: FileProtectionType.complete]
+      ) else { throw NSError(domain: "NorthstarExport", code: 2) }
+      result(file.path)
+    } catch {
+      try? FileManager.default.removeItem(at: parent)
+      result(FlutterError(code: "export_unavailable", message: "Cannot prepare export", details: nil))
+    }
+  }
+
+  private func saveFile(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    let temporary = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
     guard exportResult == nil,
           let args = call.arguments as? [String: Any],
           args["name"] as? String == "northstar-workouts.json",
-          let json = args["json"] as? String,
-          json.hasPrefix("{"), json.hasSuffix("}"),
-          let bytes = json.data(using: .utf8)
+          let path = args["path"] as? String
     else {
       result(FlutterError(code: "export_unavailable", message: "Cannot start document export", details: nil))
       return
     }
-    let parent = FileManager.default.temporaryDirectory
-      .appendingPathComponent("northstar-export-\(UUID().uuidString)", isDirectory: true)
-    let file = parent.appendingPathComponent("northstar-workouts.json")
+    let file = URL(fileURLWithPath: path).resolvingSymlinksInPath()
+    let parent = file.deletingLastPathComponent()
+    guard file.lastPathComponent == "northstar-workouts.json",
+          parent.lastPathComponent.hasPrefix("northstar-export-"),
+          parent.deletingLastPathComponent().pathComponents == temporary.pathComponents,
+          let size = (try? file.resourceValues(forKeys: [.fileSizeKey]))?.fileSize,
+          size >= 2
+    else {
+      result(FlutterError(code: "export_unavailable", message: "Cannot start document export", details: nil))
+      return
+    }
     do {
-      try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
       exportDirectory = parent
-      try bytes.write(to: file, options: [.atomic, .completeFileProtection])
       guard let root = UIApplication.shared.connectedScenes
         .compactMap({ $0 as? UIWindowScene })
         .flatMap({ $0.windows })
@@ -132,8 +156,10 @@ import UIKit
       binaryMessenger: engineBridge.applicationRegistrar.messenger()
     )
     channel.setMethodCallHandler { [weak self] call, result in
-      if call.method == "saveJson" {
-        self?.saveJson(call, result: result)
+      if call.method == "prepareFile" {
+        self?.prepareFile(result: result)
+      } else if call.method == "saveFile" {
+        self?.saveFile(call, result: result)
       } else {
         result(FlutterMethodNotImplemented)
       }

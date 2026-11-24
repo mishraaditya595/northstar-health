@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:northstar_health/features/account/workout_history_export.dart';
@@ -185,19 +186,27 @@ void main() {
   });
 
   test(
-    'excessive export fails instead of returning a truncated document',
+    'histories beyond the old 4 MiB cap stream one bounded chunk per page',
     () async {
-      final reader = FakeExportReader([exportRow(0), exportRow(1)]);
-      await expectLater(
-        makeExporter(reader, maxExportBytes: 1024).exportJson(),
-        throwsA(
-          isA<WorkoutExportException>().having(
-            (e) => e.code,
-            'code',
-            'export_too_large',
-          ),
-        ),
-      );
+      final rows = List.generate(2000, (index) {
+        final row = exportRow(index);
+        (row['payload'] as Map<String, dynamic>)['name'] = 'W' * 3000;
+        return row;
+      });
+      final chunks = <String>[];
+      await makeExporter(
+        FakeExportReader(rows),
+        pageSize: 100,
+      ).exportTo((chunk) async => chunks.add(chunk));
+      final json = chunks.join();
+      expect(utf8.encode(json).length, greaterThan(4 * 1024 * 1024));
+      // Header, 20 full pages, footer: memory scales with a page, not history.
+      expect(chunks.length, 22);
+      final largest = chunks.map((c) => c.length).reduce(max);
+      expect(largest, lessThan(json.length ~/ 10));
+      final data = jsonDecode(json) as Map<String, dynamic>;
+      expect(data['workout_count'], 2000);
+      expect((data['workouts'] as List).last['workout_id'], workoutId(1999));
     },
   );
 
