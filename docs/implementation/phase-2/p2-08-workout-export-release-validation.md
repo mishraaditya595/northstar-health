@@ -129,6 +129,23 @@ On a **nonproduction test project** with all Phase 2 migrations applied:
 hosted execution. Account deletion itself is P2-07c and requires its own
 P2-08 cross-device security tests.
 
+## 5. Scheduled receipt purge (hosted)
+
+After `20261124120000_p2_08_schedule_receipt_prune.sql` is deployed:
+
+1. Confirm one job exists and runs as `postgres`:
+   `select jobname, schedule, username, active from cron.job where jobname = 'northstar-prune-expired-workout-receipts';`
+2. After the first 03:17 UTC run, confirm it succeeded, and repeat this check
+   routinely (at least weekly before release, then as part of operations):
+   `select status, return_message, start_time from cron.job_run_details where jobid = (select jobid from cron.job where jobname = 'northstar-prune-expired-workout-receipts') order by start_time desc limit 5;`
+3. Confirm no receipt is past expiry:
+   `select count(*) from public.workout_sync_operations where expires_at <= now() - interval '1 day';` returns 0.
+
+A failed or missing run reopens the 90-day retention gate. Disable the job
+only through a new forward migration calling `cron.unschedule(...)`.
+
+**Evidence:** Not run.
+
 ## Release decision
 
 Do not mark Phase 2 released until P2-07c and P2-08 pass, including
