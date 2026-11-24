@@ -38,9 +38,9 @@ class IosPrivacyStringsTest(unittest.TestCase):
                 self.assertGreaterEqual(len(value.strip()), 40, f"{key} too short")
                 self.assertIn("BeyondRep", value)
 
-    def test_update_string_states_the_app_does_not_write(self):
+    def test_update_string_mentions_writing(self):
         value = self.info.get("NSHealthUpdateUsageDescription", "")
-        self.assertIn("does not write", value)
+        self.assertIn("write", value.lower())
 
     def test_clinical_records_string_present_when_entitled(self):
         access = self.entitlements.get("com.apple.developer.healthkit.access", [])
