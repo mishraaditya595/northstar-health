@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/design/dialogs.dart';
+import '../application/health_overview.dart';
 import '../application/health_summary_controller.dart';
 import '../data/health_reader.dart';
 
@@ -17,7 +18,9 @@ mixin HealthActionsMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     super.initState();
     _lifecycle = AppLifecycleListener(
       onResume: () {
-        if (mounted) ref.invalidate(healthSummaryProvider);
+        if (!mounted) return;
+        ref.invalidate(healthSummaryProvider);
+        onShownOrResumed();
       },
     );
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -27,8 +30,14 @@ mixin HealthActionsMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
         return;
       }
       if (mounted && _isStale()) ref.invalidate(healthSummaryProvider);
+      if (mounted) onShownOrResumed();
     });
   }
+
+  /// Runs after the first show and on every app resume, once the summary
+  /// refresh has been decided.
+  @protected
+  void onShownOrResumed() {}
 
   /// A connected reading from another calendar day or over 5 minutes old.
   bool _isStale() {
@@ -53,12 +62,25 @@ mixin HealthActionsMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     bool loading,
     Future<void> Function(HealthSummaryController controller) action,
   ) {
+    return _guard(
+      loading,
+      () => action(ref.read(healthSummaryProvider.notifier)),
+    );
+  }
+
+  /// Like [guarded] for an overview action (Allow more data, Try again).
+  VoidCallback? guardedOverview(
+    bool loading,
+    Future<void> Function(HealthOverviewController controller) action,
+  ) => _guard(loading, () => action(ref.read(healthOverviewProvider.notifier)));
+
+  VoidCallback? _guard(bool loading, Future<void> Function() action) {
     if (_busy || loading) return null;
     return () async {
       if (_busy) return;
       setState(() => _busy = true);
       try {
-        await action(ref.read(healthSummaryProvider.notifier));
+        await action();
       } finally {
         if (mounted) setState(() => _busy = false);
       }

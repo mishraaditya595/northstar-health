@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/design/beyondrep_theme.dart';
+import '../features/health/detail/health_detail_placeholder_page.dart';
 import '../features/health/health_page.dart';
 import '../features/account/account_sync_page.dart';
 import '../features/sync/workout_conflict_review_page.dart';
@@ -99,6 +100,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/health',
             pageBuilder: (_, state) => _tabPage(state, const HealthPage()),
           ),
+          for (final (path, title) in [
+            ('/health/sleep', 'Sleep'),
+            ('/health/heart', 'Heart'),
+            ('/health/activity', 'Activity'),
+            ('/health/body', 'Body'),
+          ])
+            GoRoute(
+              path: path,
+              builder: (_, _) => HealthDetailPlaceholderPage(title: title),
+            ),
         ],
       ),
     ],
@@ -137,6 +148,8 @@ class AdaptiveShell extends ConsumerWidget {
                 ? 1
                 : location.startsWith('/progress/')
                 ? 2
+                : location.startsWith('/health/')
+                ? 3
                 : _routes.indexOf(location))
             .clamp(0, 3);
     // The live workout is a focus screen: no tab bar or rail.
