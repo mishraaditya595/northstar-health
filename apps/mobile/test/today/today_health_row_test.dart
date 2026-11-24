@@ -41,7 +41,33 @@ Future<void> pumpRow(
   await tester.pumpAndSettle();
 }
 
+HealthConnected connectedAt(DateTime at) => HealthConnected(
+  readings: {for (final m in HealthMetric.values) m: const HealthNoData()},
+  readAt: at,
+  platform: HealthPlatformKind.appleHealth,
+);
+
 void main() {
+  testWidgets('a stale reading is re-read when the row is shown', (
+    tester,
+  ) async {
+    final c = FakeHealthSummaryController(
+      connectedAt(now.subtract(const Duration(minutes: 6))),
+    );
+    await pumpRow(tester, c);
+    expect(c.buildCalls, 2);
+  });
+
+  testWidgets('a fresh reading is not re-read when the row is shown', (
+    tester,
+  ) async {
+    final c = FakeHealthSummaryController(
+      connectedAt(now.subtract(const Duration(minutes: 4))),
+    );
+    await pumpRow(tester, c);
+    expect(c.buildCalls, 1);
+  });
+
   testWidgets('not connected shows a compact Connect card', (tester) async {
     final c = FakeHealthSummaryController(
       const HealthNotConnected(

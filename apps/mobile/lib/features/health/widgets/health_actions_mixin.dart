@@ -6,7 +6,8 @@ import '../application/health_summary_controller.dart';
 import '../data/health_reader.dart';
 
 /// Shared behaviour of the Health tab and the Today row: refresh on app
-/// resume and a guard so Connect / Manage / Try again cannot fire twice.
+/// resume or first show, and a guard so Connect / Manage / Try again cannot
+/// fire twice.
 mixin HealthActionsMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   bool _busy = false;
   late final AppLifecycleListener _lifecycle;
@@ -19,6 +20,25 @@ mixin HealthActionsMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
         if (mounted) ref.invalidate(healthSummaryProvider);
       },
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await ref.read(healthSummaryProvider.future);
+      } catch (_) {
+        return;
+      }
+      if (mounted && _isStale()) ref.invalidate(healthSummaryProvider);
+    });
+  }
+
+  /// A connected reading from another calendar day or over 5 minutes old.
+  bool _isStale() {
+    final state = ref.read(healthSummaryProvider).value;
+    if (state is! HealthConnected) return false;
+    final now = ref.read(healthClockProvider)();
+    final at = state.readAt;
+    final sameDay =
+        at.year == now.year && at.month == now.month && at.day == now.day;
+    return !sameDay || now.difference(at) > const Duration(minutes: 5);
   }
 
   @override

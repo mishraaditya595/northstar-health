@@ -44,6 +44,7 @@ Future<void> pumpPage(
   Brightness brightness = Brightness.light,
   double textScale = 1,
   bool settle = true,
+  DateTime? clock,
 }) async {
   tester.view.physicalSize = Size(width, 1600);
   tester.view.devicePixelRatio = 1;
@@ -53,7 +54,7 @@ Future<void> pumpPage(
     ProviderScope(
       overrides: [
         fakeHealthSummary(controller),
-        healthClockProvider.overrideWithValue(() => now),
+        healthClockProvider.overrideWithValue(() => clock ?? now),
       ],
       child: MaterialApp(
         theme: BeyondRepTheme.build(brightness),
@@ -214,6 +215,40 @@ void main() {
     );
     await pumpPage(tester, c);
     expect(find.textContaining(iosHint), findsOneWidget);
+  });
+
+  group('refresh when shown', () {
+    HealthConnected readAt(DateTime at) => HealthConnected(
+      readings: mixed.readings,
+      readAt: at,
+      platform: mixed.platform,
+    );
+
+    testWidgets('a reading older than 5 minutes is re-read', (tester) async {
+      final c = FakeHealthSummaryController(
+        readAt(now.subtract(const Duration(minutes: 6))),
+      );
+      await pumpPage(tester, c);
+      expect(c.buildCalls, 2);
+    });
+
+    testWidgets('a reading from another calendar day is re-read', (
+      tester,
+    ) async {
+      final c = FakeHealthSummaryController(
+        readAt(DateTime(2026, 11, 23, 23, 58)),
+      );
+      await pumpPage(tester, c, clock: DateTime(2026, 11, 24, 0, 1));
+      expect(c.buildCalls, 2);
+    });
+
+    testWidgets('a fresh same-day reading is not re-read', (tester) async {
+      final c = FakeHealthSummaryController(
+        readAt(now.subtract(const Duration(minutes: 4))),
+      );
+      await pumpPage(tester, c);
+      expect(c.buildCalls, 1);
+    });
   });
 
   testWidgets('app resume rebuilds the summary', (tester) async {
