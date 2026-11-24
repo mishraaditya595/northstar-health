@@ -29,10 +29,13 @@ void main() {
   test(
     'JWT expiry notifies account listeners without an SDK auth event',
     () async {
+      // JWT expiry has whole-second precision. Two seconds out keeps the
+      // deadline at least one second away even when the test starts just
+      // before a second boundary; +1 could leave only a few milliseconds.
       final api = FakeAuthApi()
         ..sessionId = accountA
         ..sessionExpiresAtSeconds =
-            DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000 + 1;
+            DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000 + 2;
       final bound = FakeBoundAccountStore()..saved = accountA;
       final auth = controller(api, bound);
       addTearDown(auth.dispose);
@@ -41,7 +44,7 @@ void main() {
       expect(auth.cloudBackupReady, true);
       var changes = 0;
       auth.addListener(() => changes++);
-      await Future<void>.delayed(const Duration(milliseconds: 1500));
+      await Future<void>.delayed(const Duration(milliseconds: 2500));
       expect(auth.cloudBackupReady, false);
       expect(changes, greaterThan(0));
       expect(auth.backupPaused, true);
