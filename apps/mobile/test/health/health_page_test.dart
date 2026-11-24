@@ -24,21 +24,11 @@ const disconnectHint =
 
 final now = DateTime(2026, 11, 24, 18, 20);
 
-HealthConnected connected(
-  Map<HealthMetric, HealthReading> readings, {
+HealthConnected connected({
   HealthPlatformKind platform = HealthPlatformKind.appleHealth,
-}) => HealthConnected(readings: readings, readAt: now, platform: platform);
+}) => HealthConnected(readAt: now, platform: platform);
 
-final mixed = connected({
-  HealthMetric.sleep: HealthMeasured(
-    value: 378,
-    measuredAt: DateTime(2026, 11, 24, 6, 52),
-    source: 'Apple Watch',
-  ),
-  HealthMetric.steps: const HealthNoData(),
-  HealthMetric.restingHeartRate: const HealthNotAllowed(),
-  HealthMetric.weight: const HealthReadFailed(),
-}, platform: HealthPlatformKind.healthConnect);
+final mixed = connected(platform: HealthPlatformKind.healthConnect);
 
 Future<void> pumpPage(
   WidgetTester tester,
@@ -153,19 +143,16 @@ void main() {
     expect(find.byType(TextButton), findsNothing);
   });
 
-  testWidgets('connected renders the overview, not the summary readings', (
-    tester,
-  ) async {
+  testWidgets('connected renders the overview', (tester) async {
     await pumpPage(tester, FakeHealthSummaryController(mixed));
     expect(find.text('6h 12m'), findsOneWidget);
-    expect(find.text('6h 18m'), findsNothing, reason: 'Phase 3 card');
     expect(find.text('Resting heart rate'), findsNothing);
   });
 
   testWidgets('iOS hint appears once when a card has no data', (tester) async {
     await pumpPage(
       tester,
-      FakeHealthSummaryController(connected(const {})),
+      FakeHealthSummaryController(connected()),
       overviewController: FakeHealthOverviewController(phoneOnly()),
     );
     expect(find.textContaining(iosHint), findsOneWidget);
@@ -174,7 +161,7 @@ void main() {
   testWidgets('no iOS hint on Android or when every card has data', (
     tester,
   ) async {
-    await pumpPage(tester, FakeHealthSummaryController(connected(const {})));
+    await pumpPage(tester, FakeHealthSummaryController(connected()));
     expect(find.textContaining(iosHint), findsNothing);
     await pumpPage(
       tester,
@@ -187,11 +174,8 @@ void main() {
   });
 
   group('refresh when shown', () {
-    HealthConnected readAt(DateTime at) => HealthConnected(
-      readings: mixed.readings,
-      readAt: at,
-      platform: mixed.platform,
-    );
+    HealthConnected readAt(DateTime at) =>
+        HealthConnected(readAt: at, platform: mixed.platform);
 
     testWidgets('a reading older than 5 minutes is re-read', (tester) async {
       final c = FakeHealthSummaryController(

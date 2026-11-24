@@ -19,13 +19,10 @@ final class HealthNotConnected extends HealthSummaryState {
 }
 
 final class HealthConnected extends HealthSummaryState {
-  const HealthConnected({
-    required this.readings,
-    required this.readAt,
-    required this.platform,
-  });
+  const HealthConnected({required this.readAt, required this.platform});
 
-  final Map<HealthMetric, HealthReading> readings;
+  /// When the connection state was built; the values themselves come from
+  /// the overview.
   final DateTime readAt;
   final HealthPlatformKind platform;
 }
@@ -50,30 +47,10 @@ class HealthSummaryController extends AsyncNotifier<HealthSummaryState> {
         platform: reader.platform,
       );
     }
-    final now = ref.read(healthClockProvider)();
-    final results = await Future.wait(
-      HealthMetric.values.map((metric) => _safeRead(reader, metric, now)),
-    );
     return HealthConnected(
-      readings: {
-        for (var i = 0; i < HealthMetric.values.length; i++)
-          HealthMetric.values[i]: results[i],
-      },
-      readAt: now,
+      readAt: ref.read(healthClockProvider)(),
       platform: reader.platform,
     );
-  }
-
-  Future<HealthReading> _safeRead(
-    HealthReader reader,
-    HealthMetric metric,
-    DateTime now,
-  ) async {
-    try {
-      return await reader.read(metric, now);
-    } catch (_) {
-      return const HealthReadFailed();
-    }
   }
 
   Future<void> refresh() async {

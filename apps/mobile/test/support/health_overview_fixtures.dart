@@ -56,6 +56,7 @@ final fullHeart = HeartOverview(
   hrv: (day: DateTime(2026, 11, 24), value: 52),
   hrvDaily: daily(30, (i) => 46 + i / 5),
   vo2Max: (day: DateTime(2026, 11, 20), value: 44.1),
+  vo2MaxDaily: [(day: DateTime(2026, 11, 20), value: 44.1)],
   restingHrVsMonth: const TrendResult(
     direction: TrendDirection.down,
     tone: TrendTone.better,

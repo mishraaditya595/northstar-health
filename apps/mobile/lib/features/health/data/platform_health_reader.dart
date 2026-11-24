@@ -5,14 +5,6 @@ import 'package:health/health.dart' hide HealthValue;
 
 import '../domain/health_types.dart';
 import 'health_reader.dart';
-import 'sleep_merge.dart';
-
-const _sleepTypes = [
-  HealthDataType.SLEEP_ASLEEP,
-  HealthDataType.SLEEP_LIGHT,
-  HealthDataType.SLEEP_DEEP,
-  HealthDataType.SLEEP_REM,
-];
 
 // Read types requested on both platforms. Sleep stages share one permission
 // on Android but are separate HealthKit types.
@@ -161,36 +153,6 @@ class PlatformHealthReader implements HealthReader {
   }
 
   @override
-  Future<HealthReading> read(HealthMetric metric, DateTime now) async {
-    try {
-      await _configure();
-      return switch (metric) {
-        HealthMetric.steps => await _steps(now),
-        HealthMetric.sleep => await _sleep(now),
-        HealthMetric.restingHeartRate => await _latest(
-          HealthDataType.RESTING_HEART_RATE,
-          now.subtract(const Duration(days: 7)),
-          now,
-        ),
-        HealthMetric.weight => await _latest(
-          HealthDataType.WEIGHT,
-          now.subtract(const Duration(days: 30)),
-          now,
-        ),
-      };
-    } on HealthPlatformException catch (e) {
-      return switch (e.errorCode) {
-        HealthErrorCode.permissionDenied =>
-          _isAndroid ? const HealthNotAllowed() : const HealthNoData(),
-        HealthErrorCode.notSupported => const HealthUnsupported(),
-        _ => const HealthReadFailed(),
-      };
-    } catch (_) {
-      return const HealthReadFailed();
-    }
-  }
-
-  @override
   Future<SeriesResult<List<SleepSegment>>> readSleep(
     DateTime from,
     DateTime to,
@@ -321,7 +283,7 @@ class PlatformHealthReader implements HealthReader {
         ),
   ];
 
-  /// Configures, runs [read] and maps failures as [read] does. Never throws.
+  /// Configures, runs [read] and maps platform failures. Never throws.
   Future<SeriesResult<T>> _guard<T>(
     Future<SeriesResult<T>> Function() read,
   ) async {
@@ -346,73 +308,4 @@ class PlatformHealthReader implements HealthReader {
   /// Android reports a denied permission explicitly; iOS never reveals it.
   Future<bool> _allowed(HealthDataType type) async =>
       !_isAndroid || await _health.hasPermissions([type]) == true;
-
-  Future<HealthReading> _steps(DateTime now) async {
-    if (!await _allowed(HealthDataType.STEPS)) return const HealthNotAllowed();
-    final midnight = DateTime(now.year, now.month, now.day);
-    final steps = await _health.getTotalStepsInInterval(midnight, now);
-    if (steps <= 0) return const HealthNoData();
-    return HealthMeasured(
-      value: steps.toDouble(),
-      measuredAt: now,
-      source: friendlySource('', platform),
-    );
-  }
-
-  Future<HealthReading> _sleep(DateTime now) async {
-    if (!await _allowed(HealthDataType.SLEEP_ASLEEP)) {
-      return const HealthNotAllowed();
-    }
-    final start = DateTime(now.year, now.month, now.day - 1, 18);
-    var points = await _health.getHealthDataFromTypes(
-      types: _sleepTypes,
-      startTime: start,
-      endTime: now,
-    );
-    if (points.isEmpty && _isAndroid) {
-      // Some Android sources write only a session, no stages.
-      points = await _health.getHealthDataFromTypes(
-        types: const [HealthDataType.SLEEP_SESSION],
-        startTime: start,
-        endTime: now,
-      );
-    }
-    if (points.isEmpty) return const HealthNoData();
-    final minutes = mergedSleepMinutes([
-      for (final p in points) (from: p.dateFrom, to: p.dateTo),
-    ]);
-    if (minutes <= 0) return const HealthNoData();
-    final sources = <String>{
-      for (final p in points) friendlySource(p.sourceName, platform),
-    };
-    return HealthMeasured(
-      value: minutes.toDouble(),
-      measuredAt: points
-          .map((p) => p.dateTo)
-          .reduce((a, b) => a.isAfter(b) ? a : b),
-      source: sources.join(', '),
-    );
-  }
-
-  Future<HealthReading> _latest(
-    HealthDataType type,
-    DateTime start,
-    DateTime end,
-  ) async {
-    if (!await _allowed(type)) return const HealthNotAllowed();
-    final points = await _health.getHealthDataFromTypes(
-      types: [type],
-      startTime: start,
-      endTime: end,
-      limit: 1,
-    );
-    final numeric = points.where((p) => p.value is NumericHealthValue);
-    if (numeric.isEmpty) return const HealthNoData();
-    final newest = numeric.reduce((a, b) => a.dateTo.isAfter(b.dateTo) ? a : b);
-    return HealthMeasured(
-      value: (newest.value as NumericHealthValue).numericValue.toDouble(),
-      measuredAt: newest.dateTo,
-      source: friendlySource(newest.sourceName, platform),
-    );
-  }
 }

@@ -58,6 +58,7 @@ class HeartOverview {
     required this.hrv,
     required this.hrvDaily,
     required this.vo2Max,
+    required this.vo2MaxDaily,
     required this.restingHrVsMonth,
     required this.hrvVsNormal,
     required this.hrvIsSdnn,
@@ -68,6 +69,9 @@ class HeartOverview {
   final DayValue? hrv;
   final List<DayValue> hrvDaily;
   final DayValue? vo2Max;
+
+  /// Latest per day over 90 days, for the change since a month earlier.
+  final List<DayValue> vo2MaxDaily;
 
   /// Latest vs the mean of the earlier days in the window (needs ≥7).
   final TrendResult? restingHrVsMonth;
@@ -397,12 +401,14 @@ Future<HealthOverview> _read(
 
   final heart = _section<HeartOverview>([rhrResult, hrvResult], () {
     if (rhrDaily.isEmpty && hrvDaily.isEmpty) return null;
+    final vo2Daily = reduceDaily(_list(vo2Result), DailyReduction.latest);
     return HeartOverview(
       restingHr: rhrDaily.lastOrNull,
       restingHrDaily: rhrDaily,
       hrv: hrvDaily.lastOrNull,
       hrvDaily: hrvDaily,
-      vo2Max: reduceDaily(_list(vo2Result), DailyReduction.latest).lastOrNull,
+      vo2Max: vo2Daily.lastOrNull,
+      vo2MaxDaily: vo2Daily,
       restingHrVsMonth: _vsPrior(TrendMetric.restingHr, rhrDaily, 7),
       hrvVsNormal: _vsPrior(TrendMetric.hrv, hrvDaily, 7),
       hrvIsSdnn: platform == HealthPlatformKind.appleHealth,

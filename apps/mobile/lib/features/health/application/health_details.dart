@@ -95,15 +95,22 @@ MetricGap? _gapOf(SeriesResult<Object?> r) => switch (r) {
   SeriesUnsupported() => MetricGap.unsupported,
 };
 
-/// The overview and its sleep for the signed-in account; null otherwise.
-/// Watching the owner as the overview does means an account switch rebuilds
-/// every detail read.
-Future<(HealthOverview, SleepOverview)?> _sleepOf(Ref ref) async {
+/// The overview for the signed-in account; null otherwise. Watching the
+/// owner as the overview does means an account switch rebuilds every detail
+/// read.
+Future<HealthOverview?> _overviewOf(Ref ref) async {
   final owner = ref.watch(healthOwnerIdProvider);
   final overview = await ref.watch(healthOverviewProvider.future);
   if (owner == null || overview == null || overview.ownerId != owner) {
     return null;
   }
+  return overview;
+}
+
+/// The overview and its sleep for the signed-in account; null otherwise.
+Future<(HealthOverview, SleepOverview)?> _sleepOf(Ref ref) async {
+  final overview = await _overviewOf(ref);
+  if (overview == null) return null;
   return switch (overview.sleep) {
     SectionData(:final value) => (overview, value),
     SectionGap() => null,
@@ -112,6 +119,48 @@ Future<(HealthOverview, SleepOverview)?> _sleepOf(Ref ref) async {
 
 bool _stillOwner(Ref ref, String owner) =>
     ref.mounted && ref.read(healthOwnerIdProvider) == owner;
+
+DateTime _monthFrom(DateTime readAt) =>
+    DateTime(readAt.year, readAt.month, readAt.day - 29);
+
+/// iOS: the latest day's mean walking heart rate in the 30 days ending at the
+/// overview's read. Health Connect has no walking heart rate: unsupported,
+/// without a read. Null without an overview for the signed-in account.
+final walkingHrProvider = FutureProvider.autoDispose<Section<DayValue>?>((
+  ref,
+) async {
+  final overview = await _overviewOf(ref);
+  if (overview == null) return null;
+  if (overview.platform != HealthPlatformKind.appleHealth) {
+    return const SectionGap(MetricGap.unsupported);
+  }
+  final result = await _readResult(
+    ref.read(healthReaderProvider),
+    HealthSeriesType.walkingHeartRate,
+    _monthFrom(overview.readAt),
+    overview.readAt,
+  );
+  if (!_stillOwner(ref, overview.ownerId)) return null;
+  final latest = reduceDaily(_samples(result), DailyReduction.mean).lastOrNull;
+  if (latest != null) return SectionData(latest);
+  return SectionGap(_gapOf(result) ?? MetricGap.noData);
+});
+
+/// The latest lean body mass in the 30 days ending at the overview's read;
+/// null when there is none or it could not be read (the tile only shows when
+/// present).
+final leanMassProvider = FutureProvider.autoDispose<DayValue?>((ref) async {
+  final overview = await _overviewOf(ref);
+  if (overview == null) return null;
+  final samples = await _readSeries(
+    ref.read(healthReaderProvider),
+    HealthSeriesType.leanMass,
+    _monthFrom(overview.readAt),
+    overview.readAt,
+  );
+  if (!_stillOwner(ref, overview.ownerId)) return null;
+  return reduceDaily(samples, DailyReduction.latest).lastOrNull;
+});
 
 /// Heart rate, breathing and blood oxygen inside last night's window, and
 /// wrist/skin temperature over the overview's nights for the deviation.

@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/design/dialogs.dart';
 import '../application/health_overview.dart';
 import '../application/health_summary_controller.dart';
-import '../data/health_reader.dart';
 
 /// Shared behaviour of the Health tab and the Today row: refresh on app
 /// resume or first show, and a guard so Connect / Manage / Try again cannot
@@ -96,17 +95,5 @@ mixin HealthActionsMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
         showNsMessage(context, "Couldn't open health permissions. Try again.");
       }
     });
-  }
-
-  /// Tap action for a card: Not allowed -> Manage (settings), Couldn't read ->
-  /// Try again (refresh); none for other readings.
-  VoidCallback? actionForReading(HealthReading? reading, bool loading) {
-    if (reading is HealthNotAllowed) {
-      return guarded(loading, (c) => c.manage());
-    }
-    if (reading is HealthReadFailed) {
-      return guarded(loading, (c) => c.refresh());
-    }
-    return null;
   }
 }

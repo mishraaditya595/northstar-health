@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/design/beyondrep_theme.dart';
 import '../../../core/design/charts/bar_series.dart';
@@ -8,19 +7,16 @@ import '../../../core/design/charts/line_chart.dart';
 import '../../../core/design/charts/score_ring.dart';
 import '../../../core/design/charts/sleep_stages.dart';
 import '../../../core/design/charts/trend_label.dart';
-import '../../../core/design/inputs.dart';
-import '../../../core/design/page_header.dart';
 import '../application/health_details.dart';
 import '../application/health_overview.dart';
-import '../application/health_summary_controller.dart';
 import '../data/health_reader.dart';
 import '../domain/health_types.dart';
 import '../domain/sleep_nights.dart';
 import '../domain/sleep_score.dart';
 import '../domain/trend.dart';
 import '../health_format.dart';
+import '../widgets/detail_layout.dart';
 import '../widgets/health_card_frame.dart';
-import '../widgets/metric_unavailable.dart';
 
 const _reference = Duration(hours: 7, minutes: 30);
 const _noStages = 'Stages need a watch or ring that records them.';
@@ -53,229 +49,35 @@ class _SleepDetailPageState extends ConsumerState<SleepDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(healthOverviewProvider);
-    return Scaffold(
-      appBar: AppBar(
-        // Opened with go (a link) there is nothing to pop: go to Health.
-        leading: NsBackButton(
-          onPressed: () =>
-              context.canPop() ? context.pop() : context.go('/health'),
-        ),
-        title: const Text('Sleep'),
-      ),
-      body: ListView(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          8,
-          16,
-          32 + MediaQuery.paddingOf(context).bottom,
-        ),
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final (range, label) in const [
-                (SleepRange.lastNight, 'Last night'),
-                (SleepRange.week, '7 days'),
-                (SleepRange.month, '30 days'),
-              ])
-                NsChip(
-                  label: label,
-                  selected: _range == range,
-                  onSelected: (_) => setState(() => _range = range),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _content(async),
+    return HealthDetailScaffold(
+      title: 'Sleep',
+      icon: Icons.bedtime_outlined,
+      chips: DetailRangeChips(
+        options: const [
+          (SleepRange.lastNight, 'Last night'),
+          (SleepRange.week, '7 days'),
+          (SleepRange.month, '30 days'),
         ],
+        selected: _range,
+        onSelected: (range) => setState(() => _range = range),
       ),
-    );
-  }
-
-  Widget _content(AsyncValue<HealthOverview?> async) {
-    final overview = async.value;
-    if (overview == null) {
-      if (async.hasError) {
-        return InsightCard(
-          icon: Icons.bedtime_outlined,
-          text: const TextSpan(text: "Couldn't read health data."),
-          actionLabel: 'Try again',
-          onAction: () => ref.read(healthOverviewProvider.notifier).refresh(),
-        );
-      }
-      if (async.isLoading) return const _Loading();
-      return const HealthCaption('Connect health on the Health tab first.');
-    }
-    return switch (overview.sleep) {
-      SectionGap(:final gap) => _Panel(
-        children: [
-          MetricUnavailable(
-            gap: gap,
-            metricName: 'Sleep',
-            platform: overview.platform,
-            onAction: () =>
-                ref.read(healthOverviewProvider.notifier).requestMoreAccess(),
-          ),
-        ],
-      ),
-      SectionData(:final value) =>
-        _range == SleepRange.lastNight
-            ? _LastNight(overview: overview, sleep: value)
-            : _RangeView(overview: overview, sleep: value, range: _range),
-    };
-  }
-}
-
-class _Loading extends StatelessWidget {
-  const _Loading();
-
-  @override
-  Widget build(BuildContext context) => const Center(
-    child: Padding(
-      padding: EdgeInsets.all(24),
-      child: CircularProgressIndicator(),
-    ),
-  );
-}
-
-/// A detail card: optional heading, then [children].
-class _Panel extends StatelessWidget {
-  const _Panel({required this.children, this.title, this.trailing});
-
-  final String? title;
-  final String? trailing;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Card(
-        margin: EdgeInsets.zero,
-        // Charts and rows stay separate nodes for screen readers.
-        semanticContainer: false,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (title != null) ...[
-                Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  spacing: 8,
-                  children: [
-                    Text(
-                      title!,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    if (trailing != null) HealthCaption(trailing!),
-                  ],
-                ),
-                const SizedBox(height: 10),
-              ],
-              ...children,
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Label on the left, value on the right; wraps under large text.
-class _Row extends StatelessWidget {
-  const _Row(this.label, this.value);
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+      builder: (overview) => switch (overview.sleep) {
+        SectionGap(:final gap) => DetailPanel(
+          children: [
+            DetailUnavailable(
+              gap: gap,
+              metricName: 'Sleep',
+              platform: overview.platform,
+              onRetry: () =>
+                  ref.read(healthOverviewProvider.notifier).refresh(),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Small label, bold value, optional caption.
-class _Stat extends StatelessWidget {
-  const _Stat(this.label, this.value, [this.caption]);
-
-  final String label;
-  final String value;
-  final String? caption;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(color: theme.mutedColor),
+          ],
         ),
-        Text(
-          value,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        if (caption != null) HealthCaption(caption!),
-      ],
-    );
-  }
-}
-
-/// [children] two per row.
-class _Pairs extends StatelessWidget {
-  const _Pairs(this.children);
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        for (var i = 0; i < children.length; i += 2)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: children[i]),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: i + 1 < children.length
-                      ? children[i + 1]
-                      : const SizedBox(),
-                ),
-              ],
-            ),
-          ),
-      ],
+        SectionData(:final value) =>
+          _range == SleepRange.lastNight
+              ? _LastNight(overview: overview, sleep: value)
+              : _RangeView(overview: overview, sleep: value, range: _range),
+      },
     );
   }
 }
@@ -290,7 +92,7 @@ class _LastNight extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final night = sleep.lastNight;
     if (night.date != _dayOf(overview.readAt)) {
-      return _Panel(
+      return DetailPanel(
         children: [
           const HealthValue(null),
           const SizedBox(height: 4),
@@ -319,7 +121,7 @@ class _LastNight extends ConsumerWidget {
   Widget _summary(BuildContext context, SleepNight night, SleepScore? score) {
     final theme = Theme.of(context);
     final inBed = night.inBed ?? night.span;
-    return _Panel(
+    return DetailPanel(
       children: [
         Row(
           children: [
@@ -364,7 +166,7 @@ class _LastNight extends ConsumerWidget {
 
   Widget _stages(SleepNight night) {
     if (!night.hasStages) {
-      return const _Panel(
+      return const DetailPanel(
         title: 'Stages',
         children: [HealthCaption(_noStages)],
       );
@@ -375,7 +177,7 @@ class _LastNight extends ConsumerWidget {
         .length;
     final start = formatClockTime(night.start);
     final end = formatClockTime(night.end);
-    return _Panel(
+    return DetailPanel(
       title: 'Stages',
       children: [
         NsStageTimeline(
@@ -395,23 +197,23 @@ class _LastNight extends ConsumerWidget {
               '${formatDuration(night.awake)}.',
         ),
         const SizedBox(height: 14),
-        _Pairs([
-          _Stat(
+        DetailPairs([
+          DetailStat(
             'Deep',
             formatDuration(night.deep),
             '${_percent(night.deep, night.asleep)} · normal 15–20%',
           ),
-          _Stat(
+          DetailStat(
             'REM',
             formatDuration(night.rem),
             '${_percent(night.rem, night.asleep)} · normal 20–25%',
           ),
-          _Stat(
+          DetailStat(
             light,
             formatDuration(night.light),
             _percent(night.light, night.asleep),
           ),
-          _Stat(
+          DetailStat(
             'Awake',
             formatDuration(night.awake),
             awakeTimes == 1 ? '1 time' : '$awakeTimes times',
@@ -433,39 +235,23 @@ class _LastNight extends ConsumerWidget {
     const title = 'Heart rate while asleep';
     final samples = extras?.heartRate ?? const <HealthSample>[];
     if (loading) {
-      return const _Panel(title: title, children: [_Loading()]);
+      return const DetailPanel(title: title, children: [DetailLoading()]);
     }
     if (extras?.heartRateGap case final gap?) {
-      // Same actions as the overview cards: Not allowed -> Manage,
-      // Couldn't read -> Try again.
-      final VoidCallback? onTap = switch (gap) {
-        MetricGap.notAllowed =>
-          () => ref.read(healthSummaryProvider.notifier).manage(),
-        MetricGap.failed => () => ref.invalidate(sleepNightExtrasProvider),
-        _ => null,
-      };
-      final unavailable = MetricUnavailable(
-        gap: gap,
-        metricName: 'heart rate',
-        platform: overview.platform,
-        onAction: () =>
-            ref.read(healthOverviewProvider.notifier).requestMoreAccess(),
-      );
-      return _Panel(
+      return DetailPanel(
         title: title,
         children: [
-          if (onTap == null)
-            unavailable
-          else
-            Semantics(
-              button: true,
-              child: InkWell(onTap: onTap, child: unavailable),
-            ),
+          DetailUnavailable(
+            gap: gap,
+            metricName: 'heart rate',
+            platform: overview.platform,
+            onRetry: () => ref.invalidate(sleepNightExtrasProvider),
+          ),
         ],
       );
     }
     if (samples.isEmpty) {
-      return const _Panel(
+      return const DetailPanel(
         title: title,
         children: [
           HealthValue(null),
@@ -478,7 +264,7 @@ class _LastNight extends ConsumerWidget {
     final text =
         'Avg ${avg.round()} · lowest ${lowest.value.round()} bpm at '
         '${formatClockTime(lowest.from)}';
-    return _Panel(
+    return DetailPanel(
       title: title,
       children: [
         HealthCaption(text),
@@ -534,12 +320,12 @@ class _LastNight extends ConsumerWidget {
         'sleep heart rate needs heart rate while asleep and a resting heart '
             'rate',
     ];
-    return _Panel(
+    return DetailPanel(
       title: 'What made the score',
       children: [
         for (final c in SleepContributor.values)
           if (contributors[c] case final r?)
-            if (value(c, r.rating) case final v?) _Row(labels[c]!, v),
+            if (value(c, r.rating) case final v?) DetailRow(labels[c]!, v),
         if (unused.isNotEmpty) ...[
           const SizedBox(height: 6),
           HealthCaption('Not scored: ${unused.join('; ')}.'),
@@ -553,13 +339,13 @@ class _LastNight extends ConsumerWidget {
     final deviation = extras.wristTempDeviation;
     final tiles = [
       if (extras.respiratoryRate case final v?)
-        _Stat('Breathing', '${v.toStringAsFixed(1)} /min'),
+        DetailStat('Breathing', '${v.toStringAsFixed(1)} /min'),
       if (extras.bloodOxygen case final v?)
-        _Stat('Blood oxygen', '${v.round()}%'),
+        DetailStat('Blood oxygen', '${v.round()}%'),
       if (temp != null)
         deviation == null
-            ? _Stat(_tempName, '${temp.toStringAsFixed(1)} °C')
-            : _Stat(
+            ? DetailStat(_tempName, '${temp.toStringAsFixed(1)} °C')
+            : DetailStat(
                 _tempName,
                 '${deviation < 0 ? '−' : '+'}'
                     '${deviation.abs().toStringAsFixed(1)} °C',
@@ -567,7 +353,7 @@ class _LastNight extends ConsumerWidget {
               ),
     ];
     if (tiles.isEmpty) return null;
-    return _Panel(children: [_Pairs(tiles)]);
+    return DetailPanel(children: [DetailPairs(tiles)]);
   }
 
   String get _tempName => overview.platform == HealthPlatformKind.appleHealth
@@ -591,7 +377,7 @@ class _RangeView extends ConsumerWidget {
     final nightsAsync = ref.watch(sleepRangeNightsProvider(range));
     final hrAsync = ref.watch(sleepRangeHrProvider(range));
     final nights = nightsAsync.isLoading ? null : nightsAsync.value;
-    if (nights == null) return const _Loading();
+    if (nights == null) return const DetailLoading();
     final hr = hrAsync.isLoading ? null : hrAsync.value;
     final heart = overview.heart;
     final stats = sleepRangeStats(
@@ -609,7 +395,7 @@ class _RangeView extends ConsumerWidget {
       children: [
         _timeAsleep(context, stats),
         if (hr == null)
-          const _Panel(title: 'Averages', children: [_Loading()])
+          const DetailPanel(title: 'Averages', children: [DetailLoading()])
         else
           _averages(stats),
       ],
@@ -661,7 +447,7 @@ class _RangeView extends ConsumerWidget {
                 ],
         ),
     ];
-    return _Panel(
+    return DetailPanel(
       title: 'Time asleep',
       trailing: label,
       children: [
@@ -724,20 +510,20 @@ class _RangeView extends ConsumerWidget {
         m == null ? '—' : formatDuration(Duration(minutes: m.round()));
     final bedtime = stats.bedtime;
     final staged = stats.slots.any((n) => n?.hasStages ?? false);
-    return _Panel(
+    return DetailPanel(
       title: 'Averages',
       children: [
-        _Row(
+        DetailRow(
           'Sleep score',
           stats.score == null ? '—' : '${stats.score!.round()}',
         ),
-        _Row('Deep', minutes(stats.deep)),
-        _Row('REM', minutes(stats.rem)),
-        _Row(
+        DetailRow('Deep', minutes(stats.deep)),
+        DetailRow('REM', minutes(stats.rem)),
+        DetailRow(
           'Sleep heart rate',
           stats.sleepHr == null ? '—' : '${stats.sleepHr!.round()} bpm',
         ),
-        _Row(
+        DetailRow(
           'Usual bedtime',
           bedtime == null
               ? '—'

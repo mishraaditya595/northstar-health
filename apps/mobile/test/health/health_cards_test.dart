@@ -23,7 +23,7 @@ import '../support/health_overview_fixtures.dart';
 final clock = DateTime(2026, 11, 24, 7, 45);
 
 HealthConnected summary(HealthPlatformKind platform) =>
-    HealthConnected(readings: const {}, readAt: clock, platform: platform);
+    HealthConnected(readAt: clock, platform: platform);
 
 Future<FakeHealthOverviewController> pumpHealth(
   WidgetTester tester,
