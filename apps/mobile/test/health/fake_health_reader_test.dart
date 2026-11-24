@@ -42,8 +42,8 @@ void main() {
       ..throwOnSeries = {HealthSeriesType.weight}
       ..needsMore = true
       ..history = false;
-    expect(
-      () => fake.readSeries(HealthSeriesType.weight, from, to),
+    await expectLater(
+      fake.readSeries(HealthSeriesType.weight, from, to),
       throwsStateError,
     );
     expect(await fake.needsMoreAccess(), true);
