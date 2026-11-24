@@ -39,7 +39,8 @@ Implemented in source, **not released or device-verified**. Evidence and unrun c
   - Android 14+ and Android 9-13, with and without the Health Connect app.
   - Android partial grant (some types allowed, others denied).
   - Android: deny twice, then tap Not allowed · Manage (Health Connect may stop showing the sheet).
-  - Android: a source that writes only sleep sessions without stages shows No sleep recorded.
+  - Android: Not allowed · Manage opens Health Connect settings (not run).
+  - Android: session-only sleep source shows the session duration (not run).
   - Android workout JSON export still saves after the `FlutterFragmentActivity` change (highest risk).
   - Account A, sign out, account B: B sees the Connect card.
 

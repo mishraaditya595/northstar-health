@@ -13,7 +13,7 @@ The Health tab and the Today "Recent health" row show hardcoded fictional values
 
    | Metric | Window |
    | --- | --- |
-   | Sleep | Asleep stages only (asleep, light, deep, REM), from local 18:00 the previous day until now, overlapping intervals merged once. Initial definition, confirmed at implementation and implemented this way |
+   | Sleep | Asleep stages only (asleep, light, deep, REM), from local 18:00 the previous day until now, overlapping intervals merged once; on Android, if no stage points exist, the merged sleep-session duration for the same window is used. Initial definition, confirmed at implementation and implemented this way |
    | Steps | Since local midnight today (platform de-duplicated aggregate) |
    | Resting heart rate | Newest sample in the last 7 days |
    | Weight | Newest sample in the last 30 days, shown in kg |
@@ -27,7 +27,7 @@ The Health tab and the Today "Recent health" row show hardcoded fictional values
    | A. `health` package | One new dependency, a few hundred lines of Dart; we inherit its release cadence and bugs | **Chosen** |
    | B. Hand-written Swift and Kotlin bridges | Full control; about 3-4x the work, two native codebases to test, still adds Google's `connect-client` | Rejected for a four-number glance |
 
-   Only a small `HealthReader` interface is visible to screens, so B stays possible later without UI changes. `platform_health_reader.dart` and `account_gate.dart` (which provides the reader override) are the only importers of `package:health`, enforced by a guard test.
+   Only a small `HealthReader` interface is visible to screens, so B stays possible later without UI changes. `platform_health_reader.dart` is the only importer of `package:health` (it also exposes `PlatformHealthReader.system()`); `account_gate.dart` provides the reader override and is the one explicit exception allowed to import `features/health` from account code. A guard test resolves every import and export URI, so relative imports are caught. On Android, Not allowed · Manage opens Health Connect's permission settings through a small `northstar/health_settings` method channel instead of re-requesting access.
 
 3. **No health-value cache.** Readings live in Riverpod state for the life of the process and are re-read on view, app resume and pull-to-refresh. This deliberately uses none of the optional expiring cache that `HEALTH_DATA.md` allows, so there is no TTL or stale-purge logic and no health value is ever written to disk.
 

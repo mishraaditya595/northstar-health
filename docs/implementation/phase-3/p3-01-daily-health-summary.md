@@ -4,8 +4,8 @@
 
 ## What exists
 
-- **Metrics:** sleep (asleep, light, deep, REM from local 18:00 the previous day until now, overlaps merged once), steps since local midnight, newest resting heart rate in 7 days, newest weight in 30 days (kg). Missing values show a dash, never zero.
-- **Provider:** `health` 14.0.0 (exact pin) behind a `HealthReader` interface. `platform_health_reader.dart` is the only package importer besides `account_gate.dart`, which constructs `Health()` (guard test).
+- **Metrics:** sleep (asleep, light, deep, REM from local 18:00 the previous day until now, overlaps merged once), steps since local midnight, newest resting heart rate in 7 days, newest weight in 30 days (kg). On Android, when no sleep stage points exist in the window, the merged `SLEEP_SESSION` duration for the same window is used instead (measured time is the latest session end). Missing values show a dash, never zero.
+- **Provider:** `health` 14.0.0 (exact pin) behind a `HealthReader` interface. `platform_health_reader.dart` is the only importer of `package:health`; `account_gate.dart` provides the reader override through `PlatformHealthReader.system()` and is the only file outside `features/health` that may import `features/health`. The guard test resolves every import/export URI to a path, so relative imports are checked too.
 - **Opt-in:** per-account `HealthConnectionEntity` in the account-partitioned ObjectBox store (additive model change, pre-change database fixture test). Holds no health values; erased with the partition on deletion.
 - **No health-value cache:** readings live in Riverpod state, re-read on view, resume and pull-to-refresh. Nothing health-related reaches Supabase, the outbox, export, logs or Firebase.
 - **UI:** Health tab and Today row render real states (loading, connect, needs install, no data, not allowed, couldn't read, unsupported), using the shared component kit. The hardcoded demo values and the Today insight were removed.
@@ -27,7 +27,7 @@ Each task followed red-then-green TDD; the reports are kept with the plan notes,
 
 - `flutter build apk --debug`: no Android SDK here. The first APK build happens in GitHub Actions on the PR.
 - Any Xcode build or archive. The `Runner.xcodeproj` file reference ID for the entitlements file was written by hand and is unverified.
-- All physical-device checks: iPhone with and without Apple Watch (grant, deny, revoke); Android 14+ and 9-13 with and without the Health Connect app; partial grant; Android deny twice, then tap Not allowed · Manage (Health Connect may stop showing the sheet); Android source writing only sleep sessions without stages shows No sleep recorded; Android workout JSON export after the `FlutterFragmentActivity` change; account A, sign out, account B shows Connect.
+- All physical-device checks: iPhone with and without Apple Watch (grant, deny, revoke); Android 14+ and 9-13 with and without the Health Connect app; partial grant; Android deny twice, then tap Not allowed · Manage, which opens Health Connect settings (falls back to the app's system settings page; Health Connect may stop showing the permission sheet); Android: session-only sleep source shows the session duration (not run); Android workout JSON export after the `FlutterFragmentActivity` change; account A, sign out, account B shows Connect.
 - Store prerequisites (all owner actions, not done): HealthKit capability on the App ID plus regenerated App Store provisioning profile, privacy policy (#52) and Health Connect rationale wiring, App Store privacy labels, Play Data Safety and Health Connect declaration.
 
 ## Data ownership and rollback
