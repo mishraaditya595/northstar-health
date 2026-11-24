@@ -10,7 +10,7 @@
 - **No health-value cache:** readings live in Riverpod state, re-read on view, resume and pull-to-refresh. Nothing health-related reaches Supabase, the outbox, export, logs or Firebase.
 - **UI:** Health tab and Today row render real states (loading, connect, needs install, no data, not allowed, couldn't read, unsupported), using the shared component kit. The hardcoded demo values and the Today insight were removed.
 - **Platform behavior:** iOS cannot tell denial from no data, so it shows "No data", treats steps 0 as no data and hints to check the Health app. Android shows "Not allowed" per type; a partial grant is connected when at least one type is granted. Android 8 (API 26-27) has no Health Connect and shows "not available".
-- **Native setup (hand-edited, see Task 5):** Android minSdk 26, four `READ_*` permissions, rationale intent filter and `ViewPermissionUsageActivity` alias (`TODO(#52)`), `MainActivity` now extends `FlutterFragmentActivity`; iOS `NSHealthShareUsageDescription` and `Runner.entitlements` (HealthKit, no write usage string).
+- **Native setup (hand-edited, see Task 5):** Android minSdk 26, four `READ_*` permissions, rationale intent filter and `ViewPermissionUsageActivity` alias (`TODO(#52)`), `MainActivity` now extends `FlutterFragmentActivity`; iOS `NSHealthShareUsageDescription`, `NSHealthUpdateUsageDescription` (required by App Store Connect, ITMS-90683, although no write types are requested; guarded by `tool/test_ios_privacy_strings.py`) and `Runner.entitlements` (HealthKit).
 
 ## Evidence (run in the development container)
 

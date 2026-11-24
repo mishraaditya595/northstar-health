@@ -4,6 +4,8 @@
 <dict>
 	<key>NSHealthShareUsageDescription</key>
 	<string>BeyondRep reads your sleep, steps, resting heart rate and weight to show a daily summary. This data stays on your phone.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>BeyondRep only reads health data for your daily summary. It does not write or change anything in Apple Health.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

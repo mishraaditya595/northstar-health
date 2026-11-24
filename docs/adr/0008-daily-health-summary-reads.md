@@ -37,7 +37,7 @@ The Health tab and the Today "Recent health" row show hardcoded fictional values
 
 6. **Dropped per-value fields.** `HEALTH_DATA.md` asks for a platform sample ID and date imported on each value. A no-cache daily glance needs neither, so they are dropped. Type, unit, measured time and source are kept.
 
-7. **Android requirements.** `minSdk = 26`; `MainActivity` extends `FlutterFragmentActivity` (existing export method channel kept); read permissions `READ_SLEEP`, `READ_STEPS`, `READ_RESTING_HEART_RATE`, `READ_WEIGHT`; the `ViewPermissionUsageActivity` privacy-policy alias. `READ_HEALTH_DATA_HISTORY` is not requested; the 30-day limit suffices. iOS gets HealthKit read-only with `NSHealthShareUsageDescription` and no `NSHealthUpdateUsageDescription`.
+7. **Android requirements.** `minSdk = 26`; `MainActivity` extends `FlutterFragmentActivity` (existing export method channel kept); read permissions `READ_SLEEP`, `READ_STEPS`, `READ_RESTING_HEART_RATE`, `READ_WEIGHT`; the `ViewPermissionUsageActivity` privacy-policy alias. `READ_HEALTH_DATA_HISTORY` is not requested; the 30-day limit suffices. iOS gets HealthKit read-only with `NSHealthShareUsageDescription`. `NSHealthUpdateUsageDescription` is also present because App Store Connect rejects the upload without it (ITMS-90683: the `health` plugin links HealthKit write APIs); BeyondRep never requests write types, so iOS never shows it.
 
 8. **Store prerequisites** before any store build with health permissions: the privacy policy page (issue #52) live, App Store privacy labels, Google Play Data Safety, and the Health Connect permissions declaration. These are release tasks, not code. Development and TestFlight internal builds may proceed before #52.
 
