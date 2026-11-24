@@ -37,6 +37,10 @@ class PlatformHealthReader implements HealthReader {
               ? HealthPlatformKind.appleHealth
               : HealthPlatformKind.healthConnect);
 
+  /// The production reader. Keeps `Health()` construction in this file, the
+  /// only importer of the plugin.
+  factory PlatformHealthReader.system() => PlatformHealthReader(Health());
+
   final Health _health;
 
   @override

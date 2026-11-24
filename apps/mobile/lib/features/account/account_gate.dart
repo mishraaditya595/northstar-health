@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:health/health.dart' show Health;
 
 import '../../app/beyondrep_app.dart';
 import '../../core/design/beyondrep_theme.dart';
@@ -109,7 +108,7 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
             // A factory, not a value: build() reruns on every auth notification
             // and a fresh unequal value would invalidate the health summary.
             healthReaderProvider.overrideWith(
-              (ref) => PlatformHealthReader(Health()),
+              (ref) => PlatformHealthReader.system(),
             ),
             workoutUploadKickProvider.overrideWith(
               (ref) => ref.read(workoutUploadCoordinatorProvider).kick,
