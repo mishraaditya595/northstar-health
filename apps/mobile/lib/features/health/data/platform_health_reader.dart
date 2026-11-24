@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/services.dart' show MethodChannel;
 import 'package:health/health.dart' hide HealthValue;
 
+import '../domain/health_types.dart';
 import 'health_reader.dart';
 import 'sleep_merge.dart';
 
@@ -130,6 +131,35 @@ class PlatformHealthReader implements HealthReader {
       return const HealthReadFailed();
     }
   }
+
+  @override
+  Future<SeriesResult<List<SleepSegment>>> readSleep(
+    DateTime from,
+    DateTime to,
+  ) async => const SeriesUnsupported(); // Implemented in Task 10.
+
+  @override
+  Future<SeriesResult<List<HealthSample>>> readSeries(
+    HealthSeriesType type,
+    DateTime from,
+    DateTime to,
+  ) async => const SeriesUnsupported(); // Implemented in Task 10.
+
+  @override
+  Future<SeriesResult<List<HealthSample>>> readHourlyTotals(
+    HealthTotalType type,
+    DateTime from,
+    DateTime to,
+  ) async => const SeriesUnsupported(); // Implemented in Task 10.
+
+  @override
+  Future<bool> needsMoreAccess() async => false; // Implemented in Task 10.
+
+  @override
+  Future<void> requestMoreAccess() async {} // Implemented in Task 10.
+
+  @override
+  Future<bool> hasHistoryAccess() async => false; // Implemented in Task 10.
 
   /// Android reports a denied permission explicitly; iOS never reveals it.
   Future<bool> _allowed(HealthDataType type) async =>

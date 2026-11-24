@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:beyondrep/features/health/data/health_reader.dart';
+import 'package:beyondrep/features/health/domain/health_types.dart';
 
 class FakeHealthReader implements HealthReader {
   FakeHealthReader({
@@ -21,6 +22,14 @@ class FakeHealthReader implements HealthReader {
   int openSettingsCalls = 0;
   bool throwOnOpenSettings = false;
   final List<HealthMetric> readCalls = [];
+  List<SleepSegment> sleep = [];
+  final Map<HealthSeriesType, List<HealthSample>> series = {};
+  final Map<HealthTotalType, List<HealthSample>> totals = {};
+  Set<HealthSeriesType> throwOnSeries = {};
+  bool needsMore = false;
+  bool history = true;
+  int requestMoreAccessCalls = 0;
+  final List<(HealthSeriesType, DateTime, DateTime)> seriesCalls = [];
 
   static Map<HealthMetric, HealthReading> _defaultReadings() => {
     for (final metric in HealthMetric.values)
@@ -56,4 +65,37 @@ class FakeHealthReader implements HealthReader {
     if (throwOn.contains(metric)) throw StateError('synthetic reader bug');
     return readings[metric] ?? const HealthNoData();
   }
+
+  @override
+  Future<SeriesResult<List<SleepSegment>>> readSleep(
+    DateTime from,
+    DateTime to,
+  ) async => SeriesData(sleep);
+
+  @override
+  Future<SeriesResult<List<HealthSample>>> readSeries(
+    HealthSeriesType type,
+    DateTime from,
+    DateTime to,
+  ) async {
+    seriesCalls.add((type, from, to));
+    if (throwOnSeries.contains(type)) throw StateError('synthetic series bug');
+    return SeriesData(series[type] ?? const []);
+  }
+
+  @override
+  Future<SeriesResult<List<HealthSample>>> readHourlyTotals(
+    HealthTotalType type,
+    DateTime from,
+    DateTime to,
+  ) async => SeriesData(totals[type] ?? const []);
+
+  @override
+  Future<bool> needsMoreAccess() async => needsMore;
+
+  @override
+  Future<void> requestMoreAccess() async => requestMoreAccessCalls++;
+
+  @override
+  Future<bool> hasHistoryAccess() async => history;
 }

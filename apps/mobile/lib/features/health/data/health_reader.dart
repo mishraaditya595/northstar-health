@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../domain/health_types.dart';
+
 enum HealthMetric { sleep, steps, restingHeartRate, weight }
 
 enum HealthPlatformKind { appleHealth, healthConnect }
@@ -39,6 +41,49 @@ final class HealthUnsupported extends HealthReading {
   const HealthUnsupported();
 }
 
+enum HealthSeriesType {
+  heartRate,
+  restingHeartRate,
+  hrv,
+  respiratoryRate,
+  bloodOxygen,
+  vo2Max,
+  walkingHeartRate,
+  sleepingWristTemperature,
+  skinTemperature,
+  weight,
+  bodyFat,
+  leanMass,
+}
+
+enum HealthTotalType { steps, activeEnergy }
+
+sealed class SeriesResult<T> {
+  const SeriesResult();
+}
+
+final class SeriesData<T> extends SeriesResult<T> {
+  const SeriesData(this.data);
+  final T data;
+}
+
+final class SeriesNotAllowed<T> extends SeriesResult<T> {
+  const SeriesNotAllowed();
+}
+
+/// The type was never requested.
+final class SeriesNeedsAccess<T> extends SeriesResult<T> {
+  const SeriesNeedsAccess();
+}
+
+final class SeriesFailed<T> extends SeriesResult<T> {
+  const SeriesFailed();
+}
+
+final class SeriesUnsupported<T> extends SeriesResult<T> {
+  const SeriesUnsupported();
+}
+
 abstract interface class HealthReader {
   HealthPlatformKind get platform;
   Future<HealthAvailability> availability();
@@ -55,6 +100,34 @@ abstract interface class HealthReader {
 
   /// Never throws; failures map to a [HealthReading] variant.
   Future<HealthReading> read(HealthMetric metric, DateTime now);
+
+  /// The range reads below never throw.
+  Future<SeriesResult<List<SleepSegment>>> readSleep(
+    DateTime from,
+    DateTime to,
+  );
+
+  Future<SeriesResult<List<HealthSample>>> readSeries(
+    HealthSeriesType type,
+    DateTime from,
+    DateTime to,
+  );
+
+  /// Hourly buckets from [from] (a local midnight) to [to].
+  Future<SeriesResult<List<HealthSample>>> readHourlyTotals(
+    HealthTotalType type,
+    DateTime from,
+    DateTime to,
+  );
+
+  /// Some current types were never requested or are not granted.
+  Future<bool> needsMoreAccess();
+
+  /// Requests the full current type list (+ history where available).
+  Future<void> requestMoreAccess();
+
+  /// Android: isHealthDataHistoryAuthorized; iOS: true.
+  Future<bool> hasHistoryAccess();
 }
 
 final healthReaderProvider = Provider<HealthReader>(
