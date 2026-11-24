@@ -20,6 +20,12 @@ class NsScoreRing extends StatelessWidget {
   final Color color;
   final String caption;
 
+  String _label(int? v) {
+    final text = v == null ? 'no score' : '$v of 100';
+    if (caption.isEmpty) return text;
+    return v == null ? '$caption: $text' : '$caption $text';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -27,7 +33,7 @@ class NsScoreRing extends StatelessWidget {
         theme.extension<BeyondRepColors>()?.border ?? theme.dividerColor;
     final v = value;
     return Semantics(
-      label: v == null ? '$caption: no score' : '$caption $v of 100',
+      label: _label(v),
       excludeSemantics: true,
       child: SizedBox(
         width: size,
@@ -39,10 +45,16 @@ class NsScoreRing extends StatelessWidget {
             track: track,
           ),
           child: Center(
-            child: Text(
-              v == null ? '—' : '$v',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
+            child: Padding(
+              padding: EdgeInsets.all(size * 0.16),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  v == null ? '—' : '$v',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
             ),
           ),
