@@ -1,6 +1,6 @@
 # BeyondRep release-readiness gates
 
-**Status (27 October 2026):** Phase 1 and P2-01–P2-07 source features are merged, **not released or verified for production**. P2-08 hosted security, native-device and large-history/data-rights acceptance is outstanding. Watch recording and health integration remain unimplemented; neither mobile nor watch app is ready for store distribution.
+**Status (27 October 2026):** Phase 1 and P2-01–P2-07 source features are merged, **not released or verified for production**. P2-08 hosted security, native-device and large-history/data-rights acceptance is outstanding. Watch recording and health writes remain unimplemented; Phase 3 health reads exist in source only (see Phase 3 gates below); neither mobile nor watch app is ready for store distribution.
 
 ## Source and builds
 
@@ -26,11 +26,29 @@
 
 Track evidence in [P2-08 export validation](implementation/phase-2/p2-08-workout-export-release-validation.md) and the [account deletion runbook](../supabase/ACCOUNT_DELETION_RUNBOOK.md).
 
+## Phase 3 health-read release gates (owner actions, none done)
+
+Implemented in source, **not released or device-verified**. Evidence and unrun checks: [p3-01](implementation/phase-3/p3-01-daily-health-summary.md).
+
+- **Apple signing, before the next TestFlight build:** enable the HealthKit capability on the App ID in the Apple developer portal and regenerate the App Store provisioning profile used by the Codemagic TestFlight job. The app now ships a HealthKit entitlement, so signing is expected to fail without this. Not done.
+- **Privacy policy live (issue #52)** and wired to the Health Connect rationale screen (currently a `TODO(#52)` that opens the app). Not done.
+- **Store declarations:** App Store privacy labels; Google Play Data Safety form and Health Connect permissions declaration. Not done.
+- **Builds:** the first Android debug APK build happens in GitHub Actions on the PR (not run locally); no Xcode build has been run, and the hand-edited Runner project and entitlements are unverified in Xcode.
+- **Manual device matrix (all not run):**
+  - iPhone with and without Apple Watch: grant, deny, revoke.
+  - Android 14+ and Android 9-13, with and without the Health Connect app.
+  - Android partial grant (some types allowed, others denied).
+  - Android: deny twice, then tap Not allowed · Manage (Health Connect may stop showing the sheet).
+  - Android: Not allowed · Manage opens Health Connect settings (not run).
+  - Android: session-only sleep source shows the session duration (not run).
+  - Android workout JSON export still saves after the `FlutterFragmentActivity` change (highest risk).
+  - Account A, sign out, account B: B sees the Connect card.
+
 ## Feature and privacy readiness
 
 - ObjectBox real sessions/sets with generated model UID fixture migration, durable offline writes and recovery through process death.
 - No Supabase synchronization release until mandatory authentication, authenticated RLS, strict completed-workout DTO allowlist, conflicts, tombstones, owner-scoped restoration and privacy disclosures are verified under ADR-0005. The development RPC/migrations are not a release.
-- No HealthKit/Health Connect reads or summary exports until permissions/consent, provenance, stale/denied, duplicate-platform-workout prevention and release policy review.
+- HealthKit/Health Connect daily-summary reads are implemented in source (Phase 3, ADR-0008) but gated by the Phase 3 list below. No health writes or summary exports until permissions/consent, provenance, stale/denied, duplicate-platform-workout prevention and release policy review.
 - No Firebase SDK collection until separate diagnostics/analytics default-off initialization, consent controls, redaction and synthetic leak tests.
 - Watch set logging must persist locally and survive screen off, disconnect, battery constraints and reconnect before UI claims success; native sensors and workout lifecycle operate independently of UI. Two-stage ACK (watch->phone and phone->Supabase).
 
@@ -46,7 +64,7 @@ Track evidence in [P2-08 export validation](implementation/phase-2/p2-08-workout
 1. Finish the **P2-08 release gates above** before describing Phase 2 as shipped; retain real-device and hosted test evidence with commit SHA, environment and outcome.
 2. Integrate `apps/watch_os/Sources` into an actual embedded iOS Runner watchOS companion target; verify bundle IDs, signing and TestFlight/physical pairing.
 3. Verify mobile iOS, standalone watchOS and Wear OS builds in macOS/Android CI and profile low-end devices. Replace placeholder app identifiers only with approved production identities.
-4. Begin future Phase 3 HealthKit/Health Connect permission-based reads and Phase 4 user-controlled health-platform summary export only after the separate consent and provenance designs are verified.
+4. Complete the Phase 3 health-read gates above, then begin Phase 4 user-controlled health-platform summary export only after the separate consent and provenance designs are verified.
 5. Implement durable native watch workout recording, offline event transport, deduplication and the watch-to-phone-to-cloud two-stage ACK before claiming wearable logging support.
 
 ## CI/CD cutover status

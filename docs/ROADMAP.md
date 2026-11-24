@@ -42,6 +42,8 @@ This is the authoritative **implementation milestone tracker**. P2-01–P2-07 im
 
 Apple HealthKit and Android Health Connect for supported types; distinct per-feature permission prompts, source provenance and timestamps, platform aggregate queries, ephemeral local caches, revocation/unknown/stale behavior, background constraints and supported device matrix. No raw health measurements in Supabase.
 
+**Phase 3 scope (ADR-0008):** daily summary of four metrics (sleep, steps, resting heart rate, weight), read-only, no health-value cache, per-account opt-in. The "ephemeral local caches" wording above is superseded for this phase: it uses none (ADR-0008). Implemented in source, not released or device-verified; see [p3-01](implementation/phase-3/p3-01-daily-health-summary.md) and the Phase 3 gates in [RELEASE.md](RELEASE.md).
+
 ## Phase 4 — User-controlled completed-workout export
 
 Opt-in write of one BeyondRep-owned workout summary, export receipts and platform-specific retry/reconciliation. Avoid double writing Apple Watch `HKWorkout` or Android sessions; imported workouts stay read-only. Resolve app-owned edits/deletion UX before shipping.

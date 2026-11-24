@@ -7,6 +7,8 @@ import '../../core/storage/account_store.dart';
 import '../../core/storage/objectbox_store_provider.dart';
 import '../../objectbox.g.dart';
 import 'account_auth_controller.dart';
+import '../health/data/health_reader.dart';
+import '../health/data/platform_health_reader.dart';
 import '../sync/workout_upload_coordinator.dart';
 import '../sync/objectbox_workout_restore_importer.dart';
 import '../sync/workout_conflict_resolution.dart';
@@ -103,6 +105,11 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
           overrides: [
             objectBoxStoreProvider.overrideWithValue(snapshot.requireData),
             accountAuthControllerProvider.overrideWithValue(widget.controller),
+            // A factory, not a value: build() reruns on every auth notification
+            // and a fresh unequal value would invalidate the health summary.
+            healthReaderProvider.overrideWith(
+              (ref) => PlatformHealthReader.system(),
+            ),
             workoutUploadKickProvider.overrideWith(
               (ref) => ref.read(workoutUploadCoordinatorProvider).kick,
             ),

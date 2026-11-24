@@ -655,10 +655,36 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "12:7621003638056886597",
+      "lastPropertyId": "3:6501660462108541938",
+      "name": "HealthConnectionEntity",
+      "properties": [
+        {
+          "id": "1:4095145685331580277",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:1450287462340673418",
+          "name": "ownerAccountId",
+          "indexId": "18:17668161778702131",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:6501660462108541938",
+          "name": "connectedAtMs",
+          "type": 6
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "11:1108347530871021507",
-  "lastIndexId": "17:8660571198025360781",
+  "lastEntityId": "12:7621003638056886597",
+  "lastIndexId": "18:17668161778702131",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

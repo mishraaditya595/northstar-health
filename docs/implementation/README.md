@@ -22,4 +22,8 @@ The [roadmap](../ROADMAP.md) tracks milestone state. These notes describe source
 - [P2-07 Account/sync status, JSON cloud-history export and permanent account deletion](phase-2/p2-07-account-status-data-rights.md) — #25, #27 and #29 merged. Uncertain deletion retains files locked unless the user independently chooses to erase them; [ADR-0007](../adr/0007-account-deletion-recovery-exit-choices.md) preserves both exit choices.
 - [P2-08 export/device verification matrix](phase-2/p2-08-workout-export-release-validation.md) — **not run**, alongside hosted signed-JWT/RLS, two-device, Auth-deletion and production rollout gates in [RELEASE.md](../RELEASE.md).
 
+## Phase 3 — permission-based daily health summary
+
+- [P3-01 Daily health summary](phase-3/p3-01-daily-health-summary.md) — read-only sleep, steps, resting heart rate and weight (ADR-0008). Implemented in source; device QA and store gates **not run**, see [RELEASE.md](../RELEASE.md).
+
 **Policy and operational guides:** [ADR-0003](../adr/0003-data-cloud-health.md) (superseded for auth/cloud scope by [ADR-0005](../adr/0005-mandatory-auth-and-workout-sync.md)), [ObjectBox](../OBJECTBOX.md), [Cloud Sync](../CLOUD_SYNC.md), [account deletion runbook](../../supabase/ACCOUNT_DELETION_RUNBOOK.md), and [Supabase restore runbook](../../supabase/RESTORE_RUNBOOK.md). "Merged" does not imply hosted deployment, real-device verification or store release.
