@@ -1,0 +1,34 @@
+---
+import Legal from '../layouts/Legal.astro';
+import { SITE } from '../site';
+---
+<Legal
+  title="Terms of use"
+  description="The terms for using the BeyondRep strength-training app and website."
+>
+  <p>By creating a BeyondRep account or using the app, you agree to these terms. If you don’t agree, please don’t use BeyondRep.</p>
+
+  <h2>Your account</h2>
+  <p>You need an account to use BeyondRep. Keep access to your email address secure, because sign-in codes are sent there. You are responsible for activity on your account.</p>
+
+  <h2>Your data</h2>
+  <p>Your workouts belong to you. You give us permission to store and process them only to run the app for you, as described in the <a href="/privacy">privacy policy</a>. You can export or delete them at any time.</p>
+
+  <h2>Health and safety</h2>
+  <p>BeyondRep is a training log, not a medical device. It does not give medical advice, diagnose or treat any condition. Talk to a qualified professional before starting a new training programme, and stop exercising if you feel pain, dizziness or shortness of breath.</p>
+
+  <h2>Acceptable use</h2>
+  <p>Don’t misuse the service: don’t try to access other people’s data, disrupt or overload the service, or reverse engineer it to get around its security. BeyondRep’s source code is published under its own open-source licence, which governs your use of the code itself.</p>
+
+  <h2>Availability</h2>
+  <p>We work to keep BeyondRep running and your backups safe, but the service is provided “as is”, and we can’t promise it will always be available or error free. Your workouts are always saved on your phone first, and you can export your backup whenever you like.</p>
+
+  <h2>Ending your account</h2>
+  <p>You can delete your account at any time (see <a href="/delete-account">Delete your account</a>). We may suspend accounts that break these terms.</p>
+
+  <h2>Liability</h2>
+  <p>To the extent the law allows, BeyondRep is not liable for indirect or consequential loss arising from your use of the app. Nothing in these terms limits rights you have under consumer law. Governing law is <em>to be confirmed</em>.</p>
+
+  <h2>Changes and contact</h2>
+  <p>We will update this page and its date if these terms change. Questions: <a href={`mailto:${SITE.contactEmail}`}>{SITE.contactEmail}</a>.</p>
+</Legal>

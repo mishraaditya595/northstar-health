@@ -1,0 +1,54 @@
+---
+import Base from '../layouts/Base.astro';
+import { SITE } from '../site';
+
+const faqs = [
+  {
+    q: 'I didn’t get a sign-in code.',
+    a: 'Check your spam folder and that the email address is spelled correctly. Codes expire after 10 minutes, so request a new one if it has been longer.',
+  },
+  {
+    q: 'Will I lose a workout if I have no signal?',
+    a: 'No. Sets are saved on your phone as you log them. Finished workouts back up the next time you are online.',
+  },
+  {
+    q: 'How do I see whether my workouts are backed up?',
+    a: 'On the Today tab, tap the Account and backup button to see your backup status, including anything still waiting to upload.',
+  },
+  {
+    q: 'I got a new phone. How do I get my history back?',
+    a: 'Install BeyondRep and sign in with the same email. Your finished workouts are restored. Plans and templates are stored only on the old phone.',
+  },
+  {
+    q: 'Why does BeyondRep ask about Apple Health or Health Connect?',
+    a: 'Only if you tap Connect on the Health tab. It reads sleep, steps, resting heart rate and weight to show a daily summary, and never saves or uploads those values.',
+  },
+  {
+    q: 'How do I export or delete my data?',
+    a: 'In Account, tap Export cloud workout history (JSON) for a file of your workouts. To delete everything, see the Delete your account page.',
+  },
+];
+---
+<Base
+  title="Support"
+  description="Help with BeyondRep: sign-in codes, offline logging, backups, restoring on a new phone, health connections, and exporting or deleting your data."
+  jsonLd={[
+    {
+      '@type': 'FAQPage',
+      mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+    },
+  ]}
+>
+  <div class="wrap narrow prose">
+    <h1>Support</h1>
+    <p>Email <a href={`mailto:${SITE.contactEmail}`}>{SITE.contactEmail}</a> and we’ll get back to you. Please don’t send sign-in codes or health data by email.</p>
+    <h2>Common questions</h2>
+    {faqs.map((f) => (
+      <details>
+        <summary>{f.q}</summary>
+        <p>{f.a}</p>
+      </details>
+    ))}
+    <p class="muted" style="margin-top:24px">Found a bug? You can also <a href="https://github.com/mishraaditya595/BeyondRep-Health/issues">open an issue on GitHub</a>.</p>
+  </div>
+</Base>

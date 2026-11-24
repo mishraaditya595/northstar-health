@@ -52,6 +52,7 @@ apps/
   wear_os/                     # separate native Wear OS app (Kotlin/Compose)
     app/src/main/              # watch-specific manifest/activity
     gradlew                    # Gradle wrapper
+  website/                     # Astro site for beyondrep.in (marketing, privacy, account deletion)
 contracts/workout_sync/v1/    # language-neutral event schema + tested fixture JSON
 packages/                     # Dart workspace packages when there is real reuse
 supabase/                     # versioned development RPC/database migrations and pgTAP tests

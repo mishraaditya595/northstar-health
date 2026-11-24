@@ -46,6 +46,8 @@ class LayoutTest(unittest.TestCase):
             "apps/watch_os/Sources/App/BeyondRepWatchApp.swift",
             "apps/wear_os/app/build.gradle.kts",
             "apps/wear_os/app/src/main/AndroidManifest.xml",
+            "apps/website/package.json",
+            "apps/website/astro.config.mjs",
             "contracts/workout_sync/v1/envelope.schema.json",
         ]
         for entry in required:
@@ -59,6 +61,7 @@ class LayoutTest(unittest.TestCase):
             "apps/mobile/pubspec.lock",
             "apps/wear_os/gradlew",
             "apps/wear_os/gradle/wrapper/gradle-wrapper.jar",
+            "apps/website/package-lock.json",
         ]
         for entry in required:
             with self.subTest(entry=entry):

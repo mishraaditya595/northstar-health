@@ -1,0 +1,43 @@
+---
+import Legal from '../layouts/Legal.astro';
+import { SITE } from '../site';
+const subject = encodeURIComponent('Delete my BeyondRep account');
+---
+<Legal
+  title="Delete your BeyondRep account"
+  description="How to permanently delete your BeyondRep account and backed-up workouts, from the app or by email, and what is deleted."
+>
+  <h2>Delete from the app</h2>
+  <ol>
+    <li>Open BeyondRep and, on the <strong>Today</strong> tab, tap the <strong>Account and backup</strong> button at the top.</li>
+    <li>Tap <strong>Permanently delete account</strong>. If you want a copy of your workouts, export them first when asked.</li>
+    <li>Enter the six-digit code we email you to confirm it’s you.</li>
+  </ol>
+  <p>Your account and backed-up workouts are deleted straight away, and the app erases this account’s data from your phone.</p>
+
+  <h2>Can’t use the app?</h2>
+  <p>
+    Email <a href={`mailto:${SITE.privacyEmail}?subject=${subject}`}>{SITE.privacyEmail}</a> from the address you signed
+    up with. We will send a code to that address to confirm the request, then delete the account within 30 days and
+    reply when it is done.
+  </p>
+
+  <h2>What is deleted</h2>
+  <ul>
+    <li>Your account: email address, account ID, sessions and sign-in tokens</li>
+    <li>All backed-up workouts, with their exercises and sets</li>
+    <li>Records of deleted workouts and upload receipts</li>
+    <li>BeyondRep data for this account on the phone you delete from</li>
+  </ul>
+
+  <h2>What may remain for a limited time</h2>
+  <ul>
+    <li>Security logs and email delivery logs held by our service providers. How long these are kept is <em>to be confirmed</em>.</li>
+    <li>BeyondRep data stored on other phones you signed in on. Remove it by uninstalling the app on those phones.</li>
+    <li>Any export files you saved yourself.</li>
+  </ul>
+  <p>
+    Deleting your BeyondRep account does not change anything in Apple Health or Health Connect, because BeyondRep never
+    writes there. See the <a href="/privacy">privacy policy</a> for more.
+  </p>
+</Legal>
