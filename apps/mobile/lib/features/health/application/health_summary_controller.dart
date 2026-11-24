@@ -84,10 +84,14 @@ class HealthSummaryController extends AsyncNotifier<HealthSummaryState> {
   /// Returns false when the platform call failed; state is then unchanged and
   /// no connection is recorded. The error is never rethrown or logged.
   Future<bool> connect() async {
+    // Everything the post-await work needs is read first: the account scope
+    // can be disposed while the permission sheet is open.
     final owner = ref.read(healthOwnerIdProvider);
     if (owner == null) return true;
+    final reader = ref.read(healthReaderProvider);
+    final repository = ref.read(healthConnectionRepositoryProvider);
+    final connectedAt = ref.read(healthClockProvider)();
     try {
-      final reader = ref.read(healthReaderProvider);
       final availability = await reader.availability();
       if (availability == HealthAvailability.needsInstall) {
         await reader.openInstall();
@@ -98,12 +102,25 @@ class HealthSummaryController extends AsyncNotifier<HealthSummaryState> {
     } catch (_) {
       return false;
     }
-    ref
-        .read(healthConnectionRepositoryProvider)
-        .connect(owner, ref.read(healthClockProvider)());
-    ref.invalidateSelf();
-    await future;
+    // Disposed (sign-out or account switch): the account-bound store may be
+    // closed, so record nothing.
+    if (!ref.mounted) return true;
+    try {
+      repository.connect(owner, connectedAt);
+      ref.invalidateSelf();
+      await future;
+    } catch (_) {
+      return false;
+    }
     return true;
+  }
+
+  /// Opens the platform's permission settings (Not allowed · Manage). Never
+  /// throws; the resume refresh re-reads after the user returns.
+  Future<void> manage() async {
+    try {
+      await ref.read(healthReaderProvider).openSettings();
+    } catch (_) {}
   }
 
   Future<void> disconnect() async {

@@ -163,14 +163,15 @@ void main() {
     expect(find.textContaining(iosHint), findsNothing, reason: 'Android');
   });
 
-  testWidgets('Not allowed taps connect, Try again taps refresh', (
+  testWidgets('Not allowed taps manage, Try again taps refresh', (
     tester,
   ) async {
     final c = FakeHealthSummaryController(mixed);
     await pumpPage(tester, c);
     await tester.tap(find.text('Not allowed · Manage'));
     await tester.pumpAndSettle();
-    expect(c.connectCalls, 1);
+    expect(c.manageCalls, 1);
+    expect(c.connectCalls, 0);
     await tester.tap(find.text("Couldn't read · Try again"));
     await tester.pumpAndSettle();
     expect(c.refreshCalls, 1);
@@ -321,6 +322,7 @@ void main() {
     await tester.pump();
     expect(c.refreshCalls, 0);
     expect(c.connectCalls, 0);
+    expect(c.manageCalls, 0);
     c.buildGate!.complete();
     await tester.pumpAndSettle();
   });

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
@@ -141,4 +142,36 @@ void main() {
     await container.read(healthSummaryProvider.notifier).connect();
     expect(fake.requestAccessCalls, 0);
   });
+
+  test('manage opens the platform settings and never connects', () async {
+    final container = containerFor(_ownerA);
+    await container.read(healthSummaryProvider.future);
+    await container.read(healthSummaryProvider.notifier).manage();
+    expect(fake.openSettingsCalls, 1);
+    expect(fake.requestAccessCalls, 0);
+    expect(repo.isConnected(_ownerA), false);
+  });
+
+  test('manage swallows a settings failure', () async {
+    fake.throwOnOpenSettings = true;
+    final container = containerFor(_ownerA);
+    await container.read(healthSummaryProvider.future);
+    await container.read(healthSummaryProvider.notifier).manage();
+    expect(fake.openSettingsCalls, 1);
+  });
+
+  test(
+    'connect finishing after the scope is disposed does not throw',
+    () async {
+      fake.requestAccessGate = Completer<void>();
+      final container = containerFor(_ownerA);
+      await container.read(healthSummaryProvider.future);
+      final pending = container.read(healthSummaryProvider.notifier).connect();
+      await Future<void>.delayed(Duration.zero);
+      container.dispose();
+      fake.requestAccessGate!.complete();
+      expect(await pending, true);
+      expect(repo.isConnected(_ownerA), false);
+    },
+  );
 }

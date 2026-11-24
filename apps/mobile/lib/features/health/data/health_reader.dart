@@ -49,6 +49,10 @@ abstract interface class HealthReader {
   /// Android: opens the Health Connect install flow.
   Future<void> openInstall();
 
+  /// Android: opens Health Connect's permission settings. No-op on iOS, where
+  /// a denied read is indistinguishable from no data.
+  Future<void> openSettings();
+
   /// Never throws; failures map to a [HealthReading] variant.
   Future<HealthReading> read(HealthMetric metric, DateTime now);
 }

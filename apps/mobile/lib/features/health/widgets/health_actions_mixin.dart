@@ -65,7 +65,7 @@ mixin HealthActionsMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     };
   }
 
-  /// Like [guarded] for Connect / Manage: tells the user when the platform
+  /// Like [guarded] for Connect: tells the user when the platform
   /// permission call failed.
   VoidCallback? guardedConnect(bool loading) {
     if (_busy || loading) return null;
@@ -76,11 +76,11 @@ mixin HealthActionsMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     });
   }
 
-  /// Tap action for a card: Not allowed -> Manage (connect), Couldn't read ->
+  /// Tap action for a card: Not allowed -> Manage (settings), Couldn't read ->
   /// Try again (refresh); none for other readings.
   VoidCallback? actionForReading(HealthReading? reading, bool loading) {
     if (reading is HealthNotAllowed) {
-      return guardedConnect(loading);
+      return guarded(loading, (c) => c.manage());
     }
     if (reading is HealthReadFailed) {
       return guarded(loading, (c) => c.refresh());

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:beyondrep/features/health/data/health_reader.dart';
 
 class FakeHealthReader implements HealthReader {
@@ -13,8 +15,11 @@ class FakeHealthReader implements HealthReader {
   Map<HealthMetric, HealthReading> readings;
   Set<HealthMetric> throwOn = {};
   bool throwOnRequestAccess = false;
+  Completer<void>? requestAccessGate;
   int requestAccessCalls = 0;
   int openInstallCalls = 0;
+  int openSettingsCalls = 0;
+  bool throwOnOpenSettings = false;
   final List<HealthMetric> readCalls = [];
 
   static Map<HealthMetric, HealthReading> _defaultReadings() => {
@@ -32,11 +37,18 @@ class FakeHealthReader implements HealthReader {
   @override
   Future<void> requestAccess() async {
     requestAccessCalls++;
+    await requestAccessGate?.future;
     if (throwOnRequestAccess) throw StateError('synthetic permission bug');
   }
 
   @override
   Future<void> openInstall() async => openInstallCalls++;
+
+  @override
+  Future<void> openSettings() async {
+    openSettingsCalls++;
+    if (throwOnOpenSettings) throw StateError('synthetic settings bug');
+  }
 
   @override
   Future<HealthReading> read(HealthMetric metric, DateTime now) async {

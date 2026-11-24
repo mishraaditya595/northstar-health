@@ -1,10 +1,12 @@
 package `in`.beyondrep.app
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
+import android.provider.Settings
 import java.io.File
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -98,8 +100,39 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    // Health Connect's permission settings; the app's own settings page when
+    // Health Connect has no such activity. Returns false, never throws.
+    private fun openHealthConnectSettings(): Boolean {
+        val targets = listOf(
+            Intent("androidx.health.ACTION_HEALTH_CONNECT_SETTINGS"),
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                .setData(Uri.fromParts("package", packageName, null)),
+        )
+        for (intent in targets) {
+            try {
+                startActivity(intent)
+                return true
+            } catch (_: ActivityNotFoundException) {
+                // Try the next target.
+            } catch (_: Exception) {
+                return false
+            }
+        }
+        return false
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "northstar/health_settings",
+        ).setMethodCallHandler { call, result ->
+            if (call.method != "openHealthConnectSettings") {
+                result.notImplemented()
+                return@setMethodCallHandler
+            }
+            result.success(openHealthConnectSettings())
+        }
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "northstar/workout_export",

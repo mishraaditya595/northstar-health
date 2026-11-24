@@ -12,6 +12,7 @@ class FakeHealthSummaryController extends HealthSummaryController {
   final HealthSummaryState? initial;
   int connectCalls = 0;
   int disconnectCalls = 0;
+  int manageCalls = 0;
   int refreshCalls = 0;
   int buildCalls = 0;
   Completer<void>? connectGate;
@@ -38,6 +39,9 @@ class FakeHealthSummaryController extends HealthSummaryController {
     await connectGate?.future;
     return connectResult;
   }
+
+  @override
+  Future<void> manage() async => manageCalls++;
 
   @override
   Future<void> disconnect() async => disconnectCalls++;

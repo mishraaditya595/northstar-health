@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:health/health.dart' hide HealthValue;
 
 import 'health_reader.dart';
@@ -19,6 +20,8 @@ const _requestTypes = [
   HealthDataType.RESTING_HEART_RATE,
   HealthDataType.WEIGHT,
 ];
+
+const _settingsChannel = MethodChannel('northstar/health_settings');
 
 const _knownSources = {'com.google.android.apps.fitness': 'Fit'};
 
@@ -86,6 +89,16 @@ class PlatformHealthReader implements HealthReader {
   Future<void> openInstall() async {
     await _configure();
     await _health.installHealthConnect();
+  }
+
+  @override
+  Future<void> openSettings() async {
+    if (!_isAndroid) return;
+    try {
+      await _settingsChannel.invokeMethod<bool>('openHealthConnectSettings');
+    } catch (_) {
+      // The resume refresh still re-reads; nothing to report to the user.
+    }
   }
 
   @override

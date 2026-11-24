@@ -111,6 +111,7 @@ HealthDataPoint _point(
 );
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   final now = DateTime(2026, 11, 24, 9, 30);
   late _FakeHealth health;
 
@@ -269,6 +270,54 @@ void main() {
     expect(await reader.read(HealthMetric.steps, now), isA<HealthReadFailed>());
     expect(await reader.read(HealthMetric.steps, now), isA<HealthMeasured>());
     expect(health.configureCalls, 2);
+  });
+
+  group('openSettings', () {
+    const channel = MethodChannel('northstar/health_settings');
+    final calls = <String>[];
+    Object? failure;
+    Object? reply = true;
+
+    setUp(() {
+      calls.clear();
+      failure = null;
+      reply = true;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            calls.add(call.method);
+            if (failure != null) throw failure!;
+            return reply;
+          });
+    });
+    tearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null),
+    );
+
+    test('android opens Health Connect settings over the channel', () async {
+      await android().openSettings();
+      expect(calls, ['openHealthConnectSettings']);
+    });
+
+    test('a channel failure or false reply never throws', () async {
+      failure = PlatformException(code: 'x', message: 'private detail');
+      await android().openSettings();
+      failure = null;
+      reply = false;
+      await android().openSettings();
+      expect(calls.length, 2);
+    });
+
+    test('a missing channel handler never throws', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+      await android().openSettings();
+    });
+
+    test('iOS does nothing', () async {
+      await ios().openSettings();
+      expect(calls, isEmpty);
+    });
   });
 
   test('sleep without points is no data', () async {
