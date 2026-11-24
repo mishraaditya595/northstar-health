@@ -120,11 +120,22 @@ void main() {
       expect(shown.previousAverage, 20);
     });
 
+    test('shows previous with exactly days ~/ 2 days of data', () {
+      final data = [
+        ...series(7),
+        (day: DateTime(2026, 11, 11), value: 5.0),
+        (day: DateTime(2026, 11, 12), value: 5.0),
+        (day: DateTime(2026, 11, 13), value: 5.0),
+      ];
+      final r = summarizePeriod(data, lastDay: last, days: 7);
+      expect(r.previousAverage, 5);
+    });
+
     test('hides previous when previous window is sparse', () {
       final data = [
         ...series(7),
-        (day: DateTime(2026, 11, 10), value: 5.0),
         (day: DateTime(2026, 11, 11), value: 5.0),
+        (day: DateTime(2026, 11, 12), value: 5.0),
       ];
       final r = summarizePeriod(data, lastDay: last, days: 7);
       expect(r.average, 10);

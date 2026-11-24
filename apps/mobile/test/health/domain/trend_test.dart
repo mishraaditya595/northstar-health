@@ -21,6 +21,14 @@ void main() {
       -3,
     );
   });
+  test('restingHr 59 vs 57 is up/worse, delta 2', () {
+    expectTrend(
+      trendOf(TrendMetric.restingHr, 59, 57),
+      TrendDirection.up,
+      TrendTone.worse,
+      2,
+    );
+  });
   test('restingHr 56.5 vs 57 is flat/same', () {
     expectTrend(
       trendOf(TrendMetric.restingHr, 56.5, 57),
