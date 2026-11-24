@@ -106,8 +106,10 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
           overrides: [
             objectBoxStoreProvider.overrideWithValue(snapshot.requireData),
             accountAuthControllerProvider.overrideWithValue(widget.controller),
-            healthReaderProvider.overrideWithValue(
-              PlatformHealthReader(Health()),
+            // A factory, not a value: build() reruns on every auth notification
+            // and a fresh unequal value would invalidate the health summary.
+            healthReaderProvider.overrideWith(
+              (ref) => PlatformHealthReader(Health()),
             ),
             workoutUploadKickProvider.overrideWith(
               (ref) => ref.read(workoutUploadCoordinatorProvider).kick,
