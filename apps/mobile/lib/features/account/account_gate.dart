@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:health/health.dart' show Health;
 
 import '../../app/beyondrep_app.dart';
 import '../../core/design/beyondrep_theme.dart';
@@ -7,6 +8,8 @@ import '../../core/storage/account_store.dart';
 import '../../core/storage/objectbox_store_provider.dart';
 import '../../objectbox.g.dart';
 import 'account_auth_controller.dart';
+import '../health/data/health_reader.dart';
+import '../health/data/platform_health_reader.dart';
 import '../sync/workout_upload_coordinator.dart';
 import '../sync/objectbox_workout_restore_importer.dart';
 import '../sync/workout_conflict_resolution.dart';
@@ -103,6 +106,9 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
           overrides: [
             objectBoxStoreProvider.overrideWithValue(snapshot.requireData),
             accountAuthControllerProvider.overrideWithValue(widget.controller),
+            healthReaderProvider.overrideWithValue(
+              PlatformHealthReader(Health()),
+            ),
             workoutUploadKickProvider.overrideWith(
               (ref) => ref.read(workoutUploadCoordinatorProvider).kick,
             ),

@@ -6,12 +6,12 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
 import java.io.File
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.util.UUID
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     companion object {
         // Activity recreation shares this lock and count while a SAF writer
         // survives rotation. A new process starts at zero and recovers the
