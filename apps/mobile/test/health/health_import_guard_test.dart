@@ -90,4 +90,36 @@ import 'sibling.dart'
       reason: 'the explicit exception must still be needed',
     );
   });
+
+  List<String> filesUnder(String dir) {
+    final d = Directory(dir);
+    expect(d.existsSync(), isTrue, reason: '$dir must exist');
+    return dart.map(norm).where((p) => p.startsWith('$dir/')).toList();
+  }
+
+  test('health domain imports only dart: and domain files', () {
+    final files = filesUnder('lib/features/health/domain');
+    expect(files, isNotEmpty);
+    final offenders = [
+      for (final p in files)
+        for (final i in importsOf(p))
+          if (!i.startsWith('dart:') &&
+              !i.startsWith('lib/features/health/domain/'))
+            '$p -> $i',
+    ];
+    expect(offenders, isEmpty);
+  });
+
+  test('health application and domain never import objectbox or dart:io', () {
+    final files = [
+      ...filesUnder('lib/features/health/application'),
+      ...filesUnder('lib/features/health/domain'),
+    ];
+    final offenders = [
+      for (final p in files)
+        for (final i in importsOf(p))
+          if (i.contains('objectbox') || i == 'dart:io') '$p -> $i',
+    ];
+    expect(offenders, isEmpty);
+  });
 }
