@@ -88,7 +88,9 @@ abstract interface class HealthReader {
   HealthPlatformKind get platform;
   Future<HealthAvailability> availability();
 
-  /// One permission sheet for all four metric types.
+  /// One permission sheet for every read type (the Phase 3 metrics plus the
+  /// [HealthSeriesType] and [HealthTotalType] reads, plus history where
+  /// Health Connect offers it).
   Future<void> requestAccess();
 
   /// Android: opens the Health Connect install flow.

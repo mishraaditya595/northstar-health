@@ -30,6 +30,15 @@ class FakeHealthReader implements HealthReader {
   bool history = true;
   int requestMoreAccessCalls = 0;
   final List<(HealthSeriesType, DateTime, DateTime)> seriesCalls = [];
+  final List<(DateTime, DateTime)> sleepCalls = [];
+  final List<(HealthTotalType, DateTime, DateTime)> totalsCalls = [];
+
+  /// Non-data results (e.g. [SeriesNeedsAccess]) that win over [series].
+  final Map<HealthSeriesType, SeriesResult<List<HealthSample>>> seriesResults =
+      {};
+
+  /// Holds every [readSleep] until completed.
+  Completer<void>? sleepGate;
 
   static Map<HealthMetric, HealthReading> _defaultReadings() => {
     for (final metric in HealthMetric.values)
@@ -70,7 +79,11 @@ class FakeHealthReader implements HealthReader {
   Future<SeriesResult<List<SleepSegment>>> readSleep(
     DateTime from,
     DateTime to,
-  ) async => SeriesData(sleep);
+  ) async {
+    sleepCalls.add((from, to));
+    await sleepGate?.future;
+    return SeriesData(sleep);
+  }
 
   @override
   Future<SeriesResult<List<HealthSample>>> readSeries(
@@ -80,7 +93,7 @@ class FakeHealthReader implements HealthReader {
   ) async {
     seriesCalls.add((type, from, to));
     if (throwOnSeries.contains(type)) throw StateError('synthetic series bug');
-    return SeriesData(series[type] ?? const []);
+    return seriesResults[type] ?? SeriesData(series[type] ?? const []);
   }
 
   @override
@@ -88,7 +101,10 @@ class FakeHealthReader implements HealthReader {
     HealthTotalType type,
     DateTime from,
     DateTime to,
-  ) async => SeriesData(totals[type] ?? const []);
+  ) async {
+    totalsCalls.add((type, from, to));
+    return SeriesData(totals[type] ?? const []);
+  }
 
   @override
   Future<bool> needsMoreAccess() async => needsMore;
