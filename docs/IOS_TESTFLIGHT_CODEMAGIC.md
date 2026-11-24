@@ -58,6 +58,8 @@ The hosted Supabase project named in `SUPABASE_URL` must already have all commit
 
 `scripts/codemagic_ios_version.py` looks up the latest build with the Codemagic `app-store-connect` CLI (`apps list` by bundle ID, then `get-latest-testflight-build-number --all-versions`), using the `Codemagic Signing` integration. No extra variable or credential is needed. The step fails before the build starts if a value is malformed, a manual build number is not above the latest, or the lookup fails. It never falls back to Codemagic's `$BUILD_NUMBER`, which restarts at 1 if the workflow is renamed or the Codemagic app is recreated.
 
+Don't start two `AUTO` runs at once, or a second run before App Store Connect lists the first upload: both would pick the same number and the later upload is rejected after the build.
+
 The `+N` part of the pubspec version is not used for TestFlight builds. To change the default version name, bump `version:` in pubspec in a PR.
 
 ## Run
