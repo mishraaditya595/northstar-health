@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @AGENTS.md
 
-`AGENTS.md` (imported above) holds the binding rules: data ownership, durable write/sync contract, review checklist, Codemagic limits. Nested `AGENTS.md` files in `apps/mobile/`, `apps/watch_os/`, `apps/wear_os/` add per-app rules — read the one for the app you touch.
+`AGENTS.md` (imported above) holds the binding rules: data ownership, durable write/sync contract, secrets in a public repository, review checklist, Codemagic limits. **This repo is public: never commit keys, signing files, `.env`/`supabase.local.json`, hosted project refs or real personal data** (see AGENTS.md "Secrets in a public repository"). Nested `AGENTS.md` files in `apps/mobile/`, `apps/watch_os/`, `apps/wear_os/` add per-app rules — read the one for the app you touch.
 
 ## Project state
 

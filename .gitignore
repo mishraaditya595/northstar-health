@@ -44,3 +44,20 @@ apps/mobile/libobjectbox.dylib
 
 # Contributor-local Supabase public settings (see docs/CONTRIBUTOR_SUPABASE_SETUP.md)
 apps/mobile/supabase.local.json
+
+# Signing material, credentials and secrets: never commit (public repo).
+# See AGENTS.md "Secrets in a public repository"; tool/test_repository_layout.py enforces this.
+*.p8
+*.cer
+*.certSigningRequest
+*.provisionprofile
+*.pem
+*.key
+*.ipa
+*.aab
+*.apk
+service-account*.json
+google-services.json
+GoogleService-Info.plist
+supabase/.temp/
+supabase/.branches/
