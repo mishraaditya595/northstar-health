@@ -1,6 +1,6 @@
 name: BeyondRepWatch
 options:
-  bundleIdPrefix: dev.northstar
+  bundleIdPrefix: in.beyondrep
   deploymentTarget:
     watchOS: "10.0"
 settings:
@@ -16,7 +16,7 @@ targets:
       - path: Sources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.northstar.northstarwatch.dev
+        PRODUCT_BUNDLE_IDENTIFIER: in.beyondrep.watch.dev
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_WKWatchOnly: YES
         INFOPLIST_KEY_CFBundleDisplayName: BeyondRep

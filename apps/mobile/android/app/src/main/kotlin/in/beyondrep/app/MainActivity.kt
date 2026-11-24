@@ -1,4 +1,4 @@
-package dev.northstar.northstar_health
+package `in`.beyondrep.app
 
 import android.app.Activity
 import android.content.Intent

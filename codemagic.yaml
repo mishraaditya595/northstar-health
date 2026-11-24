@@ -141,7 +141,7 @@ workflows:
       xcode: latest
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: dev.northstar.northstarHealth
+        bundle_identifier: in.beyondrep.app
       groups:
         - ns_mobile_supabase_public
     scripts:

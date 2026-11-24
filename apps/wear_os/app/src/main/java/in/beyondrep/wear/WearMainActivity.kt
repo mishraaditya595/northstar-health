@@ -1,4 +1,4 @@
-package dev.northstar.wear
+package `in`.beyondrep.wear
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity

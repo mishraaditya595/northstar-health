@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "dev.northstar.wear"
+    namespace = "in.beyondrep.wear"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "dev.northstar.wear"
+        applicationId = "in.beyondrep.wear"
         minSdk = 30
         targetSdk = 35
         versionCode = 1

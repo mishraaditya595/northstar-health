@@ -141,7 +141,7 @@ class CodemagicTemplateTest(unittest.TestCase):
             env["ios_signing"],
             {
                 "distribution_type": "app_store",
-                "bundle_identifier": "dev.northstar.northstarHealth",
+                "bundle_identifier": "in.beyondrep.app",
             },
         )
         self.assertEqual(env["groups"], ["ns_mobile_supabase_public"])

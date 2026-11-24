@@ -24,7 +24,7 @@ measured** in app heap or process RSS on hardware.
   over 4 MiB (e.g. 20+ MiB) JSON; many exercises/sets and nullable values.
 - For Android, sample process memory while fetching, serializing, launching
   the picker and saving to local Documents and a slow SAF/cloud provider.
-  Record `adb shell dumpsys meminfo dev.northstar.northstar_health` along
+  Record `adb shell dumpsys meminfo in.beyondrep.app` along
   with Android Studio Memory Profiler's **peak PSS/RSS**, collection cadence
   and observed low-memory events/ANRs. OS tools may report PSS rather than
   RSS; label values accurately and do not misrepresent one as the other.
