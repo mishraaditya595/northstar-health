@@ -50,8 +50,6 @@ class SleepNightExtras {
   final double? wristTempDeviation;
 }
 
-DateTime _dayOf(DateTime t) => DateTime(t.year, t.month, t.day);
-
 double? _mean(Iterable<double> values) =>
     values.isEmpty ? null : values.reduce((a, b) => a + b) / values.length;
 
@@ -86,14 +84,6 @@ Future<List<HealthSample>> _readSeries(
   DateTime from,
   DateTime to,
 ) async => _samples(await _readResult(reader, type, from, to));
-
-MetricGap? _gapOf(SeriesResult<Object?> r) => switch (r) {
-  SeriesData() => null,
-  SeriesNotAllowed() => MetricGap.notAllowed,
-  SeriesNeedsAccess() => MetricGap.needsAccess,
-  SeriesFailed() => MetricGap.failed,
-  SeriesUnsupported() => MetricGap.unsupported,
-};
 
 /// The overview for the signed-in account; null otherwise. Watching the
 /// owner as the overview does means an account switch rebuilds every detail
@@ -143,7 +133,7 @@ final walkingHrProvider = FutureProvider.autoDispose<Section<DayValue>?>((
   if (!_stillOwner(ref, overview.ownerId)) return null;
   final latest = reduceDaily(_samples(result), DailyReduction.mean).lastOrNull;
   if (latest != null) return SectionData(latest);
-  return SectionGap(_gapOf(result) ?? MetricGap.noData);
+  return SectionGap(metricGapOf(result) ?? MetricGap.noData);
 });
 
 /// The latest lean body mass in the 30 days ending at the overview's read;
@@ -172,7 +162,7 @@ final sleepNightExtrasProvider = FutureProvider.autoDispose<SleepNightExtras?>((
   if (sleepOf == null) return null;
   final (overview, sleep) = sleepOf;
   final night = sleep.lastNight;
-  if (night.date != _dayOf(overview.readAt)) return null;
+  if (night.date != dayOf(overview.readAt)) return null;
   final reader = ref.read(healthReaderProvider);
   final prior = [
     for (final n in sleep.nights)
@@ -208,7 +198,7 @@ final sleepNightExtrasProvider = FutureProvider.autoDispose<SleepNightExtras?>((
   final priorTemps = [for (final n in prior) ?_meanDuring(temp, n)];
   return SleepNightExtras(
     heartRate: heartRate,
-    heartRateGap: _gapOf(hrResult),
+    heartRateGap: metricGapOf(hrResult),
     respiratoryRate: _meanDuring(breathing, night),
     bloodOxygen: _meanDuring(oxygen, night),
     wristTemp: wristTemp,
@@ -226,7 +216,7 @@ final sleepRangeNightsProvider = FutureProvider.autoDispose
       final sleepOf = await _sleepOf(ref);
       if (sleepOf == null) return null;
       final (overview, sleep) = sleepOf;
-      final today = _dayOf(overview.readAt);
+      final today = dayOf(overview.readAt);
       final first = DateTime(
         today.year,
         today.month,
@@ -288,7 +278,7 @@ final sleepWeekHrProvider = FutureProvider.autoDispose<SleepWeekHr>((
       for (final (i, n) in current.indexed)
         n.date: ?_meanDuring(_samples(results[i]), n),
     },
-    gap: results.map(_gapOf).nonNulls.firstOrNull,
+    gap: results.map(metricGapOf).nonNulls.firstOrNull,
   );
 });
 

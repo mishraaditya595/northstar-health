@@ -263,7 +263,8 @@ Future<bool> _flag(Future<bool> Function() read, bool onError) async {
 List<T> _list<T>(SeriesResult<List<T>> r) =>
     r is SeriesData<List<T>> ? r.data : const [];
 
-MetricGap? _gapOf(SeriesResult<Object?> r) => switch (r) {
+/// Why a read gave no data; null when it succeeded, even with no samples.
+MetricGap? metricGapOf(SeriesResult<Object?> r) => switch (r) {
   SeriesData() => null,
   SeriesNotAllowed() => MetricGap.notAllowed,
   SeriesNeedsAccess() => MetricGap.needsAccess,
@@ -277,7 +278,7 @@ Section<T> _section<T>(
 ) {
   final value = build();
   if (value != null) return SectionData(value);
-  final gaps = {for (final r in results) ?_gapOf(r)};
+  final gaps = {for (final r in results) ?metricGapOf(r)};
   return SectionGap(
     _gapRank.firstWhere(gaps.contains, orElse: () => MetricGap.noData),
   );
@@ -293,8 +294,6 @@ const _gapRank = [
 
 double? _mean(Iterable<double> values) =>
     values.isEmpty ? null : values.reduce((a, b) => a + b) / values.length;
-
-DateTime _dayOf(DateTime t) => DateTime(t.year, t.month, t.day);
 
 double? _valueOn(List<DayValue> daily, DateTime day) {
   for (final d in daily) {
@@ -348,7 +347,7 @@ Future<HealthOverview> _read(
   int accessScope,
 ) async {
   final platform = reader.platform;
-  final today = _dayOf(now);
+  final today = dayOf(now);
   DateTime daysAgo(int n, [int hour = 0]) =>
       DateTime(today.year, today.month, today.day - n, hour);
   final monthFrom = daysAgo(29);
@@ -439,7 +438,7 @@ Future<HealthOverview> _read(
               lastNight.asleep.inMinutes.toDouble(),
               _mean(week)!,
             ),
-      sleepHrGap: _gapOf(heartRate),
+      sleepHrGap: metricGapOf(heartRate),
     );
   });
 
@@ -456,9 +455,9 @@ Future<HealthOverview> _read(
       restingHrVsMonth: _vsPrior(TrendMetric.restingHr, rhrDaily, 7),
       hrvVsNormal: _vsPrior(TrendMetric.hrv, hrvDaily, 7),
       hrvIsSdnn: platform == HealthPlatformKind.appleHealth,
-      restingHrGap: _gapOf(rhrResult),
-      hrvGap: _gapOf(hrvResult),
-      vo2Gap: _gapOf(vo2Result),
+      restingHrGap: metricGapOf(rhrResult),
+      hrvGap: metricGapOf(hrvResult),
+      vo2Gap: metricGapOf(vo2Result),
     );
   });
 
@@ -480,8 +479,8 @@ Future<HealthOverview> _read(
         lastDay: daysAgo(1),
         days: 7,
       ).average,
-      stepsGap: _gapOf(stepsResult),
-      energyGap: _gapOf(energyResult),
+      stepsGap: metricGapOf(stepsResult),
+      energyGap: metricGapOf(energyResult),
     );
   });
 
@@ -504,8 +503,8 @@ Future<HealthOverview> _read(
               weight.last.day.difference(weight.first.day).inDays < 21
           ? weight.first.day
           : null,
-      weightGap: _gapOf(weightResult),
-      bodyFatGap: _gapOf(bodyFatResult),
+      weightGap: metricGapOf(weightResult),
+      bodyFatGap: metricGapOf(bodyFatResult),
     );
   });
 

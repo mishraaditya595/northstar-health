@@ -10,6 +10,7 @@ import '../../../core/design/charts/trend_label.dart';
 import '../application/health_details.dart';
 import '../application/health_overview.dart';
 import '../data/health_reader.dart';
+import '../domain/daily_series.dart';
 import '../domain/health_types.dart';
 import '../domain/sleep_nights.dart';
 import '../domain/sleep_score.dart';
@@ -23,15 +24,9 @@ const _reference = Duration(hours: 7, minutes: 30);
 const _noStages = 'Stages need a watch or ring that records them.';
 const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-DateTime _dayOf(DateTime t) => DateTime(t.year, t.month, t.day);
-
 Color _sleepColor(ThemeData theme) => theme.brightness == Brightness.dark
     ? BeyondRepPalette.sleepDark
     : BeyondRepPalette.sleepLight;
-
-/// Apple Health calls light sleep "Core"; Health Connect calls it "Light".
-String _lightName(HealthPlatformKind p) =>
-    p == HealthPlatformKind.appleHealth ? 'Core' : 'Light';
 
 String _percent(Duration part, Duration whole) => whole == Duration.zero
     ? '—'
@@ -105,7 +100,7 @@ class _LastNight extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final night = sleep.lastNight;
-    if (night.date != _dayOf(overview.readAt)) {
+    if (night.date != dayOf(overview.readAt)) {
       return DetailPanel(
         children: [
           const HealthValue(null),
@@ -185,7 +180,7 @@ class _LastNight extends ConsumerWidget {
         children: [HealthCaption(_noStages)],
       );
     }
-    final light = _lightName(overview.platform);
+    final light = lightStageName(overview.platform);
     final awakeTimes = night.segments
         .where((s) => s.stage == SleepStage.awake)
         .length;

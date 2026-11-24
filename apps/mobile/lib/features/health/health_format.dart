@@ -23,6 +23,10 @@ String healthPlatformName(HealthPlatformKind platform) => switch (platform) {
   HealthPlatformKind.healthConnect => 'Health Connect',
 };
 
+/// Apple Health calls light sleep "Core"; Health Connect calls it "Light".
+String lightStageName(HealthPlatformKind p) =>
+    p == HealthPlatformKind.appleHealth ? 'Core' : 'Light';
+
 String _time(DateTime t) {
   final hour = t.hour % 12 == 0 ? 12 : t.hour % 12;
   final minute = t.minute.toString().padLeft(2, '0');

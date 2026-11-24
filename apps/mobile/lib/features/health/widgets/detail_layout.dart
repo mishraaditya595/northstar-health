@@ -140,6 +140,41 @@ class DetailUnavailable extends ConsumerWidget {
   }
 }
 
+/// A metric's [DetailPanel] when its read failed, was declined or never
+/// requested.
+class DetailGapPanel extends StatelessWidget {
+  const DetailGapPanel({
+    required this.title,
+    required this.gap,
+    required this.metricName,
+    required this.platform,
+    required this.onRetry,
+    this.trailing,
+    super.key,
+  });
+
+  final String title;
+  final String? trailing;
+  final MetricGap gap;
+  final String metricName;
+  final HealthPlatformKind platform;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => DetailPanel(
+    title: title,
+    trailing: trailing,
+    children: [
+      DetailUnavailable(
+        gap: gap,
+        metricName: metricName,
+        platform: platform,
+        onRetry: onRetry,
+      ),
+    ],
+  );
+}
+
 /// Big value, unit and optional trend on one wrapping line.
 class DetailHeadline extends StatelessWidget {
   const DetailHeadline(this.value, {this.unit, this.trend, super.key});

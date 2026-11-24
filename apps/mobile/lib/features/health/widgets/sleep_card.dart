@@ -89,10 +89,7 @@ class SleepCard extends StatelessWidget {
         : null;
     final source =
         '${night.source} · ${formatTimeRange(night.start, night.end)}';
-    // Apple Health calls light sleep "Core"; Health Connect calls it "Light".
-    final lightName = platform == HealthPlatformKind.appleHealth
-        ? 'Core'
-        : 'Light';
+    final lightName = lightStageName(platform);
     final stats = [
       ('Deep', formatDuration(night.deep)),
       (lightName, formatDuration(night.light)),

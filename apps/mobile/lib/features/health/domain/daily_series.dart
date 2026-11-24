@@ -2,7 +2,8 @@ import 'health_types.dart';
 
 enum DailyReduction { latest, mean, sum }
 
-DateTime _dayOf(DateTime t) => DateTime(t.year, t.month, t.day);
+/// Local midnight of [t]'s date.
+DateTime dayOf(DateTime t) => DateTime(t.year, t.month, t.day);
 
 List<DayValue> _sorted(Map<DateTime, double> byDay) => [
   for (final day in byDay.keys.toList()..sort()) (day: day, value: byDay[day]!),
@@ -11,7 +12,7 @@ List<DayValue> _sorted(Map<DateTime, double> byDay) => [
 List<DayValue> reduceDaily(List<HealthSample> samples, DailyReduction how) {
   final groups = <DateTime, List<HealthSample>>{};
   for (final s in samples) {
-    groups.putIfAbsent(_dayOf(s.to), () => []).add(s);
+    groups.putIfAbsent(dayOf(s.to), () => []).add(s);
   }
   return _sorted({
     for (final e in groups.entries)
@@ -29,7 +30,7 @@ List<DayValue> reduceDaily(List<HealthSample> samples, DailyReduction how) {
 List<DayValue> hourlyToDaily(List<HealthSample> hourly) {
   final byDay = <DateTime, double>{};
   for (final s in hourly) {
-    byDay.update(_dayOf(s.from), (v) => v + s.value, ifAbsent: () => s.value);
+    byDay.update(dayOf(s.from), (v) => v + s.value, ifAbsent: () => s.value);
   }
   return _sorted(byDay);
 }
@@ -52,7 +53,7 @@ PeriodSummary summarizePeriod(
   required int days,
   DateTime? readableFrom,
 }) {
-  final last = _dayOf(lastDay);
+  final last = dayOf(lastDay);
   final currentStart = DateTime(last.year, last.month, last.day - (days - 1));
   final previousStart = DateTime(
     last.year,
@@ -62,8 +63,7 @@ PeriodSummary summarizePeriod(
 
   List<double> window(DateTime start, DateTime end) => [
     for (final d in series)
-      if (!_dayOf(d.day).isBefore(start) && !_dayOf(d.day).isAfter(end))
-        d.value,
+      if (!dayOf(d.day).isBefore(start) && !dayOf(d.day).isAfter(end)) d.value,
   ];
   double? mean(List<double> v) =>
       v.isEmpty ? null : v.fold(0.0, (a, b) => a + b) / v.length;

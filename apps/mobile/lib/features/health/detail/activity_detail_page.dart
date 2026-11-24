@@ -9,8 +9,6 @@ import '../health_format.dart';
 import '../widgets/detail_layout.dart';
 import '../widgets/health_card_frame.dart';
 
-DateTime _dayOf(DateTime t) => DateTime(t.year, t.month, t.day);
-
 /// Daily steps and active calories over 7 or 30 days, read fresh and held in
 /// memory only.
 class ActivityDetailPage extends ConsumerStatefulWidget {
@@ -69,21 +67,7 @@ class _ActivityView extends StatelessWidget {
   final int days;
   final VoidCallback onRetry;
 
-  /// A metric's panel when its read failed or is not allowed.
-  Widget _gapPanel(String title, MetricGap gap, String metricName) =>
-      DetailPanel(
-        title: title,
-        children: [
-          DetailUnavailable(
-            gap: gap,
-            metricName: metricName,
-            platform: overview.platform,
-            onRetry: onRetry,
-          ),
-        ],
-      );
-
-  DateTime get _today => _dayOf(overview.readAt);
+  DateTime get _today => dayOf(overview.readAt);
 
   /// Today is not over yet, so averages use the [days] days before it.
   double? _average(List<DayValue> daily) => summarizePeriod(
@@ -120,7 +104,13 @@ class _ActivityView extends StatelessWidget {
 
   Widget _steps(BuildContext context, String range, DateTime first) {
     if (activity.stepsDaily.isEmpty && activity.stepsGap != null) {
-      return _gapPanel('Steps', activity.stepsGap!, 'steps');
+      return DetailGapPanel(
+        title: 'Steps',
+        gap: activity.stepsGap!,
+        metricName: 'steps',
+        platform: overview.platform,
+        onRetry: onRetry,
+      );
     }
     // Today's slot uses the overview's value, which treats iOS 0 as no data.
     final slots = dailySlots(activity.stepsDaily, _today, days)
@@ -164,10 +154,12 @@ class _ActivityView extends StatelessWidget {
 
   Widget _energy(BuildContext context, String range) {
     if (activity.activeEnergyDaily.isEmpty && activity.energyGap != null) {
-      return _gapPanel(
-        'Active calories',
-        activity.energyGap!,
-        'active calories',
+      return DetailGapPanel(
+        title: 'Active calories',
+        gap: activity.energyGap!,
+        metricName: 'active calories',
+        platform: overview.platform,
+        onRetry: onRetry,
       );
     }
     if (activity.activeEnergyDaily.isEmpty) {

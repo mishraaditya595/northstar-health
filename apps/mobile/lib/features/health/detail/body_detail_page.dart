@@ -6,11 +6,10 @@ import '../application/health_details.dart';
 import '../application/health_overview.dart';
 import '../domain/series_stats.dart';
 import '../domain/trend.dart';
+import '../domain/daily_series.dart';
 import '../health_format.dart';
 import '../widgets/detail_layout.dart';
 import '../widgets/health_card_frame.dart';
-
-DateTime _dayOf(DateTime t) => DateTime(t.year, t.month, t.day);
 
 /// Signed kg per week; neutral, as goals differ.
 String _rate(double perWeek) {
@@ -116,7 +115,7 @@ class _BodyView extends ConsumerWidget {
   }
 
   Widget _weight() {
-    final today = _dayOf(overview.readAt);
+    final today = dayOf(overview.readAt);
     final first = DateTime(today.year, today.month, today.day - (days - 1));
     final range = '${formatHealthDate(first)} – ${formatHealthDate(today)}';
     final latest = body.weight;
@@ -128,16 +127,12 @@ class _BodyView extends ConsumerWidget {
     final rate = weeklyChange(inRange);
     final latestText = latest?.value.toStringAsFixed(1);
     if (latest == null && body.weightGap != null) {
-      return DetailPanel(
+      return DetailGapPanel(
         title: 'Weight',
-        children: [
-          DetailUnavailable(
-            gap: body.weightGap!,
-            metricName: 'weight',
-            platform: overview.platform,
-            onRetry: onRetry,
-          ),
-        ],
+        gap: body.weightGap!,
+        metricName: 'weight',
+        platform: overview.platform,
+        onRetry: onRetry,
       );
     }
     return DetailPanel(

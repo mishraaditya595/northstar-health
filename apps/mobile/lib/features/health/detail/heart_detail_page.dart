@@ -6,6 +6,7 @@ import '../../../core/design/charts/trend_label.dart';
 import '../application/health_details.dart';
 import '../application/health_overview.dart';
 import '../data/health_reader.dart';
+import '../domain/daily_series.dart';
 import '../domain/health_types.dart';
 import '../domain/series_stats.dart';
 import '../domain/trend.dart';
@@ -15,8 +16,6 @@ import '../widgets/health_card_frame.dart';
 
 const _vo2Name = 'Cardio fitness (VO₂ max)';
 const _walkingName = 'Walking heart rate';
-
-DateTime _dayOf(DateTime t) => DateTime(t.year, t.month, t.day);
 
 /// "your normal 53–57": the 30-day mean ± 1 SD; null with under 7 days.
 ({double low, double high, String label})? _band(
@@ -87,33 +86,13 @@ class _HeartView extends ConsumerWidget {
   final HeartOverview heart;
   final int days;
 
-  DateTime get _today => _dayOf(overview.readAt);
+  DateTime get _today => dayOf(overview.readAt);
 
   DateTime get _first =>
       DateTime(_today.year, _today.month, _today.day - (days - 1));
 
   void _retry(WidgetRef ref) =>
       ref.read(healthOverviewProvider.notifier).refresh();
-
-  /// A metric's panel when its read failed or is not allowed.
-  Widget _gapPanel(
-    WidgetRef ref,
-    String title,
-    String trailing,
-    MetricGap gap,
-    String metricName,
-  ) => DetailPanel(
-    title: title,
-    trailing: trailing,
-    children: [
-      DetailUnavailable(
-        gap: gap,
-        metricName: metricName,
-        platform: overview.platform,
-        onRetry: () => _retry(ref),
-      ),
-    ],
-  );
 
   String _when(DateTime day) =>
       day == _today ? 'today' : 'on ${formatHealthDate(day)}';
@@ -156,12 +135,13 @@ class _HeartView extends ConsumerWidget {
   Widget _restingHr(WidgetRef ref) {
     final latest = heart.restingHr;
     if (latest == null && heart.restingHrGap != null) {
-      return _gapPanel(
-        ref,
-        'Resting heart rate',
-        'Lower is better',
-        heart.restingHrGap!,
-        'resting heart rate',
+      return DetailGapPanel(
+        title: 'Resting heart rate',
+        trailing: 'Lower is better',
+        gap: heart.restingHrGap!,
+        metricName: 'resting heart rate',
+        platform: overview.platform,
+        onRetry: () => _retry(ref),
       );
     }
     final trend = heart.restingHrVsMonth;
@@ -194,12 +174,13 @@ class _HeartView extends ConsumerWidget {
   Widget _hrv(WidgetRef ref) {
     final latest = heart.hrv;
     if (latest == null && heart.hrvGap != null) {
-      return _gapPanel(
-        ref,
-        'Heart rate variability',
-        'Higher is better',
-        heart.hrvGap!,
-        'HRV',
+      return DetailGapPanel(
+        title: 'Heart rate variability',
+        trailing: 'Higher is better',
+        gap: heart.hrvGap!,
+        metricName: 'HRV',
+        platform: overview.platform,
+        onRetry: () => _retry(ref),
       );
     }
     final trend = heart.hrvVsNormal;
