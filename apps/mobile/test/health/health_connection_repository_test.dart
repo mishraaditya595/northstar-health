@@ -55,6 +55,22 @@ void main() {
     expect(box.count(), 0);
   });
 
+  test(
+    'connectedAt returns the grant time, per owner, null after disconnect',
+    () {
+      final store = openAt('single');
+      addTearDown(store.close);
+      final repo = ObjectBoxHealthConnectionRepository(store);
+      final at = DateTime(2026, 11, 20, 9);
+      expect(repo.connectedAt('owner-a'), isNull);
+      repo.connect('owner-a', at);
+      expect(repo.connectedAt('owner-a'), at);
+      expect(repo.connectedAt('owner-b'), isNull);
+      repo.disconnect('owner-a');
+      expect(repo.connectedAt('owner-a'), isNull);
+    },
+  );
+
   test('flag is per account directory', () {
     final a = openAt(pathFor(_accountA));
     final b = openAt(pathFor(_accountB));

@@ -6,6 +6,7 @@ import 'health_connection_entity.dart';
 
 abstract interface class HealthConnectionRepository {
   bool isConnected(String ownerAccountId);
+  DateTime? connectedAt(String ownerAccountId);
   void connect(String ownerAccountId, DateTime at);
   void disconnect(String ownerAccountId);
 }
@@ -26,6 +27,17 @@ class ObjectBoxHealthConnectionRepository
     final query = _byOwner(ownerAccountId);
     try {
       return query.count() > 0;
+    } finally {
+      query.close();
+    }
+  }
+
+  @override
+  DateTime? connectedAt(String ownerAccountId) {
+    final query = _byOwner(ownerAccountId);
+    try {
+      final ms = query.findFirst()?.connectedAtMs;
+      return ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms);
     } finally {
       query.close();
     }
