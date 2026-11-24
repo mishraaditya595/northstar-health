@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/design/inputs.dart';
 import '../../core/design/dialogs.dart';
-import '../../core/design/northstar_theme.dart';
+import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 import '../../core/ids/uuid_factory.dart';
@@ -132,7 +132,7 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(trainLibraryProvider);
-    final muted = Theme.of(context).extension<NorthstarColors>()!.muted;
+    final muted = Theme.of(context).extension<BeyondRepColors>()!.muted;
     return Scaffold(
       appBar: AppBar(
         leading: const NsBackButton(),

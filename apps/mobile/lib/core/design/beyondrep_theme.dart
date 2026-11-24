@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class NorthstarPalette {
-  const NorthstarPalette._();
+class BeyondRepPalette {
+  const BeyondRepPalette._();
 
   static const lime = Color(0xFFD6FF60);
   static const darkCanvas = Color(0xFF0B0F13);
@@ -32,8 +32,8 @@ class NorthstarPalette {
   static const amberSoftLight = Color(0xFFFFF2DB);
 }
 
-class NorthstarTheme {
-  const NorthstarTheme._();
+class BeyondRepTheme {
+  const BeyondRepTheme._();
 
   static OutlineInputBorder _fieldBorder(Color color, {double width = 1}) =>
       OutlineInputBorder(
@@ -46,20 +46,20 @@ class NorthstarTheme {
   static ThemeData build(Brightness brightness) {
     final dark = brightness == Brightness.dark;
     final canvas = dark
-        ? NorthstarPalette.darkCanvas
-        : NorthstarPalette.lightCanvas;
+        ? BeyondRepPalette.darkCanvas
+        : BeyondRepPalette.lightCanvas;
     final surface = dark
-        ? NorthstarPalette.darkSurface
-        : NorthstarPalette.lightSurface;
-    final ink = dark ? NorthstarPalette.darkInk : NorthstarPalette.lightInk;
-    final accent = dark ? NorthstarPalette.lime : NorthstarPalette.lightPrimary;
+        ? BeyondRepPalette.darkSurface
+        : BeyondRepPalette.lightSurface;
+    final ink = dark ? BeyondRepPalette.darkInk : BeyondRepPalette.lightInk;
+    final accent = dark ? BeyondRepPalette.lime : BeyondRepPalette.lightPrimary;
     final muted = dark
-        ? NorthstarPalette.darkMuted
-        : NorthstarPalette.lightMuted;
+        ? BeyondRepPalette.darkMuted
+        : BeyondRepPalette.lightMuted;
     final border = dark
-        ? NorthstarPalette.darkBorder
-        : NorthstarPalette.lightBorder;
-    final soft = dark ? NorthstarPalette.darkSoft : NorthstarPalette.lightSoft;
+        ? BeyondRepPalette.darkBorder
+        : BeyondRepPalette.lightBorder;
+    final soft = dark ? BeyondRepPalette.darkSoft : BeyondRepPalette.lightSoft;
     final scheme =
         ColorScheme.fromSeed(
           seedColor: accent,
@@ -67,7 +67,7 @@ class NorthstarTheme {
           surface: surface,
         ).copyWith(
           primary: accent,
-          onPrimary: dark ? NorthstarPalette.darkCanvas : Colors.white,
+          onPrimary: dark ? BeyondRepPalette.darkCanvas : Colors.white,
           onSurface: ink,
           outline: border,
         );
@@ -132,8 +132,8 @@ class NorthstarTheme {
       chipTheme: ChipThemeData(
         backgroundColor: surface,
         selectedColor: dark
-            ? NorthstarPalette.forestSoftDark
-            : NorthstarPalette.forestSoftLight,
+            ? BeyondRepPalette.forestSoftDark
+            : BeyondRepPalette.forestSoftLight,
         side: BorderSide(color: border),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         labelStyle: TextStyle(color: ink, fontWeight: FontWeight.w700),
@@ -142,8 +142,8 @@ class NorthstarTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: dark
-            ? NorthstarPalette.darkSoft
-            : NorthstarPalette.heroLight,
+            ? BeyondRepPalette.darkSoft
+            : BeyondRepPalette.heroLight,
         contentTextStyle: const TextStyle(color: Colors.white),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
@@ -212,36 +212,36 @@ class NorthstarTheme {
       ),
       dividerColor: border,
       extensions: <ThemeExtension<dynamic>>[
-        NorthstarColors(muted: muted, border: border),
+        BeyondRepColors(muted: muted, border: border),
       ],
     );
   }
 }
 
-extension NorthstarThemeData on ThemeData {
-  /// Secondary text colour; falls back to the scheme when the NorthStar theme
+extension BeyondRepThemeData on ThemeData {
+  /// Secondary text colour; falls back to the scheme when the BeyondRep theme
   /// extension is not installed (plain test themes, embedded previews).
   Color get mutedColor =>
-      extension<NorthstarColors>()?.muted ?? colorScheme.onSurfaceVariant;
+      extension<BeyondRepColors>()?.muted ?? colorScheme.onSurfaceVariant;
 }
 
 @immutable
-class NorthstarColors extends ThemeExtension<NorthstarColors> {
-  const NorthstarColors({required this.muted, required this.border});
+class BeyondRepColors extends ThemeExtension<BeyondRepColors> {
+  const BeyondRepColors({required this.muted, required this.border});
 
   final Color muted;
   final Color border;
 
   @override
-  NorthstarColors copyWith({Color? muted, Color? border}) => NorthstarColors(
+  BeyondRepColors copyWith({Color? muted, Color? border}) => BeyondRepColors(
     muted: muted ?? this.muted,
     border: border ?? this.border,
   );
 
   @override
-  NorthstarColors lerp(ThemeExtension<NorthstarColors>? other, double t) {
-    if (other is! NorthstarColors) return this;
-    return NorthstarColors(
+  BeyondRepColors lerp(ThemeExtension<BeyondRepColors>? other, double t) {
+    if (other is! BeyondRepColors) return this;
+    return BeyondRepColors(
       muted: Color.lerp(muted, other.muted, t) ?? muted,
       border: Color.lerp(border, other.border, t) ?? border,
     );

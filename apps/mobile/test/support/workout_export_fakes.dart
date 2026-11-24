@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:northstar_health/features/account/workout_history_export.dart';
+import 'package:beyondrep/features/account/workout_history_export.dart';
 
 import 'fake_account_auth.dart';
 

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/features/progress/domain/progress_overview.dart';
-import 'package:northstar_health/features/progress/domain/workout_history_models.dart';
-import 'package:northstar_health/features/workouts/domain/workout_models.dart';
+import 'package:beyondrep/features/progress/domain/progress_overview.dart';
+import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 
 /// A finished session ending [finished] (UTC, offset 0), lasting [minutes],
 /// with [loaded] completed working sets of 5 reps × 100 kg.

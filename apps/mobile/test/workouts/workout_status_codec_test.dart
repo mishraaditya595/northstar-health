@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/core/units/load_units.dart';
-import 'package:northstar_health/features/workouts/domain/workout_models.dart';
-import 'package:northstar_health/features/workouts/domain/workout_status_codec.dart';
+import 'package:beyondrep/core/units/load_units.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
+import 'package:beyondrep/features/workouts/domain/workout_status_codec.dart';
 
 void main() {
   test('frozen storage names do not throw on future schema values', () {

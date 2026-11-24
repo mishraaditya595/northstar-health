@@ -5,7 +5,7 @@
 
 ## Decision and rationale
 
-NorthStar requires a verified account before anyone can use workout features. There is **no guest mode**. Initial signup/sign-in requires network access. Once a user has authenticated and the device has a securely bound local account identity, the user can log workouts offline. A revoked or unknown account must never be treated as another user's owner; auth refresh failures pause cloud transfer, not already-authorized local saves.
+BeyondRep requires a verified account before anyone can use workout features. There is **no guest mode**. Initial signup/sign-in requires network access. Once a user has authenticated and the device has a securely bound local account identity, the user can log workouts offline. A revoked or unknown account must never be treated as another user's owner; auth refresh failures pause cloud transfer, not already-authorized local saves.
 
 Only workouts the user has **finished on the phone** (`completed`) are synchronized to Supabase, as authenticated, versioned aggregates with deletion tombstones. In-progress, paused and discarded sessions **never leave the device**, and a completed workout cannot return to an unfinished state. Upload starts automatically once the workout is finished and authenticated connectivity is available; later edits to a completed workout upload as new revisions. Only recorded sets and essential historical exercise snapshots are synchronized, not recovery UI checkpoints, rest timers, platform measurements or watch sensor streams. Completed-session statistics are calculated on the server from validated sets. The phone commits workout changes and a durable outbox entry atomically.
 

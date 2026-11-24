@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:northstar_health/core/design/northstar_theme.dart';
-import 'package:northstar_health/features/train/plan_editor_page.dart';
-import 'package:northstar_health/features/train/train_page.dart';
-import 'package:northstar_health/features/train/active_workout_state.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_workout_library_repository.dart';
-import 'package:northstar_health/features/workouts/domain/workout_library_models.dart';
-import 'package:northstar_health/features/workouts/domain/workout_library_repository.dart';
+import 'package:beyondrep/core/design/beyondrep_theme.dart';
+import 'package:beyondrep/features/train/plan_editor_page.dart';
+import 'package:beyondrep/features/train/train_page.dart';
+import 'package:beyondrep/features/train/active_workout_state.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_workout_library_repository.dart';
+import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
+import 'package:beyondrep/features/workouts/domain/workout_library_repository.dart';
 
 class FakeLibrary implements WorkoutLibraryRepository {
   final planRecords = <String, WorkoutPlanRecord>{};
@@ -135,7 +135,7 @@ void main() {
           ),
         ],
         child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           routerConfig: router,
         ),
       ),
@@ -215,7 +215,7 @@ void main() {
           ),
         ],
         child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           routerConfig: router,
         ),
       ),
@@ -265,7 +265,7 @@ void main() {
             ),
           ],
           child: MaterialApp.router(
-            theme: NorthstarTheme.build(Brightness.dark),
+            theme: BeyondRepTheme.build(Brightness.dark),
             routerConfig: router,
           ),
         ),
@@ -333,7 +333,7 @@ void main() {
           ),
         ],
         child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           routerConfig: router,
         ),
       ),
@@ -386,7 +386,7 @@ void main() {
           ),
         ],
         child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           routerConfig: router,
         ),
       ),
@@ -437,7 +437,7 @@ void main() {
           ),
         ],
         child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           routerConfig: router,
         ),
       ),
@@ -486,7 +486,7 @@ void main() {
           ),
         ],
         child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           routerConfig: router,
         ),
       ),
@@ -535,7 +535,7 @@ void main() {
           ),
         ],
         child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           routerConfig: router,
         ),
       ),
@@ -589,7 +589,7 @@ void main() {
           ),
         ],
         child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           routerConfig: router,
         ),
       ),
@@ -636,7 +636,7 @@ void main() {
           ),
         ],
         child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           routerConfig: router,
         ),
       ),

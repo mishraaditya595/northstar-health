@@ -1,4 +1,4 @@
-# NorthStar workout database restore: cursor epoch recovery
+# BeyondRep workout database restore: cursor epoch recovery
 
 **Applies to:** P2-06 server-side completed-workout restore feed (PR #18). **Operator-only procedure.**
 

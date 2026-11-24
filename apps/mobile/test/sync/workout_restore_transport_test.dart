@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/features/sync/workout_restore_feed.dart';
-import 'package:northstar_health/features/sync/workout_restore_transport.dart';
+import 'package:beyondrep/features/sync/workout_restore_feed.dart';
+import 'package:beyondrep/features/sync/workout_restore_transport.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 const ownerA = '10000000-0000-4000-8000-0000000000a1';

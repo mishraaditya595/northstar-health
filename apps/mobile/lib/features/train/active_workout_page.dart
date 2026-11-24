@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/design/dialogs.dart';
 import '../../core/design/inputs.dart';
 import '../../core/design/section.dart';
-import '../../core/design/northstar_theme.dart';
+import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -316,7 +316,7 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
               ? 'PAUSED · SAVED ON DEVICE'
               : 'RECORDING LOCALLY · NO CONNECTION NEEDED',
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: Theme.of(context).extension<NorthstarColors>()!.muted,
+            color: Theme.of(context).extension<BeyondRepColors>()!.muted,
             letterSpacing: 1.1,
             fontWeight: FontWeight.w700,
           ),
@@ -928,8 +928,8 @@ class _SetEditorTileState extends State<SetEditorTile> {
       decoration: BoxDecoration(
         color: done
             ? (dark
-                  ? NorthstarPalette.forestSoftDark
-                  : NorthstarPalette.forestSoftLight)
+                  ? BeyondRepPalette.forestSoftDark
+                  : BeyondRepPalette.forestSoftLight)
             : null,
         borderRadius: BorderRadius.circular(16),
       ),

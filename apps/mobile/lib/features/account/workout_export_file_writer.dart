@@ -36,8 +36,8 @@ class WorkoutExportFileWriter {
     // Never recursively delete a folder this workflow does not own.
     final segments = file.path.split('/');
     if (segments.length < 3 ||
-        segments.last != 'northstar-workouts.json' ||
-        !segments[segments.length - 2].startsWith('northstar-export-')) {
+        segments.last != 'beyondrep-workouts.json' ||
+        !segments[segments.length - 2].startsWith('beyondrep-export-')) {
       throw const WorkoutExportException('invalid_platform_response');
     }
     try {
@@ -53,7 +53,7 @@ class WorkoutExportFileWriter {
       }
       if (!proceed()) return false;
       final response = await channel.invokeMethod<String>('saveFile', {
-        'name': 'northstar-workouts.json',
+        'name': 'beyondrep-workouts.json',
         'path': file.path,
       });
       if (response == 'saved') return true;

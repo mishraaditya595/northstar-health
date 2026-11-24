@@ -4,16 +4,16 @@
 
 **Status:** Accepted direction for initial implementation; specified product and release gates remain open  
 **Date:** 2026-10-23  
-**Source:** User-supplied *NorthStar Health — Local Data, Cloud Backup & Health Platform Integration* (ADR-001, 23 October 2026). This repository numbers it ADR-0003 to avoid collisions with ADR-0001 (Flutter foundation) and ADR-0002 (watch architecture).
+**Source:** User-supplied *BeyondRep — Local Data, Cloud Backup & Health Platform Integration* (ADR-001, 23 October 2026). This repository numbers it ADR-0003 to avoid collisions with ADR-0001 (Flutter foundation) and ADR-0002 (watch architecture).
 
 ## Executive decision
 
-NorthStar is an offline-first workout tracker and a permission-based viewer of health-platform measurements.
+BeyondRep is an offline-first workout tracker and a permission-based viewer of health-platform measurements.
 
 - **ObjectBox** owns the mobile app's durable, user-created workout plans/logs, local in-progress state, sync queue, export receipts and short-lived permitted health *caches*.
-- **Supabase Auth + PostgreSQL** backs up and restores *completed NorthStar-created workout history and the minimum exercise snapshots needed to interpret it*. Never upload platform-derived heart rate, HRV, sleep, steps, SpO₂, GPS tracks or health dashboard caches. **ObjectBox files are never uploaded**: use portable DTOs and domain UUIDs.
+- **Supabase Auth + PostgreSQL** backs up and restores *completed BeyondRep-created workout history and the minimum exercise snapshots needed to interpret it*. Never upload platform-derived heart rate, HRV, sleep, steps, SpO₂, GPS tracks or health dashboard caches. **ObjectBox files are never uploaded**: use portable DTOs and domain UUIDs.
 - **HealthKit on Apple platforms / Health Connect on Android phones** supply authorized physiological measurements and imported workout summaries. No universal third-party wearable coverage is promised.
-- **WorkoutHealthExport** may write one summary of a *completed, NorthStar-owned* workout into the platform's supported workout/exercise-session format with separate user permission. Do not write individual reps/sets as health measurements, manufacture calories, or re-export third-party workouts.
+- **WorkoutHealthExport** may write one summary of a *completed, BeyondRep-owned* workout into the platform's supported workout/exercise-session format with separate user permission. Do not write individual reps/sets as health measurements, manufacture calories, or re-export third-party workouts.
 - **Firebase Crashlytics and Analytics** are chosen *future* diagnostics providers. Collection defaults off, separate consent and hard data minimization are mandatory before the SDKs are activated. No workout values, notes or raw health samples in events, custom keys, breadcrumbs, crash attachments or logs.
 - Watch companions keep their own offline journal and use versioned replay-safe transfers to the phone. Native session engines capture sensor/workout state even when watch UI is backgrounded.
 
@@ -23,10 +23,10 @@ This is a decision about boundaries and implementation order, **not a claim that
 
 | Data | Authority | Mobile ObjectBox | Supabase | HealthKit / Health Connect |
 | --- | --- | --- | --- | --- |
-| NorthStar completed session + exercise snapshots | NorthStar workout record | Durable | Backed up | Optional summary export only |
-| Set logs, load, reps, RPE/RIR, rest, user notes | NorthStar workout record | Durable | Backed up | Not portable as individual sets |
-| In-progress workout and recovery checkpoint | Originating NorthStar device | Durable | **Not in initial scope** | Never export draft |
-| Custom plans and exercise catalog | NorthStar user/device | Durable | **Local only initially** | No |
+| BeyondRep completed session + exercise snapshots | BeyondRep workout record | Durable | Backed up | Optional summary export only |
+| Set logs, load, reps, RPE/RIR, rest, user notes | BeyondRep workout record | Durable | Backed up | Not portable as individual sets |
+| In-progress workout and recovery checkpoint | Originating BeyondRep device | Durable | **Not in initial scope** | Never export draft |
+| Custom plans and exercise catalog | BeyondRep user/device | Durable | **Local only initially** | No |
 | HR, resting HR, HRV, sleep, steps, distance, energy, SpO₂ | Contributing health platform | Bounded authorized cache | **Never** | Read only initially |
 | Derived progress/health analytics | Derived on device | Recompute or temporary cache | No independent backup | Read source values locally |
 | Access/refresh tokens | Auth secure credential store | **Never** | Supabase Auth | No |
@@ -53,12 +53,12 @@ See [Cloud sync specification](../CLOUD_SYNC.md) for state machines, acceptance 
 ## Distinct health pipelines
 
 1. **PlatformHealthRead:** permissioned HealthKit/Health Connect reads -> source-aware aggregation -> bounded, expiring on-device cache. Respect actual availability, sample provenance, partial permissions, platform dedup rules, and cache invalidation on revocation.
-2. **WorkoutHealthExport:** only NorthStar-owned *completed* sessions -> supported platform workout/exercise-session summary with explicit write permission. Never export imported platform workouts or copied sensor samples.
+2. **WorkoutHealthExport:** only BeyondRep-owned *completed* sessions -> supported platform workout/exercise-session summary with explicit write permission. Never export imported platform workouts or copied sensor samples.
 3. **WorkoutCloudSync:** ObjectBox workout aggregate + outbox <-> Supabase backup/restore. No health cache or raw sensor payloads.
 
 These pipelines **must not trigger each other recursively**. Their IDs, permissions and failure/reconciliation states are independent.
 
-For Apple Watch sessions already persisted as `HKWorkout`, phone records the source/export receipt and **does not write another `HKWorkout`**. For Wear OS, designate one platform writer (normally the phone) for a given NorthStar session. Preserve stable platform IDs; do not mistake Apple external UUID metadata for guaranteed deduplication. After ambiguous crashes, query/reconcile app-owned records before retrying exports.
+For Apple Watch sessions already persisted as `HKWorkout`, phone records the source/export receipt and **does not write another `HKWorkout`**. For Wear OS, designate one platform writer (normally the phone) for a given BeyondRep session. Preserve stable platform IDs; do not mistake Apple external UUID metadata for guaranteed deduplication. After ambiguous crashes, query/reconcile app-owned records before retrying exports.
 
 See [Health data and export policy](../HEALTH_DATA.md).
 

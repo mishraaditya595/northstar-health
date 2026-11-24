@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/design/dialogs.dart';
 import '../../core/design/inputs.dart';
-import '../../core/design/northstar_theme.dart';
+import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/ids/uuid_factory.dart';
 import '../../core/ui/dispose_after_dialog.dart';
@@ -453,7 +453,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
               ? 'Loading exercise…'
               : 'Exercise details unavailable')
         : 'Exercise unavailable';
-    final muted = Theme.of(context).extension<NorthstarColors>()!.muted;
+    final muted = Theme.of(context).extension<BeyondRepColors>()!.muted;
     return PopScope(
       canPop: !_dirty || _allowLeave,
       onPopInvokedWithResult: _onPopInvoked,

@@ -1,7 +1,7 @@
 import '../../../core/units/load_units.dart';
 import '../../workouts/domain/workout_models.dart';
 
-/// Only explicit, locally committed COMPLETED NorthStar workouts are history.
+/// Only explicit, locally committed COMPLETED BeyondRep workouts are history.
 class WorkoutHistorySnapshot {
   const WorkoutHistorySnapshot({required this.sessions});
   final List<WorkoutSessionRecord> sessions;

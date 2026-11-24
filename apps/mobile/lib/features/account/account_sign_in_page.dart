@@ -57,7 +57,7 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'NORTHSTAR',
+                            'BEYONDREP',
                             style: Theme.of(context).textTheme.headlineLarge
                                 ?.copyWith(
                                   fontWeight: FontWeight.w900,
@@ -247,7 +247,7 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                           ],
                           const SizedBox(height: 24),
                           const Text(
-                            'A NorthStar account is required. Once signed in, '
+                            'A BeyondRep account is required. Once signed in, '
                             'you can record workouts without an internet '
                             'connection. Completed workouts are automatically '
                             'backed up to your account when online. Unfinished '

@@ -6,4 +6,4 @@ Mobile remains Flutter. Watch-based strength workout logging and live available 
 
 Evaluate Flutter UI on Wear OS against Compose; evaluate third-party FlutterWatch on supported Apple Watches against SwiftUI. Native SwiftUI/Compose are production alternatives; no release dependency on custom Flutter watchOS engine until real workout, battery, signing and compatibility gates pass. Flutter mobile ObjectBox is not assumed available on watchOS.
 
-Research basis: user-provided NorthStar smartwatch research dated 2026-10-23. Architecture detail in [WEARABLES.md](../WEARABLES.md) and [SYNC_PROTOCOL.md](../SYNC_PROTOCOL.md).
+Research basis: user-provided BeyondRep smartwatch research dated 2026-10-23. Architecture detail in [WEARABLES.md](../WEARABLES.md) and [SYNC_PROTOCOL.md](../SYNC_PROTOCOL.md).

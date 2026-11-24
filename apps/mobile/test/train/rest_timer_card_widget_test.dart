@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/features/train/rest_timer_card.dart';
-import 'package:northstar_health/features/workouts/domain/live_workout_engine.dart';
+import 'package:beyondrep/features/train/rest_timer_card.dart';
+import 'package:beyondrep/features/workouts/domain/live_workout_engine.dart';
 
 void main() {
   testWidgets(

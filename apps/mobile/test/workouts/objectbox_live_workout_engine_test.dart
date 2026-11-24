@@ -1,15 +1,15 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/core/ids/uuid_factory.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_live_workout_engine.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_workout_library_repository.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_workout_repository.dart';
-import 'package:northstar_health/features/workouts/data/workout_entities.dart';
-import 'package:northstar_health/features/workouts/domain/workout_library_models.dart';
-import 'package:northstar_health/features/workouts/domain/workout_models.dart';
-import 'package:northstar_health/features/workouts/domain/workout_repository.dart';
-import 'package:northstar_health/objectbox.g.dart';
+import 'package:beyondrep/core/ids/uuid_factory.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_live_workout_engine.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_workout_library_repository.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_workout_repository.dart';
+import 'package:beyondrep/features/workouts/data/workout_entities.dart';
+import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
+import 'package:beyondrep/features/workouts/domain/workout_repository.dart';
+import 'package:beyondrep/objectbox.g.dart';
 
 class SequenceUuids implements UuidFactory {
   SequenceUuids(this.values);
@@ -31,7 +31,7 @@ void main() {
   final finished = DateTime.utc(2026, 10, 24, 10);
 
   setUp(() {
-    directory = Directory.systemTemp.createTempSync('northstar-live-engine-');
+    directory = Directory.systemTemp.createTempSync('beyondrep-live-engine-');
     store = Store(getObjectBoxModel(), directory: directory.path);
     engine = ObjectBoxLiveWorkoutEngine(store);
     sessions = ObjectBoxWorkoutRepository(store);

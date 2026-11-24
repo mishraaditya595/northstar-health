@@ -4,16 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:northstar_health/core/design/northstar_theme.dart';
-import 'package:northstar_health/core/design/page_header.dart';
-import 'package:northstar_health/core/storage/objectbox_store_provider.dart';
-import 'package:northstar_health/features/train/active_workout_page.dart';
-import 'package:northstar_health/features/train/train_page.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_live_workout_engine.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_workout_repository.dart';
-import 'package:northstar_health/features/workouts/data/workout_entities.dart';
-import 'package:northstar_health/features/workouts/domain/workout_models.dart';
-import 'package:northstar_health/objectbox.g.dart';
+import 'package:beyondrep/core/design/beyondrep_theme.dart';
+import 'package:beyondrep/core/design/page_header.dart';
+import 'package:beyondrep/core/storage/objectbox_store_provider.dart';
+import 'package:beyondrep/features/train/active_workout_page.dart';
+import 'package:beyondrep/features/train/train_page.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_live_workout_engine.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_workout_repository.dart';
+import 'package:beyondrep/features/workouts/data/workout_entities.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
+import 'package:beyondrep/objectbox.g.dart';
 
 /// The options sheet scrolls above its pinned Done button; bring the Remove
 /// action into view the way a user would, then tap it.
@@ -32,7 +32,7 @@ void main() {
   late GoRouter router;
 
   setUp(() {
-    directory = Directory.systemTemp.createTempSync('northstar-workout-ui-');
+    directory = Directory.systemTemp.createTempSync('beyondrep-workout-ui-');
     store = Store(getObjectBoxModel(), directory: directory.path);
     router = GoRouter(
       initialLocation: '/train',
@@ -57,7 +57,7 @@ void main() {
       ProviderScope(
         overrides: [objectBoxStoreProvider.overrideWithValue(store)],
         child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           routerConfig: router,
         ),
       ),

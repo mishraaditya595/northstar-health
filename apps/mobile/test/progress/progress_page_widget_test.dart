@@ -5,25 +5,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:northstar_health/core/design/northstar_theme.dart';
-import 'package:northstar_health/core/storage/objectbox_store_provider.dart';
-import 'package:northstar_health/features/progress/progress_page.dart';
-import 'package:northstar_health/features/progress/workout_history_state.dart';
-import 'package:northstar_health/features/progress/data/objectbox_workout_history_repository.dart';
-import 'package:northstar_health/features/progress/domain/workout_history_models.dart';
-import 'package:northstar_health/features/train/active_workout_page.dart';
-import 'package:northstar_health/features/today/today_page.dart';
-import 'package:northstar_health/features/account/account_auth_provider.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_workout_outbox.dart';
+import 'package:beyondrep/core/design/beyondrep_theme.dart';
+import 'package:beyondrep/core/storage/objectbox_store_provider.dart';
+import 'package:beyondrep/features/progress/progress_page.dart';
+import 'package:beyondrep/features/progress/workout_history_state.dart';
+import 'package:beyondrep/features/progress/data/objectbox_workout_history_repository.dart';
+import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
+import 'package:beyondrep/features/train/active_workout_page.dart';
+import 'package:beyondrep/features/today/today_page.dart';
+import 'package:beyondrep/features/account/account_auth_provider.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_workout_outbox.dart';
 
 import '../support/fake_account_auth.dart';
 
-import 'package:northstar_health/features/progress/workout_history_detail_page.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_live_workout_engine.dart';
-import 'package:northstar_health/features/workouts/data/workout_entities.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_workout_repository.dart';
-import 'package:northstar_health/features/workouts/domain/workout_models.dart';
-import 'package:northstar_health/objectbox.g.dart';
+import 'package:beyondrep/features/progress/workout_history_detail_page.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_live_workout_engine.dart';
+import 'package:beyondrep/features/workouts/data/workout_entities.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_workout_repository.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
+import 'package:beyondrep/objectbox.g.dart';
 
 /// Progress now stacks overview, calendar and body map above the history, so
 /// lower sections need a tall viewport to be built, as they are when scrolled.
@@ -41,7 +41,7 @@ void main() {
   late GoRouter router;
 
   setUp(() {
-    directory = Directory.systemTemp.createTempSync('northstar-progress-ui-');
+    directory = Directory.systemTemp.createTempSync('beyondrep-progress-ui-');
     store = Store(getObjectBoxModel(), directory: directory.path);
     router = GoRouter(
       initialLocation: '/progress',
@@ -156,7 +156,7 @@ void main() {
           ),
         ],
         child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           routerConfig: router,
         ),
       ),
@@ -175,7 +175,7 @@ void main() {
           progressNowProvider.overrideWithValue(nowUtc),
         ],
         child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           routerConfig: router,
         ),
       ),
@@ -245,7 +245,7 @@ void main() {
           }),
         ],
         child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           routerConfig: router,
         ),
       ),
@@ -352,7 +352,7 @@ void main() {
           ),
         ],
         child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.dark),
+          theme: BeyondRepTheme.build(Brightness.dark),
           routerConfig: router,
         ),
       ),
@@ -458,7 +458,7 @@ void main() {
           ),
         ],
         child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           routerConfig: router,
         ),
       ),
@@ -507,7 +507,7 @@ void main() {
             }),
           ],
           child: MaterialApp.router(
-            theme: NorthstarTheme.build(Brightness.light),
+            theme: BeyondRepTheme.build(Brightness.light),
             routerConfig: router,
           ),
         ),
@@ -555,7 +555,7 @@ void main() {
           }),
         ],
         child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           routerConfig: router,
         ),
       ),
@@ -631,7 +631,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp.router(
-            theme: NorthstarTheme.build(Brightness.light),
+            theme: BeyondRepTheme.build(Brightness.light),
             routerConfig: router,
           ),
         ),
@@ -678,7 +678,7 @@ void main() {
           workoutHistoryRepositoryProvider.overrideWithValue(fake),
         ],
         child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           routerConfig: router,
         ),
       ),
@@ -708,7 +708,7 @@ void main() {
           workoutHistoryRepositoryProvider.overrideWithValue(fake),
         ],
         child: MaterialApp.router(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           routerConfig: router,
         ),
       ),

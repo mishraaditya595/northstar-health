@@ -3,12 +3,12 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/core/units/load_units.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_workout_repository.dart';
-import 'package:northstar_health/features/workouts/data/workout_entities.dart';
-import 'package:northstar_health/features/workouts/domain/workout_models.dart';
-import 'package:northstar_health/features/workouts/domain/workout_repository.dart';
-import 'package:northstar_health/objectbox.g.dart';
+import 'package:beyondrep/core/units/load_units.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_workout_repository.dart';
+import 'package:beyondrep/features/workouts/data/workout_entities.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
+import 'package:beyondrep/features/workouts/domain/workout_repository.dart';
+import 'package:beyondrep/objectbox.g.dart';
 
 void main() {
   late Directory directory;
@@ -16,7 +16,7 @@ void main() {
   late ObjectBoxWorkoutRepository repository;
 
   setUp(() {
-    directory = Directory.systemTemp.createTempSync('northstar-objectbox-');
+    directory = Directory.systemTemp.createTempSync('beyondrep-objectbox-');
     store = Store(getObjectBoxModel(), directory: directory.path);
     repository = ObjectBoxWorkoutRepository(store);
   });

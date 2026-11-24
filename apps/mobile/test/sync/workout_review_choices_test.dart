@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/core/design/northstar_theme.dart';
-import 'package:northstar_health/features/account/account_auth_provider.dart';
-import 'package:northstar_health/features/sync/objectbox_workout_restore_importer.dart';
-import 'package:northstar_health/features/sync/workout_conflict_resolution.dart';
-import 'package:northstar_health/features/sync/workout_conflict_review_page.dart';
-import 'package:northstar_health/features/sync/workout_restore_feed.dart';
-import 'package:northstar_health/features/sync/workout_review_choices.dart';
+import 'package:beyondrep/core/design/beyondrep_theme.dart';
+import 'package:beyondrep/features/account/account_auth_provider.dart';
+import 'package:beyondrep/features/sync/objectbox_workout_restore_importer.dart';
+import 'package:beyondrep/features/sync/workout_conflict_resolution.dart';
+import 'package:beyondrep/features/sync/workout_conflict_review_page.dart';
+import 'package:beyondrep/features/sync/workout_restore_feed.dart';
+import 'package:beyondrep/features/sync/workout_review_choices.dart';
 
 import '../support/fake_account_auth.dart';
 
@@ -251,7 +251,7 @@ void main() {
           workoutRestoreCursorProvider.overrideWithValue(null),
         ],
         child: MaterialApp(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           home: const WorkoutConflictReviewPage(),
         ),
       ),
@@ -289,7 +289,7 @@ void main() {
           ),
         ],
         child: MaterialApp(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           home: const WorkoutConflictReviewPage(),
         ),
       ),

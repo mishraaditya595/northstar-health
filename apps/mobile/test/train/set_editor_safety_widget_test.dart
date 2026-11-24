@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/core/units/load_units.dart';
-import 'package:northstar_health/features/train/active_workout_page.dart';
-import 'package:northstar_health/features/workouts/domain/workout_models.dart';
+import 'package:beyondrep/core/units/load_units.dart';
+import 'package:beyondrep/features/train/active_workout_page.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 
 const planned = WorkoutSetRecord(
   uuid: 'set-a',

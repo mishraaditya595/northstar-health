@@ -144,7 +144,7 @@ class ObjectBoxWorkoutOutbox {
         workout.completedAtMs == null ||
         workout.deletedAtMs != null ||
         workout.origin != 'northstar_phone') {
-      throw StateError('Only finished NorthStar phone workouts may be queued');
+      throw StateError('Only finished BeyondRep phone workouts may be queued');
     }
     // IDs may be from older offline sessions; never block a local finish
     // merely because the completed snapshot cannot be uploaded.

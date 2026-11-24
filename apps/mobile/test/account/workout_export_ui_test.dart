@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/core/design/northstar_theme.dart';
-import 'package:northstar_health/features/account/account_auth_provider.dart';
-import 'package:northstar_health/features/account/account_sync_page.dart';
-import 'package:northstar_health/features/account/workout_export_file_writer.dart';
-import 'package:northstar_health/features/account/workout_history_export.dart';
-import 'package:northstar_health/features/sync/workout_upload_coordinator.dart';
+import 'package:beyondrep/core/design/beyondrep_theme.dart';
+import 'package:beyondrep/features/account/account_auth_provider.dart';
+import 'package:beyondrep/features/account/account_sync_page.dart';
+import 'package:beyondrep/features/account/workout_export_file_writer.dart';
+import 'package:beyondrep/features/account/workout_history_export.dart';
+import 'package:beyondrep/features/sync/workout_upload_coordinator.dart';
 
 import '../support/fake_account_auth.dart';
 import '../support/workout_export_fakes.dart';
@@ -74,7 +74,7 @@ void main() {
           workoutExportFileWriterProvider.overrideWithValue(writer),
         ],
         child: MaterialApp(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           home: const AccountSyncPage(),
         ),
       ),
@@ -112,7 +112,7 @@ void main() {
           workoutExportFileWriterProvider.overrideWithValue(writer),
         ],
         child: MaterialApp(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           home: const AccountSyncPage(),
         ),
       ),
@@ -160,7 +160,7 @@ void main() {
           ),
         ],
         child: MaterialApp(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           home: const AccountSyncPage(),
         ),
       ),
@@ -213,7 +213,7 @@ void main() {
           workoutExportFileWriterProvider.overrideWithValue(writer),
         ],
         child: MaterialApp(
-          theme: NorthstarTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(Brightness.light),
           home: const AccountSyncPage(),
         ),
       ),

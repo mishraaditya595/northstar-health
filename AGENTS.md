@@ -1,4 +1,4 @@
-# NorthStar agent operating agreement
+# BeyondRep agent operating agreement
 
 Applies to **all AI coding, design, test and review agents**. Read `README.md`, `docs/ARCHITECTURE.md`, `docs/DESIGN_SYSTEM.md`, `docs/adr/0003-data-cloud-health.md`, `docs/adr/0005-mandatory-auth-and-workout-sync.md`,  `docs/OBJECTBOX.md`, `docs/CLOUD_SYNC.md`, `docs/HEALTH_DATA.md`, `docs/SYNC_PROTOCOL.md`, `docs/WEARABLES.md`, `docs/FIREBASE_PRIVACY.md`, `docs/REVIEW_GUIDE.md` before changes.
 
@@ -34,8 +34,8 @@ These rules apply to every pull request from someone other than the maintainer, 
 
 ## Data ownership hard rules
 
-- **ObjectBox phone:** durable NorthStar workouts, exercises, sets, plans, in-progress checkpoints, outbox, export receipts; only temporary, authorized health caches.
-- **Supabase:** authenticated sync/backup of **completed** NorthStar phone workouts (finished by the user) and essential exercise/set snapshots; tombstones preserve deletions. Everyone requires an account. Authenticated users can save offline and synchronize later. In-progress, paused and discarded sessions, local rest/checkpoint state, custom plans, templates, catalog, health caches, imported workouts and platform vitals are **never** backed up in this phase. See ADR-0005.
+- **ObjectBox phone:** durable BeyondRep workouts, exercises, sets, plans, in-progress checkpoints, outbox, export receipts; only temporary, authorized health caches.
+- **Supabase:** authenticated sync/backup of **completed** BeyondRep phone workouts (finished by the user) and essential exercise/set snapshots; tombstones preserve deletions. Everyone requires an account. Authenticated users can save offline and synchronize later. In-progress, paused and discarded sessions, local rest/checkpoint state, custom plans, templates, catalog, health caches, imported workouts and platform vitals are **never** backed up in this phase. See ADR-0005.
 - **HealthKit/Health Connect:** source of user-authorized physiological measurements. Only app-owned completed workout **summaries** may be exported, with separate write permission, platform record identity and dedup receipts. Never fabricate calories/readiness or show missing as zero.
 - **Firebase Crashlytics/Analytics:** decided provider but disabled/unconfigured until reviewed consent/redaction. Never collect user notes, health measurements, workout values, tokens, source/device IDs or raw API errors. Sentry is no longer the selected solution.
 - **Authentication/identity:** everyone must register/sign in before entering workout features (no guest mode); initial login requires internet. Returning authenticated users may save offline. Never keep tokens in ObjectBox or service_role/secret keys in Flutter or Git; account-scoped RLS and replay-safe RPC; never attach local workouts to a different account.

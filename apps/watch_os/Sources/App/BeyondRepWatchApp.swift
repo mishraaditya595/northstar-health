@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct NorthStarWatchApp: App {
+struct BeyondRepWatchApp: App {
     var body: some Scene {
         WindowGroup {
             WorkoutHomeView()

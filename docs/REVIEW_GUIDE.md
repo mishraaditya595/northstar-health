@@ -1,4 +1,4 @@
-# NorthStar independent AI code review protocol
+# BeyondRep independent AI code review protocol
 
 The implementing agent cannot self-approve. Reviewer reads the **actual diff**, ADRs, data flows and test evidence rather than trusting the PR summary. Human approval is required for scope, network, privacy/consent, schema, health permissions and watch-session behavior changes.
 
@@ -17,7 +17,7 @@ Every finding: affected file/line, reproducible impact, smallest correction, tes
 - [ ] Phone Android/iOS; tablet/iPad portrait, landscape and split view; dark/light, text scale and keyboard
 - [ ] Offline workout edits; process death; rest timer; ObjectBox local write+outbox atomicity
 - [ ] ObjectBox generated bindings and `objectbox-model.json` UID stability; migration on prior DB
-- [ ] Cloud payload allowlist: authenticated, completed NorthStar phone workouts only; no unfinished sessions, health cache/vitals, rest/recovery checkpoints, imported workouts or plans (ADR-0005)
+- [ ] Cloud payload allowlist: authenticated, completed BeyondRep phone workouts only; no unfinished sessions, health cache/vitals, rest/recovery checkpoints, imported workouts or plans (ADR-0005)
 - [ ] Mandatory signup, no guest mode; logout/account-switch with unsynced data
 - [ ] Supabase RLS SELECT/INSERT/UPDATE/DELETE and any privileged RPC ownership, least-privilege
 - [ ] Concurrent device update/revision rejection; retry identical operation ID; deletion tombstones/cursor ordering and epoch reset after database restore

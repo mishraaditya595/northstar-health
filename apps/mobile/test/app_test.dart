@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/app/floating_nav_bar.dart';
-import 'package:northstar_health/app/northstar_app.dart';
-import 'package:northstar_health/features/account/account_auth_controller.dart';
-import 'package:northstar_health/features/account/account_auth_provider.dart';
+import 'package:beyondrep/app/floating_nav_bar.dart';
+import 'package:beyondrep/app/beyondrep_app.dart';
+import 'package:beyondrep/features/account/account_auth_controller.dart';
+import 'package:beyondrep/features/account/account_auth_provider.dart';
 
 import 'support/fake_account_auth.dart';
 
@@ -21,7 +21,7 @@ Widget signedInApp([AccountAuthController? auth]) => ProviderScope(
           ),
     ),
   ],
-  child: const NorthstarApp(),
+  child: const BeyondRepApp(),
 );
 
 void main() {
@@ -136,7 +136,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const ProviderScope(child: NorthstarApp()));
+    await tester.pumpWidget(const ProviderScope(child: BeyondRepApp()));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Train'));
@@ -151,7 +151,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const ProviderScope(child: NorthstarApp()));
+    await tester.pumpWidget(const ProviderScope(child: BeyondRepApp()));
     await tester.pumpAndSettle();
     expect(find.byType(FloatingNavBar), findsOneWidget);
 
@@ -169,7 +169,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const ProviderScope(child: NorthstarApp()));
+    await tester.pumpWidget(const ProviderScope(child: BeyondRepApp()));
     await tester.pumpAndSettle();
     ProviderScope.containerOf(tester.element(find.byType(MaterialApp)))
         .read(routerProvider)

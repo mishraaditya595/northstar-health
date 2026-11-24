@@ -8,7 +8,7 @@
 
 1. Checks that `SUPABASE_URL` is an `https://<ref>.supabase.co` URL and `SUPABASE_PUBLISHABLE_KEY` is a publishable key (`sb_publishable_…`). It never accepts a service-role or secret key.
 2. Runs `flutter pub get --enforce-lockfile`.
-3. Applies App Store distribution signing for `dev.northstar.northstarHealth` (`xcode-project use-profiles`).
+3. Applies App Store distribution signing for `in.beyondrep.app` (`xcode-project use-profiles`).
 4. Builds a release IPA with `--build-number=$BUILD_NUMBER` and the two public Supabase values passed through a temporary `--dart-define-from-file` that is deleted after the build.
 5. Uploads the IPA to App Store Connect with `submit_to_testflight: false` and `submit_to_app_store: false`. The build is therefore only available to **internal** testers on your App Store Connect team. It is never sent to Beta App Review, external testers or App Store review.
 
@@ -19,7 +19,7 @@
 ### Apple
 
 1. An active, paid Apple Developer Program membership.
-2. In **Certificates, Identifiers & Profiles**, register the explicit App ID `dev.northstar.northstarHealth`. This bundle ID is permanent once the App Store Connect record exists.
+2. In **Certificates, Identifiers & Profiles**, register the explicit App ID `in.beyondrep.app`. This bundle ID is permanent once the App Store Connect record exists.
 3. In **App Store Connect → Apps**, create the iOS app with that bundle ID, plus a name and SKU.
 4. In **App Store Connect → Users and Access → Integrations → App Store Connect API**, create a Team key with the **App Manager** role. Download the `.p8` once. Note the Issuer ID and Key ID.
 5. In **TestFlight → Internal Testing**, create a group, add yourself, and enable automatic distribution.
@@ -27,10 +27,10 @@
 ### Codemagic
 
 1. Add `mishraaditya595/northstar-health` as a Codemagic app using **codemagic.yaml** configuration.
-2. **Team settings → Integrations → Developer Portal → Manage keys:** add the API key with the exact name `NorthStar App Store Connect`, which must match `integrations.app_store_connect` in the YAML.
+2. **Team settings → Integrations → Developer Portal → Manage keys:** add the API key with the exact name `BeyondRep App Store Connect`, which must match `integrations.app_store_connect` in the YAML.
 3. **Team settings → codemagic.yaml settings → Code signing identities:**
    - **iOS certificates:** generate or upload an *Apple Distribution* certificate using the key above.
-   - **iOS provisioning profiles:** fetch or create an *App Store* profile for `dev.northstar.northstarHealth`.
+   - **iOS provisioning profiles:** fetch or create an *App Store* profile for `in.beyondrep.app`.
 4. **App → Environment variables:** create the group `ns_mobile_supabase_public` with:
 
    | Variable | Value |

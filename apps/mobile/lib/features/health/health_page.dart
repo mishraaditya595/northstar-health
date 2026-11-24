@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/design/northstar_theme.dart';
+import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 
@@ -10,7 +10,7 @@ class HealthPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final muted = theme.extension<NorthstarColors>()!.muted;
+    final muted = theme.extension<BeyondRepColors>()!.muted;
     return ListView(
       padding: EdgeInsets.fromLTRB(
         16,
@@ -119,16 +119,16 @@ class _Stat extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
-    final muted = theme.extension<NorthstarColors>()!.muted;
+    final muted = theme.extension<BeyondRepColors>()!.muted;
     final iconBg = sleep
         ? (dark
-              ? NorthstarPalette.sleepSoftDark
-              : NorthstarPalette.sleepSoftLight)
+              ? BeyondRepPalette.sleepSoftDark
+              : BeyondRepPalette.sleepSoftLight)
         : (dark
-              ? NorthstarPalette.forestSoftDark
-              : NorthstarPalette.forestSoftLight);
+              ? BeyondRepPalette.forestSoftDark
+              : BeyondRepPalette.forestSoftLight);
     final iconColor = sleep
-        ? (dark ? NorthstarPalette.sleepDark : NorthstarPalette.sleepLight)
+        ? (dark ? BeyondRepPalette.sleepDark : BeyondRepPalette.sleepLight)
         : theme.colorScheme.primary;
     return Semantics(
       label: '$name: $value. $source',

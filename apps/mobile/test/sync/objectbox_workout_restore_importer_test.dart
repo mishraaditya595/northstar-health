@@ -1,11 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/features/sync/objectbox_workout_restore_importer.dart';
-import 'package:northstar_health/features/sync/workout_restore_feed.dart';
-import 'package:northstar_health/features/workouts/data/objectbox_workout_outbox.dart';
-import 'package:northstar_health/features/workouts/data/workout_entities.dart';
-import 'package:northstar_health/objectbox.g.dart';
+import 'package:beyondrep/features/sync/objectbox_workout_restore_importer.dart';
+import 'package:beyondrep/features/sync/workout_restore_feed.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_workout_outbox.dart';
+import 'package:beyondrep/features/workouts/data/workout_entities.dart';
+import 'package:beyondrep/objectbox.g.dart';
 
 import '../workouts/fixtures/objectbox_pre_outbox.g.dart' as legacy;
 
@@ -97,7 +97,7 @@ void main() {
   }
 
   setUp(() {
-    dir = Directory.systemTemp.createTempSync('northstar-restore-');
+    dir = Directory.systemTemp.createTempSync('beyondrep-restore-');
     store = Store(getObjectBoxModel(), directory: dir.path);
     activeOwner = accountA;
     bind();
@@ -496,7 +496,7 @@ void main() {
   });
 
   test('frozen older ObjectBox model upgrades retaining workout identity', () {
-    final oldDir = Directory.systemTemp.createTempSync('northstar-restore-v1-');
+    final oldDir = Directory.systemTemp.createTempSync('beyondrep-restore-v1-');
     try {
       final old = Store(legacy.getObjectBoxModel(), directory: oldDir.path);
       old.box<WorkoutSessionEntity>().put(

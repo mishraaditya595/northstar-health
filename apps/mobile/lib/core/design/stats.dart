@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'northstar_theme.dart';
+import 'beyondrep_theme.dart';
 
 /// Direction of a [StatTile] trend; colours come from the theme, not the call.
 enum NsTrend { up, down, flat }

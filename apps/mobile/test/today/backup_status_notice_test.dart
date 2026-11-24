@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/core/design/page_header.dart';
-import 'package:northstar_health/features/today/backup_status_notice.dart';
+import 'package:beyondrep/core/design/page_header.dart';
+import 'package:beyondrep/features/today/backup_status_notice.dart';
 
 import '../support/fake_account_auth.dart';
 

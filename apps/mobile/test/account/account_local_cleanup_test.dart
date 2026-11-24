@@ -1,14 +1,14 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/core/storage/account_store.dart';
+import 'package:beyondrep/core/storage/account_store.dart';
 
 const _owner = '00000000-0000-4000-8000-0000000000a1';
 const _other = '00000000-0000-4000-8000-0000000000b2';
 
 void main() {
   test('confirmed local cleanup erases only its owner partition', () async {
-    final base = await Directory.systemTemp.createTemp('northstar-delete-');
+    final base = await Directory.systemTemp.createTemp('beyondrep-delete-');
     addTearDown(() => base.delete(recursive: true));
 
     Directory path(String id, String host) => Directory(
@@ -46,7 +46,7 @@ void main() {
   test(
     'untrusted owner directory identifiers cannot cause traversal',
     () async {
-      final base = await Directory.systemTemp.createTemp('northstar-safety-');
+      final base = await Directory.systemTemp.createTemp('beyondrep-safety-');
       addTearDown(() => base.delete(recursive: true));
       await expectLater(
         deleteBoundAccountStoreAtRoot(

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/features/progress/domain/workout_history_models.dart';
-import 'package:northstar_health/features/train/previous_sets.dart';
-import 'package:northstar_health/features/workouts/domain/workout_models.dart';
+import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
+import 'package:beyondrep/features/train/previous_sets.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 
 WorkoutSessionRecord session(
   String id,

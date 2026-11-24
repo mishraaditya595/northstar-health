@@ -1,6 +1,6 @@
-# Run NorthStar against your own Supabase project
+# Run BeyondRep against your own Supabase project
 
-NorthStar requires sign-in before any workout screen opens (see [ADR-0005](adr/0005-mandatory-auth-and-workout-sync.md)). The app therefore cannot start without a Supabase backend. Contributors use **their own free Supabase project**, never the maintainer's development project.
+BeyondRep requires sign-in before any workout screen opens (see [ADR-0005](adr/0005-mandatory-auth-and-workout-sync.md)). The app therefore cannot start without a Supabase backend. Contributors use **their own free Supabase project**, never the maintainer's development project.
 
 This guide takes about 15 minutes. You need it only to **run the app**. Formatting, `flutter analyze` and `flutter test` work without Supabase.
 
@@ -31,7 +31,7 @@ In the dashboard, under **Authentication**:
 2. **Emails → Templates**: edit both **Magic Link** and **Confirm signup** so the body contains the code, for example:
 
    ```html
-   <h2>Your NorthStar code</h2>
+   <h2>Your BeyondRep code</h2>
    <p>{{ .Token }}</p>
    ```
 

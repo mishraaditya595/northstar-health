@@ -1,7 +1,7 @@
 # P2-05 — Server-side completed workout progress
 
 **Implementation record:** [PR #17](https://github.com/mishraaditya595/northstar-health/pull/17), **merged into main on 2026-10-26**. Merge is not a database deployment: hosted P2-05 deployment and live-auth QA remain outstanding.  
-**Owner-approved policy:** [ADR-0005](../../adr/0005-mandatory-auth-and-workout-sync.md). Only account-authenticated, completed NorthStar **phone** workouts are eligible for cloud backup. The server stores no heart rate, sleep, steps, or other physiological health samples.
+**Owner-approved policy:** [ADR-0005](../../adr/0005-mandatory-auth-and-workout-sync.md). Only account-authenticated, completed BeyondRep **phone** workouts are eligible for cloud backup. The server stores no heart rate, sleep, steps, or other physiological health samples.
 
 ## Scope
 

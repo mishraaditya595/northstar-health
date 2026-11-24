@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:northstar_health/core/storage/account_store.dart';
+import 'package:beyondrep/core/storage/account_store.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 
@@ -268,7 +268,7 @@ void main() {
   });
 
   test('uncertain-result keep path preserves account partition for original owner', () async {
-    final base = await Directory.systemTemp.createTemp('northstar-keep-');
+    final base = await Directory.systemTemp.createTemp('beyondrep-keep-');
     addTearDown(() async {
       if (await base.exists()) await base.delete(recursive: true);
     });

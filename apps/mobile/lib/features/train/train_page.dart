@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/design/inputs.dart';
 import '../../core/design/dialogs.dart';
-import '../../core/design/northstar_theme.dart';
+import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 import '../workouts/domain/workout_library_models.dart';
@@ -81,7 +81,7 @@ class TrainPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(trainLibraryProvider);
-    final colors = Theme.of(context).extension<NorthstarColors>()!;
+    final colors = Theme.of(context).extension<BeyondRepColors>()!;
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
@@ -333,7 +333,7 @@ class _WeekStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
-    final muted = theme.extension<NorthstarColors>()!.muted;
+    final muted = theme.extension<BeyondRepColors>()!.muted;
     const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     return Row(
       children: [
@@ -360,7 +360,7 @@ class _WeekStrip extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10,
                       color: i == 4
-                          ? (dark ? NorthstarPalette.heroDark : Colors.white)
+                          ? (dark ? BeyondRepPalette.heroDark : Colors.white)
                           : muted,
                     ),
                   ),
@@ -371,7 +371,7 @@ class _WeekStrip extends StatelessWidget {
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
                       color: i == 4
-                          ? (dark ? NorthstarPalette.heroDark : Colors.white)
+                          ? (dark ? BeyondRepPalette.heroDark : Colors.white)
                           : theme.colorScheme.onSurface,
                     ),
                   ),

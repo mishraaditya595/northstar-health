@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/core/design/stats.dart';
+import 'package:beyondrep/core/design/stats.dart';
 
 void main() {
   testWidgets('StatTile shows value, unit, trend and caption', (tester) async {

@@ -16,7 +16,7 @@ Seven migrations are committed in `supabase/migrations/`. The first six were app
 6. `20261025071009_phase2_tombstone_delete_retry_guard.sql` — permit explicit repeat deletes without allowing upsert resurrection.
 7. `20261025090000_phase2_completed_only_scope.sql` — ADR-0005 scope: accept only `completed` workouts in the RPC and table constraint; remove earlier non-completed synthetic dev rows and their receipts.
 
-Everyone must authenticate initially (no guest mode); offline logging is still allowed afterwards for the securely bound account. Workouts upload automatically in later Flutter PRs. The server accepts only `completed` NorthStar phone workouts and **not** in-progress, paused or discarded sessions, plan templates, editor/rest checkpoints, external workouts, personal health signals, imported device samples or platform identifiers. Completed metrics alone are server-processed; missing loaded volume stays NULL.
+Everyone must authenticate initially (no guest mode); offline logging is still allowed afterwards for the securely bound account. Workouts upload automatically in later Flutter PRs. The server accepts only `completed` BeyondRep phone workouts and **not** in-progress, paused or discarded sessions, plan templates, editor/rest checkpoints, external workouts, personal health signals, imported device samples or platform identifiers. Completed metrics alone are server-processed; missing loaded volume stays NULL.
 
 ## Verification evidence
 

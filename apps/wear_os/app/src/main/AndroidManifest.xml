@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-feature android:name="android.hardware.type.watch" android:required="true" />
     <application
-        android:label="NorthStar"
+        android:label="BeyondRep"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:allowBackup="false"
         android:supportsRtl="true">

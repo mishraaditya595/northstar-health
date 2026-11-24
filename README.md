@@ -1,8 +1,8 @@
-# NorthStar Health
+# BeyondRep
 
 **Train consistently. Understand your health. Keep control of your data.**
 
-NorthStar Health is an **offline-first health and strength-training app in development** for Android, iPhone, Android tablets and iPad. It combines durable workout logging with account-bound completed-workout backup. Native Apple Watch and Wear OS companions, permission-based health metrics and a broader health dashboard are future milestones.
+BeyondRep is an **offline-first health and strength-training app in development** for Android, iPhone, Android tablets and iPad. It combines durable workout logging with account-bound completed-workout backup. Native Apple Watch and Wear OS companions, permission-based health metrics and a broader health dashboard are future milestones.
 
 > **Development status — not released.** Offline workout logging and Phase 2 accounts, foreground sync and data-rights flows are merged in source. Hosted rollout, real-account security tests, device validation and large-history export support remain P2-08 release gates. HealthKit/Health Connect, Firebase collection and live watch recording are not implemented. See the [milestone tracker](docs/ROADMAP.md) and [release gates](docs/RELEASE.md). Previews below are static concepts, not application screenshots.
 
@@ -10,11 +10,11 @@ NorthStar Health is an **offline-first health and strength-training app in devel
 
 ### Phone — Today, Train and Health
 
-![NorthStar mobile UI concept previews — dark-mode Today and Health screens plus light-mode Train. Fictional demonstration data.](docs/assets/prototype-mobile.svg)
+![BeyondRep mobile UI concept previews — dark-mode Today and Health screens plus light-mode Train. Fictional demonstration data.](docs/assets/prototype-mobile.svg)
 
 ### Tablet and smartwatch — Progress, set logging and rest timer
 
-![NorthStar adaptive tablet and smartwatch concept screens — light tablet Progress view and dark watch workout controls. All values are fictional.](docs/assets/prototype-tablet-watch.svg)
+![BeyondRep adaptive tablet and smartwatch concept screens — light tablet Progress view and dark watch workout controls. All values are fictional.](docs/assets/prototype-tablet-watch.svg)
 
 <small>Visual references follow the existing [Performance V2 design language](docs/DESIGN_SYSTEM.md). Tablet and watch compositions are proposed extensions—not evidence of implemented features, sensor readings or tested watch runtime.</small>
 
@@ -32,7 +32,7 @@ NorthStar Health is an **offline-first health and strength-training app in devel
 | Crash/usage telemetry | **Firebase Crashlytics + Analytics** | Chosen, **not installed/collecting**; explicit privacy gate |
 | Watches | Native HealthKit workout service / Wear OS Health Services, watch UI under evaluation | Architecture/PoC only |
 
-The data policy is narrow: NorthStar **owns detailed workout logs**; HealthKit and Health Connect remain the source for physiology; Supabase receives only authenticated **completed NorthStar-authored phone workouts** and essential exercise/set history, per [ADR-0005](docs/adr/0005-mandatory-auth-and-workout-sync.md). No heart-rate/HRV/sleep/SpO₂/steps sensor stream, health-platform cache, imported external workout, or location trail is backed up to Supabase. Plans/templates remain **local-only initially**: a reinstall will restore past finished sessions but not necessarily user-created plans.
+The data policy is narrow: BeyondRep **owns detailed workout logs**; HealthKit and Health Connect remain the source for physiology; Supabase receives only authenticated **completed BeyondRep-authored phone workouts** and essential exercise/set history, per [ADR-0005](docs/adr/0005-mandatory-auth-and-workout-sync.md). No heart-rate/HRV/sleep/SpO₂/steps sensor stream, health-platform cache, imported external workout, or location trail is backed up to Supabase. Plans/templates remain **local-only initially**: a reinstall will restore past finished sessions but not necessarily user-created plans.
 
 ## Production monorepo structure
 
@@ -68,7 +68,7 @@ Read [monorepo boundaries](docs/REPOSITORY_LAYOUT.md), [ADR-0004](docs/adr/0004-
 
 ## Accounts, backups and data rights (development)
 
-First use requires online email-code sign-in; subsequent workouts can be logged offline under the **same verified account**. Finishing a NorthStar-authored phone workout queues its supported session/exercise/set data for **foreground** Supabase backup; manual sync and review controls are on the Account screen. Sync status is device-local evidence, **not a guarantee** that every cloud write succeeded. Unfinished sessions, user-created plans, device settings and HealthKit/Health Connect measurements are **not backed up**. Signing out locks the old account's files rather than transferring them.
+First use requires online email-code sign-in; subsequent workouts can be logged offline under the **same verified account**. Finishing a BeyondRep-authored phone workout queues its supported session/exercise/set data for **foreground** Supabase backup; manual sync and review controls are on the Account screen. Sync status is device-local evidence, **not a guarantee** that every cloud write succeeded. Unfinished sessions, user-created plans, device settings and HealthKit/Health Connect measurements are **not backed up**. Signing out locks the old account's files rather than transferring them.
 
 Account provides an authenticated **JSON export of completed cloud history** using the platform document picker. It streams one 100-workout page at a time into a protected app-private temporary file, so there is no size cap; low-memory, large-history and native picker behavior still require physical-device verification before release. Permanent account deletion requires fresh same-owner OTP verification and a server-side Auth hard deletion; a confirmed result removes that account's cloud data and its original device partition. On an **uncertain response**, no local files are erased automatically: users may recover the original account, **use another account while keeping old data locked**, or **explicitly erase only the old account's local data and leave**. Neither exit transfers data. Server deployment and end-to-end deletion security checks remain outstanding. See [data rights](docs/implementation/phase-2/p2-07-account-status-data-rights.md), [ADR-0007](docs/adr/0007-account-deletion-recovery-exit-choices.md), and [cloud sync](docs/CLOUD_SYNC.md).
 
@@ -90,7 +90,7 @@ flutter test  # Native ObjectBox host library required for store-backed tests
 
 For macOS host-native tests, use `bash scripts/test_objectbox_macos.sh` from the repository root; see [contributor setup](CONTRIBUTING.md) and [ObjectBox testing](docs/OBJECTBOX.md).
 
-**Running the app needs a Supabase backend** because sign-in is mandatory. Create your own free project and follow [Run NorthStar against your own Supabase project](docs/CONTRIBUTOR_SUPABASE_SETUP.md), then run `flutter run --dart-define-from-file=supabase.local.json`.
+**Running the app needs a Supabase backend** because sign-in is mandatory. Create your own free project and follow [Run BeyondRep against your own Supabase project](docs/CONTRIBUTOR_SUPABASE_SETUP.md), then run `flutter run --dart-define-from-file=supabase.local.json`.
 
 To build the Wear OS app, follow [apps/wear_os/README.md](apps/wear_os/README.md). To generate and inspect the watchOS target on macOS, follow [apps/watch_os/README.md](apps/watch_os/README.md). Both target official native SDKs; experiment with Flutter watch rendering under `experiments/` separately. Never assume a watch app is distributed simply because source code exists in the monorepo.
 
@@ -115,7 +115,7 @@ Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md): it exp
 
 ## License
 
-NorthStar is licensed under the [Mozilla Public License 2.0](LICENSE). You may use, modify and distribute it, including in larger proprietary works, but modified versions of NorthStar's own files must remain available under MPL-2.0. Contributions are accepted under the same license.
+BeyondRep is licensed under the [Mozilla Public License 2.0](LICENSE). You may use, modify and distribute it, including in larger proprietary works, but modified versions of BeyondRep's own files must remain available under MPL-2.0. Contributions are accepted under the same license.
 
 See [Phase 1 implementation notes](docs/implementation/README.md) for the
 repository's current offline feature scope, tests and deferred QA.

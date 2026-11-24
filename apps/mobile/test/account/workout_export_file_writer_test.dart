@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/features/account/workout_export_file_writer.dart';
-import 'package:northstar_health/features/account/workout_history_export.dart';
+import 'package:beyondrep/features/account/workout_export_file_writer.dart';
+import 'package:beyondrep/features/account/workout_history_export.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +19,7 @@ void main() {
 
   setUp(() {
     root = Directory.systemTemp.createTempSync('ns-export-test');
-    file = File('${root.path}/northstar-export-1/northstar-workouts.json')
+    file = File('${root.path}/beyondrep-export-1/beyondrep-workouts.json')
       ..createSync(recursive: true);
   });
 
@@ -44,7 +44,7 @@ void main() {
       handle((call) async {
         expect(call.method, 'saveFile');
         final args = call.arguments as Map<dynamic, dynamic>;
-        expect(args['name'], 'northstar-workouts.json');
+        expect(args['name'], 'beyondrep-workouts.json');
         expect(args['path'], file.path);
         saved = File(args['path'] as String).readAsStringSync();
         return 'saved';
@@ -124,7 +124,7 @@ void main() {
   });
 
   test('temp path outside an export folder is rejected untouched', () async {
-    final outside = File('${root.path}/other/northstar-workouts.json')
+    final outside = File('${root.path}/other/beyondrep-workouts.json')
       ..createSync(recursive: true);
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (_) async => outside.path);

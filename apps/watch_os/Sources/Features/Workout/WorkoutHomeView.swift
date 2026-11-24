@@ -6,7 +6,7 @@ struct WorkoutHomeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("NORTHSTAR")
+                Text("BEYONDREP")
                     .font(.caption2.weight(.heavy))
                     .tracking(1.5)
                     .foregroundStyle(.green)

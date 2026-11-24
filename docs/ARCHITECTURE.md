@@ -1,4 +1,4 @@
-# NorthStar architecture and technology decisions
+# BeyondRep architecture and technology decisions
 
 ## Stack (decided vs implemented)
 
@@ -37,7 +37,7 @@
    sessions/sets/     Health Connect         consent-off
    plans/outbox       authorized reads
         |
-        +--- WorkoutCloudSync --------> Supabase (completed NorthStar workouts)
+        +--- WorkoutCloudSync --------> Supabase (completed BeyondRep workouts)
         |
         +--- WorkoutHealthExport ----> HealthKit / Health Connect
              (completed owned sessions; summary only)
@@ -53,8 +53,8 @@ These pipelines have **separate triggers, IDs, receipts and permissions**. Do no
 
 - Feature-first `lib/features/<feature>/presentation`, adding `domain`/`data` as needed; `lib/app` owns routing, `lib/core` owns shared design/security/telemetry interfaces.
 - Widgets do not import ObjectBox entity APIs, Supabase DTOs, HealthKit wrappers or Firebase packages. Repositories translate immutable domain models to persistence/transport.
-- Store NorthStar-origin detailed workouts, plans and recovery checkpoints locally before confirming UI actions. One ObjectBox transaction also enqueues remote sync operations when appropriate.
-- **Cloud sync requires an account**, and backs up completed NorthStar-authored phone workouts only. Unfinished sessions, rest timer/checkpoint data and custom plans/catalogs remain local. No health measurements in cloud. See ADR-0005.
+- Store BeyondRep-origin detailed workouts, plans and recovery checkpoints locally before confirming UI actions. One ObjectBox transaction also enqueues remote sync operations when appropriate.
+- **Cloud sync requires an account**, and backs up completed BeyondRep-authored phone workouts only. Unfinished sessions, rest timer/checkpoint data and custom plans/catalogs remain local. No health measurements in cloud. See ADR-0005.
 - Platform health store remains the source of measurements. ObjectBox health caches are expiring and never remotely uploaded.
 - Watch-generated set logs are backed up through phone coordinator. On-watch durable storage is independent of mobile ObjectBox.
 - Origin/writer and platform export receipt prevent duplicate HealthKit/Health Connect workouts.

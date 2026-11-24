@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:northstar_health/core/units/load_units.dart';
-import 'package:northstar_health/features/sync/workout_restore_feed.dart';
-import 'package:northstar_health/features/workouts/domain/workout_models.dart';
+import 'package:beyondrep/core/units/load_units.dart';
+import 'package:beyondrep/features/sync/workout_restore_feed.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 
 const epochA = '10000000-0000-4000-8000-0000000000a1';
 const epochB = '10000000-0000-4000-8000-0000000000b2';

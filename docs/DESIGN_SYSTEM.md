@@ -1,4 +1,4 @@
-# Northstar Performance V2 — design system
+# BeyondRep Performance V2 — design system
 
 **Source of truth:** `prototypes/performance-v2/`. The browser loads `styles.css`, then `performance-v2.css`, then `performance-v2-theme.css`; later overrides win. The older green-and-serif look is *not* the current reference.
 
@@ -32,7 +32,7 @@ Spacing uses 4px rhythm (8, 12, 16, 20, 24, 32), page gutters 16–24, cards 20�
 - `.theme-switch`: accessible appearance choice in both modes
 
 ## Shared Flutter components
-All of these live in `apps/mobile/lib/core/design/`. Look comes from `NorthstarTheme` (input, dialog, sheet, chip, snackbar, menu and button themes), so use the widget and do not restyle it per screen. **Do not invent new components in a feature**: extend the kit in its own PR, then use it. `test/design_kit_guard_test.dart` fails on raw Material controls in `lib/features`.
+All of these live in `apps/mobile/lib/core/design/`. Look comes from `BeyondRepTheme` (input, dialog, sheet, chip, snackbar, menu and button themes), so use the widget and do not restyle it per screen. **Do not invent new components in a feature**: extend the kit in its own PR, then use it. `test/design_kit_guard_test.dart` fails on raw Material controls in `lib/features`.
 
 | Need | Use | File |
 |---|---|---|
