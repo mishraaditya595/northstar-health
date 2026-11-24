@@ -6,6 +6,7 @@ import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 import 'application/health_summary_controller.dart';
 import 'data/health_reader.dart';
+import 'health_format.dart';
 import 'widgets/health_actions_mixin.dart';
 import 'widgets/health_connect_card.dart';
 import 'widgets/health_metric_card.dart';
@@ -79,7 +80,13 @@ class _HealthPageState extends ConsumerState<HealthPage>
     Color muted,
   ) {
     final theme = Theme.of(context);
-    final anyNoData = state.readings.values.any((r) => r is HealthNoData);
+    final anyNoData = HealthMetric.values.any(
+      (m) => isHealthNoData(
+        m,
+        state.readings[m] ?? const HealthNoData(),
+        state.platform,
+      ),
+    );
     return [
       const SectionHeading('Today'),
       LayoutBuilder(

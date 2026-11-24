@@ -31,15 +31,6 @@ class HealthMetricCard extends StatelessWidget {
   final VoidCallback? onAction;
   final bool compact;
 
-  /// iOS cannot tell a denied read from no data, so 0 steps is no data.
-  HealthReading get _shown =>
-      platform == HealthPlatformKind.appleHealth &&
-          metric == HealthMetric.steps &&
-          reading is HealthMeasured &&
-          (reading as HealthMeasured).value == 0
-      ? const HealthNoData()
-      : reading;
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -57,7 +48,9 @@ class HealthMetricCard extends StatelessWidget {
         ? (dark ? BeyondRepPalette.sleepDark : BeyondRepPalette.sleepLight)
         : theme.colorScheme.primary;
     final name = healthMetricLabel(metric, compact: compact);
-    final reading = _shown;
+    final reading = isHealthNoData(metric, this.reading, platform)
+        ? const HealthNoData()
+        : this.reading;
     final value = formatHealthValue(metric, reading);
     final caption = formatHealthCaption(metric, reading, platform, now);
     final content = Padding(

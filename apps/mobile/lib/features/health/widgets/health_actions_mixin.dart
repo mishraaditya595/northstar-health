@@ -34,6 +34,7 @@ mixin HealthActionsMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   ) {
     if (_busy || loading) return null;
     return () async {
+      if (_busy) return;
       setState(() => _busy = true);
       try {
         await action(ref.read(healthSummaryProvider.notifier));

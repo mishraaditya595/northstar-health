@@ -96,3 +96,16 @@ String formatHealthCaption(
       return 'Not available on this device';
   }
 }
+
+/// True when the card shows "no data": a no-data reading, or iOS steps of 0
+/// (iOS cannot tell a denied read from nothing, so 0 steps is no data).
+bool isHealthNoData(
+  HealthMetric metric,
+  HealthReading reading,
+  HealthPlatformKind platform,
+) =>
+    reading is HealthNoData ||
+    (platform == HealthPlatformKind.appleHealth &&
+        metric == HealthMetric.steps &&
+        reading is HealthMeasured &&
+        reading.value == 0);

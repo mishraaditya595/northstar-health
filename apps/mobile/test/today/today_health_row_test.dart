@@ -93,4 +93,19 @@ void main() {
     expect(find.text('6,420'), findsOneWidget);
     expect(find.textContaining('52 min shorter'), findsNothing);
   });
+
+  testWidgets('app resume rebuilds the summary', (tester) async {
+    final c = FakeHealthSummaryController(
+      const HealthNotConnected(
+        availability: HealthAvailability.available,
+        platform: HealthPlatformKind.appleHealth,
+      ),
+    );
+    await pumpRow(tester, c);
+    final before = c.buildCalls;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(c.buildCalls, before + 1);
+  });
 }

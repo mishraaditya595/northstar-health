@@ -179,6 +179,32 @@ void main() {
     expect(find.text('0'), findsNothing);
   });
 
+  testWidgets('iOS steps of 0 alone still shows the hint once', (tester) async {
+    final c = FakeHealthSummaryController(
+      connected({
+        for (final m in HealthMetric.values)
+          m: HealthMeasured(value: 0 + 70, measuredAt: now, source: 'x'),
+        HealthMetric.steps: HealthMeasured(
+          value: 0,
+          measuredAt: now,
+          source: 'x',
+        ),
+      }),
+    );
+    await pumpPage(tester, c);
+    expect(find.textContaining(iosHint), findsOneWidget);
+  });
+
+  testWidgets('app resume rebuilds the summary', (tester) async {
+    final c = FakeHealthSummaryController(mixed);
+    await pumpPage(tester, c);
+    final before = c.buildCalls;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(c.buildCalls, before + 1);
+  });
+
   testWidgets('Disconnect calls the controller and shows the hint', (
     tester,
   ) async {
@@ -210,7 +236,6 @@ void main() {
     )..connectGate = Completer<void>();
     await pumpPage(tester, c);
     await tester.tap(find.text('Connect'));
-    await tester.pump();
     await tester.tap(find.text('Connect'));
     await tester.pump();
     expect(c.connectCalls, 1);
