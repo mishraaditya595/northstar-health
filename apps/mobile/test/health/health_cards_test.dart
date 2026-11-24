@@ -35,6 +35,7 @@ Future<FakeHealthOverviewController> pumpHealth(
   Brightness brightness = Brightness.light,
   HealthPlatformKind platform = HealthPlatformKind.appleHealth,
   FakeHealthSummaryController? summaryController,
+  DateTime? now,
 }) async {
   tester.view.physicalSize = Size(width, height);
   tester.view.devicePixelRatio = 1;
@@ -66,7 +67,7 @@ Future<FakeHealthOverviewController> pumpHealth(
           summaryController ?? FakeHealthSummaryController(summary(platform)),
         ),
         fakeHealthOverview(overview),
-        healthClockProvider.overrideWithValue(() => clock),
+        healthClockProvider.overrideWithValue(() => now ?? clock),
       ],
       child: MaterialApp.router(
         theme: BeyondRepTheme.build(brightness),
@@ -188,6 +189,14 @@ void main() {
     expect(find.text('Last recorded 21 Nov'), findsOneWidget);
     expect(find.text('6h 12m'), findsNothing);
     expect(find.textContaining('vs 7-day avg'), findsNothing);
+  });
+
+  testWidgets("cards use the overview's day, not the clock's", (tester) async {
+    // Read at 7:42 AM on 24 Nov, shown just after midnight: last night is
+    // still the night of the date line, as on the detail pages.
+    await pumpHealth(tester, overview(), now: DateTime(2026, 11, 25, 0, 10));
+    expect(find.text('6h 12m'), findsOneWidget);
+    expect(find.text('No sleep recorded last night.'), findsNothing);
   });
 
   testWidgets('needsAccess shows Allow more data and calls requestMoreAccess '

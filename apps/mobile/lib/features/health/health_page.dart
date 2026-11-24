@@ -102,8 +102,6 @@ class _HealthPageState extends ConsumerState<HealthPage>
     final async = ref.watch(healthOverviewProvider);
     final overview = async.value;
     final busy = loading || async.isLoading;
-    final now = ref.read(healthClockProvider)();
-    final today = DateTime(now.year, now.month, now.day);
     final sections = overview == null
         ? const <Section<Object>>[]
         : <Section<Object>>[
@@ -135,6 +133,9 @@ class _HealthPageState extends ConsumerState<HealthPage>
     final List<Widget> cards;
     if (overview != null) {
       final platform = overview.platform;
+      // The overview's own day, as on the detail pages and the Today row.
+      final readAt = overview.readAt;
+      final today = DateTime(readAt.year, readAt.month, readAt.day);
       cards = [
         SleepCard(
           section: overview.sleep,
