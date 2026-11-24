@@ -11,6 +11,7 @@
 - Watch iOS embedding, companion bundle identifiers, signing, TestFlight archive/physical pairing and watch-only source experiment must not be confused.
 - Wear OS uses final app identity/signing, Play Console declarations and physical round-watch layout tests; package IDs in scaffolding are placeholders.
 - Keep FlutterWatch custom toolchain out of stable builds; experimental comparison only.
+- **Versioning:** `version:` in `apps/mobile/pubspec.yaml` is the default user-visible version name; bump it in a PR. The manual TestFlight job takes optional `version_name` and `build_number` inputs and, on `AUTO`, uses the pubspec version and the latest App Store Connect build plus one ([details](IOS_TESTFLIGHT_CODEMAGIC.md#version-name-and-build-number)). Android has no release job yet, so its `versionCode` strategy (latest Google Play build plus one) is still open in issue #49.
 
 **Controlled backend deployment pipeline:** Codemagic now has [two manual Supabase jobs for database migrations and Edge Functions](SUPABASE_CODEMAGIC_DEPLOY.md), with preview/deploy inputs, project-bound protected credentials, explicit target confirmation and operator acceptance. The existence of these workflows is **not evidence of any hosted deployment**. Ten app/watch Codemagic builds remain templates; the manual [`mobile-ios-testflight` job](IOS_TESTFLIGHT_CODEMAGIC.md) uploads for internal TestFlight testing only and is not a release.
 

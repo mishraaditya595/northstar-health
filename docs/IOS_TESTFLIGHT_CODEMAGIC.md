@@ -7,10 +7,11 @@
 `mobile-ios-testflight` in the root `codemagic.yaml` is **manual only** (no `triggering` block). When started by hand it:
 
 1. Checks that `SUPABASE_URL` is an `https://<ref>.supabase.co` URL and `SUPABASE_PUBLISHABLE_KEY` is a publishable key (`sb_publishable_…`). It never accepts a service-role or secret key.
-2. Runs `flutter pub get --enforce-lockfile`.
-3. Applies App Store distribution signing for `in.beyondrep.app` (`xcode-project use-profiles`).
-4. Builds a release IPA with `--build-number=$BUILD_NUMBER` and the two public Supabase values passed through a temporary `--dart-define-from-file` that is deleted after the build.
-5. Uploads the IPA to App Store Connect with `submit_to_testflight: false` and `submit_to_app_store: false`. The build is therefore only available to **internal** testers on your App Store Connect team. It is never sent to Beta App Review, external testers or App Store review.
+2. Resolves the version name and build number (see [Version name and build number](#version-name-and-build-number)).
+3. Runs `flutter pub get --enforce-lockfile`.
+4. Applies App Store distribution signing for `in.beyondrep.app` (`xcode-project use-profiles`).
+5. Builds a release IPA with `--build-name` and `--build-number` from step 2 and the two public Supabase values passed through a temporary `--dart-define-from-file` that is deleted after the build.
+6. Uploads the IPA to App Store Connect with `submit_to_testflight: false` and `submit_to_app_store: false`. The build is therefore only available to **internal** testers on your App Store Connect team. It is never sent to Beta App Review, external testers or App Store review.
 
 `Info.plist` declares `ITSAppUsesNonExemptEncryption = false`. The app only uses standard HTTPS/TLS via the OS and Supabase SDK. Re-check this declaration if any custom cryptography is added.
 
@@ -46,11 +47,26 @@ Never commit the `.p8`, certificates, provisioning profiles or `supabase.local.j
 
 The hosted Supabase project named in `SUPABASE_URL` must already have all committed migrations and the `delete-account` Edge Function, and its Auth email template must send a six-digit code. Otherwise testers cannot sign in or will hit missing RPCs. See [SUPABASE_CODEMAGIC_DEPLOY.md](SUPABASE_CODEMAGIC_DEPLOY.md) and the [P2-08 hosted release plan](implementation/phase-2/p2-08-hosted-release-plan.md).
 
+## Version name and build number
+
+**Start new build** shows two inputs. Both default to `AUTO`.
+
+| Input | `AUTO` | Manual value |
+| --- | --- | --- |
+| `version_name` (shown to users, `CFBundleShortVersionString`) | the part before `+` of `version:` in `apps/mobile/pubspec.yaml` | one to three numbers separated by dots, such as `1.2.0` |
+| `build_number` (`CFBundleVersion`) | the highest build of `in.beyondrep.app` in App Store Connect, across all versions, plus one | a whole number higher than that latest build |
+
+`scripts/codemagic_ios_version.py` looks up the latest build with the Codemagic `app-store-connect` CLI (`apps list` by bundle ID, then `get-latest-testflight-build-number --all-versions`), using the `Codemagic Signing` integration. No extra variable or credential is needed. The step fails before the build starts if a value is malformed, a manual build number is not above the latest, or the lookup fails. It never falls back to Codemagic's `$BUILD_NUMBER`, which restarts at 1 if the workflow is renamed or the Codemagic app is recreated.
+
+Don't start two `AUTO` runs at once, or a second run before App Store Connect lists the first upload: both would pick the same number and the later upload is rejected after the build.
+
+The `+N` part of the pubspec version is not used for TestFlight builds. To change the default version name, bump `version:` in pubspec in a PR.
+
 ## Run
 
-1. Codemagic → **Start new build** → branch `main` → workflow `mobile-ios-testflight`.
+1. Codemagic → **Start new build** → branch `main` → workflow `mobile-ios-testflight`. Leave both inputs on `AUTO`, or set them as described above.
 2. When the build finishes, App Store Connect processes the IPA (usually 5–30 minutes). Internal testers then get it in the TestFlight app.
-3. Record the commit SHA, Codemagic build number and outcome in the P2-08 evidence before describing the build anywhere.
+3. Record the commit SHA, version name, build number (printed by the resolve step) and outcome in the P2-08 evidence before describing the build anywhere.
 
 ## Known limits
 
