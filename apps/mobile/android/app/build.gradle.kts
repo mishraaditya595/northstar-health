@@ -6,7 +6,10 @@ plugins {
 
 android {
     namespace = "in.beyondrep.app"
-    compileSdk = flutter.compileSdkVersion
+    // health 14.0.0 and androidx.health.connect:connect-client 1.2.0-alpha06
+    // require compiling against API 37. compileSdk does not change runtime
+    // behaviour; targetSdk stays on Flutter's default.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
