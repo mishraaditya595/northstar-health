@@ -7,35 +7,47 @@ SleepSegment seg(
   DateTime to,
   SleepStage stage, {
   String source = 'watch',
-}) => (from: from, to: to, stage: stage, source: source);
+  String? sourceKey,
+}) => (
+  from: from,
+  to: to,
+  stage: stage,
+  source: source,
+  sourceKey: sourceKey ?? source,
+);
 
 /// 23:30 -> 06:30 (Nov 23 -> Nov 24): 2h light, 1h30 deep, 1h30 rem, 2h light.
-List<SleepSegment> stagedNight({String source = 'watch'}) => [
-  seg(
-    DateTime(2026, 11, 23, 23, 30),
-    DateTime(2026, 11, 24, 1, 30),
-    SleepStage.light,
-    source: source,
-  ),
-  seg(
-    DateTime(2026, 11, 24, 1, 30),
-    DateTime(2026, 11, 24, 3),
-    SleepStage.deep,
-    source: source,
-  ),
-  seg(
-    DateTime(2026, 11, 24, 3),
-    DateTime(2026, 11, 24, 4, 30),
-    SleepStage.rem,
-    source: source,
-  ),
-  seg(
-    DateTime(2026, 11, 24, 4, 30),
-    DateTime(2026, 11, 24, 6, 30),
-    SleepStage.light,
-    source: source,
-  ),
-];
+List<SleepSegment> stagedNight({String source = 'watch', String? sourceKey}) =>
+    [
+      seg(
+        DateTime(2026, 11, 23, 23, 30),
+        DateTime(2026, 11, 24, 1, 30),
+        SleepStage.light,
+        source: source,
+        sourceKey: sourceKey,
+      ),
+      seg(
+        DateTime(2026, 11, 24, 1, 30),
+        DateTime(2026, 11, 24, 3),
+        SleepStage.deep,
+        source: source,
+        sourceKey: sourceKey,
+      ),
+      seg(
+        DateTime(2026, 11, 24, 3),
+        DateTime(2026, 11, 24, 4, 30),
+        SleepStage.rem,
+        source: source,
+        sourceKey: sourceKey,
+      ),
+      seg(
+        DateTime(2026, 11, 24, 4, 30),
+        DateTime(2026, 11, 24, 6, 30),
+        SleepStage.light,
+        source: source,
+        sourceKey: sourceKey,
+      ),
+    ];
 
 ({DateTime from, DateTime to}) _seg(DateTime from, DateTime to) =>
     (from: from, to: to);
@@ -154,6 +166,45 @@ void main() {
     expect(n.deep, const Duration(hours: 1, minutes: 30));
     expect(n.rem, const Duration(hours: 1, minutes: 30));
     expect(n.light, const Duration(hours: 4));
+    expect(n.asleep, const Duration(hours: 7));
+  });
+
+  test('sources sharing a display name are still one source per night', () {
+    // Two wearables both shown as "Health Connect": the ring has less staged
+    // sleep, so the watch's night is kept whole and nothing is merged.
+    final ring = [
+      seg(
+        DateTime(2026, 11, 24, 0, 30),
+        DateTime(2026, 11, 24, 3),
+        SleepStage.light,
+        source: 'Health Connect',
+        sourceKey: 'com.example.ring',
+      ),
+      seg(
+        DateTime(2026, 11, 24, 3),
+        DateTime(2026, 11, 24, 4),
+        SleepStage.deep,
+        source: 'Health Connect',
+        sourceKey: 'com.example.ring',
+      ),
+    ];
+    final watch = stagedNight(
+      source: 'Health Connect',
+      sourceKey: 'com.example.watch',
+    );
+    final n = buildNights([...ring, ...watch]).single;
+    expect(n.segments.every((s) => s.sourceKey == 'com.example.watch'), true);
+    expect(n.deep, const Duration(hours: 1, minutes: 30));
+    expect(n.light, const Duration(hours: 4));
+    expect(n.asleep, const Duration(hours: 7));
+    expect(n.source, 'Health Connect');
+  });
+
+  test('ties between sources sharing a name break on the source key', () {
+    final a = stagedNight(source: 'Same', sourceKey: 'b-key');
+    final b = stagedNight(source: 'Same', sourceKey: 'a-key');
+    final n = buildNights([...a, ...b]).single;
+    expect(n.segments.every((s) => s.sourceKey == 'a-key'), true);
     expect(n.asleep, const Duration(hours: 7));
   });
 

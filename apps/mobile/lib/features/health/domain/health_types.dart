@@ -10,9 +10,12 @@ typedef HealthSample = ({
 
 enum SleepStage { awake, light, deep, rem, asleepUnspecified, inBed }
 
+/// [source] is the name shown to the user; [sourceKey] tells writing apps
+/// and devices apart (several can share one shown name) and is never shown.
 typedef SleepSegment = ({
   DateTime from,
   DateTime to,
   SleepStage stage,
   String source,
+  String sourceKey,
 });

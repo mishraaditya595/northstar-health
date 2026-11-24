@@ -32,8 +32,13 @@ final _now = DateTime(2026, 11, 24, 7, 42);
 
 DateTime _day(int offset) => DateTime(2026, 11, 24 + offset);
 
-SleepSegment _seg(DateTime from, DateTime to, SleepStage stage) =>
-    (from: from, to: to, stage: stage, source: 'Synthetic watch');
+SleepSegment _seg(DateTime from, DateTime to, SleepStage stage) => (
+  from: from,
+  to: to,
+  stage: stage,
+  source: 'Synthetic watch',
+  sourceKey: 'watch',
+);
 
 /// Staged night 23:00 -> 06:30 ending on [date]; 450 min asleep, minus
 /// [shortBy] minutes cut from the start.

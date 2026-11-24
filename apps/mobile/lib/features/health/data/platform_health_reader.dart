@@ -177,10 +177,19 @@ class PlatformHealthReader implements HealthReader {
             from: p.dateFrom,
             to: p.dateTo,
             stage: stage,
-            source: friendlySource(p.sourceName, platform),
+            source: _sleepSourceName(p),
+            sourceKey: p.sourceId.isEmpty ? p.sourceName : p.sourceId,
           ),
     ]);
   });
+
+  /// HealthKit's source name is the app or device name the Health app shows
+  /// (e.g. "Oura"); Health Connect only gives a package name, which is never
+  /// shown.
+  String _sleepSourceName(HealthDataPoint p) =>
+      !_isAndroid && p.sourceName.isNotEmpty
+      ? p.sourceName
+      : friendlySource(p.sourceName, platform);
 
   @override
   Future<SeriesResult<List<HealthSample>>> readSeries(

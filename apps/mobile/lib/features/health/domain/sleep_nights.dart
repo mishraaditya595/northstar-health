@@ -85,7 +85,7 @@ class _Session {
   final List<SleepSegment> other = [];
 }
 
-SleepNight _night(_Session s, String source) {
+SleepNight _night(_Session s) {
   final all = [...s.asleep, ...s.other]
     ..sort((a, b) => a.from.compareTo(b.from));
   Duration stage(SleepStage st) => _merged(all.where((x) => x.stage == st));
@@ -94,7 +94,7 @@ SleepNight _night(_Session s, String source) {
     date: _localDate(s.end),
     start: s.start,
     end: s.end,
-    source: source,
+    source: s.asleep.first.source,
     segments: List.unmodifiable(all),
     asleep: _merged(s.asleep),
     deep: stage(SleepStage.deep),
@@ -138,17 +138,19 @@ bool _isMainSleepCandidate(_Session s) {
 /// Turns raw sleep segments into at most one [SleepNight] per local date,
 /// ascending. Per source and date the longest main-sleep candidate wins (so
 /// a nap never beats the main sleep, but a nap-only day shows the nap); per
-/// date the source with most deep+rem+light, then most asleep, then name.
+/// date the source with most deep+rem+light, then most asleep, then source
+/// key. Sources are told apart by [SleepSegment.sourceKey], not the shown
+/// name.
 List<SleepNight> buildNights(List<SleepSegment> segments) {
   final bySource = <String, List<SleepSegment>>{};
   for (final s in segments) {
-    bySource.putIfAbsent(s.source, () => []).add(s);
+    bySource.putIfAbsent(s.sourceKey, () => []).add(s);
   }
-  final byDate = <DateTime, SleepNight>{};
-  for (final MapEntry(key: source, value: list) in bySource.entries) {
+  final byDate = <DateTime, (String, SleepNight)>{};
+  for (final MapEntry(key: key, value: list) in bySource.entries) {
     final perDate = <DateTime, SleepNight>{};
     for (final session in _sessions(list).where(_isMainSleepCandidate)) {
-      final night = _night(session, source);
+      final night = _night(session);
       final kept = perDate[night.date];
       if (kept == null || night.asleep > kept.asleep) {
         perDate[night.date] = night;
@@ -156,16 +158,18 @@ List<SleepNight> buildNights(List<SleepSegment> segments) {
     }
     for (final night in perDate.values) {
       final kept = byDate[night.date];
-      if (kept == null || _beats(night, kept)) byDate[night.date] = night;
+      if (kept == null || _beats(night, key, kept.$2, kept.$1)) {
+        byDate[night.date] = (key, night);
+      }
     }
   }
-  return [for (final d in byDate.keys.toList()..sort()) byDate[d]!];
+  return [for (final d in byDate.keys.toList()..sort()) byDate[d]!.$2];
 }
 
-bool _beats(SleepNight a, SleepNight b) {
+bool _beats(SleepNight a, String aKey, SleepNight b, String bKey) {
   final staged = (a.deep + a.rem + a.light).compareTo(b.deep + b.rem + b.light);
   if (staged != 0) return staged > 0;
   final asleep = a.asleep.compareTo(b.asleep);
   if (asleep != 0) return asleep > 0;
-  return a.source.compareTo(b.source) < 0;
+  return aKey.compareTo(bKey) < 0;
 }

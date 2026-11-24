@@ -1,6 +1,7 @@
 import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/health/data/platform_health_reader.dart';
 import 'package:beyondrep/features/health/domain/health_types.dart';
+import 'package:beyondrep/features/health/domain/sleep_nights.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:health/health.dart';
@@ -144,6 +145,7 @@ HealthDataPoint _point(
   DateTime from,
   DateTime to, {
   String source = 'com.example.unknown',
+  String? sourceId,
 }) => HealthDataPoint(
   uuid: 'u',
   value: NumericHealthValue(numericValue: value),
@@ -153,7 +155,7 @@ HealthDataPoint _point(
   dateTo: to,
   sourcePlatform: HealthPlatformType.googleHealthConnect,
   sourceDeviceId: 'd',
-  sourceId: source,
+  sourceId: sourceId ?? source,
   sourceName: source,
 );
 
@@ -606,6 +608,113 @@ void main() {
         health.calls.last.types,
         isNot(contains(HealthDataType.SLEEP_SESSION)),
       );
+    });
+
+    group('two wearables the same night stay separate sources', () {
+      DateTime t(int h, [int m = 0]) => DateTime(2026, 11, 24, h, m);
+
+      // Watch: 7h with 1h30 deep. Ring: 6h with 1h deep, overlapping it.
+      List<HealthDataPoint> points({
+        required String watch,
+        required String ring,
+        required String watchId,
+        required String ringId,
+      }) => [
+        _point(
+          HealthDataType.SLEEP_LIGHT,
+          0,
+          t(-1, 30),
+          t(1, 30),
+          source: watch,
+          sourceId: watchId,
+        ),
+        _point(
+          HealthDataType.SLEEP_DEEP,
+          0,
+          t(1, 30),
+          t(3),
+          source: watch,
+          sourceId: watchId,
+        ),
+        _point(
+          HealthDataType.SLEEP_REM,
+          0,
+          t(3),
+          t(4, 30),
+          source: watch,
+          sourceId: watchId,
+        ),
+        _point(
+          HealthDataType.SLEEP_LIGHT,
+          0,
+          t(4, 30),
+          t(6, 30),
+          source: watch,
+          sourceId: watchId,
+        ),
+        _point(
+          HealthDataType.SLEEP_LIGHT,
+          0,
+          t(0, 30),
+          t(3),
+          source: ring,
+          sourceId: ringId,
+        ),
+        _point(
+          HealthDataType.SLEEP_DEEP,
+          0,
+          t(3),
+          t(4),
+          source: ring,
+          sourceId: ringId,
+        ),
+        _point(
+          HealthDataType.SLEEP_REM,
+          0,
+          t(4),
+          t(6, 30),
+          source: ring,
+          sourceId: ringId,
+        ),
+      ];
+
+      void expectWatchOnly(List<SleepSegment> segments, String caption) {
+        expect({for (final s in segments) s.sourceKey}, hasLength(2));
+        final n = buildNights(segments).single;
+        expect({for (final s in n.segments) s.sourceKey}, hasLength(1));
+        expect(n.asleep, const Duration(hours: 7));
+        expect(n.deep, const Duration(hours: 1, minutes: 30));
+        expect(n.rem, const Duration(hours: 1, minutes: 30));
+        expect(n.source, caption);
+      }
+
+      test('iOS groups by source id and names the source', () async {
+        health.points = points(
+          watch: 'Synthetic Watch',
+          ring: 'Synthetic Ring',
+          watchId: 'com.example.watch',
+          ringId: 'com.example.ring',
+        );
+        final r = await ios().readSleep(from, to);
+        expectWatchOnly(
+          (r as SeriesData<List<SleepSegment>>).data,
+          'Synthetic Watch',
+        );
+      });
+
+      test('Android groups by package name (no source id)', () async {
+        health.points = points(
+          watch: 'com.example.watch',
+          ring: 'com.example.ring',
+          watchId: '',
+          ringId: '',
+        );
+        final r = await android().readSleep(from, to);
+        expectWatchOnly(
+          (r as SeriesData<List<SleepSegment>>).data,
+          'Health Connect',
+        );
+      });
     });
 
     test('Android denied sleep is not allowed; errors map', () async {

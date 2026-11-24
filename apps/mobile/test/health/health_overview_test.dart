@@ -41,8 +41,13 @@ class _FlakyRepo implements HealthConnectionRepository {
   void disconnect(String owner) => inner.disconnect(owner);
 }
 
-SleepSegment _seg(DateTime from, DateTime to, SleepStage stage) =>
-    (from: from, to: to, stage: stage, source: 'Synthetic watch');
+SleepSegment _seg(DateTime from, DateTime to, SleepStage stage) => (
+  from: from,
+  to: to,
+  stage: stage,
+  source: 'Synthetic watch',
+  sourceKey: 'watch',
+);
 
 /// Staged night ending on [date] at 06:30; 23:00 -> 06:30 = 450 min asleep,
 /// minus [shortBy] minutes cut from the start.
