@@ -1,6 +1,7 @@
 """Guard rails for the unconfigured Codemagic CI/CD skeleton.
 
-Validates existing inert templates plus manual-only, credential-free Supabase YAML.
+Validates existing inert templates, manual-only credential-free Supabase YAML
+and the manual internal-TestFlight iOS upload.
 It does not test Codemagic hosted execution, signing or real build artifacts.
 """
 
@@ -18,7 +19,6 @@ EXPECTED = {
     "mobile-android-release": "apps/mobile",
     "mobile-ios-simulator": "apps/mobile",
     "mobile-ios-adhoc": "apps/mobile",
-    "mobile-ios-testflight": "apps/mobile",
     "wear-os-debug": "apps/wear_os",
     "wear-os-release": "apps/wear_os",
     "watchos-simulator": "apps/watch_os",
@@ -37,7 +37,10 @@ class CodemagicTemplateTest(unittest.TestCase):
         document = yaml.safe_load(FILE.read_text(encoding="utf-8"))
         self.assertIsInstance(document, dict)
         self.assertEqual(set(document), {"workflows"})
-        self.assertEqual(set(EXPECTED) | set(SUPABASE_WORKFLOWS), set(document["workflows"]))
+        self.assertEqual(
+            set(EXPECTED) | set(SUPABASE_WORKFLOWS) | {"mobile-ios-testflight"},
+            set(document["workflows"]),
+        )
 
         for name, target_directory in EXPECTED.items():
             with self.subTest(workflow=name):
@@ -124,6 +127,49 @@ class CodemagicTemplateTest(unittest.TestCase):
                 else:
                     self.assertNotIn("function_names", inputs)
                     self.assertNotIn("NS_SUPABASE_FUNCTIONS", variables)
+
+    def test_ios_testflight_is_manual_internal_upload_without_secrets(self):
+        workflow = yaml.safe_load(FILE.read_text(encoding="utf-8"))["workflows"][
+            "mobile-ios-testflight"
+        ]
+        self.assertNotIn("triggering", workflow)
+        self.assertIn("MANUAL", workflow["name"])
+        self.assertEqual(workflow["working_directory"], "apps/mobile")
+        env = workflow["environment"]
+        self.assertEqual(env["flutter"], "3.47.7")
+        self.assertEqual(
+            env["ios_signing"],
+            {
+                "distribution_type": "app_store",
+                "bundle_identifier": "dev.northstar.northstarHealth",
+            },
+        )
+        self.assertEqual(env["groups"], ["ns_mobile_supabase_public"])
+        self.assertNotIn("vars", env)
+        self.assertEqual(
+            workflow["publishing"],
+            {
+                "app_store_connect": {
+                    "auth": "integration",
+                    "submit_to_testflight": False,
+                    "submit_to_app_store": False,
+                }
+            },
+        )
+        self.assertEqual(workflow["artifacts"], ["build/ios/ipa/*.ipa"])
+        scripts = "\n".join(step["script"] for step in workflow["scripts"])
+        self.assertIn("flutter pub get --enforce-lockfile", scripts)
+        self.assertIn("flutter build ipa --release", scripts)
+        self.assertIn("sb_publishable_", scripts)
+        for forbidden in (
+            "SERVICE_ROLE",
+            "SUPABASE_ACCESS_TOKEN",
+            "SUPABASE_DB_PASSWORD",
+            "PRIVATE_KEY",
+            "printenv",
+            "set -x",
+        ):
+            self.assertNotIn(forbidden, str(workflow))
 
     def test_watchos_companion_is_explicitly_blocked(self):
         workflow = yaml.safe_load(FILE.read_text(encoding="utf-8"))["workflows"][

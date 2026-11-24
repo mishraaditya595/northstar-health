@@ -1,14 +1,15 @@
 # NorthStar Health - Codemagic CI/CD workflow skeletons
 # https://docs.codemagic.io/yaml-basic-configuration/yaml-getting-started/
 #
-# Mobile/watch workflows are intentionally failing templates. The two real
+# Other mobile/watch workflows are intentionally failing templates. The two real
 # Supabase jobs are MANUAL ONLY, use Codemagic build inputs and one secured
 # environment group bound to a single target project.
-# No automatic triggers, signing credentials or publishing.
+# No automatic triggers. Only mobile-ios-testflight signs and uploads, and only
+# to internal TestFlight when started by hand.
 #
 # The file MUST remain at the repository root. Application paths follow ADR-0004.
 # mac_mini_m2 is used as a common starter; linux_x2 requires billing-enabled access.
-# Do not enable Store / TestFlight publishing before approvals, signing and target setup.
+# Do not enable App Store or external TestFlight publishing without owner approval.
 #
 # Mobile placeholders remain unconfigured. Supabase workflows import the
 # private ns_supabase_deploy group; see docs/SUPABASE_CODEMAGIC_DEPLOY.md.
@@ -126,23 +127,58 @@ workflows:
           exit 1
 
   mobile-ios-testflight:
-    name: "TEMPLATE - Mobile iOS - App Store / TestFlight IPA"
+    name: "MANUAL - Mobile iOS - TestFlight internal upload"
     instance_type: mac_mini_m2
-    max_build_duration: 30
+    max_build_duration: 60
     working_directory: apps/mobile
+    # Manual only: no triggering block. Uploads to App Store Connect for
+    # INTERNAL TestFlight testing; never submits to Beta App Review or the App
+    # Store. Setup and limits: docs/IOS_TESTFLIGHT_CODEMAGIC.md.
+    integrations:
+      app_store_connect: NorthStar App Store Connect
     environment:
       flutter: "3.47.7"
       xcode: latest
-    # No triggering block: manual-only; do NOT add push/PR triggers yet.
-    # TODO command example (commented-out; verify before enabling):
-    #   flutter build ipa --release --export-options-plist=<APPROVED_APPSTORE_OPTIONS_PLIST>
-    # artifacts: [apps/mobile/build/ios/ipa/*.ipa]
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: dev.northstar.northstarHealth
+      groups:
+        - ns_mobile_supabase_public
     scripts:
-      - name: "Not configured - do not treat as a build"
+      - name: "Check public Supabase client settings"
         script: |
-          echo "TEMPLATE ONLY: Requires App Store Connect credentials, signing and controlled publishing."
-          echo "No artifact has been built or published. See docs/CODEMAGIC.md."
-          exit 1
+          set -euo pipefail
+          case "${SUPABASE_URL:-}" in
+            https://*.supabase.co) ;;
+            *) echo "SUPABASE_URL must be the https://<ref>.supabase.co project URL."; exit 1 ;;
+          esac
+          case "${SUPABASE_PUBLISHABLE_KEY:-}" in
+            sb_publishable_*) ;;
+            *) echo "SUPABASE_PUBLISHABLE_KEY must be a publishable (public) key."; exit 1 ;;
+          esac
+      - name: "Install locked dependencies"
+        script: |
+          flutter pub get --enforce-lockfile
+      - name: "Apply App Store signing profiles"
+        script: |
+          xcode-project use-profiles
+      - name: "Build signed IPA"
+        script: |
+          set -euo pipefail
+          defines="$(mktemp)"
+          trap 'rm -f "$defines"' EXIT
+          python3 -c 'import json, os; print(json.dumps({k: os.environ[k] for k in ("SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY")}))' > "$defines"
+          flutter build ipa --release \
+            --build-number="$BUILD_NUMBER" \
+            --dart-define-from-file="$defines" \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
+        submit_to_app_store: false
 
   wear-os-debug:
     name: "TEMPLATE - Wear OS - Debug APK"
