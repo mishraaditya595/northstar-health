@@ -38,6 +38,11 @@ class _FlakyRepo implements HealthConnectionRepository {
   @override
   void connect(String owner, DateTime at) => inner.connect(owner, at);
   @override
+  int accessScope(String owner) => inner.accessScope(owner);
+  @override
+  void recordAccessScope(String owner, int scope) =>
+      inner.recordAccessScope(owner, scope);
+  @override
   void disconnect(String owner) => inner.disconnect(owner);
 }
 
@@ -281,6 +286,46 @@ void main() {
     final heart = (overview.heart as SectionData<HeartOverview>).value;
     expect(heart.restingHr!.value, 54);
     expect(heart.hrv, isNull);
+  });
+
+  group('Android "Allow more data" follows the requested scope', () {
+    setUp(() {
+      fake = FakeHealthReader(platform: HealthPlatformKind.healthConnect)
+        // Health Connect still reports some types declined.
+        ..needsMore = true;
+    });
+
+    test('a Phase 3 account (scope 0) is asked', () async {
+      repo.recordAccessScope(_ownerA, 0);
+      final c = container();
+      final overview = (await c.read(healthOverviewProvider.future))!;
+      expect(overview.needsMoreAccess, true);
+    });
+
+    test('one request hides it even when types stay declined', () async {
+      repo.recordAccessScope(_ownerA, 0);
+      final c = container();
+      await c.read(healthOverviewProvider.future);
+      await c.read(healthOverviewProvider.notifier).requestMoreAccess();
+      expect(fake.requestMoreAccessCalls, 1);
+      expect(repo.accessScope(_ownerA), currentHealthAccessScope);
+      final overview = (await c.read(healthOverviewProvider.future))!;
+      expect(overview.needsMoreAccess, false);
+    });
+
+    test('a fresh connect is not asked again', () async {
+      final c = container();
+      final overview = (await c.read(healthOverviewProvider.future))!;
+      expect(overview.needsMoreAccess, false);
+    });
+
+    test('nothing declined is not asked even at scope 0', () async {
+      repo.recordAccessScope(_ownerA, 0);
+      fake.needsMore = false;
+      final c = container();
+      final overview = (await c.read(healthOverviewProvider.future))!;
+      expect(overview.needsMoreAccess, false);
+    });
   });
 
   test('a section with no data maps the read result to its gap', () async {

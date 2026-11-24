@@ -10,9 +10,15 @@ class HealthConnectionEntity {
   String ownerAccountId;
   int connectedAtMs;
 
+  /// Version of the read-type list last requested for this account (see
+  /// `currentHealthAccessScope`); 0 for Phase 3 connections. Not a health
+  /// value.
+  int accessScope;
+
   HealthConnectionEntity({
     this.id = 0,
     required this.ownerAccountId,
     required this.connectedAtMs,
+    this.accessScope = 0,
   });
 }

@@ -8,6 +8,7 @@ import 'package:beyondrep/objectbox.g.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'fixtures/objectbox_pre_health_connection.g.dart' as pre;
+import 'fixtures/objectbox_pre_health_scope.g.dart' as pre_scope;
 
 const _accountA = '11111111-1111-4111-8111-111111111111';
 const _accountB = '22222222-2222-4222-8222-222222222222';
@@ -121,5 +122,34 @@ void main() {
     addTearDown(upgraded.close);
     expect(upgraded.box<WorkoutSessionEntity>().count(), 1);
     expect(upgraded.box<HealthConnectionEntity>().count(), 0);
+  });
+
+  test('connect records the current access scope; a request updates it', () {
+    final store = openAt('single');
+    addTearDown(store.close);
+    final repo = ObjectBoxHealthConnectionRepository(store);
+    expect(repo.accessScope('owner-a'), 0);
+    repo.connect('owner-a', DateTime(2026, 11, 20));
+    expect(repo.accessScope('owner-a'), currentHealthAccessScope);
+    repo.recordAccessScope('owner-a', 0);
+    expect(repo.accessScope('owner-a'), 0);
+    expect(repo.connectedAt('owner-a'), DateTime(2026, 11, 20));
+    repo.recordAccessScope('owner-b', currentHealthAccessScope);
+    expect(repo.isConnected('owner-b'), false, reason: 'never connects');
+  });
+
+  test('a Phase 3 connection from an older store reads as scope 0', () {
+    final dir = Directory('${root.path}/scope-upgrade')..createSync();
+    final old = Store(pre_scope.getObjectBoxModel(), directory: dir.path);
+    old.box<HealthConnectionEntity>().put(
+      HealthConnectionEntity(ownerAccountId: _accountA, connectedAtMs: 1000),
+    );
+    old.close();
+    final upgraded = Store(getObjectBoxModel(), directory: dir.path);
+    addTearDown(upgraded.close);
+    final repo = ObjectBoxHealthConnectionRepository(upgraded);
+    expect(repo.isConnected(_accountA), true);
+    expect(repo.connectedAt(_accountA)!.millisecondsSinceEpoch, 1000);
+    expect(repo.accessScope(_accountA), 0);
   });
 }

@@ -185,14 +185,13 @@ class HealthOverviewController extends AsyncNotifier<HealthOverview?> {
     );
     if (owner == null || !connected || !ref.mounted) return null;
     final reader = ref.read(healthReaderProvider);
-    final connectedAt = ref
-        .read(healthConnectionRepositoryProvider)
-        .connectedAt(owner);
+    final repository = ref.read(healthConnectionRepositoryProvider);
     final overview = await _read(
       owner,
       reader,
       ref.read(healthClockProvider)(),
-      connectedAt,
+      repository.connectedAt(owner),
+      repository.accessScope(owner),
     );
     // An account switch or disconnect while reading discards the result.
     if (!ref.mounted || ref.read(healthOwnerIdProvider) != owner) return null;
@@ -215,10 +214,19 @@ class HealthOverviewController extends AsyncNotifier<HealthOverview?> {
     await refresh();
   }
 
-  /// Never throws; re-reads afterwards.
+  /// Never throws; re-reads afterwards. Once the sheet was shown, granted or
+  /// not, the current scope is recorded so Android stops offering it.
   Future<void> requestMoreAccess() async {
+    final owner = ref.read(healthOwnerIdProvider);
+    final repository = ref.read(healthConnectionRepositoryProvider);
     try {
       await ref.read(healthReaderProvider).requestMoreAccess();
+      // Not after an account switch: the store may be another account's.
+      if (owner != null &&
+          ref.mounted &&
+          ref.read(healthOwnerIdProvider) == owner) {
+        repository.recordAccessScope(owner, currentHealthAccessScope);
+      }
     } catch (_) {}
     if (ref.mounted) await refresh();
   }
@@ -332,6 +340,7 @@ Future<HealthOverview> _read(
   HealthReader reader,
   DateTime now,
   DateTime? connectedAt,
+  int accessScope,
 ) async {
   final platform = reader.platform;
   final today = _dayOf(now);
@@ -354,7 +363,14 @@ Future<HealthOverview> _read(
   final vo2F = series(HealthSeriesType.vo2Max, daysAgo(89));
   final stepsF = totals(HealthTotalType.steps);
   final energyF = totals(HealthTotalType.activeEnergy);
-  final needsMoreF = _flag(reader.needsMoreAccess, false);
+  // Health Connect keeps reporting a declined type, so Android asks only
+  // until the current scope was requested once. iOS reports only types never
+  // requested.
+  final needsMoreF =
+      platform == HealthPlatformKind.healthConnect &&
+          accessScope >= currentHealthAccessScope
+      ? Future.value(false)
+      : _flag(reader.needsMoreAccess, false);
   final historyF = platform == HealthPlatformKind.healthConnect
       ? _flag(reader.hasHistoryAccess, false)
       : Future.value(true);

@@ -658,7 +658,7 @@
     },
     {
       "id": "12:7621003638056886597",
-      "lastPropertyId": "3:6501660462108541938",
+      "lastPropertyId": "4:2075953249978434367",
       "name": "HealthConnectionEntity",
       "properties": [
         {
@@ -677,6 +677,11 @@
         {
           "id": "3:6501660462108541938",
           "name": "connectedAtMs",
+          "type": 6
+        },
+        {
+          "id": "4:2075953249978434367",
+          "name": "accessScope",
           "type": 6
         }
       ],
