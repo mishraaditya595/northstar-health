@@ -305,7 +305,7 @@ void main() {
     expect(bars.last.highlight, isTrue);
   });
 
-  testWidgets('sleep HR is read once for the whole range', (tester) async {
+  testWidgets('7 days reads sleep HR once per night window', (tester) async {
     final reader = FakeHealthReader();
     final overview = _overview(_history(14));
     await _pump(tester, overview, reader);
@@ -318,11 +318,60 @@ void main() {
     );
     final nights = (overview.sleep as SectionData<SleepOverview>).value.nights;
     final week = nights.where((n) => !n.date.isBefore(_day(-6))).toList();
-    expect(hr.single, (
-      HealthSeriesType.heartRate,
-      week.first.start,
-      week.last.end,
-    ));
+    expect(week, hasLength(7));
+    expect(
+      hr,
+      unorderedEquals([
+        for (final n in week) (HealthSeriesType.heartRate, n.start, n.end),
+      ]),
+    );
+  });
+
+  testWidgets('30 days reads no heart rate and points to the 7-day view', (
+    tester,
+  ) async {
+    final reader = FakeHealthReader()..sleep = _history(60);
+    await _pump(tester, _overview(_history(60)), reader);
+    reader.seriesCalls.clear();
+
+    await _selectRange(tester, '30 days');
+
+    expect(
+      reader.seriesCalls.where((c) => c.$1 == HealthSeriesType.heartRate),
+      isEmpty,
+    );
+    expect(find.text('Sleep heart rate'), findsNothing);
+    expect(find.text('Sleep heart rate is on the 7-day view.'), findsOneWidget);
+  });
+
+  testWidgets('switching 7 and 30 days does not re-read', (tester) async {
+    final reader = FakeHealthReader()..sleep = _history(60);
+    await _pump(tester, _overview(_history(60)), reader);
+    reader.seriesCalls.clear();
+
+    await _selectRange(tester, '7 days');
+    await _selectRange(tester, '30 days');
+    final hrCalls = reader.seriesCalls.length;
+    final sleepCalls = reader.sleepCalls.length;
+    await _selectRange(tester, '7 days');
+    await _selectRange(tester, '30 days');
+    await _selectRange(tester, '7 days');
+
+    expect(reader.seriesCalls.length, hrCalls);
+    expect(reader.sleepCalls.length, sleepCalls);
+  });
+
+  testWidgets('7 days says why sleep heart rate is missing', (tester) async {
+    final reader = FakeHealthReader(platform: HealthPlatformKind.healthConnect)
+      ..seriesResults[HealthSeriesType.heartRate] = const SeriesNotAllowed();
+    await _pump(
+      tester,
+      _overview(_history(14), platform: HealthPlatformKind.healthConnect),
+      reader,
+    );
+    await _selectRange(tester, '7 days');
+
+    expect(find.text('Sleep heart rate: Not allowed · Manage'), findsOneWidget);
   });
 
   testWidgets('30 days shows the comparison when the previous period is '

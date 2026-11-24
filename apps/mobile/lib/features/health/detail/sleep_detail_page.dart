@@ -17,6 +17,7 @@ import '../domain/trend.dart';
 import '../health_format.dart';
 import '../widgets/detail_layout.dart';
 import '../widgets/health_card_frame.dart';
+import '../widgets/metric_unavailable.dart';
 
 const _reference = Duration(hours: 7, minutes: 30);
 const _noStages = 'Stages need a watch or ring that records them.';
@@ -47,8 +48,18 @@ class SleepDetailPage extends ConsumerStatefulWidget {
 class _SleepDetailPageState extends ConsumerState<SleepDetailPage> {
   SleepRange _range = SleepRange.lastNight;
 
+  /// Ranges opened on this page; their reads stay alive until it closes, so
+  /// switching back does not read again.
+  final _opened = <SleepRange>{};
+
   @override
   Widget build(BuildContext context) {
+    for (final range in _opened) {
+      ref.listen(sleepRangeNightsProvider(range), (_, _) {});
+    }
+    if (_opened.contains(SleepRange.week)) {
+      ref.listen(sleepWeekHrProvider, (_, _) {});
+    }
     return HealthDetailScaffold(
       title: 'Sleep',
       icon: Icons.bedtime_outlined,
@@ -59,7 +70,10 @@ class _SleepDetailPageState extends ConsumerState<SleepDetailPage> {
           (SleepRange.month, '30 days'),
         ],
         selected: _range,
-        onSelected: (range) => setState(() => _range = range),
+        onSelected: (range) => setState(() {
+          _range = range;
+          if (range != SleepRange.lastNight) _opened.add(range);
+        }),
       ),
       builder: (overview) => switch (overview.sleep) {
         SectionGap(:final gap) => DetailPanel(
@@ -375,17 +389,22 @@ class _RangeView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final nightsAsync = ref.watch(sleepRangeNightsProvider(range));
-    final hrAsync = ref.watch(sleepRangeHrProvider(range));
+    final week = range == SleepRange.week;
+    final hrAsync = week ? ref.watch(sleepWeekHrProvider) : null;
     final nights = nightsAsync.isLoading ? null : nightsAsync.value;
     if (nights == null) return const DetailLoading();
-    final hr = hrAsync.isLoading ? null : hrAsync.value;
+    final hr = hrAsync == null
+        ? (byNight: const <DateTime, double>{}, gap: null)
+        : hrAsync.isLoading
+        ? null
+        : hrAsync.value;
     final heart = overview.heart;
     final stats = sleepRangeStats(
       nights: nights,
       range: range,
       readAt: overview.readAt,
       readableFrom: overview.readableFrom,
-      sleepHr: hr ?? const {},
+      sleepHr: hr?.byNight ?? const {},
       restingHr: heart is SectionData<HeartOverview>
           ? heart.value.restingHrDaily
           : const [],
@@ -397,7 +416,7 @@ class _RangeView extends ConsumerWidget {
         if (hr == null)
           const DetailPanel(title: 'Averages', children: [DetailLoading()])
         else
-          _averages(stats),
+          _averages(stats, hr.gap),
       ],
     );
   }
@@ -505,7 +524,7 @@ class _RangeView extends ConsumerWidget {
     );
   }
 
-  Widget _averages(SleepRangeStats stats) {
+  Widget _averages(SleepRangeStats stats, MetricGap? hrGap) {
     String minutes(double? m) =>
         m == null ? '—' : formatDuration(Duration(minutes: m.round()));
     final bedtime = stats.bedtime;
@@ -519,10 +538,11 @@ class _RangeView extends ConsumerWidget {
         ),
         DetailRow('Deep', minutes(stats.deep)),
         DetailRow('REM', minutes(stats.rem)),
-        DetailRow(
-          'Sleep heart rate',
-          stats.sleepHr == null ? '—' : '${stats.sleepHr!.round()} bpm',
-        ),
+        if (range == SleepRange.week)
+          DetailRow(
+            'Sleep heart rate',
+            stats.sleepHr == null ? '—' : '${stats.sleepHr!.round()} bpm',
+          ),
         DetailRow(
           'Usual bedtime',
           bedtime == null
@@ -537,6 +557,18 @@ class _RangeView extends ConsumerWidget {
         if (bedtime == null) ...[
           const SizedBox(height: 6),
           const HealthCaption('Usual bedtime needs 5 nights.'),
+        ],
+        if (range != SleepRange.week) ...[
+          const SizedBox(height: 6),
+          const HealthCaption('Sleep heart rate is on the 7-day view.'),
+        ] else if (stats.sleepHr == null) ...[
+          const SizedBox(height: 6),
+          HealthCaption(
+            hrGap == null
+                ? 'Sleep heart rate: none recorded while asleep.'
+                : 'Sleep heart rate: '
+                      '${metricUnavailableText(hrGap, 'Sleep', overview.platform)}',
+          ),
         ],
       ],
     );

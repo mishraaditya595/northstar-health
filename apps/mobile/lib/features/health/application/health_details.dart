@@ -256,31 +256,41 @@ final sleepRangeNightsProvider = FutureProvider.autoDispose
           : since(sleep.nights);
     });
 
-/// Mean heart rate per night date inside each night's window, from one
-/// HEART_RATE read spanning the range's nights.
-final sleepRangeHrProvider = FutureProvider.autoDispose
-    .family<Map<DateTime, double>, SleepRange>((ref, range) async {
-      final sleepOfF = _sleepOf(ref);
-      final nightsF = ref.watch(sleepRangeNightsProvider(range).future);
-      final sleepOf = await sleepOfF;
-      final nights = await nightsF;
-      if (sleepOf == null || nights == null) return const {};
-      final (overview, _) = sleepOf;
-      final firstDate = currentRangeStart(overview.readAt, range);
-      final current = [
-        for (final n in nights)
-          if (!n.date.isBefore(firstDate)) n,
-      ];
-      if (current.isEmpty) return const {};
-      final samples = await _readSeries(
-        ref.read(healthReaderProvider),
-        HealthSeriesType.heartRate,
-        current.first.start,
-        current.last.end,
-      );
-      if (!_stillOwner(ref, overview.ownerId)) return const {};
-      return {for (final n in current) n.date: ?_meanDuring(samples, n)};
-    });
+/// Sleep heart rate for the 7-day tab: mean heart rate per night date,
+/// each read inside its own night window (never the daytime between), plus
+/// why a read failed or was not allowed.
+typedef SleepWeekHr = ({Map<DateTime, double> byNight, MetricGap? gap});
+
+/// The 30-day tab has no sleep heart rate: 30 night reads are too many.
+final sleepWeekHrProvider = FutureProvider.autoDispose<SleepWeekHr>((
+  ref,
+) async {
+  const none = (byNight: <DateTime, double>{}, gap: null);
+  final sleepOfF = _sleepOf(ref);
+  final nightsF = ref.watch(sleepRangeNightsProvider(SleepRange.week).future);
+  final sleepOf = await sleepOfF;
+  final nights = await nightsF;
+  if (sleepOf == null || nights == null) return none;
+  final (overview, _) = sleepOf;
+  final firstDate = currentRangeStart(overview.readAt, SleepRange.week);
+  final current = [
+    for (final n in nights)
+      if (!n.date.isBefore(firstDate)) n,
+  ];
+  final reader = ref.read(healthReaderProvider);
+  final results = await Future.wait([
+    for (final n in current)
+      _readResult(reader, HealthSeriesType.heartRate, n.start, n.end),
+  ]);
+  if (!_stillOwner(ref, overview.ownerId)) return none;
+  return (
+    byNight: {
+      for (final (i, n) in current.indexed)
+        n.date: ?_meanDuring(_samples(results[i]), n),
+    },
+    gap: results.map(_gapOf).nonNulls.firstOrNull,
+  );
+});
 
 /// First night date of [range] ending on the date of [readAt].
 DateTime currentRangeStart(DateTime readAt, SleepRange range) =>
