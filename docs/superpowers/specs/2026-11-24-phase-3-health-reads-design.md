@@ -1,6 +1,6 @@
 # Phase 3 design: daily health summary from Apple Health and Health Connect
 
-**Date:** 2026-11-24 · **Status:** draft for owner review · **Roadmap:** Phase 3 (permission-based platform health reads)
+**Date:** 2026-11-24 · **Status:** approved by owner 2026-11-24 · **Roadmap:** Phase 3 (permission-based platform health reads)
 
 ## Intent
 
