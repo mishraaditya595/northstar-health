@@ -93,6 +93,27 @@ void main() {
     expect(c.connectCalls, 1);
   });
 
+  testWidgets('failed connect shows a message and re-enables Connect', (
+    tester,
+  ) async {
+    final c = FakeHealthSummaryController(
+      const HealthNotConnected(
+        availability: HealthAvailability.available,
+        platform: HealthPlatformKind.appleHealth,
+      ),
+    )..connectResult = false;
+    await pumpPage(tester, c);
+    await tester.tap(find.text('Connect'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text("Couldn't open health permissions. Try again."),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Connect'));
+    await tester.pumpAndSettle();
+    expect(c.connectCalls, 2);
+  });
+
   testWidgets('needs install offers Get Health Connect', (tester) async {
     final c = FakeHealthSummaryController(
       const HealthNotConnected(

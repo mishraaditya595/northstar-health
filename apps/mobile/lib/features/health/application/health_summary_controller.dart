@@ -81,22 +81,29 @@ class HealthSummaryController extends AsyncNotifier<HealthSummaryState> {
     await future;
   }
 
-  Future<void> connect() async {
+  /// Returns false when the platform call failed; state is then unchanged and
+  /// no connection is recorded. The error is never rethrown or logged.
+  Future<bool> connect() async {
     final owner = ref.read(healthOwnerIdProvider);
-    if (owner == null) return;
-    final reader = ref.read(healthReaderProvider);
-    final availability = await reader.availability();
-    if (availability == HealthAvailability.needsInstall) {
-      await reader.openInstall();
-      return;
+    if (owner == null) return true;
+    try {
+      final reader = ref.read(healthReaderProvider);
+      final availability = await reader.availability();
+      if (availability == HealthAvailability.needsInstall) {
+        await reader.openInstall();
+        return true;
+      }
+      if (availability != HealthAvailability.available) return true;
+      await reader.requestAccess();
+    } catch (_) {
+      return false;
     }
-    if (availability != HealthAvailability.available) return;
-    await reader.requestAccess();
     ref
         .read(healthConnectionRepositoryProvider)
         .connect(owner, ref.read(healthClockProvider)());
     ref.invalidateSelf();
     await future;
+    return true;
   }
 
   Future<void> disconnect() async {

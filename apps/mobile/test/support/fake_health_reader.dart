@@ -12,6 +12,7 @@ class FakeHealthReader implements HealthReader {
   HealthAvailability availabilityResult;
   Map<HealthMetric, HealthReading> readings;
   Set<HealthMetric> throwOn = {};
+  bool throwOnRequestAccess = false;
   int requestAccessCalls = 0;
   int openInstallCalls = 0;
   final List<HealthMetric> readCalls = [];
@@ -29,7 +30,10 @@ class FakeHealthReader implements HealthReader {
   Future<HealthAvailability> availability() async => availabilityResult;
 
   @override
-  Future<void> requestAccess() async => requestAccessCalls++;
+  Future<void> requestAccess() async {
+    requestAccessCalls++;
+    if (throwOnRequestAccess) throw StateError('synthetic permission bug');
+  }
 
   @override
   Future<void> openInstall() async => openInstallCalls++;

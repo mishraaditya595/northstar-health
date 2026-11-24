@@ -62,6 +62,28 @@ void main() {
     expect((state as HealthConnected).readings.keys, HealthMetric.values);
   });
 
+  test('connect swallows a permission failure, records nothing', () async {
+    fake.throwOnRequestAccess = true;
+    final container = containerFor(_ownerA);
+    await container.read(healthSummaryProvider.future);
+    final ok = await container.read(healthSummaryProvider.notifier).connect();
+    expect(ok, false);
+    expect(repo.isConnected(_ownerA), false);
+    expect(
+      await container.read(healthSummaryProvider.future),
+      isA<HealthNotConnected>(),
+    );
+  });
+
+  test('connect reports true when it completes', () async {
+    final container = containerFor(_ownerA);
+    await container.read(healthSummaryProvider.future);
+    expect(
+      await container.read(healthSummaryProvider.notifier).connect(),
+      true,
+    );
+  });
+
   test('one failing metric does not blank others', () async {
     repo.connect(_ownerA, DateTime(2026, 11, 24));
     fake.throwOn = {HealthMetric.steps};

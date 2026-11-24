@@ -15,6 +15,9 @@ class FakeHealthSummaryController extends HealthSummaryController {
   int refreshCalls = 0;
   int buildCalls = 0;
   Completer<void>? connectGate;
+
+  /// What [connect] reports; `false` simulates a failed permission request.
+  bool connectResult = true;
   Completer<void>? refreshGate;
 
   /// Holds the next `build` (a reload keeps the previous value meanwhile).
@@ -30,9 +33,10 @@ class FakeHealthSummaryController extends HealthSummaryController {
   }
 
   @override
-  Future<void> connect() async {
+  Future<bool> connect() async {
     connectCalls++;
     await connectGate?.future;
+    return connectResult;
   }
 
   @override

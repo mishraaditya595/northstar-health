@@ -49,7 +49,7 @@ class _TodayHealthRowState extends ConsumerState<TodayHealthRow>
       HealthNotConnected() => HealthConnectCard(
         availability: state.availability,
         platform: state.platform,
-        onAction: guarded(loading, (c) => c.connect()),
+        onAction: guardedConnect(loading),
       ),
       HealthConnected() => IntrinsicHeight(
         child: Row(

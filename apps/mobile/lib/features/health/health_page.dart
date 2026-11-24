@@ -64,7 +64,7 @@ class _HealthPageState extends ConsumerState<HealthPage>
             HealthConnectCard(
               availability: state.availability,
               platform: state.platform,
-              onAction: guarded(loading, (c) => c.connect()),
+              onAction: guardedConnect(loading),
             )
           else
             ..._connected(context, state as HealthConnected, loading, muted),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/design/dialogs.dart';
 import '../application/health_summary_controller.dart';
 import '../data/health_reader.dart';
 
@@ -44,11 +45,22 @@ mixin HealthActionsMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     };
   }
 
+  /// Like [guarded] for Connect / Manage: tells the user when the platform
+  /// permission call failed.
+  VoidCallback? guardedConnect(bool loading) {
+    if (_busy || loading) return null;
+    return guarded(loading, (c) async {
+      if (!await c.connect() && mounted) {
+        showNsMessage(context, "Couldn't open health permissions. Try again.");
+      }
+    });
+  }
+
   /// Tap action for a card: Not allowed -> Manage (connect), Couldn't read ->
   /// Try again (refresh); none for other readings.
   VoidCallback? actionForReading(HealthReading? reading, bool loading) {
     if (reading is HealthNotAllowed) {
-      return guarded(loading, (c) => c.connect());
+      return guardedConnect(loading);
     }
     if (reading is HealthReadFailed) {
       return guarded(loading, (c) => c.refresh());
