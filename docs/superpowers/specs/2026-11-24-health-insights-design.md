@@ -1,6 +1,6 @@
 # Health insights design: richer cards, trends, readiness and training tie-ins
 
-**Date:** 2026-11-24 · **Status:** draft for owner review · **Builds on:** Phase 3 (`2026-11-24-phase-3-health-reads-design.md`, ADR-0008) · **Before:** Phase 4 (write-back)
+**Date:** 2026-11-24 · **Status:** approved; stage 1 implemented on branch, not device-verified · **Builds on:** Phase 3 (`2026-11-24-phase-3-health-reads-design.md`, ADR-0008) · **Before:** Phase 4 (write-back)
 
 Mockups (fictional values): five 390 px phone screens, source in `2026-11-24-health-insights-mockups/` next to this file (`Main` = Health tab with a watch, `Sleep`, `Heart`, `Train` on a low day, `NoWatch` = phone-only). They are HTML with inline styles; colours, sizes, radii and layout in them are the visual reference for the kit widgets and cards, alongside `docs/DESIGN_SYSTEM.md`. The 30-day bars there are not stacked by stage; the build stacks them. Rival research: `2026-11-24-health-insights-rival-research.md`.
 
