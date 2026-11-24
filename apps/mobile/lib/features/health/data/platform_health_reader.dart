@@ -48,7 +48,15 @@ class PlatformHealthReader implements HealthReader {
 
   Future<void>? _configured;
 
-  Future<void> _configure() => _configured ??= _health.configure();
+  /// A failed configure is not cached; the next call retries it.
+  Future<void> _configure() async {
+    try {
+      await (_configured ??= _health.configure());
+    } catch (_) {
+      _configured = null;
+      rethrow;
+    }
+  }
 
   bool get _isAndroid => platform == HealthPlatformKind.healthConnect;
 
@@ -130,11 +138,20 @@ class PlatformHealthReader implements HealthReader {
     if (!await _allowed(HealthDataType.SLEEP_ASLEEP)) {
       return const HealthNotAllowed();
     }
-    final points = await _health.getHealthDataFromTypes(
+    final start = DateTime(now.year, now.month, now.day - 1, 18);
+    var points = await _health.getHealthDataFromTypes(
       types: _sleepTypes,
-      startTime: DateTime(now.year, now.month, now.day - 1, 18),
+      startTime: start,
       endTime: now,
     );
+    if (points.isEmpty && _isAndroid) {
+      // Some Android sources write only a session, no stages.
+      points = await _health.getHealthDataFromTypes(
+        types: const [HealthDataType.SLEEP_SESSION],
+        startTime: start,
+        endTime: now,
+      );
+    }
     if (points.isEmpty) return const HealthNoData();
     final minutes = mergedSleepMinutes([
       for (final p in points) (from: p.dateFrom, to: p.dateTo),

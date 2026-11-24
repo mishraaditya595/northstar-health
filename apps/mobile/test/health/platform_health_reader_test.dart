@@ -26,8 +26,16 @@ class _FakeHealth extends Fake implements Health {
   int installCalls = 0;
   List<HealthDataType>? requested;
 
+  /// Thrown by the next `configure` call only.
+  Object? configureError;
+
   @override
-  Future<void> configure() async => configureCalls++;
+  Future<void> configure() async {
+    configureCalls++;
+    final error = configureError;
+    configureError = null;
+    if (error != null) throw error;
+  }
 
   @override
   Future<bool?> hasPermissions(
@@ -74,7 +82,7 @@ class _FakeHealth extends Fake implements Health {
   }) async {
     calls.add(_Call(types, startTime, endTime, limit));
     if (dataError != null) throw dataError!;
-    return points;
+    return points.where((p) => types.contains(p.type)).toList();
   }
 }
 
@@ -190,6 +198,77 @@ void main() {
       HealthDataType.SLEEP_DEEP,
       HealthDataType.SLEEP_REM,
     ]);
+  });
+
+  test(
+    'android falls back to the sleep session when no stages exist',
+    () async {
+      health.points = [
+        _point(
+          HealthDataType.SLEEP_SESSION,
+          450,
+          DateTime(2026, 11, 23, 23),
+          DateTime(2026, 11, 24, 6, 30),
+          source: 'com.google.android.apps.fitness',
+        ),
+      ];
+      final r = await android().read(HealthMetric.sleep, now) as HealthMeasured;
+      expect(r.value, 450);
+      expect(r.measuredAt, DateTime(2026, 11, 24, 6, 30));
+      expect(r.source, 'Fit');
+      expect(health.calls.length, 2);
+      expect(health.calls.last.types, [HealthDataType.SLEEP_SESSION]);
+      expect(health.calls.last.start, DateTime(2026, 11, 23, 18));
+      expect(health.calls.last.end, now);
+    },
+  );
+
+  test('the sleep session is not used when stages exist', () async {
+    health.points = [
+      _point(
+        HealthDataType.SLEEP_LIGHT,
+        0,
+        DateTime(2026, 11, 24, 0),
+        DateTime(2026, 11, 24, 2),
+      ),
+      _point(
+        HealthDataType.SLEEP_SESSION,
+        450,
+        DateTime(2026, 11, 23, 23),
+        DateTime(2026, 11, 24, 6, 30),
+      ),
+    ];
+    final r = await android().read(HealthMetric.sleep, now) as HealthMeasured;
+    expect(r.value, 120);
+    expect(
+      health.calls.single.types,
+      isNot(contains(HealthDataType.SLEEP_SESSION)),
+    );
+  });
+
+  test('iOS never queries a sleep session', () async {
+    health.points = [
+      _point(
+        HealthDataType.SLEEP_SESSION,
+        450,
+        DateTime(2026, 11, 23, 23),
+        DateTime(2026, 11, 24, 6, 30),
+      ),
+    ];
+    expect(await ios().read(HealthMetric.sleep, now), isA<HealthNoData>());
+    expect(
+      health.calls.single.types,
+      isNot(contains(HealthDataType.SLEEP_SESSION)),
+    );
+  });
+
+  test('a failed configure is retried by the next call', () async {
+    health.steps = 100;
+    health.configureError = StateError('synthetic');
+    final reader = android();
+    expect(await reader.read(HealthMetric.steps, now), isA<HealthReadFailed>());
+    expect(await reader.read(HealthMetric.steps, now), isA<HealthMeasured>());
+    expect(health.configureCalls, 2);
   });
 
   test('sleep without points is no data', () async {
