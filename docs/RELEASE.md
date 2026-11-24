@@ -45,6 +45,20 @@ Implemented in source, **not released or device-verified**. Evidence and unrun c
   - Android workout JSON export still saves after the `FlutterFragmentActivity` change (highest risk).
   - Account A, sign out, account B: B sees the Connect card.
 
+## Health insights stage 1 device QA (ADR-0009, owner actions, none done)
+
+Implemented in source on a feature branch, **not released or device-verified**. Every row is not run.
+
+| Check | iOS | Android |
+| --- | --- | --- |
+| Two wearables write sleep the same night (e.g. watch and ring): one source per night, caption names it | not run | not run |
+| Phase 3 account upgrades: "Allow more data" shows once, hides after one request even with types still declined | not run | not run |
+| Health Connect history permission granted vs not: 30-day and earlier reads | n/a | not run |
+| iOS denial of the new types reads as empty, never 0 | not run | n/a |
+| Text scale 2.0 on overview and the four detail screens | not run | not run |
+| Tablet / split screen layout | not run | not run |
+| Light and dark themes | not run | not run |
+
 ## Feature and privacy readiness
 
 - ObjectBox real sessions/sets with generated model UID fixture migration, durable offline writes and recovery through process death.

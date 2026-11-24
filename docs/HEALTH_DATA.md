@@ -6,7 +6,19 @@
 
 Phase 3 is limited to a read-only daily summary of four metrics: sleep, steps, resting heart rate and weight. It keeps **no on-disk cache of health values** and stores only a per-account opt-in flag in the account's ObjectBox partition, which narrows the optional cache described below for this phase. Permission is requested only when the person taps Connect. See [ADR-0008](adr/0008-daily-health-summary-reads.md).
 
-**Planned extension (ADR-0009, not implemented yet):** [ADR-0009](adr/0009-health-insights-trends.md) widens the read scope beyond these four metrics (sleep stages, heart rate, HRV, activity, body trends and more) and adds scores computed on device. It amends ADR-0008's metric list, cache and Android history items; still no on-disk cache, nothing stored, and nothing in the cloud. Until it is implemented, the four-metric scope above is what the app does.
+**Health insights stage 1 (ADR-0009, implemented in source on a feature branch, not released or device-verified):** [ADR-0009](adr/0009-health-insights-trends.md) widens the read scope beyond these four metrics and adds a sleep score computed on device, with 7/30-day trends and four detail screens. It amends ADR-0008's metric list, cache and Android history items; still no on-disk cache, nothing stored, and nothing in the cloud. Stages 2-3 (readiness, training tie-ins) are not implemented.
+
+Stage 1 requests read access to these types in one permission sheet (`platform_health_reader.dart`):
+
+| | Both platforms | iOS only | Android only |
+| --- | --- | --- | --- |
+| Sleep | asleep, awake, deep, REM, light (Core) | in bed, sleeping wrist temperature | sleep session |
+| Heart | heart rate, resting heart rate, VO₂ max | HRV (SDNN), walking heart rate | HRV (RMSSD) |
+| Breathing | respiratory rate, blood oxygen | | |
+| Activity | steps, active energy | | |
+| Body | weight, body fat, lean body mass | | skin temperature (only where Health Connect offers it) |
+
+On Android it also requests Health Connect's history permission where available; without it only the 30 days before connecting are readable. The only things stored are the per-account opt-in row (connected time and the version of the requested type list, so Android offers "Allow more data" once per new list); no health value or score.
 
 ## Data ownership
 
