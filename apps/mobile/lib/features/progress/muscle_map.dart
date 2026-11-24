@@ -2,28 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/design/beyondrep_theme.dart';
-import '../../core/design/page_header.dart';
 import 'muscle_recovery.dart';
 
 /// Which side of the body a [MuscleMap] draws.
 enum BodySide { front, back }
-
-const _labels = {
-  Muscle.chest: 'Chest',
-  Muscle.shoulders: 'Shoulders',
-  Muscle.biceps: 'Biceps',
-  Muscle.forearms: 'Forearms',
-  Muscle.abs: 'Abs',
-  Muscle.obliques: 'Obliques',
-  Muscle.quads: 'Quads',
-  Muscle.calves: 'Calves',
-  Muscle.traps: 'Traps',
-  Muscle.lats: 'Lats',
-  Muscle.lowerBack: 'Lower back',
-  Muscle.triceps: 'Triceps',
-  Muscle.glutes: 'Glutes',
-  Muscle.hamstrings: 'Hamstrings',
-};
 
 /// Absolute-coordinate SVG path (M L C Q Z) in the 100 x 215 figure space.
 /// Shapes describe the figure's left half; the painter mirrors them.
@@ -271,8 +253,7 @@ class _BodyPainter extends CustomPainter {
 }
 
 /// "Muscle Recovery" card: front and back figures, labels, legend and the
-/// muscles trained recently. Reads [muscleRecoveryProvider]; says so when the
-/// values are placeholders.
+/// muscle groups trained recently. Reads [muscleRecoveryProvider].
 class MuscleRecoveryCard extends ConsumerWidget {
   const MuscleRecoveryCard({super.key});
 
@@ -280,11 +261,9 @@ class MuscleRecoveryCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final recovery = ref.watch(muscleRecoveryProvider);
     final theme = Theme.of(context);
-    final worked = [
-      for (final m in Muscle.values)
-        if (recovery.loadOf(m) >= .5) m,
-    ]..sort((a, b) => recovery.loadOf(b).compareTo(recovery.loadOf(a)));
-    final workedText = worked.map((m) => _labels[m]!).join(' · ');
+    final worked = recovery.groups.entries.where((e) => e.value > 0).toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final workedText = worked.map((e) => e.key).join(' · ');
     Widget figure(BodySide side, String label) => Flexible(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 170),
@@ -321,15 +300,14 @@ class MuscleRecoveryCard extends ConsumerWidget {
                     ),
                   ),
                 ),
-                if (recovery.isSample) const NsTag('Sample data'),
               ],
             ),
             const SizedBox(height: 14),
             Semantics(
               label:
-                  'Body map${recovery.isSample ? ', sample data' : ''}. '
+                  'Body map. '
                   'Recently trained: '
-                  '${worked.isEmpty ? 'none' : worked.map((m) => m.name).join(', ')}.',
+                  '${worked.isEmpty ? 'none' : worked.map((e) => e.key).join(', ')}.',
               excludeSemantics: true,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -370,9 +348,7 @@ class MuscleRecoveryCard extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              recovery.isSample
-                  ? 'Placeholder layout: these values are not from your workouts yet.'
-                  : 'Shaded by how recently each muscle was trained.',
+              'Shaded by muscle group from workouts finished in the last 3 days.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.mutedColor,

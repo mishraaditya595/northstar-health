@@ -114,6 +114,7 @@ void main() {
         sessionUuid: sessionId,
         definitionUuid: 'builtin.v1.bench-press',
         nameSnapshot: 'Bench press',
+        muscleSnapshot: 'Chest',
         position: 0,
       ),
     );
@@ -200,7 +201,9 @@ void main() {
     expect(find.text('Total sessions'), findsOneWidget);
     expect(find.text('Week streak'), findsOneWidget);
     expect(find.text('Muscle Recovery'), findsOneWidget);
-    expect(find.text('Sample data'), findsOneWidget);
+    // Finished about 50 hours before the clock: the body map shades chest.
+    expect(find.text('Sample data'), findsNothing);
+    expect(find.text('Chest'), findsOneWidget);
     expect(find.text('Training summary'), findsOneWidget);
     expect(find.text('Workout wk'), findsOneWidget);
     expect(find.text('00:30:00'), findsOneWidget);

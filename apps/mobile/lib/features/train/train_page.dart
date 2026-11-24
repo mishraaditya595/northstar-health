@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/clock.dart';
+import '../../core/date_labels.dart';
 import '../../core/design/inputs.dart';
 import '../../core/design/dialogs.dart';
 import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
+import '../progress/domain/progress_overview.dart';
 import '../workouts/domain/workout_library_models.dart';
 import 'active_workout_state.dart';
 import 'train_library_state.dart';
@@ -81,6 +84,7 @@ class TrainPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(trainLibraryProvider);
+    final now = ref.watch(localNowProvider);
     final colors = Theme.of(context).extension<BeyondRepColors>()!;
     return Align(
       alignment: Alignment.topCenter,
@@ -107,7 +111,7 @@ class TrainPage extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Friday, 23 October',
+                        longDayLabel(now),
                         style: TextStyle(color: colors.muted, fontSize: 12),
                       ),
                       const SizedBox(height: 4),
@@ -127,7 +131,7 @@ class TrainPage extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 18),
-            const _WeekStrip(),
+            _WeekStrip(today: DateTime.utc(now.year, now.month, now.day)),
             const SizedBox(height: 27),
             const SectionHeading('Start training'),
             Card(
@@ -242,7 +246,7 @@ class TrainPage extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              'LOCAL ONLY · NO ACCOUNT REQUIRED',
+              'SAVED ON THIS DEVICE FIRST',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: colors.muted,
                 letterSpacing: 1.2,
@@ -325,57 +329,67 @@ class TrainPage extends ConsumerWidget {
   }
 }
 
-/// Prototype `.week-strip`: display-only M–S dates with today highlighted.
+/// Prototype `.week-strip`: display-only dates of the current
+/// Sunday-to-Saturday week (as on Today and Progress), today highlighted.
 class _WeekStrip extends StatelessWidget {
-  const _WeekStrip();
+  const _WeekStrip({required this.today});
+
+  /// The device's local calendar day as a UTC date.
+  final DateTime today;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
     final muted = theme.extension<BeyondRepColors>()!.muted;
-    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    final days = weekDays(today);
     return Row(
       children: [
         for (var i = 0; i < days.length; i++) ...[
           if (i > 0) const SizedBox(width: 6),
           Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                color: i == 4
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.surface,
-                border: Border.all(
-                  color: i == 4
+            child: Semantics(
+              label:
+                  '${weekdayName(days[i])} ${days[i].day}'
+                  '${days[i] == today ? ', today' : ''}',
+              excludeSemantics: true,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: days[i] == today
                       ? theme.colorScheme.primary
-                      : theme.colorScheme.outline,
+                      : theme.colorScheme.surface,
+                  border: Border.all(
+                    color: days[i] == today
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.outline,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    days[i],
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: i == 4
-                          ? (dark ? BeyondRepPalette.heroDark : Colors.white)
-                          : muted,
+                child: Column(
+                  children: [
+                    Text(
+                      weekdayName(days[i]).substring(0, 1),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: days[i] == today
+                            ? (dark ? BeyondRepPalette.heroDark : Colors.white)
+                            : muted,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${19 + i}',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: i == 4
-                          ? (dark ? BeyondRepPalette.heroDark : Colors.white)
-                          : theme.colorScheme.onSurface,
+                    const SizedBox(height: 4),
+                    Text(
+                      '${days[i].day}',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: days[i] == today
+                            ? (dark ? BeyondRepPalette.heroDark : Colors.white)
+                            : theme.colorScheme.onSurface,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
