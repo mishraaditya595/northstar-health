@@ -15,41 +15,20 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../catalog/catalog_fixtures.dart';
 
-CatalogExercise cat(
-  String id,
-  String name, {
-  List<String> aliases = const [],
-}) => CatalogExercise(
-  id: id,
-  name: name,
-  aliases: aliases,
-  muscleGroup: 'Legs',
-  primaryMuscles: const ['glutes'],
-  secondaryMuscles: const [],
-  equipment: const ['barbell'],
-  category: 'hinge',
-  mode: 'reps_load',
-  cues: const [],
-  retired: false,
-);
-
-CatalogSnapshot snapshot() => CatalogSnapshot(
-  release: 4,
-  schemaVersion: 1,
-  minAppCatalogSchema: 1,
-  publishedAt: '2026-11-26T00:00:00Z',
-  sha256: 'a' * 64,
-  exercises: [
-    cat('builtin.v1.hip-thrust', 'Hip thrust', aliases: ['Hip bridge']),
-    cat('builtin.v1.row', 'Barbell row'),
-  ],
-  templates: const [],
-  programs: const [],
-);
+CatalogSnapshot snapshot() => catalogSnapshotOf([
+  catalogExercise(
+    'builtin.v1.hip-thrust',
+    'Hip thrust',
+    aliases: ['Hip bridge'],
+  ),
+  catalogExercise('builtin.v1.row', 'Barbell row'),
+]);
 
 CatalogState ready() =>
     CatalogState(snapshot: snapshot(), status: CatalogStatus.ready);
 
+const noCacheFailureCopy =
+    "Couldn't download the exercise library. Check your connection and try again.";
 const failureCopy =
     "Couldn't update the exercise library. Showing the saved copy.";
 
@@ -81,8 +60,9 @@ void main() {
     CatalogRefreshOutcome outcome = CatalogRefreshOutcome.updated,
     Brightness brightness = Brightness.light,
     double textScale = 1,
+    Size size = const Size(800, 1000),
   }) async {
-    tester.view.physicalSize = const Size(800, 1000);
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final repository = StubCatalogRepository(
@@ -232,6 +212,24 @@ void main() {
     });
   }
 
+  testWidgets(
+    'pull to refresh failure with no cache says the download failed',
+    (tester) async {
+      await open(
+        tester,
+        const CatalogState(status: CatalogStatus.unavailable),
+        outcome: CatalogRefreshOutcome.failed,
+      );
+
+      await tester.fling(find.byType(ListView), const Offset(0, 500), 2000);
+      await tester.pumpAndSettle();
+
+      expect(find.text(noCacheFailureCopy), findsOneWidget);
+      expect(find.text(failureCopy), findsNothing);
+      expect(find.text('Barbell bench press'), findsOneWidget);
+    },
+  );
+
   for (final outcome in [
     CatalogRefreshOutcome.updated,
     CatalogRefreshOutcome.upToDate,
@@ -252,19 +250,28 @@ void main() {
   }
 
   for (final brightness in Brightness.values) {
-    testWidgets('no overflow at text scale 2.0 in ${brightness.name}', (
-      tester,
-    ) async {
-      await open(
-        tester,
-        const CatalogState(status: CatalogStatus.unavailable),
-        brightness: brightness,
-        textScale: 2,
-      );
-      expect(tester.takeException(), isNull);
-      await tester.tap(find.text('Custom only'));
-      await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
-    });
+    for (final status in [CatalogStatus.unavailable, CatalogStatus.ready]) {
+      testWidgets('no overflow at 390x844, text scale 2.0, ${brightness.name}, '
+          '${status.name}', (tester) async {
+        await open(
+          tester,
+          status == CatalogStatus.ready
+              ? ready()
+              : const CatalogState(status: CatalogStatus.unavailable),
+          brightness: brightness,
+          textScale: 2,
+          size: const Size(390, 844),
+        );
+        expect(tester.takeException(), isNull);
+        await tester.scrollUntilVisible(
+          find.text('Custom only'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.tap(find.text('Custom only'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      });
+    }
   }
 }

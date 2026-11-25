@@ -148,9 +148,15 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
       CatalogRefreshOutcome.unauthorized,
     };
     if (failures.contains(outcome) && mounted) {
+      final hasCopy =
+          safeCatalogState(() => ref.read(catalogStateProvider)).snapshot !=
+          null;
       showNsMessage(
         context,
-        "Couldn't update the exercise library. Showing the saved copy.",
+        hasCopy
+            ? "Couldn't update the exercise library. Showing the saved copy."
+            : "Couldn't download the exercise library. "
+                  'Check your connection and try again.',
       );
     }
   }
