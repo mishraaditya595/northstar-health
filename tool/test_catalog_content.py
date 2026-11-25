@@ -4,7 +4,13 @@ import re
 import unittest
 from pathlib import Path
 
-from scripts.catalog_build import assemble, load_lock
+from scripts.catalog_build import (
+    assemble,
+    canonical_bytes,
+    digest,
+    load_lock,
+    lock_entry,
+)
 from scripts.catalog_validate import MUSCLES, validate_snapshot
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -66,6 +72,46 @@ class ContentTest(unittest.TestCase):
                 self.assertNotIn("http", node)
 
         walk(source_exercises())
+
+
+class PublishedReleaseTest(unittest.TestCase):
+    """Each committed release migration must be exactly what the lock records."""
+
+    def release_files(self):
+        found = {}
+        for path in sorted((ROOT / "supabase/migrations").glob("*_catalog_release_*.sql")):
+            number = int(re.search(r"_catalog_release_(\d+)\.sql$", path.name).group(1))
+            self.assertNotIn(number, found, f"two migrations publish release {number}")
+            found[number] = path
+        return found
+
+    def test_release_migrations_match_lock_one_to_one(self):
+        lock = load_lock(ROOT / "catalog/releases.lock.json")
+        entries = {}
+        for entry in lock["releases"]:
+            self.assertNotIn(entry["release"], entries, "duplicate lock entry")
+            entries[entry["release"]] = entry
+        files = self.release_files()
+        self.assertEqual(set(files), set(entries))
+        for number, path in files.items():
+            with self.subTest(release=number):
+                text = path.read_text(encoding="utf-8")
+                match = re.search(
+                    r"\$catalog\$(.*)\$catalog\$::jsonb,\n  '([0-9a-f]{64})',\n"
+                    r"  (\d+),\n  '([^']+)'::timestamptz\n\);\n$",
+                    text, re.S,
+                )
+                self.assertIsNotNone(match, "unexpected migration shape")
+                body, call_sha, call_size, call_at = match.groups()
+                header_sha = re.search(r"^-- sha256: ([0-9a-f]{64})$", text, re.M).group(1)
+                snapshot = json.loads(body)
+                self.assertEqual(canonical_bytes(snapshot), body.encode("utf-8"))
+                sha, size = digest(snapshot)
+                self.assertEqual({sha}, {header_sha, call_sha, entries[number]["sha256"]})
+                self.assertEqual(size, int(call_size))
+                self.assertEqual(snapshot["release"], number)
+                self.assertEqual(snapshot["publishedAt"], call_at)
+                self.assertEqual(lock_entry(snapshot, sha), entries[number])
 
 
 if __name__ == "__main__":
