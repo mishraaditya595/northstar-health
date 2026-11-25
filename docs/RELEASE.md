@@ -114,6 +114,20 @@ Specific muscles are implemented in source, **not deployed, released or device-v
 | Exercise detail: open an exercise from the Exercises page, front and back body maps match the Primary and Secondary lists; a custom exercise shows the "Muscles aren't mapped yet" text | not run | not run |
 | A workout logged before this build still uploads, restores and counts toward recovery by its coarse group | not run | not run |
 
+## Training library stage 4 device QA (ADR-0010, owner actions, none done)
+
+Timed sets are implemented in source, **not deployed, released or device-verified**. Every row is not run.
+
+| Check | iOS | Android |
+| --- | --- | --- |
+| Deploy order: the `supabase-database` job has applied `20261126020000_workout_set_duration.sql` to the project under test **before** this build is uploaded | not run | not run |
+| Update every TestFlight and Android install to this build: an older build rejects the new set field when restoring | not run | not run |
+| Log a plank with the timer: Start, wait, Stop, record; the set shows seconds, there is no reps field, and the workout uploads | not run | not run |
+| Background the app with a timer running, return after a minute: the stopwatch shows the real elapsed time | not run | not run |
+| Restore a timed workout on a second device: sign in as the same account, the plank set shows its seconds in history | not run | not run |
+| Plan a plank at 45 s: the row reads "3 sets · 45 s" and a workout started from the plan logs seconds | not run | not run |
+| A rep workout logged before this build still uploads, restores and counts as before | not run | not run |
+
 ## Feature and privacy readiness
 
 - ObjectBox real sessions/sets with generated model UID fixture migration, durable offline writes and recovery through process death.

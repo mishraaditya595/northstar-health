@@ -85,8 +85,25 @@ Optional: `muscle` (logged group text), `equipment` (text),
 
 Set: `id`, `position`, `kind` (`working|warmup`), `status`
 (`planned|completed|skipped`), `input_unit` (`kg|lb`) are required; optional
-`reps`, `load_grams`, `rpe`, `completed_at_utc`. A completed set needs `reps`
-and `completed_at_utc`.
+`reps`, `duration_seconds`, `load_grams`, `rpe`, `completed_at_utc`. A
+completed set needs `completed_at_utc` and either `reps` or `duration_seconds`.
+
+- `duration_seconds` (timed exercises such as plank) is an integer from 1 to
+  86400. A set never carries both `reps` and `duration_seconds`; the server
+  (`invalid set duration`, `set has both reps and duration`), the restore
+  parser (code `invalid_set_duration`) and the phone's local check all reject
+  it.
+- **Omission rule:** the phone sends `duration_seconds` only when the set has
+  seconds, so every rep set keeps exactly the payload and request hash it had
+  before. `schema_version` stays 1. The export passes the stored payload
+  through unchanged.
+- A completed timed set counts as a completed working set. Loaded volume and
+  loaded-set counts use only sets with `reps`, so a timed set with a
+  `load_grams` (accepted for a later weighted-carry mode) adds no volume.
+- Deploy order: the migration `20261126020000_workout_set_duration.sql` must
+  be deployed before any app build that uploads `duration_seconds`. Older app
+  builds reject the unknown set key when restoring (`unsupported_field`, the
+  whole page is refused), so update every install.
 
 ## Workout owner / platform writer matrix
 
