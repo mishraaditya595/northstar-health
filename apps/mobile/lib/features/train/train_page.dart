@@ -13,6 +13,7 @@ import '../health/widgets/readiness_note.dart';
 import '../progress/domain/progress_overview.dart';
 import '../workouts/domain/workout_library_models.dart';
 import 'active_workout_state.dart';
+import 'plan_fit.dart';
 import 'train_library_state.dart';
 
 class TrainPage extends ConsumerWidget {
@@ -312,22 +313,32 @@ class TrainPage extends ConsumerWidget {
     final labels = <String, String>{
       for (final exercise in data.exercises) exercise.uuid: exercise.name,
     };
+    final fit = ref.watch(planFitProvider);
+    final suggested = fit?.suggestion == null
+        ? null
+        : data.plans
+              .where((p) => p.uuid == fit!.suggestion!.plan.planUuid)
+              .firstOrNull;
     return Column(
       children: [
+        if (suggested != null) _betterFit(context, ref, suggested, fit!),
         for (final plan in data.plans)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: NsListCard(
               icon: Icons.fitness_center,
               title: plan.name,
-              subtitle: plan.exercises.isEmpty
-                  ? 'No exercises added'
-                  : plan.exercises
-                        .map(
-                          (e) => labels[e.exerciseUuid] ?? 'Archived exercise',
-                        )
-                        .take(3)
-                        .join(' · '),
+              subtitle:
+                  (plan.exercises.isEmpty
+                      ? 'No exercises added'
+                      : plan.exercises
+                            .map(
+                              (e) =>
+                                  labels[e.exerciseUuid] ?? 'Archived exercise',
+                            )
+                            .take(3)
+                            .join(' · ')) +
+                  _recoveryLine(fit?.byPlan[plan.uuid]),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -351,6 +362,61 @@ class TrainPage extends ConsumerWidget {
       ],
     );
   }
+
+  Widget _betterFit(
+    BuildContext context,
+    WidgetRef ref,
+    WorkoutPlanRecord plan,
+    PlanFit fit,
+  ) {
+    final reason = switch (fit.suggestion!) {
+      SuggestRecovered(:final restedGroups) =>
+        '${_joinGroups(restedGroups)} still recovering · this plan rests them',
+      SuggestLightest() =>
+        'Lightest plan with recovered muscles · keep effort around RPE 7',
+    };
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Semantics(
+        container: true,
+        label: 'Better fit today: ${plan.name}. $reason',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: NsTag('Better fit today'),
+            ),
+            NsListCard(
+              icon: Icons.bolt,
+              title: plan.name,
+              subtitle: reason,
+              trailing: TextButton(
+                onPressed: () => _startPlan(context, ref, plan.uuid),
+                child: const Text('Start'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "A and B", "A, B and C"; more than three names the first three and more.
+String _joinGroups(Set<String> groups) {
+  final sorted = groups.toList()..sort();
+  if (sorted.length > 3) return '${sorted.take(3).join(', ')} and more';
+  if (sorted.length < 3) return sorted.join(' and ');
+  return '${sorted.take(2).join(', ')} and ${sorted.last}';
+}
+
+/// Empty when the plan has no mapped muscle group.
+String _recoveryLine(PlanRecovery? recovery) {
+  if (recovery == null) return '';
+  return recovery.isRecovered
+      ? '\nRecovered'
+      : '\n${_joinGroups(recovery.recovering)} recovering';
 }
 
 /// Prototype `.week-strip`: display-only dates of the current
