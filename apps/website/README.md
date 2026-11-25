@@ -20,6 +20,6 @@ Pages live in `src/pages/`. Shared facts (contact addresses, store links, legal 
 4. Build watch paths: include `apps/website/*`, so app-only commits don't rebuild the site.
 5. Custom domains: add `beyondrep.in` and `www.beyondrep.in` (with the domain's DNS on Cloudflare, HTTPS is automatic). Redirect `www` to the apex with a Redirect Rule.
 6. Leave Cloudflare Web Analytics **off**. It injects a third-party script, and the site and privacy policy promise no analytics. Turning it on needs its own reviewed change that updates the privacy page.
-7. Set up `hello@` and `privacy@beyondrep.in` with Cloudflare Email Routing, since the site links to both. Email Routing only receives mail: to reply from these addresses (the delete-account page promises replies from `privacy@`), also set up sending, for example a Brevo sender for the domain.
+7. Set up `hello@` and `privacy@beyondrep.in` with Cloudflare Email Routing, since the site links to both. Email Routing only receives mail: to reply from these addresses (the delete-account page promises replies from `privacy@`), configure the mailbox that Email Routing forwards to so it can send as these addresses. Name that mailbox provider in the "Service providers" table on the privacy page (it is listed as *to be confirmed*).
 
 Then submit `https://beyondrep.in/sitemap-index.xml` in Google Search Console and Bing Webmaster Tools.

@@ -62,7 +62,8 @@ a {
 }
 
 a:focus-visible,
-button:focus-visible {
+button:focus-visible,
+summary:focus-visible {
   outline: 3px solid var(--performance);
   outline-offset: 3px;
 }
@@ -374,7 +375,7 @@ details p {
 
 /* Prose pages (legal, support) */
 .prose {
-  padding: 48px 0 0;
+  padding-top: 48px;
 }
 
 .prose h1 {
