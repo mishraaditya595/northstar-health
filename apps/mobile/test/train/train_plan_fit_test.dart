@@ -145,6 +145,7 @@ late _Actions _actions;
 Future<void> _pump(
   WidgetTester tester, {
   required List<WorkoutPlanRecord> plans,
+  List<ExerciseRecord>? exercises,
   Object? history, // a snapshot, or an error to throw
   MuscleRecovery? recovery,
   FakeHealthOverviewController? health,
@@ -173,8 +174,10 @@ Future<void> _pump(
         progressNowProvider.overrideWithValue(_nowUtc),
         workoutActionsProvider.overrideWithValue(_actions),
         trainLibraryProvider.overrideWith(
-          (ref) async =>
-              WorkoutLibrarySnapshot(exercises: _exercises, plans: plans),
+          (ref) async => WorkoutLibrarySnapshot(
+            exercises: exercises ?? _exercises,
+            plans: plans,
+          ),
         ),
         completedWorkoutHistoryProvider.overrideWith((ref) async {
           if (history is WorkoutHistorySnapshot) return history;
@@ -228,6 +231,59 @@ void main() {
       find.bySemanticsLabel(RegExp('Chest still recovering · this plan')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('plans of backfilled built-ins name specific muscles', (
+    tester,
+  ) async {
+    ExerciseRecord builtIn(String id, String group, List<String> primary) =>
+        ExerciseRecord(
+          uuid: id,
+          name: 'Move $id',
+          muscleGroup: group,
+          equipment: 'Barbell',
+          movementCategory: 'Hinge',
+          inputMode: 'reps_load',
+          isBuiltIn: true,
+          updatedAtMs: 0,
+          primaryMuscles: primary,
+        );
+    final rdlDone = _done('Legs', 6);
+    final session = WorkoutSessionRecord(
+      uuid: rdlDone.uuid,
+      name: rdlDone.name,
+      status: rdlDone.status,
+      startedAtUtc: rdlDone.startedAtUtc,
+      completedAtUtc: rdlDone.completedAtUtc,
+      originalOffsetMinutes: 0,
+      revision: 1,
+      exercises: [
+        WorkoutExerciseRecord(
+          uuid: 'e',
+          sessionUuid: rdlDone.uuid,
+          nameSnapshot: 'Romanian deadlift',
+          muscleSnapshot: 'Legs',
+          position: 0,
+          primaryMusclesSnapshot: const ['hamstrings', 'glutes'],
+        ),
+      ],
+      sets: rdlDone.sets,
+    );
+    await _pump(
+      tester,
+      exercises: [
+        builtIn('rdl', 'Legs', ['hamstrings', 'glutes']),
+        builtIn('bench', 'Chest', ['chest']),
+      ],
+      plans: [
+        _plan('rdl', 'RDL day', 'rdl', 9),
+        _plan('push', 'Push', 'bench', 8),
+      ],
+      history: WorkoutHistorySnapshot(sessions: [session]),
+    );
+    expect(find.text('Better fit today'), findsOneWidget);
+    expect(find.textContaining('Hamstrings'), findsWidgets);
+    expect(find.textContaining('Legs still recovering'), findsNothing);
   });
 
   testWidgets('Start on the card starts the suggested plan', (tester) async {

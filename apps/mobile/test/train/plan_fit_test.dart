@@ -4,7 +4,12 @@ import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
 import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-ExerciseRecord _ex(String uuid, String group) => ExerciseRecord(
+ExerciseRecord _ex(
+  String uuid,
+  String group, {
+  List<String> primary = const [],
+  List<String> secondary = const [],
+}) => ExerciseRecord(
   uuid: uuid,
   name: uuid,
   muscleGroup: group,
@@ -13,6 +18,8 @@ ExerciseRecord _ex(String uuid, String group) => ExerciseRecord(
   inputMode: 'weightReps',
   isBuiltIn: false,
   updatedAtMs: 0,
+  primaryMuscles: primary,
+  secondaryMuscles: secondary,
 );
 
 WorkoutPlanRecord _plan(String uuid, Map<String, int> sets) =>
@@ -89,6 +96,123 @@ void main() {
     Muscle.chest: 0.6,
     Muscle.biceps: 0.09,
     Muscle.triceps: 0.05,
+  });
+
+  group('specific muscles', () {
+    final done = DateTime.utc(2026, 11, 24, 12);
+    // An RDL day: hamstrings and glutes primary, lower back secondary.
+    WorkoutSessionRecord rdlDay() => WorkoutSessionRecord(
+      uuid: 'rdl',
+      name: 'RDL',
+      status: WorkoutStatus.completed,
+      startedAtUtc: done.subtract(const Duration(minutes: 30)),
+      completedAtUtc: done,
+      originalOffsetMinutes: 0,
+      revision: 1,
+      exercises: [
+        WorkoutExerciseRecord(
+          uuid: 'e',
+          sessionUuid: 'rdl',
+          nameSnapshot: 'Romanian deadlift',
+          muscleSnapshot: 'Legs',
+          position: 0,
+          primaryMusclesSnapshot: const ['hamstrings', 'glutes'],
+          secondaryMusclesSnapshot: const ['lowerBack'],
+        ),
+      ],
+      sets: [
+        for (var i = 0; i < 10; i++)
+          WorkoutSetRecord(
+            uuid: 's$i',
+            exerciseUuid: 'e',
+            position: i,
+            kind: WorkoutSetKind.working,
+            status: WorkoutSetStatus.completed,
+            reps: 10,
+            rpe: 8,
+            completedAtUtc: done,
+          ),
+      ],
+    );
+
+    final fine = {
+      'rdl': _ex(
+        'rdl',
+        'Legs',
+        primary: ['hamstrings', 'glutes'],
+        secondary: ['lowerBack'],
+      ),
+      'bench': _ex(
+        'bench',
+        'Chest',
+        primary: ['chest'],
+        secondary: ['triceps', 'shoulders'],
+      ),
+      'legacy': _ex('legacy', 'Legs'),
+      'row': _ex('row', 'Back', primary: ['lats'], secondary: ['biceps']),
+    };
+
+    test('a plan of backfilled built-ins names Hamstrings and Glutes', () {
+      final recovery = MuscleRecovery.fromWorkouts([rdlDay()], done);
+      final r = planRecoveryOf(
+        _plan('p', {'rdl': 3, 'bench': 3}),
+        fine,
+        recovery,
+      )!;
+      expect(r.groups, {'Hamstrings', 'Glutes', 'Chest'});
+      expect(r.recovering, {'Hamstrings', 'Glutes'});
+      expect(r.recovering, isNot(contains('Legs')));
+      expect(r.recovering, isNot(contains('Chest')));
+    });
+
+    test('secondary muscles are ignored for recovering', () {
+      final recovery = MuscleRecovery.fromWorkouts([rdlDay()], done);
+      // Back is primary lats, secondary biceps; lower back is loaded but is
+      // only a secondary muscle of the RDL, so a lats plan stays recovered.
+      final r = planRecoveryOf(_plan('p', {'row': 3}), fine, recovery)!;
+      expect(r.groups, {'Lats'});
+      expect(r.isRecovered, isTrue);
+      final bodyRecovery = const MuscleRecovery({Muscle.biceps: 1});
+      expect(
+        planRecoveryOf(_plan('p', {'row': 3}), fine, bodyRecovery)!.isRecovered,
+        isTrue,
+      );
+    });
+
+    test('a legacy custom Legs exercise still reports Legs', () {
+      final recovery = MuscleRecovery.fromWorkouts([rdlDay()], done);
+      final r = planRecoveryOf(_plan('p', {'legacy': 3}), fine, recovery)!;
+      expect(r.groups, {'Legs'});
+      expect(r.recovering, {'Legs'});
+    });
+
+    test('suggestion works with muscle names and when nothing recovers', () {
+      final recovery = MuscleRecovery.fromWorkouts([rdlDay()], done);
+      final rdlPlan = planRecoveryOf(
+        _plan('rdl-day', {'rdl': 3}),
+        fine,
+        recovery,
+      )!;
+      final pushPlan = planRecoveryOf(
+        _plan('push-day', {'bench': 3}),
+        fine,
+        recovery,
+      )!;
+      final suggestion = suggestPlan([rdlPlan, pushPlan], lowReadiness: false);
+      expect(suggestion, isA<SuggestRecovered>());
+      expect(suggestion!.plan.planUuid, 'push-day');
+      expect((suggestion as SuggestRecovered).restedGroups, {
+        'Hamstrings',
+        'Glutes',
+      });
+
+      final rested = MuscleRecovery.fromWorkouts([
+        rdlDay(),
+      ], done.add(const Duration(hours: 80)));
+      final a = planRecoveryOf(_plan('a', {'rdl': 3}), fine, rested)!;
+      final b = planRecoveryOf(_plan('b', {'bench': 3}), fine, rested)!;
+      expect(suggestPlan([a, b], lowReadiness: false), isNull);
+    });
   });
 
   group('planRecoveryOf', () {
