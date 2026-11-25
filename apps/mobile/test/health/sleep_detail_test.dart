@@ -225,6 +225,23 @@ void main() {
     expect(find.textContaining('109%'), findsNothing);
   });
 
+  testWidgets('a night without stages or in-bed shows no efficiency', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _overview([
+        for (var i = -3; i < 0; i++) ..._staged(_day(i)),
+        ..._unstaged(_day(0)),
+      ]),
+      FakeHealthReader(),
+    );
+
+    expect(find.text('7h 00m asleep'), findsOneWidget);
+    expect(find.text('Sleep span 7h 00m'), findsOneWidget);
+    expect(find.textContaining('efficient'), findsNothing);
+  });
+
   testWidgets('Android names light sleep Light', (tester) async {
     await _pump(
       tester,

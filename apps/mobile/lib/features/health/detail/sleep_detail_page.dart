@@ -159,9 +159,13 @@ class _LastNight extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
+                  // Without stages or an in-bed record the span is the
+                  // sleep itself, so an efficiency would always be 100%.
                   HealthCaption(
-                    '$inBedName ${formatDuration(inBed)} · '
-                    '${_efficiency(night)} efficient',
+                    !night.hasStages && night.inBed == null
+                        ? '$inBedName ${formatDuration(inBed)}'
+                        : '$inBedName ${formatDuration(inBed)} · '
+                              '${_efficiency(night)} efficient',
                   ),
                   HealthCaption(
                     '${formatTimeRange(night.start, night.end)} · '
