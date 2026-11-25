@@ -16,6 +16,7 @@ import '../features/progress/workout_history_detail_page.dart';
 import '../features/today/today_page.dart';
 import '../features/train/train_page.dart';
 import '../features/train/exercise_catalog_page.dart';
+import '../features/train/exercise_detail_page.dart';
 import '../features/train/plan_editor_page.dart';
 import '../features/train/active_workout_page.dart';
 import 'floating_nav_bar.dart';
@@ -80,6 +81,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/train/exercises',
             builder: (_, _) => const ExerciseCatalogPage(),
+          ),
+          GoRoute(
+            path: '/train/exercises/:id',
+            builder: (_, state) =>
+                ExerciseDetailPage(exerciseId: state.pathParameters['id']!),
           ),
           GoRoute(
             path: '/train/plans/new',
