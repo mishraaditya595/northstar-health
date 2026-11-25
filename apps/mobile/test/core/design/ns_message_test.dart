@@ -3,6 +3,14 @@ import 'package:beyondrep/core/design/dialogs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+double _ratio(Color a, Color b) {
+  final la = a.computeLuminance();
+  final lb = b.computeLuminance();
+  final hi = la > lb ? la : lb;
+  final lo = la > lb ? lb : la;
+  return (hi + 0.05) / (lo + 0.05);
+}
+
 void main() {
   Future<void> open(WidgetTester tester, void Function(BuildContext) show) =>
       tester.pumpWidget(
@@ -59,4 +67,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Saved'), findsNothing);
   });
+
+  for (final brightness in Brightness.values) {
+    test('the snackbar action is readable (${brightness.name})', () {
+      final theme = BeyondRepTheme.build(brightness).snackBarTheme;
+      expect(theme.actionTextColor, isNotNull);
+      expect(
+        _ratio(theme.actionTextColor!, theme.backgroundColor!),
+        greaterThanOrEqualTo(4.5),
+      );
+    });
+  }
 }
