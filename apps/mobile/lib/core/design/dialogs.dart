@@ -72,7 +72,18 @@ Future<T?> showNsSheet<T>(
   ),
 );
 
-/// Short, non-blocking message. Style comes from `snackBarTheme`.
-void showNsMessage(BuildContext context, String message) =>
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+/// Short, non-blocking message. Style comes from `snackBarTheme`. An optional
+/// [actionLabel] adds one action button that runs [onAction].
+void showNsMessage(
+  BuildContext context,
+  String message, {
+  String? actionLabel,
+  VoidCallback? onAction,
+}) => ScaffoldMessenger.of(context).showSnackBar(
+  SnackBar(
+    content: Text(message),
+    action: actionLabel == null || onAction == null
+        ? null
+        : SnackBarAction(label: actionLabel, onPressed: onAction),
+  ),
+);
