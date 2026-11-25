@@ -121,6 +121,7 @@ class WorkoutPlanRecord {
     required this.updatedAtMs,
     required this.exercises,
     this.archivedAtMs,
+    this.programUuid,
   });
 
   final String uuid;
@@ -129,6 +130,9 @@ class WorkoutPlanRecord {
   final int updatedAtMs;
   final int? archivedAtMs;
   final List<PlanExerciseRecord> exercises;
+
+  /// Owning program, or null for the user's own plans. Local only.
+  final String? programUuid;
 }
 
 class WorkoutLibrarySnapshot {

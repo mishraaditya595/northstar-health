@@ -51,6 +51,10 @@ class WorkoutPlanEntity {
   int updatedAtMs;
   int? archivedAtMs;
 
+  /// Owning program, or null for the user's own plans. Local only.
+  @Index()
+  String? programUuid;
+
   WorkoutPlanEntity({
     this.id = 0,
     required this.uuid,
@@ -59,6 +63,7 @@ class WorkoutPlanEntity {
     required this.createdAtMs,
     required this.updatedAtMs,
     this.archivedAtMs,
+    this.programUuid,
   });
 }
 
@@ -112,6 +117,11 @@ class WorkoutSessionEntity {
   int updatedAtMs;
   int? deletedAtMs;
 
+  /// Program and local date (`yyyy-MM-dd`) this session was started for.
+  /// Local only, never part of the sync payload.
+  String? programUuid;
+  String? programDayLocalDate;
+
   WorkoutSessionEntity({
     this.id = 0,
     required this.uuid,
@@ -125,6 +135,67 @@ class WorkoutSessionEntity {
     required this.originalOffsetMinutes,
     required this.updatedAtMs,
     this.deletedAtMs,
+    this.programUuid,
+    this.programDayLocalDate,
+  });
+}
+
+@Entity()
+class TrainingProgramEntity {
+  @Id()
+  int id = 0;
+  @Unique()
+  String uuid;
+  String name;
+  String description;
+  String sourceId;
+  int sourceRelease;
+
+  /// ISO weekday of program day 1, Monday = 1.
+  int firstDayWeekday;
+  bool isActive;
+
+  /// `yyyy-MM-dd`, set each time the program becomes active.
+  String? activatedLocalDate;
+  int createdAtMs;
+  int updatedAtMs;
+  int? archivedAtMs;
+
+  TrainingProgramEntity({
+    this.id = 0,
+    required this.uuid,
+    required this.name,
+    this.description = '',
+    required this.sourceId,
+    required this.sourceRelease,
+    required this.firstDayWeekday,
+    this.isActive = false,
+    this.activatedLocalDate,
+    required this.createdAtMs,
+    required this.updatedAtMs,
+    this.archivedAtMs,
+  });
+}
+
+@Entity()
+class ProgramDayEntity {
+  @Id()
+  int id = 0;
+  @Unique()
+  String uuid;
+  @Index()
+  String programUuid;
+
+  /// 0 to 6, program order. A null [planUuid] is a rest day.
+  int dayIndex;
+  String? planUuid;
+
+  ProgramDayEntity({
+    this.id = 0,
+    required this.uuid,
+    required this.programUuid,
+    required this.dayIndex,
+    this.planUuid,
   });
 }
 

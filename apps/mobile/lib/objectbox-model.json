@@ -222,7 +222,7 @@
     },
     {
       "id": "4:8410333550676337599",
-      "lastPropertyId": "7:8631875600552513697",
+      "lastPropertyId": "8:5447276246238253770",
       "name": "WorkoutPlanEntity",
       "properties": [
         {
@@ -262,13 +262,20 @@
           "id": "7:8631875600552513697",
           "name": "archivedAtMs",
           "type": 6
+        },
+        {
+          "id": "8:5447276246238253770",
+          "name": "programUuid",
+          "indexId": "22:7929442221991526730",
+          "type": 9,
+          "flags": 2048
         }
       ],
       "relations": []
     },
     {
       "id": "5:9189008001757253012",
-      "lastPropertyId": "12:340242140450190606",
+      "lastPropertyId": "14:8177102868156759546",
       "name": "WorkoutSessionEntity",
       "properties": [
         {
@@ -335,6 +342,16 @@
           "id": "12:340242140450190606",
           "name": "deletedAtMs",
           "type": 6
+        },
+        {
+          "id": "13:2550119647647783944",
+          "name": "programUuid",
+          "type": 9
+        },
+        {
+          "id": "14:8177102868156759546",
+          "name": "programDayLocalDate",
+          "type": 9
         }
       ],
       "relations": []
@@ -721,10 +738,119 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "13:7529158017205035282",
+      "lastPropertyId": "5:1423572716575373022",
+      "name": "ProgramDayEntity",
+      "properties": [
+        {
+          "id": "1:7971963678029403871",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:8251175784178643288",
+          "name": "uuid",
+          "indexId": "19:1559646174958396644",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:349780164716909535",
+          "name": "programUuid",
+          "indexId": "20:4184707470386960858",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "4:5226539782174408303",
+          "name": "dayIndex",
+          "type": 6
+        },
+        {
+          "id": "5:1423572716575373022",
+          "name": "planUuid",
+          "type": 9
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "14:594895591915760983",
+      "lastPropertyId": "12:2056385229223587884",
+      "name": "TrainingProgramEntity",
+      "properties": [
+        {
+          "id": "1:524481865944112592",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:6325091107203692913",
+          "name": "uuid",
+          "indexId": "21:5664240531657687119",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:3931791125169758342",
+          "name": "name",
+          "type": 9
+        },
+        {
+          "id": "4:565105842142732996",
+          "name": "description",
+          "type": 9
+        },
+        {
+          "id": "5:5701660612698509438",
+          "name": "sourceId",
+          "type": 9
+        },
+        {
+          "id": "6:5275805796423061721",
+          "name": "sourceRelease",
+          "type": 6
+        },
+        {
+          "id": "7:4792705019187520591",
+          "name": "firstDayWeekday",
+          "type": 6
+        },
+        {
+          "id": "8:1152857149051604092",
+          "name": "isActive",
+          "type": 1
+        },
+        {
+          "id": "9:8028911721502217329",
+          "name": "activatedLocalDate",
+          "type": 9
+        },
+        {
+          "id": "10:6236735987698318770",
+          "name": "createdAtMs",
+          "type": 6
+        },
+        {
+          "id": "11:953960413383519559",
+          "name": "updatedAtMs",
+          "type": 6
+        },
+        {
+          "id": "12:2056385229223587884",
+          "name": "archivedAtMs",
+          "type": 6
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "12:7621003638056886597",
-  "lastIndexId": "18:17668161778702131",
+  "lastEntityId": "14:594895591915760983",
+  "lastIndexId": "22:7929442221991526730",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

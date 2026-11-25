@@ -189,6 +189,8 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
               ),
         exercises: exercises,
         sets: sets,
+        programUuid: s.programUuid,
+        programDayLocalDate: s.programDayLocalDate,
       );
     });
   }

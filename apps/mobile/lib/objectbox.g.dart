@@ -274,7 +274,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
     id: const obx_int.IdUid(4, 8410333550676337599),
     name: 'WorkoutPlanEntity',
-    lastPropertyId: const obx_int.IdUid(7, 8631875600552513697),
+    lastPropertyId: const obx_int.IdUid(8, 5447276246238253770),
     flags: 0,
     properties: <obx_int.ModelProperty>[
       obx_int.ModelProperty(
@@ -320,6 +320,13 @@ final _entities = <obx_int.ModelEntity>[
         type: 6,
         flags: 0,
       ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(8, 5447276246238253770),
+        name: 'programUuid',
+        type: 9,
+        flags: 2048,
+        indexId: const obx_int.IdUid(22, 7929442221991526730),
+      ),
     ],
     relations: <obx_int.ModelRelation>[],
     backlinks: <obx_int.ModelBacklink>[],
@@ -327,7 +334,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
     id: const obx_int.IdUid(5, 9189008001757253012),
     name: 'WorkoutSessionEntity',
-    lastPropertyId: const obx_int.IdUid(12, 340242140450190606),
+    lastPropertyId: const obx_int.IdUid(14, 8177102868156759546),
     flags: 0,
     properties: <obx_int.ModelProperty>[
       obx_int.ModelProperty(
@@ -402,6 +409,18 @@ final _entities = <obx_int.ModelEntity>[
         id: const obx_int.IdUid(12, 340242140450190606),
         name: 'deletedAtMs',
         type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(13, 2550119647647783944),
+        name: 'programUuid',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(14, 8177102868156759546),
+        name: 'programDayLocalDate',
+        type: 9,
         flags: 0,
       ),
     ],
@@ -848,6 +867,131 @@ final _entities = <obx_int.ModelEntity>[
     relations: <obx_int.ModelRelation>[],
     backlinks: <obx_int.ModelBacklink>[],
   ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(13, 7529158017205035282),
+    name: 'ProgramDayEntity',
+    lastPropertyId: const obx_int.IdUid(5, 1423572716575373022),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 7971963678029403871),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 8251175784178643288),
+        name: 'uuid',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(19, 1559646174958396644),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 349780164716909535),
+        name: 'programUuid',
+        type: 9,
+        flags: 2048,
+        indexId: const obx_int.IdUid(20, 4184707470386960858),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 5226539782174408303),
+        name: 'dayIndex',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 1423572716575373022),
+        name: 'planUuid',
+        type: 9,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(14, 594895591915760983),
+    name: 'TrainingProgramEntity',
+    lastPropertyId: const obx_int.IdUid(12, 2056385229223587884),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 524481865944112592),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 6325091107203692913),
+        name: 'uuid',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(21, 5664240531657687119),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 3931791125169758342),
+        name: 'name',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 565105842142732996),
+        name: 'description',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 5701660612698509438),
+        name: 'sourceId',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 5275805796423061721),
+        name: 'sourceRelease',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(7, 4792705019187520591),
+        name: 'firstDayWeekday',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(8, 1152857149051604092),
+        name: 'isActive',
+        type: 1,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(9, 8028911721502217329),
+        name: 'activatedLocalDate',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(10, 6236735987698318770),
+        name: 'createdAtMs',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(11, 953960413383519559),
+        name: 'updatedAtMs',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(12, 2056385229223587884),
+        name: 'archivedAtMs',
+        type: 6,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
 ];
 
 /// Shortcut for [obx.Store.new] that passes [getObjectBoxModel] and for Flutter
@@ -893,8 +1037,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
     // Typically, this is done with `dart run build_runner build`.
     generatorVersion: obx_int.GeneratorVersion.v2025_12_16,
     entities: _entities,
-    lastEntityId: const obx_int.IdUid(12, 7621003638056886597),
-    lastIndexId: const obx_int.IdUid(18, 17668161778702131),
+    lastEntityId: const obx_int.IdUid(14, 594895591915760983),
+    lastIndexId: const obx_int.IdUid(22, 7929442221991526730),
     lastRelationId: const obx_int.IdUid(0, 0),
     lastSequenceId: const obx_int.IdUid(0, 0),
     retiredEntityUids: const [],
@@ -1242,7 +1386,10 @@ obx_int.ModelDefinition getObjectBoxModel() {
         final uuidOffset = fbb.writeString(object.uuid);
         final nameOffset = fbb.writeString(object.name);
         final descriptionOffset = fbb.writeString(object.description);
-        fbb.startTable(8);
+        final programUuidOffset = object.programUuid == null
+            ? null
+            : fbb.writeString(object.programUuid!);
+        fbb.startTable(9);
         fbb.addInt64(0, object.id);
         fbb.addOffset(1, uuidOffset);
         fbb.addOffset(2, nameOffset);
@@ -1250,6 +1397,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
         fbb.addInt64(4, object.createdAtMs);
         fbb.addInt64(5, object.updatedAtMs);
         fbb.addInt64(6, object.archivedAtMs);
+        fbb.addOffset(7, programUuidOffset);
         fbb.finish(fbb.endTable());
         return object.id;
       },
@@ -1285,6 +1433,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
           rootOffset,
           16,
         );
+        final programUuidParam = const fb.StringReader(asciiOptimization: true)
+            .vTableGetNullable(buffer, rootOffset, 18);
         final object = WorkoutPlanEntity(
           id: idParam,
           uuid: uuidParam,
@@ -1293,6 +1443,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
           createdAtMs: createdAtMsParam,
           updatedAtMs: updatedAtMsParam,
           archivedAtMs: archivedAtMsParam,
+          programUuid: programUuidParam,
         );
 
         return object;
@@ -1314,7 +1465,13 @@ obx_int.ModelDefinition getObjectBoxModel() {
             : fbb.writeString(object.planUuid!);
         final statusOffset = fbb.writeString(object.status);
         final originOffset = fbb.writeString(object.origin);
-        fbb.startTable(13);
+        final programUuidOffset = object.programUuid == null
+            ? null
+            : fbb.writeString(object.programUuid!);
+        final programDayLocalDateOffset = object.programDayLocalDate == null
+            ? null
+            : fbb.writeString(object.programDayLocalDate!);
+        fbb.startTable(15);
         fbb.addInt64(0, object.id);
         fbb.addOffset(1, uuidOffset);
         fbb.addOffset(2, nameOffset);
@@ -1327,6 +1484,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
         fbb.addInt64(9, object.originalOffsetMinutes);
         fbb.addInt64(10, object.updatedAtMs);
         fbb.addInt64(11, object.deletedAtMs);
+        fbb.addOffset(12, programUuidOffset);
+        fbb.addOffset(13, programDayLocalDateOffset);
         fbb.finish(fbb.endTable());
         return object.id;
       },
@@ -1383,6 +1542,11 @@ obx_int.ModelDefinition getObjectBoxModel() {
           rootOffset,
           26,
         );
+        final programUuidParam = const fb.StringReader(asciiOptimization: true)
+            .vTableGetNullable(buffer, rootOffset, 28);
+        final programDayLocalDateParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGetNullable(buffer, rootOffset, 30);
         final object = WorkoutSessionEntity(
           id: idParam,
           uuid: uuidParam,
@@ -1396,6 +1560,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
           originalOffsetMinutes: originalOffsetMinutesParam,
           updatedAtMs: updatedAtMsParam,
           deletedAtMs: deletedAtMsParam,
+          programUuid: programUuidParam,
+          programDayLocalDate: programDayLocalDateParam,
         );
 
         return object;
@@ -1973,6 +2139,166 @@ obx_int.ModelDefinition getObjectBoxModel() {
         return object;
       },
     ),
+    ProgramDayEntity: obx_int.EntityDefinition<ProgramDayEntity>(
+      model: _entities[12],
+      toOneRelations: (ProgramDayEntity object) => [],
+      toManyRelations: (ProgramDayEntity object) => {},
+      getId: (ProgramDayEntity object) => object.id,
+      setId: (ProgramDayEntity object, int id) {
+        object.id = id;
+      },
+      objectToFB: (ProgramDayEntity object, fb.Builder fbb) {
+        final uuidOffset = fbb.writeString(object.uuid);
+        final programUuidOffset = fbb.writeString(object.programUuid);
+        final planUuidOffset = object.planUuid == null
+            ? null
+            : fbb.writeString(object.planUuid!);
+        fbb.startTable(6);
+        fbb.addInt64(0, object.id);
+        fbb.addOffset(1, uuidOffset);
+        fbb.addOffset(2, programUuidOffset);
+        fbb.addInt64(3, object.dayIndex);
+        fbb.addOffset(4, planUuidOffset);
+        fbb.finish(fbb.endTable());
+        return object.id;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final idParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          4,
+          0,
+        );
+        final uuidParam = const fb.StringReader(asciiOptimization: true)
+            .vTableGet(buffer, rootOffset, 6, '');
+        final programUuidParam = const fb.StringReader(asciiOptimization: true)
+            .vTableGet(buffer, rootOffset, 8, '');
+        final dayIndexParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          10,
+          0,
+        );
+        final planUuidParam = const fb.StringReader(asciiOptimization: true)
+            .vTableGetNullable(buffer, rootOffset, 12);
+        final object = ProgramDayEntity(
+          id: idParam,
+          uuid: uuidParam,
+          programUuid: programUuidParam,
+          dayIndex: dayIndexParam,
+          planUuid: planUuidParam,
+        );
+
+        return object;
+      },
+    ),
+    TrainingProgramEntity: obx_int.EntityDefinition<TrainingProgramEntity>(
+      model: _entities[13],
+      toOneRelations: (TrainingProgramEntity object) => [],
+      toManyRelations: (TrainingProgramEntity object) => {},
+      getId: (TrainingProgramEntity object) => object.id,
+      setId: (TrainingProgramEntity object, int id) {
+        object.id = id;
+      },
+      objectToFB: (TrainingProgramEntity object, fb.Builder fbb) {
+        final uuidOffset = fbb.writeString(object.uuid);
+        final nameOffset = fbb.writeString(object.name);
+        final descriptionOffset = fbb.writeString(object.description);
+        final sourceIdOffset = fbb.writeString(object.sourceId);
+        final activatedLocalDateOffset = object.activatedLocalDate == null
+            ? null
+            : fbb.writeString(object.activatedLocalDate!);
+        fbb.startTable(13);
+        fbb.addInt64(0, object.id);
+        fbb.addOffset(1, uuidOffset);
+        fbb.addOffset(2, nameOffset);
+        fbb.addOffset(3, descriptionOffset);
+        fbb.addOffset(4, sourceIdOffset);
+        fbb.addInt64(5, object.sourceRelease);
+        fbb.addInt64(6, object.firstDayWeekday);
+        fbb.addBool(7, object.isActive);
+        fbb.addOffset(8, activatedLocalDateOffset);
+        fbb.addInt64(9, object.createdAtMs);
+        fbb.addInt64(10, object.updatedAtMs);
+        fbb.addInt64(11, object.archivedAtMs);
+        fbb.finish(fbb.endTable());
+        return object.id;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final idParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          4,
+          0,
+        );
+        final uuidParam = const fb.StringReader(asciiOptimization: true)
+            .vTableGet(buffer, rootOffset, 6, '');
+        final nameParam = const fb.StringReader(asciiOptimization: true)
+            .vTableGet(buffer, rootOffset, 8, '');
+        final descriptionParam = const fb.StringReader(asciiOptimization: true)
+            .vTableGet(buffer, rootOffset, 10, '');
+        final sourceIdParam = const fb.StringReader(asciiOptimization: true)
+            .vTableGet(buffer, rootOffset, 12, '');
+        final sourceReleaseParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          14,
+          0,
+        );
+        final firstDayWeekdayParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          16,
+          0,
+        );
+        final isActiveParam = const fb.BoolReader().vTableGet(
+          buffer,
+          rootOffset,
+          18,
+          false,
+        );
+        final activatedLocalDateParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGetNullable(buffer, rootOffset, 20);
+        final createdAtMsParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          22,
+          0,
+        );
+        final updatedAtMsParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          24,
+          0,
+        );
+        final archivedAtMsParam = const fb.Int64Reader().vTableGetNullable(
+          buffer,
+          rootOffset,
+          26,
+        );
+        final object = TrainingProgramEntity(
+          id: idParam,
+          uuid: uuidParam,
+          name: nameParam,
+          description: descriptionParam,
+          sourceId: sourceIdParam,
+          sourceRelease: sourceReleaseParam,
+          firstDayWeekday: firstDayWeekdayParam,
+          isActive: isActiveParam,
+          activatedLocalDate: activatedLocalDateParam,
+          createdAtMs: createdAtMsParam,
+          updatedAtMs: updatedAtMsParam,
+          archivedAtMs: archivedAtMsParam,
+        );
+
+        return object;
+      },
+    ),
   };
 
   return obx_int.ModelDefinition(model, bindings);
@@ -2210,6 +2536,11 @@ class WorkoutPlanEntity_ {
   static final archivedAtMs = obx.QueryIntegerProperty<WorkoutPlanEntity>(
     _entities[3].properties[6],
   );
+
+  /// See [WorkoutPlanEntity.programUuid].
+  static final programUuid = obx.QueryStringProperty<WorkoutPlanEntity>(
+    _entities[3].properties[7],
+  );
 }
 
 /// [WorkoutSessionEntity] entity fields to define ObjectBox queries.
@@ -2274,6 +2605,17 @@ class WorkoutSessionEntity_ {
   static final deletedAtMs = obx.QueryIntegerProperty<WorkoutSessionEntity>(
     _entities[4].properties[11],
   );
+
+  /// See [WorkoutSessionEntity.programUuid].
+  static final programUuid = obx.QueryStringProperty<WorkoutSessionEntity>(
+    _entities[4].properties[12],
+  );
+
+  /// See [WorkoutSessionEntity.programDayLocalDate].
+  static final programDayLocalDate =
+      obx.QueryStringProperty<WorkoutSessionEntity>(
+        _entities[4].properties[13],
+      );
 }
 
 /// [WorkoutSessionStateEntity] entity fields to define ObjectBox queries.
@@ -2614,5 +2956,98 @@ class HealthConnectionEntity_ {
   /// See [HealthConnectionEntity.accessScope].
   static final accessScope = obx.QueryIntegerProperty<HealthConnectionEntity>(
     _entities[11].properties[3],
+  );
+}
+
+/// [ProgramDayEntity] entity fields to define ObjectBox queries.
+class ProgramDayEntity_ {
+  /// See [ProgramDayEntity.id].
+  static final id = obx.QueryIntegerProperty<ProgramDayEntity>(
+    _entities[12].properties[0],
+  );
+
+  /// See [ProgramDayEntity.uuid].
+  static final uuid = obx.QueryStringProperty<ProgramDayEntity>(
+    _entities[12].properties[1],
+  );
+
+  /// See [ProgramDayEntity.programUuid].
+  static final programUuid = obx.QueryStringProperty<ProgramDayEntity>(
+    _entities[12].properties[2],
+  );
+
+  /// See [ProgramDayEntity.dayIndex].
+  static final dayIndex = obx.QueryIntegerProperty<ProgramDayEntity>(
+    _entities[12].properties[3],
+  );
+
+  /// See [ProgramDayEntity.planUuid].
+  static final planUuid = obx.QueryStringProperty<ProgramDayEntity>(
+    _entities[12].properties[4],
+  );
+}
+
+/// [TrainingProgramEntity] entity fields to define ObjectBox queries.
+class TrainingProgramEntity_ {
+  /// See [TrainingProgramEntity.id].
+  static final id = obx.QueryIntegerProperty<TrainingProgramEntity>(
+    _entities[13].properties[0],
+  );
+
+  /// See [TrainingProgramEntity.uuid].
+  static final uuid = obx.QueryStringProperty<TrainingProgramEntity>(
+    _entities[13].properties[1],
+  );
+
+  /// See [TrainingProgramEntity.name].
+  static final name = obx.QueryStringProperty<TrainingProgramEntity>(
+    _entities[13].properties[2],
+  );
+
+  /// See [TrainingProgramEntity.description].
+  static final description = obx.QueryStringProperty<TrainingProgramEntity>(
+    _entities[13].properties[3],
+  );
+
+  /// See [TrainingProgramEntity.sourceId].
+  static final sourceId = obx.QueryStringProperty<TrainingProgramEntity>(
+    _entities[13].properties[4],
+  );
+
+  /// See [TrainingProgramEntity.sourceRelease].
+  static final sourceRelease = obx.QueryIntegerProperty<TrainingProgramEntity>(
+    _entities[13].properties[5],
+  );
+
+  /// See [TrainingProgramEntity.firstDayWeekday].
+  static final firstDayWeekday =
+      obx.QueryIntegerProperty<TrainingProgramEntity>(
+        _entities[13].properties[6],
+      );
+
+  /// See [TrainingProgramEntity.isActive].
+  static final isActive = obx.QueryBooleanProperty<TrainingProgramEntity>(
+    _entities[13].properties[7],
+  );
+
+  /// See [TrainingProgramEntity.activatedLocalDate].
+  static final activatedLocalDate =
+      obx.QueryStringProperty<TrainingProgramEntity>(
+        _entities[13].properties[8],
+      );
+
+  /// See [TrainingProgramEntity.createdAtMs].
+  static final createdAtMs = obx.QueryIntegerProperty<TrainingProgramEntity>(
+    _entities[13].properties[9],
+  );
+
+  /// See [TrainingProgramEntity.updatedAtMs].
+  static final updatedAtMs = obx.QueryIntegerProperty<TrainingProgramEntity>(
+    _entities[13].properties[10],
+  );
+
+  /// See [TrainingProgramEntity.archivedAtMs].
+  static final archivedAtMs = obx.QueryIntegerProperty<TrainingProgramEntity>(
+    _entities[13].properties[11],
   );
 }
