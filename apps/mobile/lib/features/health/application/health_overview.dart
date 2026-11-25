@@ -446,9 +446,9 @@ Future<HealthOverview> _read(
     );
   });
 
-  final heart = _section<HeartOverview>([rhrResult, hrvResult], () {
-    if (rhrDaily.isEmpty && hrvDaily.isEmpty) return null;
-    final vo2Daily = reduceDaily(_list(vo2Result), DailyReduction.latest);
+  final vo2Daily = reduceDaily(_list(vo2Result), DailyReduction.latest);
+  final heart = _section<HeartOverview>([rhrResult, hrvResult, vo2Result], () {
+    if (rhrDaily.isEmpty && hrvDaily.isEmpty && vo2Daily.isEmpty) return null;
     return HeartOverview(
       restingHr: rhrDaily.lastOrNull,
       restingHrDaily: rhrDaily,

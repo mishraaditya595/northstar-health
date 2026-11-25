@@ -391,6 +391,27 @@ void main() {
     expect(body.weightGap, isNull);
   });
 
+  test('a heart section with only VO2 max still shows', () async {
+    fake.series[HealthSeriesType.vo2Max] = [
+      _sample(DateTime(2026, 11, 20, 9), 44.5),
+    ];
+    final c = container();
+    final overview = (await c.read(healthOverviewProvider.future))!;
+
+    final heart = (overview.heart as SectionData<HeartOverview>).value;
+    expect(heart.vo2Max!.value, 44.5);
+    expect(heart.restingHr, isNull);
+    expect(heart.hrv, isNull);
+  });
+
+  test('a VO2 max gap ranks in an empty heart section', () async {
+    fake.seriesResults[HealthSeriesType.vo2Max] = const SeriesNotAllowed();
+    final c = container();
+    final overview = (await c.read(healthOverviewProvider.future))!;
+
+    expect((overview.heart as SectionGap).gap, MetricGap.notAllowed);
+  });
+
   test('needsAccess outranks failed when a section has no data', () async {
     fake
       ..seriesResults[HealthSeriesType.restingHeartRate] = const SeriesFailed()
