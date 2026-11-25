@@ -351,6 +351,7 @@ void main() {
           'secondary_muscles': 'lats',
         },
         {'primary_muscles': null},
+        {'secondary_muscles': <String>[]},
         {
           'secondary_muscles': ['lats'],
         },

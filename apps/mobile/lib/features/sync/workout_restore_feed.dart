@@ -33,6 +33,11 @@ class RestoreContractException extends FormatException {
     return List.unmodifiable(value.cast<String>());
   }
 
+  // The server rejects a secondary key without a primary key, even if empty.
+  if (exercise.containsKey('secondary_muscles') &&
+      !exercise.containsKey('primary_muscles')) {
+    _invalid('invalid_exercise_muscles');
+  }
   final primary = read('primary_muscles');
   final secondary = read('secondary_muscles');
   if (validMuscles(primary, secondary) == null) {
