@@ -18,7 +18,11 @@ const setId = '00000000-0000-4000-8000-000000000301';
 const epochA = '00000000-0000-4000-8000-000000000901';
 const epochB = '00000000-0000-4000-8000-000000000902';
 
-Map<String, dynamic> dto({String id = workout, String name = 'Rows'}) => {
+Map<String, dynamic> dto({
+  String id = workout,
+  String name = 'Rows',
+  Map<String, Object?> exerciseExtra = const {},
+}) => {
   'schema_version': 1,
   'workout_id': id,
   'origin': 'northstar_phone',
@@ -32,6 +36,7 @@ Map<String, dynamic> dto({String id = workout, String name = 'Rows'}) => {
       'id': exercise,
       'name': 'Seated row',
       'position': 0,
+      ...exerciseExtra,
       'sets': [
         {
           'id': setId,
@@ -58,6 +63,7 @@ WorkoutRestorePage feed({
   String? name = 'Rows',
   bool tombstone = false,
   bool reset = false,
+  Map<String, Object?> exerciseExtra = const {},
 }) => WorkoutRestorePage.decode(
   {
     'schema_version': 1,
@@ -73,7 +79,9 @@ WorkoutRestorePage feed({
               'server_revision': revision,
               'change_seq': seq,
               'deleted': tombstone,
-              'payload': tombstone ? null : dto(id: id, name: name!),
+              'payload': tombstone
+                  ? null
+                  : dto(id: id, name: name!, exerciseExtra: exerciseExtra),
             },
           ],
   },
@@ -133,6 +141,29 @@ void main() {
     expect(store.box<WorkoutSyncOutboxEntity>().count(), 0);
     expect(ObjectBoxWorkoutOutbox(store).backfillCompleted(), 0);
     expect(store.box<WorkoutSyncOutboxEntity>().count(), 0);
+  });
+
+  test('restores exercise muscle snapshots', () {
+    importer.applyPage(
+      feed(
+        exerciseExtra: {
+          'primary_muscles': ['hamstrings', 'glutes'],
+          'secondary_muscles': ['lowerBack'],
+        },
+      ),
+      afterSeq: 0,
+      requestedEpoch: null,
+    );
+    final row = store.box<WorkoutExerciseEntity>().getAll().single;
+    expect(row.primaryMusclesSnapshot, ['hamstrings', 'glutes']);
+    expect(row.secondaryMusclesSnapshot, ['lowerBack']);
+  });
+
+  test('a legacy restored exercise has empty muscle snapshots', () {
+    importer.applyPage(feed(), afterSeq: 0, requestedEpoch: null);
+    final row = store.box<WorkoutExerciseEntity>().getAll().single;
+    expect(row.primaryMusclesSnapshot, isEmpty);
+    expect(row.secondaryMusclesSnapshot, isEmpty);
   });
 
   test('restart keeps imported rows, metadata and cursor; replay is no-op', () {

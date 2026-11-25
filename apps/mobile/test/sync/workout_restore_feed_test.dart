@@ -297,6 +297,103 @@ void main() {
     expect(decoded.snapshot, isNot(isA<WorkoutSessionRecord>()));
   });
 
+  group('exercise muscle arrays', () {
+    Map<String, dynamic> withExercise(Map<String, Object?> extra) {
+      final raw = mutableSnapshot();
+      ((raw['exercises'] as List).single as Map<String, dynamic>).addAll(extra);
+      return raw;
+    }
+
+    WorkoutExerciseRecord restored(Map<String, Object?> extra) =>
+        decode(page(changes: [change()..['payload'] = withExercise(extra)]))
+            .changes
+            .single
+            .snapshot!
+            .exercises
+            .single;
+
+    test('valid arrays map to the snapshot fields', () {
+      final item = restored({
+        'primary_muscles': ['hamstrings', 'glutes'],
+        'secondary_muscles': ['lowerBack'],
+      });
+      expect(item.primaryMusclesSnapshot, ['hamstrings', 'glutes']);
+      expect(item.secondaryMusclesSnapshot, ['lowerBack']);
+    });
+
+    test('a legacy payload without the keys restores empty lists', () {
+      final item = restored({});
+      expect(item.primaryMusclesSnapshot, isEmpty);
+      expect(item.secondaryMusclesSnapshot, isEmpty);
+    });
+
+    test('malformed arrays are rejected with invalid_exercise_muscles', () {
+      final bad = <Map<String, Object?>>[
+        {
+          'primary_muscles': ['wings'],
+        },
+        {
+          'primary_muscles': ['Chest'],
+        },
+        {
+          'primary_muscles': ['chest', 'chest'],
+        },
+        {
+          'primary_muscles': ['chest'],
+          'secondary_muscles': ['chest'],
+        },
+        {'primary_muscles': 'chest'},
+        {
+          'primary_muscles': [1],
+        },
+        {
+          'primary_muscles': ['chest'],
+          'secondary_muscles': 'lats',
+        },
+        {'primary_muscles': null},
+        {
+          'secondary_muscles': ['lats'],
+        },
+        {
+          'primary_muscles': [],
+          'secondary_muscles': ['lats'],
+        },
+        {
+          'primary_muscles': [
+            'chest',
+            'shoulders',
+            'biceps',
+            'forearms',
+            'abs',
+            'obliques',
+            'quads',
+            'calves',
+            'traps',
+            'lats',
+            'lowerBack',
+            'triceps',
+            'glutes',
+            'hamstrings',
+            'chest',
+          ],
+        },
+      ];
+      for (final extra in bad) {
+        expect(
+          () => restored(extra),
+          throwsA(
+            isA<RestoreContractException>().having(
+              (e) => e.code,
+              'code',
+              'invalid_exercise_muscles',
+            ),
+          ),
+          reason: '$extra',
+        );
+      }
+    });
+  });
+
   test('separate exercise and set UUID domains may share an ID', () {
     final raw = mutableSnapshot();
     final exercise = (raw['exercises'] as List).first as Map<String, dynamic>;

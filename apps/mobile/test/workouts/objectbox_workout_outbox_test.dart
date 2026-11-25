@@ -123,6 +123,76 @@ void main() {
     expect(op.payloadJson, isNot(contains('restDeadline')));
   });
 
+  group('muscle snapshots in the cloud payload', () {
+    Map<String, dynamic> finishAndRead({
+      List<String> primary = const [],
+      List<String> secondary = const [],
+    }) {
+      final active = withSet();
+      final box = store.box<WorkoutExerciseEntity>();
+      final exercise = box.getAll().single
+        ..primaryMusclesSnapshot = primary
+        ..secondaryMusclesSnapshot = secondary;
+      box.put(exercise);
+      engine.finishWorkout(
+        active.uuid,
+        expectedRevision: active.revision,
+        finishedAtUtc: DateTime.utc(2026, 10, 25, 10),
+      );
+      final pending = outbox.pending();
+      if (pending.isEmpty) return const {};
+      final dto =
+          jsonDecode(pending.single.payloadJson) as Map<String, dynamic>;
+      return (dto['exercises'] as List).single as Map<String, dynamic>;
+    }
+
+    test('a catalogue exercise sends both arrays', () {
+      final sent = finishAndRead(
+        primary: ['hamstrings', 'glutes'],
+        secondary: ['lowerBack'],
+      );
+      expect(sent['primary_muscles'], ['hamstrings', 'glutes']);
+      expect(sent['secondary_muscles'], ['lowerBack']);
+    });
+
+    test('a primary-only exercise sends an empty secondary array', () {
+      final sent = finishAndRead(primary: ['chest']);
+      expect(sent['primary_muscles'], ['chest']);
+      expect(sent['secondary_muscles'], isEmpty);
+    });
+
+    test('a legacy or custom exercise keeps exactly the old key set', () {
+      final sent = finishAndRead();
+      expect(sent.keys.toSet(), {
+        'id',
+        'name',
+        'muscle',
+        'equipment',
+        'position',
+        'sets',
+      });
+    });
+
+    test('an invalid snapshot blocks upload but not local completion', () {
+      for (final (primary, secondary) in [
+        (['wings'], <String>[]),
+        (['chest', 'chest'], <String>[]),
+        (['chest'], ['chest']),
+        (<String>[], ['chest']),
+      ]) {
+        final sent = finishAndRead(primary: primary, secondary: secondary);
+        expect(sent, isEmpty, reason: '$primary/$secondary');
+        expect(outbox.blockedCount(), 1);
+        expect(repository.getSession(workoutId)!.status.name, 'completed');
+        store.box<WorkoutSyncOutboxEntity>().removeAll();
+        store.box<WorkoutExerciseEntity>().removeAll();
+        store.box<WorkoutSetEntity>().removeAll();
+        store.box<WorkoutSessionEntity>().removeAll();
+        store.box<WorkoutSessionStateEntity>().removeAll();
+      }
+    });
+  });
+
   test(
     'restart preserves operation UUID and unchanged replay is idempotent',
     () {

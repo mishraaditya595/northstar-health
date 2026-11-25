@@ -1009,6 +1009,8 @@ class ObjectBoxWorkoutRestoreImporter {
           muscleSnapshot: ex.muscleSnapshot,
           equipmentSnapshot: ex.equipmentSnapshot,
           position: ex.position,
+          primaryMusclesSnapshot: List.of(ex.primaryMusclesSnapshot),
+          secondaryMusclesSnapshot: List.of(ex.secondaryMusclesSnapshot),
         ),
       );
     }
