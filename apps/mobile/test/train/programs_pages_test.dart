@@ -1,6 +1,9 @@
 import 'dart:io';
 
+import 'package:beyondrep/features/catalog/domain/catalog_models.dart';
 import 'package:beyondrep/features/catalog/domain/catalog_programs.dart';
+import 'package:beyondrep/features/programs/domain/program_models.dart';
+import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
 import 'package:beyondrep/features/catalog/domain/catalog_templates.dart';
 import 'package:beyondrep/features/programs/data/objectbox_program_repository.dart';
 import 'package:beyondrep/features/workouts/data/workout_entities.dart';
@@ -20,6 +23,39 @@ Future<void> tapLow(WidgetTester tester, String text) async {
   await tester.pumpAndSettle();
   await tester.tap(find.text(text));
   await tester.pumpAndSettle();
+}
+
+class _FailsOnceAfterCommit extends ObjectBoxProgramRepository {
+  _FailsOnceAfterCommit(super.store);
+  final requests = <String>[];
+
+  @override
+  TrainingProgramRecord importProgram({
+    required String requestUuid,
+    required CatalogProgram program,
+    required Map<String, List<TemplateRowInput>> templateRows,
+    required Map<String, String> templateNames,
+    Map<String, String> templateDescriptions = const {},
+    required int release,
+    required int firstDayWeekday,
+    required bool makeActive,
+    required DateTime localToday,
+  }) {
+    requests.add(requestUuid);
+    final result = super.importProgram(
+      requestUuid: requestUuid,
+      program: program,
+      templateRows: templateRows,
+      templateNames: templateNames,
+      templateDescriptions: templateDescriptions,
+      release: release,
+      firstDayWeekday: firstDayWeekday,
+      makeActive: makeActive,
+      localToday: localToday,
+    );
+    if (requests.length == 1) throw StateError('lost after commit');
+    return result;
+  }
 }
 
 void main() {
@@ -214,6 +250,40 @@ void main() {
       await tester.pumpAndSettle();
       expect(store.box<TrainingProgramEntity>().count(), 1);
       expect(store.box<WorkoutPlanEntity>().count(), 3);
+    });
+
+    testWidgets('a retry after a failure reuses the request: one program', (
+      tester,
+    ) async {
+      // The first add commits, then reports a failure (as if the app lost
+      // the result). Tapping Add again must return that program, not make
+      // a second one.
+      final flaky = _FailsOnceAfterCommit(store);
+      await pumpPrograms(
+        tester,
+        store: store,
+        directory: directory,
+        initial: '/train/programs/prog.three',
+        programRepository: flaky,
+      );
+      await tester.tap(find.text('Add program'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Add program').last);
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Could not add this program. Try again.'),
+        findsOneWidget,
+      );
+      expect(store.box<TrainingProgramEntity>().count(), 1);
+      await tester.tap(find.text('Add program'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Add program').last);
+      await tester.pumpAndSettle();
+      expect(store.box<TrainingProgramEntity>().count(), 1);
+      expect(store.box<WorkoutPlanEntity>().count(), 3);
+      expect(find.text('Your program'), findsOneWidget);
+      expect(flaky.requests.toSet(), hasLength(1));
+      expect(flaky.requests, hasLength(2));
     });
 
     testWidgets('a second add later is numbered (2)', (tester) async {

@@ -6,6 +6,8 @@ import 'package:beyondrep/core/storage/objectbox_store_provider.dart';
 import 'package:beyondrep/features/catalog/application/catalog_providers.dart';
 import 'package:beyondrep/features/catalog/data/catalog_repository.dart';
 import 'package:beyondrep/features/catalog/domain/catalog_models.dart';
+import 'package:beyondrep/features/programs/data/objectbox_program_repository.dart';
+import 'package:beyondrep/features/programs/domain/program_repository.dart';
 import 'package:beyondrep/features/train/active_workout_state.dart';
 import 'package:beyondrep/features/train/my_program_page.dart';
 import 'package:beyondrep/features/train/program_detail_page.dart';
@@ -87,6 +89,7 @@ Future<List<String>> pumpPrograms(
   double textScale = 1,
   DateTime? now,
   DateTime Function()? clock,
+  ProgramRepository? programRepository,
 }) async {
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1;
@@ -128,6 +131,8 @@ Future<List<String>> pumpPrograms(
     ProviderScope(
       overrides: [
         objectBoxStoreProvider.overrideWithValue(store),
+        if (programRepository != null)
+          programRepositoryProvider.overrideWithValue(programRepository),
         fakeHealthOverview(FakeHealthOverviewController(null)),
         localNowProvider.overrideWithValue(now ?? DateTime(2026, 11, 25, 10)),
         workoutClockProvider.overrideWithValue(
