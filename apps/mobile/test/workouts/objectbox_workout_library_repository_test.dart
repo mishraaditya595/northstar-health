@@ -587,6 +587,23 @@ void main() {
       expect(again.name, 'Barbell row');
     });
 
+    test('invalid catalogue muscles are stored as empty lists', () {
+      for (final (primary, secondary) in [
+        (['adductors'], <String>[]),
+        (['quads', 'quads'], <String>[]),
+        (['quads'], ['quads']),
+        (<String>[], ['glutes']),
+      ]) {
+        final record = materialize(
+          id: 'builtin.v1.bad-${primary.join()}-${secondary.join()}',
+          primaryMuscles: primary,
+          secondaryMuscles: secondary,
+        );
+        expect(record.primaryMuscles, isEmpty, reason: '$primary/$secondary');
+        expect(record.secondaryMuscles, isEmpty);
+      }
+    });
+
     test('a newer release replaces the muscles', () {
       materialize(release: 1, primaryMuscles: const ['lats']);
       final next = materialize(
@@ -693,6 +710,23 @@ void main() {
       final before = stored('builtin.v1.squat').updatedAtMs;
       expect(library.syncCatalogDefinitions(items, 1), 0);
       expect(stored('builtin.v1.squat').updatedAtMs, before);
+    });
+
+    test('invalid muscles update display fields but store empty lists', () {
+      library.ensureCatalogSeeded();
+      final count = library.syncCatalogDefinitions([
+        item('builtin.v1.squat', primary: const ['adductors']),
+      ], 2);
+      expect(count, 1, reason: 'newer release still refreshes the row');
+      expect(stored('builtin.v1.squat').primaryMuscles, isEmpty);
+      expect(stored('builtin.v1.squat').secondaryMuscles, isEmpty);
+      expect(
+        library.syncCatalogDefinitions([
+          item('builtin.v1.deadlift', primary: const ['adductors']),
+        ], 1),
+        0,
+        reason: 'same release, nothing valid to fill',
+      );
     });
 
     test('items without muscles never write', () {

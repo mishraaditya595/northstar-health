@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/storage/objectbox_store_provider.dart';
 import '../../../objectbox.g.dart';
+import '../domain/muscles.dart';
 import '../domain/workout_library_models.dart';
 import '../domain/workout_library_repository.dart';
 import 'built_in_exercises.dart';
@@ -205,6 +206,9 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
     if (!id.startsWith('builtin.v1.')) {
       throw ArgumentError('Not a catalogue exercise id');
     }
+    final muscles = _validated(primaryMuscles, secondaryMuscles);
+    primaryMuscles = muscles.primary;
+    secondaryMuscles = muscles.secondary;
     return _store.runInTransaction(TxMode.write, () {
       final now = DateTime.now().toUtc().millisecondsSinceEpoch;
       final existing = _byUuid(_catalog, ExerciseDefinitionEntity_.uuid, id);
@@ -246,6 +250,16 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
       return _exercise(existing);
     });
   }
+
+  /// Catalogue muscles that break the cloud contract (an unknown name, say)
+  /// are dropped, so workouts keep the coarse path and uploads are never
+  /// blocked by catalogue content.
+  ({List<String> primary, List<String> secondary}) _validated(
+    List<String> primary,
+    List<String> secondary,
+  ) =>
+      validMuscles(primary, secondary) ??
+      (primary: const <String>[], secondary: const <String>[]);
 
   /// Older than the release, or built-in without muscles that the catalogue
   /// now provides.
@@ -296,10 +310,11 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
           ExerciseDefinitionEntity_.uuid,
           item.id,
         );
+        final muscles = _validated(item.primaryMuscles, item.secondaryMuscles);
         if (existing == null ||
             !existing.isBuiltIn ||
             existing.inputMode != item.mode ||
-            !_needsUpdate(existing, release, item.primaryMuscles)) {
+            !_needsUpdate(existing, release, muscles.primary)) {
           continue;
         }
         _applyCatalog(
@@ -309,8 +324,8 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
           muscleGroup: item.muscleGroup,
           equipment: item.equipment,
           category: item.category,
-          primaryMuscles: item.primaryMuscles,
-          secondaryMuscles: item.secondaryMuscles,
+          primaryMuscles: muscles.primary,
+          secondaryMuscles: muscles.secondary,
           now: now,
         );
         _catalog.put(existing);
