@@ -187,7 +187,7 @@ Compatibility: the manifest carries `minAppCatalogSchema`. The app knows the hig
 
 ### 5.1 Schema (new migration)
 
-- `catalog_releases(release int primary key, schema_version int, content jsonb, sha256 text, size_bytes int, published_at timestamptz, created_at timestamptz, notes text)`. Rows are immutable: an update or delete trigger raises.
+- `catalog_releases(release int primary key, schema_version int, min_app_schema int, content jsonb, sha256 text, size_bytes int, published_at timestamptz, created_at timestamptz)`. There is no `notes` column (release notes live in `catalog/CHANGELOG.md`). Rows are immutable: an update, delete or truncate trigger raises.
 - `catalog_live(singleton bool primary key default true check (singleton), release int references catalog_releases)`. One row.
 - No column holds user or health data.
 
@@ -195,6 +195,7 @@ Compatibility: the manifest carries `minAppCatalogSchema`. The app knows the hig
 
 - `catalog_manifest()` (SQL, `security definer`, `stable`, fixed `search_path`): returns `{release, schemaVersion, minAppCatalogSchema, publishedAt, sha256, sizeBytes, url}` for the live release. `url` is the RPC endpoint path for the snapshot today and can later point to Storage or a CDN.
 - `catalog_snapshot(p_release int)`: returns `content` only when `p_release` is the live release; otherwise it raises a "not live" error. A phone that read the manifest just before a publish or rollback gets that error, keeps its cache and tries again at the next check. This keeps rollback a real withdrawal: a release rolled back for bad content can no longer be downloaded. (Planner's call, from the builder check.) Drafts never exist in these tables; staging is a separate local step (5.3).
+- Session rule: both functions require a verified, non-anonymous user (`auth.uid()` not null and `is_anonymous` claim `false`, SQLSTATE `28000` otherwise), like the other public RPCs. `catalog_manifest().publishedAt` is the exact string inside the checksummed content.
 - Grants: `execute` on both functions to `authenticated` only. Revoke all on both tables from `anon` and `authenticated`; RLS enabled with no client policies. No client insert, update, delete or publish path.
 - pgTAP tests (new `supabase/tests/catalog.test.sql`): anonymous cannot call either function or read tables; authenticated can read manifest and the live snapshot; authenticated cannot read tables directly, insert, update, delete or flip the pointer; immutability trigger fires; existing owner-scoped workout tables are unaffected. Extend `tool/test_p2_08_hosted_rls.py` with the same checks for the hosted harness.
 
