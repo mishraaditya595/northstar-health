@@ -5,6 +5,7 @@ import 'package:beyondrep/app/floating_nav_bar.dart';
 import 'package:beyondrep/app/beyondrep_app.dart';
 import 'package:beyondrep/features/account/account_auth_controller.dart';
 import 'package:beyondrep/features/account/account_auth_provider.dart';
+import 'package:beyondrep/features/today/today_page.dart';
 
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
@@ -112,7 +113,7 @@ void main() {
     expect(find.byType(BackButton), findsOneWidget);
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
-    expect(find.text('Full Body A'), findsOneWidget);
+    expect(find.byType(TodayPage), findsOneWidget);
     expect(find.text('Cloud session ready'), findsNothing);
   });
 
@@ -126,8 +127,8 @@ void main() {
     await tester.pumpWidget(signedInApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('Full Body A'), findsOneWidget);
-    expect(find.textContaining('FICTIONAL DEMO DATA'), findsOneWidget);
+    expect(find.text('Full Body A'), findsNothing);
+    expect(find.textContaining('FICTIONAL DEMO DATA'), findsNothing);
     expect(find.text('Connect Apple Health'), findsNothing);
     expect(find.textContaining('Connect Apple Health'), findsOneWidget);
     expect(find.text('6h 18m'), findsNothing);
@@ -160,7 +161,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.text('Energy check-in'), findsNothing);
+    expect(find.text('Recent health'), findsNothing);
   });
 
   testWidgets('Workout screen hides the bottom nav', (tester) async {

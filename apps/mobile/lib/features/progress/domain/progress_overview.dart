@@ -61,6 +61,15 @@ class MonthConsistency {
 DateTime _weekStart(DateTime day) =>
     DateTime.utc(day.year, day.month, day.day - (day.weekday % 7));
 
+/// The Sunday-to-Saturday week holding [today], as UTC dates.
+List<DateTime> weekDays(DateTime today) {
+  final start = _weekStart(today);
+  return [
+    for (var i = 0; i < 7; i++)
+      DateTime.utc(start.year, start.month, start.day + i),
+  ];
+}
+
 Iterable<WorkoutSessionRecord> _finished(WorkoutHistorySnapshot snapshot) =>
     snapshot.sessions.where(
       (s) => s.status == WorkoutStatus.completed && s.completedAtUtc != null,

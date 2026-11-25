@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/features/train/plan_editor_page.dart';
 import 'package:beyondrep/features/train/train_page.dart';
@@ -110,6 +111,40 @@ class FakeLibrary implements WorkoutLibraryRepository {
 }
 
 void main() {
+  testWidgets('Train shows the real date and week, not demo dates', (
+    tester,
+  ) async {
+    final router = GoRouter(
+      initialLocation: '/train',
+      routes: [GoRoute(path: '/train', builder: (_, _) => const TrainPage())],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localNowProvider.overrideWithValue(DateTime(2026, 11, 24, 9)),
+          workoutLibraryRepositoryProvider.overrideWithValue(FakeLibrary()),
+          activeWorkoutProvider.overrideWith(
+            (ref) => const AsyncData<ActiveWorkoutView?>(null),
+          ),
+        ],
+        child: MaterialApp.router(
+          theme: BeyondRepTheme.build(Brightness.light),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Tuesday, 24 November'), findsOneWidget);
+    expect(find.textContaining('23 October'), findsNothing);
+    // Sunday 22 to Saturday 28 November, like Today and Progress.
+    for (final day in ['22', '23', '24', '25', '26', '27', '28']) {
+      expect(find.text(day), findsOneWidget);
+    }
+    expect(find.bySemanticsLabel(RegExp('Tuesday 24, today')), findsOneWidget);
+    expect(find.textContaining('NO ACCOUNT REQUIRED'), findsNothing);
+  });
+
   testWidgets('user creates a local training plan from an empty Train page', (
     tester,
   ) async {
