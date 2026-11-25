@@ -16,6 +16,8 @@ import '../features/progress/workout_history_detail_page.dart';
 import '../features/today/today_page.dart';
 import '../features/train/train_page.dart';
 import '../features/train/exercise_catalog_page.dart';
+import '../features/train/template_detail_page.dart';
+import '../features/train/workout_templates_page.dart';
 import '../features/train/exercise_detail_page.dart';
 import '../features/train/plan_editor_page.dart';
 import '../features/train/active_workout_page.dart';
@@ -77,6 +79,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/train/workout',
             builder: (_, _) => const ActiveWorkoutPage(),
+          ),
+          GoRoute(
+            path: '/train/workouts',
+            builder: (_, _) => const WorkoutTemplatesPage(),
+          ),
+          GoRoute(
+            path: '/train/workouts/:id',
+            builder: (_, state) =>
+                TemplateDetailPage(templateId: state.pathParameters['id']!),
           ),
           GoRoute(
             path: '/train/exercises',

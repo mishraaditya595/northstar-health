@@ -30,7 +30,7 @@ CatalogSnapshot parseCatalogSnapshot(Object? json, {String? expectedSha256}) {
   final publishedAt = _string(root, 'publishedAt');
 
   final exercises = _list(root, 'exercises').map(_exercise).toList();
-  final templates = _list(root, 'templates').map(_map).toList();
+  final templateMaps = _list(root, 'templates').map(_map).toList();
   final programs = _list(root, 'programs').map(_map).toList();
 
   final ids = <String>{};
@@ -41,7 +41,7 @@ CatalogSnapshot parseCatalogSnapshot(Object? json, {String? expectedSha256}) {
   for (final exercise in exercises) {
     claim(exercise.id);
   }
-  for (final template in templates) {
+  for (final template in templateMaps) {
     claim(_string(template, 'id'));
   }
   for (final program in programs) {
@@ -50,14 +50,11 @@ CatalogSnapshot parseCatalogSnapshot(Object? json, {String? expectedSha256}) {
 
   final byId = {for (final exercise in exercises) exercise.id: exercise};
   final templateIds = {
-    for (final template in templates) _string(template, 'id'),
+    for (final template in templateMaps) _string(template, 'id'),
   };
-  for (final template in templates) {
-    final items = _list(template, 'exercises');
-    for (final item in items) {
-      _prescription(_map(item), byId);
-    }
-  }
+  final templates = [
+    for (final template in templateMaps) _template(template, byId),
+  ];
   for (final program in programs) {
     final week = _list(program, 'week');
     if (week.length != 7) throw const CatalogFormatException('range');
@@ -123,7 +120,32 @@ CatalogExercise _exercise(Object? value) {
   );
 }
 
-void _prescription(
+CatalogTemplate _template(
+  Map<String, Object?> map,
+  Map<String, CatalogExercise> exercises,
+) {
+  final tags = _map(map['tags']);
+  final standalone = map['standalone'];
+  if (standalone != null && standalone is! bool) {
+    throw const CatalogFormatException('shape');
+  }
+  return CatalogTemplate(
+    id: _string(map, 'id'),
+    name: _string(map, 'name'),
+    description: _string(map, 'description'),
+    goals: _strings(tags, 'goal'),
+    level: _string(tags, 'level'),
+    equipment: _strings(tags, 'equipment'),
+    estimatedMinutes: _int(map, 'estimatedMinutes'),
+    standalone: standalone as bool? ?? true,
+    exercises: List.unmodifiable([
+      for (final item in _list(map, 'exercises'))
+        _prescription(_map(item), exercises),
+    ]),
+  );
+}
+
+CatalogPrescription _prescription(
   Map<String, Object?> item,
   Map<String, CatalogExercise> exercises,
 ) {
@@ -145,18 +167,34 @@ void _prescription(
       !(item.containsKey('repsMin') && item.containsKey('repsMax'))) {
     throw const CatalogFormatException('mode');
   }
+  final note = item['note'];
+  if (note != null && note is! String) {
+    throw const CatalogFormatException('shape');
+  }
+  int? seconds;
+  int? low;
+  int? high;
   if (hasDuration) {
-    final seconds = _int(item, 'durationSeconds');
+    seconds = _int(item, 'durationSeconds');
     if (seconds < 1 || seconds > 3600) {
       throw const CatalogFormatException('range');
     }
   } else {
-    final low = _int(item, 'repsMin');
-    final high = _int(item, 'repsMax');
+    low = _int(item, 'repsMin');
+    high = _int(item, 'repsMax');
     if (low < 1 || high > 1000 || low > high) {
       throw const CatalogFormatException('range');
     }
   }
+  return CatalogPrescription(
+    exerciseId: exercise.id,
+    sets: sets,
+    repsMin: low,
+    repsMax: high,
+    durationSeconds: seconds,
+    restSeconds: rest,
+    note: note as String? ?? '',
+  );
 }
 
 Map<String, Object?> _map(Object? value) {

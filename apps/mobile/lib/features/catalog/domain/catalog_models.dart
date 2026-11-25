@@ -37,6 +37,50 @@ class CatalogExercise {
   final bool retired;
 }
 
+class CatalogPrescription {
+  const CatalogPrescription({
+    required this.exerciseId,
+    required this.sets,
+    required this.repsMin,
+    required this.repsMax,
+    required this.durationSeconds,
+    required this.restSeconds,
+    required this.note,
+  });
+
+  final String exerciseId;
+  final int sets;
+  final int? repsMin;
+  final int? repsMax;
+  final int? durationSeconds;
+  final int restSeconds;
+  final String note;
+}
+
+class CatalogTemplate {
+  const CatalogTemplate({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.goals,
+    required this.level,
+    required this.equipment,
+    required this.estimatedMinutes,
+    required this.exercises,
+    this.standalone = true,
+  });
+
+  final String id;
+  final String name;
+  final String description;
+  final List<String> goals;
+  final String level;
+  final List<String> equipment;
+  final int estimatedMinutes;
+  final bool standalone;
+  final List<CatalogPrescription> exercises;
+}
+
 class CatalogSnapshot {
   const CatalogSnapshot({
     required this.release,
@@ -57,7 +101,7 @@ class CatalogSnapshot {
   /// SHA-256 of the canonical snapshot bytes (computed, not read from JSON).
   final String sha256;
   final List<CatalogExercise> exercises;
-  final List<Map<String, Object?>> templates;
+  final List<CatalogTemplate> templates;
   final List<Map<String, Object?>> programs;
 
   Iterable<CatalogExercise> get activeExercises =>

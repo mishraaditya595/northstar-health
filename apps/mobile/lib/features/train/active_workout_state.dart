@@ -44,6 +44,15 @@ final activeWorkoutProvider = Provider<AsyncValue<ActiveWorkoutView?>>((ref) {
 abstract interface class WorkoutActions {
   WorkoutSessionRecord startQuick(String name);
   WorkoutSessionRecord startPlan(String planUuid);
+
+  /// Materializes the template's exercises, then starts an unsaved workout
+  /// from its rows. Throws the usual "finish or discard" [StateError] and
+  /// changes nothing while another workout is unfinished.
+  WorkoutSessionRecord startTemplate(
+    String name,
+    List<TemplateRowInput> rows,
+    int release,
+  );
   void addExercise(WorkoutSessionRecord session, ExerciseRecord definition);
   void addPlannedSet(
     WorkoutSessionRecord session,
@@ -109,6 +118,56 @@ class RepositoryWorkoutActions implements WorkoutActions {
     return engine.startWorkout(
       sessionUuid: ids.newId(),
       planUuid: planUuid,
+      startedAtUtc: now.toUtc(),
+      originalOffsetMinutes: now.timeZoneOffset.inMinutes,
+    );
+  }
+
+  @override
+  WorkoutSessionRecord startTemplate(
+    String name,
+    List<TemplateRowInput> rows,
+    int release,
+  ) {
+    if (engine.recoverActiveWorkout() != null) {
+      throw StateError('Finish or discard the existing workout first');
+    }
+    // Each exercise is copied in its own transaction before the session
+    // starts. That is safe: the rows are the catalogue's own definitions, the
+    // copy is idempotent, and an exercise left behind by a failed start is
+    // only an unused library entry, never a plan or a workout.
+    for (final row in rows) {
+      final e = row.exercise;
+      library.materializeCatalogExercise(
+        id: e.id,
+        name: e.name,
+        muscleGroup: e.muscleGroup,
+        equipment: e.equipment,
+        category: e.category,
+        mode: e.mode,
+        release: release,
+        primaryMuscles: e.primaryMuscles,
+        secondaryMuscles: e.secondaryMuscles,
+      );
+    }
+    final now = DateTime.now();
+    return engine.startTemplateWorkout(
+      sessionUuid: ids.newId(),
+      name: name,
+      rows: [
+        for (var i = 0; i < rows.length; i++)
+          PlanExerciseRecord(
+            uuid: ids.newId(),
+            exerciseUuid: rows[i].exercise.id,
+            position: i,
+            targetSets: rows[i].sets,
+            targetRepsMin: rows[i].repsMin,
+            targetRepsMax: rows[i].repsMax,
+            targetDurationSeconds: rows[i].durationSeconds,
+            restSeconds: rows[i].restSeconds,
+            notes: rows[i].note,
+          ),
+      ],
       startedAtUtc: now.toUtc(),
       originalOffsetMinutes: now.timeZoneOffset.inMinutes,
     );

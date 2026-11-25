@@ -42,6 +42,20 @@ abstract interface class WorkoutLibraryRepository {
   /// differs is skipped). Returns the number of rows updated.
   int syncCatalogDefinitions(List<CatalogDefinitionInput> items, int release);
 
+  /// Copies a catalogue template into My Plans in one transaction:
+  /// materializes every exercise (the rules of [materializeCatalogExercise]),
+  /// picks an unused plan name ("name (2)" when an active plan has it) and
+  /// writes the plan, UUID [requestUuid], with its rows. Repeating a request
+  /// returns the existing plan. Any failure leaves nothing behind. The plan
+  /// keeps no link to the template.
+  WorkoutPlanRecord copyCatalogTemplate({
+    required String requestUuid,
+    required String name,
+    required String description,
+    required List<TemplateRowInput> rows,
+    required int release,
+  });
+
   List<WorkoutPlanRecord> listPlans();
 
   WorkoutPlanRecord? getPlan(String uuid);

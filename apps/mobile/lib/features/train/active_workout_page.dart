@@ -413,7 +413,8 @@ class _ExerciseCard extends ConsumerStatefulWidget {
 }
 
 class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
-  int rest = 90;
+  /// The planned rest of a plan or template row; 90 s without one.
+  late int rest = widget.exercise.restSeconds ?? 90;
 
   Future<void> _chooseRest() async {
     final chosen = await showNsSheet<int>(

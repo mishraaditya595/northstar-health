@@ -1,3 +1,4 @@
+import 'workout_library_models.dart';
 import 'workout_models.dart';
 
 /// Crash-recoverable phone-only workout lifecycle. Commands mutate exactly
@@ -10,6 +11,19 @@ abstract interface class LiveWorkoutEngine {
     required String sessionUuid,
     String? planUuid,
     String? quickName,
+    required DateTime startedAtUtc,
+    required int originalOffsetMinutes,
+  });
+
+  /// Starts a workout from in-memory plan rows (a catalogue template whose
+  /// exercises are already materialized) without saving a plan: same checks
+  /// and writes as [startWorkout], `planUuid` null, planned sets with no
+  /// values. A replay with the same UUID, name and start returns the
+  /// committed session.
+  WorkoutSessionRecord startTemplateWorkout({
+    required String sessionUuid,
+    required String name,
+    required List<PlanExerciseRecord> rows,
     required DateTime startedAtUtc,
     required int originalOffsetMinutes,
   });

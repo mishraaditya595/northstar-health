@@ -42,6 +42,17 @@ typedef CatalogDefinitionInput = ({
   List<String> secondaryMuscles,
 });
 
+/// One prescription row of a catalogue template, with the exercise it names.
+typedef TemplateRowInput = ({
+  CatalogDefinitionInput exercise,
+  int sets,
+  int? repsMin,
+  int? repsMax,
+  int? durationSeconds,
+  int restSeconds,
+  String note,
+});
+
 class PlanExerciseRecord {
   const PlanExerciseRecord({
     required this.uuid,

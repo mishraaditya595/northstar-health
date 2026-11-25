@@ -72,7 +72,26 @@ Future<T?> showNsSheet<T>(
   ),
 );
 
-/// Short, non-blocking message. Style comes from `snackBarTheme`.
-void showNsMessage(BuildContext context, String message) =>
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+/// Short, non-blocking message. Style comes from `snackBarTheme`. An optional
+/// [actionLabel] adds one action button that runs [onAction]; the message
+/// still times out. Returns the controller so a screen can close its own
+/// message when it goes away.
+ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showNsMessage(
+  BuildContext context,
+  String message, {
+  String? actionLabel,
+  VoidCallback? onAction,
+}) {
+  final hasAction = actionLabel != null && onAction != null;
+  return ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      // Flutter keeps a snackbar with an action until dismissed; ours time out.
+      persist: hasAction ? false : null,
+      duration: Duration(seconds: hasAction ? 6 : 4),
+      action: hasAction
+          ? SnackBarAction(label: actionLabel, onPressed: onAction)
+          : null,
+    ),
+  );
+}

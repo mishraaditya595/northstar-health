@@ -4,6 +4,7 @@ import '../../../core/ids/uuid_factory.dart';
 import '../../../core/storage/objectbox_store_provider.dart';
 import '../../../objectbox.g.dart';
 import '../domain/live_workout_engine.dart';
+import '../domain/workout_library_models.dart';
 import '../domain/workout_models.dart';
 import '../domain/workout_repository.dart';
 import 'objectbox_workout_repository.dart';
@@ -149,53 +150,150 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
       if (label.isEmpty || label.length > 160) {
         throw StateError('Invalid workout name');
       }
-      _sessions.put(
-        WorkoutSessionEntity(
-          uuid: sessionUuid,
-          name: label,
-          planUuid: planUuid,
-          startedAtMs: atMs,
-          originalOffsetMinutes: originalOffsetMinutes,
-          updatedAtMs: nowMs,
+      _putSession(
+        sessionUuid: sessionUuid,
+        label: label,
+        planUuid: planUuid,
+        atMs: atMs,
+        originalOffsetMinutes: originalOffsetMinutes,
+        nowMs: nowMs,
+        template: template,
+      );
+    });
+    return _reader.getSession(sessionUuid)!;
+  }
+
+  /// Writes the session, its exercises with snapshots, planned sets and the
+  /// first checkpoint. The caller owns the write transaction.
+  void _putSession({
+    required String sessionUuid,
+    required String label,
+    required String? planUuid,
+    required int atMs,
+    required int originalOffsetMinutes,
+    required int nowMs,
+    required List<(PlanExerciseEntity, ExerciseDefinitionEntity)> template,
+  }) {
+    _sessions.put(
+      WorkoutSessionEntity(
+        uuid: sessionUuid,
+        name: label,
+        planUuid: planUuid,
+        startedAtMs: atMs,
+        originalOffsetMinutes: originalOffsetMinutes,
+        updatedAtMs: nowMs,
+      ),
+    );
+    String? firstExerciseUuid;
+    for (final (row, definition) in template) {
+      final exerciseUuid = _ids.newId();
+      firstExerciseUuid ??= exerciseUuid;
+      _exercises.put(
+        WorkoutExerciseEntity(
+          uuid: exerciseUuid,
+          sessionUuid: sessionUuid,
+          definitionUuid: definition.uuid,
+          nameSnapshot: definition.name,
+          muscleSnapshot: definition.muscleGroup,
+          equipmentSnapshot: definition.equipment,
+          position: row.position,
+          primaryMusclesSnapshot: List.of(definition.primaryMuscles),
+          secondaryMusclesSnapshot: List.of(definition.secondaryMuscles),
+          restSeconds: row.restSeconds,
         ),
       );
-      String? firstExerciseUuid;
-      for (final (row, definition) in template) {
-        final exerciseUuid = _ids.newId();
-        firstExerciseUuid ??= exerciseUuid;
-        _exercises.put(
-          WorkoutExerciseEntity(
-            uuid: exerciseUuid,
-            sessionUuid: sessionUuid,
-            definitionUuid: definition.uuid,
-            nameSnapshot: definition.name,
-            muscleSnapshot: definition.muscleGroup,
-            equipmentSnapshot: definition.equipment,
-            position: row.position,
-            primaryMusclesSnapshot: List.of(definition.primaryMuscles),
-            secondaryMusclesSnapshot: List.of(definition.secondaryMuscles),
+      for (var position = 0; position < row.targetSets; position++) {
+        // Targets are prescriptions, not performed reps/loads. Never
+        // populate completed workout metrics with plan guesses.
+        _sets.put(
+          WorkoutSetEntity(
+            uuid: _ids.newId(),
+            exerciseUuid: exerciseUuid,
+            position: position,
+            updatedAtMs: nowMs,
           ),
         );
-        for (var position = 0; position < row.targetSets; position++) {
-          // Targets are prescriptions, not performed reps/loads. Never
-          // populate completed workout metrics with plan guesses.
-          _sets.put(
-            WorkoutSetEntity(
-              uuid: _ids.newId(),
-              exerciseUuid: exerciseUuid,
-              position: position,
-              updatedAtMs: nowMs,
-            ),
-          );
-        }
       }
-      _checkpoints.put(
-        WorkoutSessionStateEntity(
-          sessionUuid: sessionUuid,
-          selectedExerciseUuid: firstExerciseUuid,
-          checkpointRevision: 1,
-          savedAtMs: nowMs,
-        ),
+    }
+    _checkpoints.put(
+      WorkoutSessionStateEntity(
+        sessionUuid: sessionUuid,
+        selectedExerciseUuid: firstExerciseUuid,
+        checkpointRevision: 1,
+        savedAtMs: nowMs,
+      ),
+    );
+  }
+
+  @override
+  WorkoutSessionRecord startTemplateWorkout({
+    required String sessionUuid,
+    required String name,
+    required List<PlanExerciseRecord> rows,
+    required DateTime startedAtUtc,
+    required int originalOffsetMinutes,
+  }) {
+    final label = name.trim();
+    if (sessionUuid.isEmpty ||
+        label.isEmpty ||
+        label.length > 160 ||
+        originalOffsetMinutes < -840 ||
+        originalOffsetMinutes > 840) {
+      throw ArgumentError('Choose a valid workout name and offset');
+    }
+    for (var i = 0; i < rows.length; i++) {
+      rows[i].validate();
+      if (rows[i].position != i) {
+        throw ArgumentError('Template rows need contiguous order');
+      }
+    }
+    final atMs = startedAtUtc.toUtc().millisecondsSinceEpoch;
+    final nowMs = DateTime.now().toUtc().millisecondsSinceEpoch;
+    _store.runInTransaction(TxMode.write, () {
+      final prior = _one(_sessions, WorkoutSessionEntity_.uuid, sessionUuid);
+      if (prior != null) {
+        if (prior.deletedAtMs != null ||
+            prior.planUuid != null ||
+            prior.startedAtMs != atMs ||
+            prior.originalOffsetMinutes != originalOffsetMinutes ||
+            prior.name != label) {
+          throw StateError('Conflicting session UUID');
+        }
+        return;
+      }
+      if (_singleUnfinished() != null) {
+        throw StateError('Finish or discard the existing workout first');
+      }
+      final template = <(PlanExerciseEntity, ExerciseDefinitionEntity)>[];
+      for (final row in rows) {
+        final definition = _one(
+          _definitions,
+          ExerciseDefinitionEntity_.uuid,
+          row.exerciseUuid,
+        );
+        if (definition == null) {
+          throw StateError('Template references a missing exercise');
+        }
+        template.add((
+          PlanExerciseEntity(
+            uuid: row.uuid,
+            planUuid: '',
+            exerciseUuid: row.exerciseUuid,
+            position: row.position,
+            targetSets: row.targetSets,
+            restSeconds: row.restSeconds,
+          ),
+          definition,
+        ));
+      }
+      _putSession(
+        sessionUuid: sessionUuid,
+        label: label,
+        planUuid: null,
+        atMs: atMs,
+        originalOffsetMinutes: originalOffsetMinutes,
+        nowMs: nowMs,
+        template: template,
       );
     });
     return _reader.getSession(sessionUuid)!;

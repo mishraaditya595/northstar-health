@@ -266,6 +266,13 @@ class TrainPage extends ConsumerWidget {
             const SizedBox(height: 17),
             const SectionHeading('More ways to move'),
             NsListCard(
+              icon: Icons.view_list_outlined,
+              title: 'Workouts',
+              subtitle: 'Ready-made sessions to start or copy',
+              onTap: () => _open(context, ref, '/train/workouts'),
+            ),
+            const SizedBox(height: 10),
+            NsListCard(
               icon: Icons.menu_book_outlined,
               title: 'Exercise library',
               subtitle: 'Browse movements and add your own',

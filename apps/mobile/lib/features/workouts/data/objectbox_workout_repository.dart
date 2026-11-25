@@ -136,6 +136,7 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
               secondaryMusclesSnapshot: List.unmodifiable(
                 e.secondaryMusclesSnapshot,
               ),
+              restSeconds: e.restSeconds,
             ),
           )
           .toList(growable: false);
@@ -260,6 +261,7 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
           position: exercise.position,
           primaryMusclesSnapshot: List.of(exercise.primaryMusclesSnapshot),
           secondaryMusclesSnapshot: List.of(exercise.secondaryMusclesSnapshot),
+          restSeconds: exercise.restSeconds,
         ),
       );
       _touch(session);

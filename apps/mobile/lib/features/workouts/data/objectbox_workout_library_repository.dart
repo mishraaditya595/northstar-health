@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ids/uuid_factory.dart';
 import '../../../core/storage/objectbox_store_provider.dart';
 import '../../../objectbox.g.dart';
 import '../domain/muscles.dart';
@@ -16,12 +18,14 @@ final workoutLibraryRepositoryProvider = Provider<WorkoutLibraryRepository>((
 
 /// Only uses existing PR1 entities: deliberately no ObjectBox UID/schema change.
 class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
-  ObjectBoxWorkoutLibraryRepository(this._store)
-    : _catalog = _store.box<ExerciseDefinitionEntity>(),
+  ObjectBoxWorkoutLibraryRepository(this._store, {UuidFactory? uuidFactory})
+    : _ids = uuidFactory ?? SecureUuidFactory(),
+      _catalog = _store.box<ExerciseDefinitionEntity>(),
       _plans = _store.box<WorkoutPlanEntity>(),
       _items = _store.box<PlanExerciseEntity>();
 
   final Store _store;
+  final UuidFactory _ids;
   final Box<ExerciseDefinitionEntity> _catalog;
   final Box<WorkoutPlanEntity> _plans;
   final Box<PlanExerciseEntity> _items;
@@ -207,49 +211,76 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
     if (!id.startsWith('builtin.v1.')) {
       throw ArgumentError('Not a catalogue exercise id');
     }
+    return _store.runInTransaction(
+      TxMode.write,
+      () => _materializeIn(
+        id: id,
+        name: name,
+        muscleGroup: muscleGroup,
+        equipment: equipment,
+        category: category,
+        mode: mode,
+        release: release,
+        primaryMuscles: primaryMuscles,
+        secondaryMuscles: secondaryMuscles,
+      ),
+    );
+  }
+
+  /// The body of [materializeCatalogExercise]; the caller owns the write
+  /// transaction.
+  ExerciseRecord _materializeIn({
+    required String id,
+    required String name,
+    required String muscleGroup,
+    required String equipment,
+    required String category,
+    required String mode,
+    required int release,
+    required List<String> primaryMuscles,
+    required List<String> secondaryMuscles,
+  }) {
     final muscles = _validated(primaryMuscles, secondaryMuscles);
     primaryMuscles = muscles.primary;
     secondaryMuscles = muscles.secondary;
-    return _store.runInTransaction(TxMode.write, () {
-      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
-      final existing = _byUuid(_catalog, ExerciseDefinitionEntity_.uuid, id);
-      if (existing == null) {
-        final created = ExerciseDefinitionEntity(
-          uuid: id,
-          name: name,
-          muscleGroup: muscleGroup,
-          equipment: equipment,
-          movementCategory: category,
-          inputMode: mode,
-          isBuiltIn: true,
-          catalogVersion: release,
-          createdAtMs: now,
-          updatedAtMs: now,
-          primaryMuscles: List.of(primaryMuscles),
-          secondaryMuscles: List.of(secondaryMuscles),
-        );
-        _catalog.put(created);
-        return _exercise(created);
-      }
-      if (!existing.isBuiltIn || existing.inputMode != mode) {
-        throw StateError('Catalogue exercise conflicts with stored data');
-      }
-      if (_needsUpdate(existing, release, primaryMuscles)) {
-        _applyCatalog(
-          existing,
-          release: release,
-          name: name,
-          muscleGroup: muscleGroup,
-          equipment: equipment,
-          category: category,
-          primaryMuscles: primaryMuscles,
-          secondaryMuscles: secondaryMuscles,
-          now: now,
-        );
-        _catalog.put(existing);
-      }
-      return _exercise(existing);
-    });
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    final existing = _byUuid(_catalog, ExerciseDefinitionEntity_.uuid, id);
+    if (existing == null) {
+      final created = ExerciseDefinitionEntity(
+        uuid: id,
+        name: name,
+        muscleGroup: muscleGroup,
+        equipment: equipment,
+        movementCategory: category,
+        inputMode: mode,
+        isBuiltIn: true,
+        catalogVersion: release,
+        createdAtMs: now,
+        updatedAtMs: now,
+        primaryMuscles: List.of(primaryMuscles),
+        secondaryMuscles: List.of(secondaryMuscles),
+      );
+      _catalog.put(created);
+      return _exercise(created);
+    }
+    if (!existing.isBuiltIn || existing.inputMode != mode) {
+      throw StateError('Catalogue exercise conflicts with stored data');
+    }
+    if (_needsUpdate(existing, release, primaryMuscles)) {
+      _applyCatalog(
+        existing,
+        release: release,
+        name: name,
+        muscleGroup: muscleGroup,
+        equipment: equipment,
+        category: category,
+        primaryMuscles: primaryMuscles,
+        secondaryMuscles: secondaryMuscles,
+        now: now,
+      );
+      _catalog.put(existing);
+    }
+    return _exercise(existing);
   }
 
   /// Catalogue muscles that break the cloud contract (an unknown name, say)
@@ -333,6 +364,116 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
         updated++;
       }
       return updated;
+    });
+  }
+
+  /// Test seam: called with `exercises`, `plan` and `rows` inside the copy
+  /// transaction, after each stage. A throw rolls the whole copy back.
+  @visibleForTesting
+  void Function(String step)? debugCopyHook;
+
+  @override
+  WorkoutPlanRecord copyCatalogTemplate({
+    required String requestUuid,
+    required String name,
+    required String description,
+    required List<TemplateRowInput> rows,
+    required int release,
+  }) {
+    final label = name.trim();
+    if (requestUuid.isEmpty ||
+        label.isEmpty ||
+        label.length > 100 ||
+        rows.isEmpty ||
+        rows.length > 100) {
+      throw ArgumentError('Invalid template copy');
+    }
+    var cut = description.length > 1000 ? 1000 : description.length;
+    // Never split a surrogate pair at the cut.
+    if (cut < description.length &&
+        cut > 0 &&
+        (description.codeUnitAt(cut - 1) & 0xFC00) == 0xD800) {
+      cut--;
+    }
+    final planDescription = description.substring(0, cut);
+    final items = [
+      for (var i = 0; i < rows.length; i++)
+        PlanExerciseRecord(
+          uuid: _ids.newId(),
+          exerciseUuid: rows[i].exercise.id,
+          position: i,
+          targetSets: rows[i].sets,
+          targetRepsMin: rows[i].repsMin,
+          targetRepsMax: rows[i].repsMax,
+          targetDurationSeconds: rows[i].durationSeconds,
+          restSeconds: rows[i].restSeconds,
+          notes: rows[i].note,
+        ),
+    ];
+    for (var i = 0; i < rows.length; i++) {
+      items[i].validate();
+      final timed = rows[i].exercise.mode == 'duration';
+      if (timed != (rows[i].durationSeconds != null)) {
+        throw ArgumentError('Prescription does not fit the exercise mode');
+      }
+    }
+    return _store.runInTransaction(TxMode.write, () {
+      final existing = _byUuid(_plans, WorkoutPlanEntity_.uuid, requestUuid);
+      if (existing != null) return _plan(existing);
+      for (final row in rows) {
+        final e = row.exercise;
+        _materializeIn(
+          id: e.id,
+          name: e.name,
+          muscleGroup: e.muscleGroup,
+          equipment: e.equipment,
+          category: e.category,
+          mode: e.mode,
+          release: release,
+          primaryMuscles: e.primaryMuscles,
+          secondaryMuscles: e.secondaryMuscles,
+        );
+      }
+      debugCopyHook?.call('exercises');
+      final taken = {
+        for (final plan in _plans.getAll())
+          if (plan.archivedAtMs == null) plan.name.trim().toLowerCase(),
+      };
+      var unique = label;
+      for (var n = 2; taken.contains(unique.toLowerCase()); n++) {
+        final suffix = ' ($n)';
+        // The plan name limit is 100 characters, suffix included.
+        final room = 100 - suffix.length;
+        unique =
+            '${label.length > room ? label.substring(0, room).trimRight() : label}$suffix';
+      }
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      final plan = WorkoutPlanEntity(
+        uuid: requestUuid,
+        name: unique,
+        createdAtMs: now,
+        updatedAtMs: now,
+      )..description = planDescription.trim();
+      _plans.put(plan);
+      debugCopyHook?.call('plan');
+      for (final item in items) {
+        _items.put(
+          PlanExerciseEntity(
+            uuid: item.uuid,
+            planUuid: requestUuid,
+            exerciseUuid: item.exerciseUuid,
+            position: item.position,
+            targetSets: item.targetSets,
+            targetRepsMin: item.targetRepsMin,
+            targetRepsMax: item.targetRepsMax,
+            targetDurationSeconds: item.targetDurationSeconds,
+            restSeconds: item.restSeconds,
+            notes: item.notes.trim(),
+          ),
+        );
+      }
+      debugCopyHook?.call('rows');
+      return _plan(plan);
     });
   }
 

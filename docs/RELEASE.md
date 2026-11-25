@@ -141,6 +141,21 @@ The expanded library (release 2, 240 exercises) and the picker filters are imple
 | Offline with a cached release 1, then online: the picker shows release 1 while offline and release 2 after reconnecting | not run | not run |
 | Custom exercises and the 18 earlier built-ins still appear under All and under their own group chip | not run | not run |
 
+## Training library stage 6 device QA (ADR-0010, owner actions, none done)
+
+Workout templates (release 3, 16 templates) are implemented in source, **not deployed, released or device-verified**. Every row is not run.
+
+| Check | iOS | Android |
+| --- | --- | --- |
+| Deploy order: the owner has read the template review sheet, merged, and the `supabase-database` job has applied `20261126040000_catalog_release_3.sql` | not run | not run |
+| Browse: Train, then Workouts lists the templates; search and the level chips narrow the list; a template opens with every exercise, its sets, reps or seconds, rest and note | not run | not run |
+| Start now on a template with a plank: the logger opens, the plank row logs seconds, rep exercises log reps and weight, and no plan is saved | not run | not run |
+| Copy to My Plans twice: the first makes the plan, the second makes "<name> (2)"; the plan opens from the Edit action and from Your plans, and editing it never changes the template | not run | not run |
+| Copy offline with the cached catalogue: the copy and a started workout work with no network | not run | not run |
+| Start now while a workout is already running: the message shows and nothing changes | not run | not run |
+| Text size 200 percent on a 7-exercise template in light and dark: nothing overflows and both buttons can be reached | not run | not run |
+| Kill the app during a copy or a start, then reopen: either the whole plan or workout is there, or none of it | not run | not run |
+
 ## Feature and privacy readiness
 
 - ObjectBox real sessions/sets with generated model UID fixture migration, durable offline writes and recovery through process death.

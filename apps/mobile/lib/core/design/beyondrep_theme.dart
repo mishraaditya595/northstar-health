@@ -145,6 +145,8 @@ class BeyondRepTheme {
             ? BeyondRepPalette.darkSoft
             : BeyondRepPalette.heroLight,
         contentTextStyle: const TextStyle(color: Colors.white),
+        // The bar is dark in both modes, so the action uses the lime accent.
+        actionTextColor: BeyondRepPalette.lime,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       popupMenuTheme: PopupMenuThemeData(

@@ -87,6 +87,7 @@ class WorkoutExerciseRecord {
     this.equipmentSnapshot = '',
     this.primaryMusclesSnapshot = const [],
     this.secondaryMusclesSnapshot = const [],
+    this.restSeconds,
   });
   final String uuid;
   final String sessionUuid;
@@ -100,6 +101,10 @@ class WorkoutExerciseRecord {
   /// custom exercises and workouts logged before muscles existed.
   final List<String> primaryMusclesSnapshot;
   final List<String> secondaryMusclesSnapshot;
+
+  /// Rest planned for this exercise by its plan or template row, or null
+  /// (quick workouts, added exercises). Local only, never synced.
+  final int? restSeconds;
 }
 
 class WorkoutSessionRecord {
