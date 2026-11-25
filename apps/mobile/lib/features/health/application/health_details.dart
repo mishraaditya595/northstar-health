@@ -255,41 +255,66 @@ final sleepRangeNightsProvider = FutureProvider.autoDispose
           : since(sleep.nights);
     });
 
-/// Sleep heart rate for the 7-day tab: mean heart rate per night date,
-/// each read inside its own night window (never the daytime between), plus
-/// why a read failed or was not allowed.
-typedef SleepWeekHr = ({Map<DateTime, double> byNight, MetricGap? gap});
+/// Sleep heart rate for a range tab: mean heart rate per night date, each
+/// read inside its own night window (never one read across the range or the
+/// daytime between), plus why a read failed or was not allowed.
+typedef SleepRangeHr = ({Map<DateTime, double> byNight, MetricGap? gap});
 
-/// The 30-day tab has no sleep heart rate: 30 night reads are too many.
-final sleepWeekHrProvider = FutureProvider.autoDispose<SleepWeekHr>((
-  ref,
-) async {
-  const none = (byNight: <DateTime, double>{}, gap: null);
-  final sleepOfF = _sleepOf(ref);
-  final nightsF = ref.watch(sleepRangeNightsProvider(SleepRange.week).future);
-  final sleepOf = await sleepOfF;
-  final nights = await nightsF;
-  if (sleepOf == null || nights == null) return none;
-  final (overview, _) = sleepOf;
-  final firstDate = currentRangeStart(overview.readAt, SleepRange.week);
-  final current = [
-    for (final n in nights)
-      if (!n.date.isBefore(firstDate)) n,
-  ];
-  final reader = ref.read(healthReaderProvider);
-  final results = await Future.wait([
-    for (final n in current)
-      _readResult(reader, HealthSeriesType.heartRate, n.start, n.end),
+/// Night-window heart rate reads in flight at once, so 30 nights never fire
+/// 30 platform calls together.
+const maxSleepHrReadsInFlight = 5;
+
+final sleepRangeHrProvider = FutureProvider.autoDispose
+    .family<SleepRangeHr, SleepRange>((ref, range) async {
+      const none = (byNight: <DateTime, double>{}, gap: null);
+      final sleepOfF = _sleepOf(ref);
+      final nightsF = ref.watch(sleepRangeNightsProvider(range).future);
+      final sleepOf = await sleepOfF;
+      final nights = await nightsF;
+      if (sleepOf == null || nights == null) return none;
+      final (overview, _) = sleepOf;
+      final firstDate = currentRangeStart(overview.readAt, range);
+      final current = [
+        for (final n in nights)
+          if (!n.date.isBefore(firstDate)) n,
+      ];
+      final reader = ref.read(healthReaderProvider);
+      final results = await _pooled(
+        current.length,
+        (i) => _readResult(
+          reader,
+          HealthSeriesType.heartRate,
+          current[i].start,
+          current[i].end,
+        ),
+      );
+      if (!_stillOwner(ref, overview.ownerId)) return none;
+      return (
+        byNight: {
+          for (final (i, n) in current.indexed)
+            n.date: ?_meanDuring(_samples(results[i]), n),
+        },
+        gap: results.map(metricGapOf).nonNulls.firstOrNull,
+      );
+    });
+
+/// Runs [read] for 0..[count)-1 with at most [maxSleepHrReadsInFlight] at
+/// once; results keep their index order.
+Future<List<T>> _pooled<T>(int count, Future<T> Function(int i) read) async {
+  final results = List<T?>.filled(count, null);
+  var next = 0;
+  Future<void> worker() async {
+    while (next < count) {
+      final i = next++;
+      results[i] = await read(i);
+    }
+  }
+
+  await Future.wait([
+    for (var w = 0; w < maxSleepHrReadsInFlight && w < count; w++) worker(),
   ]);
-  if (!_stillOwner(ref, overview.ownerId)) return none;
-  return (
-    byNight: {
-      for (final (i, n) in current.indexed)
-        n.date: ?_meanDuring(_samples(results[i]), n),
-    },
-    gap: results.map(metricGapOf).nonNulls.firstOrNull,
-  );
-});
+  return results.cast<T>();
+}
 
 /// First night date of [range] ending on the date of [readAt].
 DateTime currentRangeStart(DateTime readAt, SleepRange range) =>

@@ -102,7 +102,7 @@ Phone/tablet: on tablets and split screen the cards flow into the existing two-c
 **Detail screens** (go_router sub-routes of Health, e.g. `/health/sleep`): back button, segmented control. Sleep has `Last night | 7 days | 30 days`; others `7 days | 30 days`.
 
 - **Sleep / Last night:** score ring, asleep, in bed, efficiency, start-end, source; stage timeline (hypnogram rows Awake/REM/Core/Deep); per-stage totals with share of night; sleep heart rate line with average and lowest; "What made the score" contributors each labelled Good / Fair / Short etc.; breathing rate, blood oxygen, wrist/skin temperature deviation where available.
-- **Sleep / 7 or 30 days:** bars of time asleep per night (stacked by stage when stages exist) with a dashed 7h30 reference line; average, change vs previous period (only when the previous period was readable); averages of score, deep, REM, sleep HR; usual bedtime ± spread; one plain-language observation.
+- **Sleep / 7 or 30 days:** bars of time asleep per night (stacked by stage when stages exist) with a dashed 7h30 reference line; average, change vs previous period (only when the previous period was readable); averages of score, deep, REM, sleep HR (on both tabs; heart rate is read once per night window, never across the range, with at most 5 reads in flight); usual bedtime ± spread; one plain-language observation.
 - **Heart:** resting HR line with "your normal" band (lower is better); HRV dots with 7-day rolling average and normal band (higher is better), with the SDNN/RMSSD note; VO2 max latest and change; walking HR (iOS).
 - **Activity:** daily step bars, 7/30-day averages, active kcal bars, best day.
 - **Body:** weight line, average weekly change, body fat and lean mass when present.

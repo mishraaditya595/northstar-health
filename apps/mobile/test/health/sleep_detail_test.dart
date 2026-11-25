@@ -7,6 +7,7 @@ import 'package:beyondrep/features/health/application/health_summary_controller.
 import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/health/detail/sleep_detail_page.dart';
 import 'package:beyondrep/features/health/domain/health_types.dart';
+import 'package:beyondrep/features/health/widgets/detail_layout.dart';
 import 'package:beyondrep/features/health/domain/sleep_nights.dart';
 import 'package:beyondrep/features/health/domain/sleep_score.dart';
 import 'package:flutter/material.dart';
@@ -389,21 +390,81 @@ void main() {
     );
   });
 
-  testWidgets('30 days reads no heart rate and points to the 7-day view', (
+  testWidgets('30 days reads sleep HR once per night window, 5 at a time', (
     tester,
   ) async {
-    final reader = FakeHealthReader()..sleep = _history(60);
-    await _pump(tester, _overview(_history(60)), reader);
-    reader.seriesCalls.clear();
+    final reader = FakeHealthReader()
+      ..sleep = _history(60)
+      ..overlapSeries = true
+      ..series[HealthSeriesType.heartRate] = [
+        for (var i = -60; i <= 0; i++)
+          _sample(_day(i).add(const Duration(hours: 3)), 65),
+      ];
+    final overview = _overview(_history(60));
+    await _pump(tester, overview, reader);
+    reader
+      ..seriesCalls.clear()
+      ..maxSeriesInFlight = 0;
 
     await _selectRange(tester, '30 days');
 
-    expect(
-      reader.seriesCalls.where((c) => c.$1 == HealthSeriesType.heartRate),
-      isEmpty,
+    final hr = reader.seriesCalls.where(
+      (c) => c.$1 == HealthSeriesType.heartRate,
     );
-    expect(find.text('Sleep heart rate'), findsNothing);
-    expect(find.text('Sleep heart rate is on the 7-day view.'), findsOneWidget);
+    final month = [
+      for (final n in buildNights(_history(60)))
+        if (!n.date.isBefore(_day(-29))) n,
+    ];
+    expect(month, hasLength(30));
+    expect(
+      hr,
+      unorderedEquals([
+        for (final n in month) (HealthSeriesType.heartRate, n.start, n.end),
+      ]),
+    );
+    for (final c in hr) {
+      expect(c.$3.difference(c.$2), lessThan(const Duration(hours: 12)));
+    }
+    expect(reader.maxSeriesInFlight, 5);
+
+    expect(find.text('Sleep heart rate'), findsOneWidget);
+    expect(find.text('65 bpm'), findsOneWidget);
+    expect(find.text('Sleep heart rate is on the 7-day view.'), findsNothing);
+
+    // The score average uses the sleep HR contributor again.
+    final nights = buildNights(_history(60));
+    final heart = (overview.heart as SectionData<HeartOverview>).value;
+    SleepRangeStats stats(Map<DateTime, double> hr) => sleepRangeStats(
+      nights: nights,
+      range: SleepRange.month,
+      readAt: _now,
+      readableFrom: null,
+      sleepHr: hr,
+      restingHr: heart.restingHrDaily,
+    );
+    final withHr = stats({for (final n in month) n.date: 65}).score!.round();
+    expect(withHr, isNot(stats(const {}).score!.round()));
+    expect(
+      find.descendant(
+        of: find.widgetWithText(DetailRow, 'Sleep score'),
+        matching: find.text('$withHr'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('30 days says why sleep heart rate is missing', (tester) async {
+    final reader = FakeHealthReader(platform: HealthPlatformKind.healthConnect)
+      ..sleep = _history(60)
+      ..seriesResults[HealthSeriesType.heartRate] = const SeriesNotAllowed();
+    await _pump(
+      tester,
+      _overview(_history(60), platform: HealthPlatformKind.healthConnect),
+      reader,
+    );
+    await _selectRange(tester, '30 days');
+
+    expect(find.text('Sleep heart rate: Not allowed · Manage'), findsOneWidget);
   });
 
   testWidgets('switching 7 and 30 days does not re-read', (tester) async {

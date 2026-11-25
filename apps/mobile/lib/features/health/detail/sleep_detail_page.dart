@@ -57,9 +57,7 @@ class _SleepDetailPageState extends ConsumerState<SleepDetailPage> {
   Widget build(BuildContext context) {
     for (final range in _opened) {
       ref.listen(sleepRangeNightsProvider(range), (_, _) {});
-    }
-    if (_opened.contains(SleepRange.week)) {
-      ref.listen(sleepWeekHrProvider, (_, _) {});
+      ref.listen(sleepRangeHrProvider(range), (_, _) {});
     }
     return HealthDetailScaffold(
       title: 'Sleep',
@@ -388,15 +386,10 @@ class _RangeView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final nightsAsync = ref.watch(sleepRangeNightsProvider(range));
-    final week = range == SleepRange.week;
-    final hrAsync = week ? ref.watch(sleepWeekHrProvider) : null;
+    final hrAsync = ref.watch(sleepRangeHrProvider(range));
     final nights = nightsAsync.isLoading ? null : nightsAsync.value;
     if (nights == null) return const DetailLoading();
-    final hr = hrAsync == null
-        ? (byNight: const <DateTime, double>{}, gap: null)
-        : hrAsync.isLoading
-        ? null
-        : hrAsync.value;
+    final hr = hrAsync.isLoading ? null : hrAsync.value;
     final heart = overview.heart;
     final stats = sleepRangeStats(
       nights: nights,
@@ -537,11 +530,10 @@ class _RangeView extends ConsumerWidget {
         ),
         DetailRow('Deep', minutes(stats.deep)),
         DetailRow('REM', minutes(stats.rem)),
-        if (range == SleepRange.week)
-          DetailRow(
-            'Sleep heart rate',
-            stats.sleepHr == null ? '—' : '${stats.sleepHr!.round()} bpm',
-          ),
+        DetailRow(
+          'Sleep heart rate',
+          stats.sleepHr == null ? '—' : '${stats.sleepHr!.round()} bpm',
+        ),
         DetailRow(
           'Usual bedtime',
           bedtime == null
@@ -557,10 +549,7 @@ class _RangeView extends ConsumerWidget {
           const SizedBox(height: 6),
           const HealthCaption('Usual bedtime needs 5 nights.'),
         ],
-        if (range != SleepRange.week) ...[
-          const SizedBox(height: 6),
-          const HealthCaption('Sleep heart rate is on the 7-day view.'),
-        ] else if (stats.sleepHr == null) ...[
+        if (stats.sleepHr == null) ...[
           const SizedBox(height: 6),
           HealthCaption(
             hrGap == null

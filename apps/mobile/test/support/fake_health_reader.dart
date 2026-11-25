@@ -37,6 +37,12 @@ class FakeHealthReader implements HealthReader {
   final Map<HealthTotalType, SeriesResult<List<HealthSample>>> totalsResults =
       {};
 
+  /// When true, [readSeries] yields once before answering, so reads started
+  /// together overlap and [maxSeriesInFlight] shows how many ran at once.
+  bool overlapSeries = false;
+  int _seriesInFlight = 0;
+  int maxSeriesInFlight = 0;
+
   /// Holds every [readSleep] until completed.
   Completer<void>? sleepGate;
 
@@ -76,6 +82,14 @@ class FakeHealthReader implements HealthReader {
     DateTime to,
   ) async {
     seriesCalls.add((type, from, to));
+    if (overlapSeries) {
+      _seriesInFlight++;
+      if (_seriesInFlight > maxSeriesInFlight) {
+        maxSeriesInFlight = _seriesInFlight;
+      }
+      await Future<void>.microtask(() {});
+      _seriesInFlight--;
+    }
     if (throwOnSeries.contains(type)) throw StateError('synthetic series bug');
     return seriesResults[type] ?? SeriesData(series[type] ?? const []);
   }
