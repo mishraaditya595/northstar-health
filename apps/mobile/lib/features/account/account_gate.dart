@@ -1,11 +1,17 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:objectbox_flutter_libs/objectbox_flutter_libs.dart';
 
 import '../../app/beyondrep_app.dart';
 import '../../core/design/beyondrep_theme.dart';
 import '../../core/storage/account_store.dart';
 import '../../core/storage/objectbox_store_provider.dart';
 import '../../objectbox.g.dart';
+import '../catalog/application/catalog_providers.dart';
+import '../catalog/application/catalog_refresh_host.dart';
+import '../catalog/data/catalog_file_store.dart';
 import 'account_auth_controller.dart';
 import '../health/data/health_reader.dart';
 import '../health/data/platform_health_reader.dart';
@@ -66,6 +72,7 @@ class BoundAccountWorkoutApp extends StatefulWidget {
 class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
   late Future<Store> _opening;
   Store? _store;
+  Directory? _catalogDirectory;
 
   @override
   void initState() {
@@ -83,6 +90,11 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
       throw StateError('Account storage was closed during initialization');
     }
     _store = store;
+    // Shared across accounts on this backend host; holds no account data.
+    _catalogDirectory = Directory(
+      '${(await defaultStoreDirectory()).path}/'
+      '${catalogCacheRelativePath(widget.projectHost)}',
+    );
     return store;
   }
 
@@ -104,6 +116,7 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
         return ProviderScope(
           overrides: [
             objectBoxStoreProvider.overrideWithValue(snapshot.requireData),
+            catalogDirectoryProvider.overrideWithValue(_catalogDirectory!),
             accountAuthControllerProvider.overrideWithValue(widget.controller),
             // A factory, not a value: build() reruns on every auth notification
             // and a fresh unequal value would invalidate the health summary.
@@ -131,7 +144,9 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
               (ref) => ref.watch(workoutOutboxProvider).syncFlags(),
             ),
           ],
-          child: const AccountWorkoutUploadHost(child: BeyondRepApp()),
+          child: const AccountWorkoutUploadHost(
+            child: CatalogRefreshHost(child: BeyondRepApp()),
+          ),
         );
       }
       return MaterialApp(
