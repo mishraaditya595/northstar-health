@@ -9,8 +9,10 @@ import '../catalog/application/catalog_providers.dart';
 import '../catalog/application/exercise_choices_provider.dart';
 import '../catalog/data/catalog_repository.dart';
 import '../catalog/domain/exercise_choices.dart';
+import '../catalog/domain/exercise_filter.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
 import '../workouts/domain/workout_library_models.dart';
+import 'exercise_filter_bar.dart';
 import 'train_library_state.dart';
 
 const catalogUnavailableCopy =
@@ -35,7 +37,7 @@ Future<ExerciseRecord?> showExercisePicker(
 }) async {
   final choice = await showNsSheet<ExerciseChoice>(
     context,
-    heightFactor: 0.75,
+    heightFactor: 0.9,
     builder: (_) => _ExercisePickerBody(title: title),
   );
   if (choice == null || !context.mounted) return null;
@@ -82,10 +84,15 @@ class _ExercisePickerBody extends ConsumerStatefulWidget {
 
 class _ExercisePickerBodyState extends ConsumerState<_ExercisePickerBody> {
   String query = '';
+  String? group;
+  String? equipment;
 
   @override
   Widget build(BuildContext context) {
     final choices = ref.watch(exerciseChoicesProvider);
+    final equipmentChoices = equipmentOptions(
+      choices.asData?.value ?? const [],
+    );
     final status = safeCatalogState(() => ref.watch(catalogStateProvider))
         .status;
     final muted = Theme.of(context).extension<BeyondRepColors>()!.muted;
@@ -107,6 +114,14 @@ class _ExercisePickerBodyState extends ConsumerState<_ExercisePickerBody> {
                 prefixIcon: Icons.search,
                 hint: 'Search exercises',
               ),
+              const SizedBox(height: 8),
+              ExerciseFilterBar(
+                group: group,
+                equipment: equipment,
+                equipmentChoices: equipmentChoices,
+                onGroup: (value) => setState(() => group = value),
+                onEquipment: (value) => setState(() => equipment = value),
+              ),
             ],
           ),
         ),
@@ -116,49 +131,60 @@ class _ExercisePickerBodyState extends ConsumerState<_ExercisePickerBody> {
             error: (_, _) =>
                 const Center(child: Text('Exercise library could not load.')),
             data: (all) {
+              final filter = ExerciseFilter(
+                group: group,
+                equipment: equipmentChoices.contains(equipment)
+                    ? equipment
+                    : null,
+              );
               final visible = all
-                  .where((choice) => matchesExerciseQuery(choice, query))
+                  .where(
+                    (choice) =>
+                        filter.matches(choice) &&
+                        matchesExerciseQuery(choice, query),
+                  )
                   .toList();
               // The status note scrolls with the list so large text never
               // squeezes the list out of a short sheet.
-              return ListView(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                children: [
-                  if (status == CatalogStatus.unavailable) ...[
-                    Text(
-                      catalogUnavailableCopy,
-                      style: TextStyle(color: muted),
+              final notes = <Widget>[
+                if (status == CatalogStatus.unavailable) ...[
+                  Text(catalogUnavailableCopy, style: TextStyle(color: muted)),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      onPressed: () => retryCatalogDownload(ref),
+                      child: const Text('Retry'),
                     ),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton(
-                        onPressed: () => retryCatalogDownload(ref),
-                        child: const Text('Retry'),
-                      ),
-                    ),
-                  ],
-                  if (visible.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Center(child: Text('No matching exercises.')),
-                    ),
-                  for (final choice in visible)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: NsListCard(
-                        icon: choice.isCustom
-                            ? Icons.edit_note
-                            : Icons.fitness_center,
-                        title: choice.name,
-                        subtitle: [
-                          choice.muscleGroup,
-                          choice.equipment,
-                        ].where((s) => s.isNotEmpty).join(' · '),
-                        trailing: const Icon(Icons.add_circle_outline),
-                        onTap: () => Navigator.pop(context, choice),
-                      ),
-                    ),
+                  ),
                 ],
+                if (visible.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Center(child: Text('No matching exercises.')),
+                  ),
+              ];
+              return ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                itemCount: notes.length + visible.length,
+                itemBuilder: (context, index) {
+                  if (index < notes.length) return notes[index];
+                  final choice = visible[index - notes.length];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: NsListCard(
+                      icon: choice.isCustom
+                          ? Icons.edit_note
+                          : Icons.fitness_center,
+                      title: choice.name,
+                      subtitle: [
+                        choice.muscleGroup,
+                        choice.equipment,
+                      ].where((s) => s.isNotEmpty).join(' · '),
+                      trailing: const Icon(Icons.add_circle_outline),
+                      onTap: () => Navigator.pop(context, choice),
+                    ),
+                  );
+                },
               );
             },
           ),

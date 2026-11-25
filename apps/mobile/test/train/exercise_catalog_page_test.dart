@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
+import 'package:beyondrep/core/design/inputs.dart';
 import 'package:beyondrep/core/design/page_header.dart';
 import 'package:beyondrep/core/storage/objectbox_store_provider.dart';
 import 'package:beyondrep/features/catalog/application/catalog_providers.dart';
@@ -31,6 +32,11 @@ const noCacheFailureCopy =
     "Couldn't download the exercise library. Check your connection and try again.";
 const failureCopy =
     "Couldn't update the exercise library. Showing the saved copy.";
+
+// The list's own scrollable, not the horizontal chip row above it.
+final listScrollable = find
+    .descendant(of: find.byType(ListView), matching: find.byType(Scrollable))
+    .first;
 
 void main() {
   late Directory directory;
@@ -92,7 +98,7 @@ void main() {
   }
 
   testWidgets('shows catalogue exercises with Built-in tag', (tester) async {
-    await open(tester, ready());
+    await open(tester, ready(), size: const Size(800, 2000));
 
     expect(find.text('Hip thrust'), findsOneWidget);
     expect(find.text('Barbell row'), findsOneWidget);
@@ -145,7 +151,7 @@ void main() {
   testWidgets('custom exercises keep their edit and archive menu', (
     tester,
   ) async {
-    await open(tester, ready());
+    await open(tester, ready(), size: const Size(800, 2000));
     final menu = find.byTooltip('Exercise actions for Sled push');
     await tester.ensureVisible(menu);
     await tester.pumpAndSettle();
@@ -179,6 +185,7 @@ void main() {
     await open(
       tester,
       CatalogState(snapshot: snapshot(), status: CatalogStatus.outdatedApp),
+      size: const Size(800, 2000),
     );
     expect(
       find.text('Update BeyondRep to get the latest exercises.'),
@@ -208,7 +215,7 @@ void main() {
 
       expect(repository.forceCalls, [true]);
       expect(find.text(failureCopy), findsOneWidget);
-      expect(find.text('Hip thrust'), findsOneWidget);
+      expect(find.byType(NsListCard), findsWidgets);
     });
   }
 
@@ -266,12 +273,89 @@ void main() {
         await tester.scrollUntilVisible(
           find.text('Custom only'),
           200,
-          scrollable: find.byType(Scrollable).first,
+          scrollable: listScrollable,
         );
         await tester.tap(find.text('Custom only'));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
       });
     }
+  }
+
+  CatalogState many() => CatalogState(
+    snapshot: manyExercisesSnapshot(),
+    status: CatalogStatus.ready,
+  );
+
+  Future<void> pickLegsAndDumbbell(WidgetTester tester) async {
+    await tester.tap(find.widgetWithText(NsChip, 'Legs'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(NsDropdown<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Dumbbell').last);
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('group chip and equipment dropdown filter 250 rows', (
+    tester,
+  ) async {
+    await open(tester, many(), size: const Size(800, 4000));
+
+    await pickLegsAndDumbbell(tester);
+
+    expect(find.text('Synthetic 026 Legs dumbbell'), findsOneWidget);
+    expect(find.text('Synthetic 056 Legs dumbbell'), findsOneWidget);
+    expect(find.text('Synthetic 000 Chest barbell'), findsNothing);
+    expect(find.text('Synthetic 002 Legs cable'), findsNothing);
+    expect(find.text('Barbell bench press'), findsNothing);
+
+    await tester.enterText(find.byType(TextField), '056');
+    await tester.pumpAndSettle();
+    expect(find.text('Synthetic 056 Legs dumbbell'), findsOneWidget);
+    expect(find.text('Synthetic 026 Legs dumbbell'), findsNothing);
+
+    await tester.tap(find.widgetWithText(NsChip, 'All'));
+    await tester.pumpAndSettle();
+    expect(find.text('Synthetic 056 Legs dumbbell'), findsOneWidget);
+  });
+
+  testWidgets('the list is lazy', (tester) async {
+    await open(tester, many(), size: const Size(800, 1000));
+
+    expect(find.text('Barbell bench press'), findsOneWidget);
+    expect(find.text('Synthetic 249 Shoulders bodyweight'), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text('Synthetic 249 Shoulders bodyweight'),
+      800,
+      scrollable: listScrollable,
+    );
+    expect(find.text('Synthetic 249 Shoulders bodyweight'), findsOneWidget);
+  });
+
+  testWidgets('custom exercises still show under All', (tester) async {
+    await open(tester, many());
+    await tester.enterText(find.byType(TextField), 'sled');
+    await tester.pumpAndSettle();
+    expect(find.text('Sled push'), findsOneWidget);
+  });
+
+  for (final brightness in Brightness.values) {
+    testWidgets('filters have no overflow at text scale 2.0, '
+        '${brightness.name}', (tester) async {
+      await open(
+        tester,
+        many(),
+        brightness: brightness,
+        textScale: 2,
+        size: const Size(390, 844),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.widgetWithText(NsChip, 'Legs'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await tester.drag(listScrollable, const Offset(0, -600));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
   }
 }

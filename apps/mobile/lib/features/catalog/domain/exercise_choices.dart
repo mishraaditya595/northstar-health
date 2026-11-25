@@ -1,3 +1,4 @@
+import '../../workouts/domain/muscles.dart';
 import '../../workouts/domain/workout_library_models.dart';
 import 'catalog_models.dart';
 
@@ -58,6 +59,7 @@ class ExerciseChoice {
     required this.equipment,
     required this.mode,
     required this.isCustom,
+    this.primaryMuscles = const [],
     this.catalog,
     this.release,
     this.local,
@@ -70,6 +72,10 @@ class ExerciseChoice {
   final String equipment;
   final String mode;
   final bool isCustom;
+
+  /// Primary muscle ids (for example `hamstrings`); empty for custom
+  /// exercises. Used by search.
+  final List<String> primaryMuscles;
   final CatalogExercise? catalog;
 
   /// Release of the snapshot [catalog] came from; null without a catalogue
@@ -103,6 +109,7 @@ List<ExerciseChoice> buildExerciseChoices({
         equipment: equipmentLabel(exercise.equipment),
         mode: exercise.mode,
         isCustom: false,
+        primaryMuscles: exercise.primaryMuscles,
         catalog: exercise,
         release: catalog!.release,
         local: record,
@@ -120,6 +127,7 @@ List<ExerciseChoice> buildExerciseChoices({
         equipment: record.equipment,
         mode: record.inputMode,
         isCustom: !record.isBuiltIn,
+        primaryMuscles: record.primaryMuscles,
         local: record,
       ),
     );
@@ -136,5 +144,6 @@ bool matchesExerciseQuery(ExerciseChoice choice, String query) {
     ...choice.aliases,
     choice.muscleGroup,
     choice.equipment,
+    ...choice.primaryMuscles.map(muscleDisplayName),
   ].any((field) => field.toLowerCase().contains(needle));
 }

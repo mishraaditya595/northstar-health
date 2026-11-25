@@ -125,14 +125,17 @@ CatalogExercise catalogExercise(
   List<String> aliases = const [],
   String mode = 'reps_load',
   String category = 'hinge',
+  String group = 'Legs',
+  List<String> equipment = const ['barbell', 'bench'],
+  List<String> primary = const ['glutes'],
 }) => CatalogExercise(
   id: id,
   name: name,
   aliases: aliases,
-  muscleGroup: 'Legs',
-  primaryMuscles: const ['glutes'],
+  muscleGroup: group,
+  primaryMuscles: primary,
   secondaryMuscles: const [],
-  equipment: const ['barbell', 'bench'],
+  equipment: equipment,
   category: category,
   mode: mode,
   cues: const [],
@@ -152,3 +155,21 @@ CatalogSnapshot catalogSnapshotOf(
   templates: const [],
   programs: const [],
 );
+
+/// 250 synthetic exercises spread over the six groups and five tools, for
+/// list size and filter tests. Names look like `Synthetic 007 Chest barbell`.
+CatalogSnapshot manyExercisesSnapshot() {
+  const groups = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'];
+  const tools = ['barbell', 'dumbbell', 'cable', 'machine', 'bodyweight'];
+  return catalogSnapshotOf([
+    for (var i = 0; i < 250; i++)
+      catalogExercise(
+        'builtin.v1.synthetic-$i',
+        'Synthetic ${i.toString().padLeft(3, '0')} '
+            '${groups[i % 6]} ${tools[i % 5]}',
+        group: groups[i % 6],
+        equipment: [tools[i % 5]],
+        primary: const ['quads'],
+      ),
+  ]);
+}
