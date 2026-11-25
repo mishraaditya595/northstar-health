@@ -4,6 +4,7 @@ import '../data/health_connection_repository.dart';
 import '../data/health_reader.dart';
 import '../domain/daily_series.dart';
 import '../domain/health_types.dart';
+import '../domain/readiness.dart';
 import '../domain/sleep_nights.dart';
 import '../domain/sleep_score.dart';
 import '../domain/trend.dart';
@@ -142,6 +143,31 @@ class BodyOverview {
   final MetricGap? weightGap, bodyFatGap;
 }
 
+/// Derived from the sleep and heart data already read; held in memory only.
+class ReadinessOverview {
+  const ReadinessOverview({
+    required this.result,
+    required this.hasHrv,
+    required this.hasRestingHr,
+    required this.hasSleep,
+    required this.hrvVsNormal,
+    required this.restingHrVsNormal,
+    required this.hrvBaseline,
+    required this.restingHrBaseline,
+    required this.hrvIsSdnn,
+  });
+
+  final ReadinessResult result;
+
+  /// Today's inputs are present, for the "what's missing" chips.
+  final bool hasHrv, hasRestingHr, hasSleep;
+
+  /// Today against the baseline mean; null without a value today or baseline.
+  final TrendResult? hrvVsNormal, restingHrVsNormal;
+  final Baseline? hrvBaseline, restingHrBaseline;
+  final bool hrvIsSdnn;
+}
+
 /// Read fresh and held in memory only; never written anywhere.
 class HealthOverview {
   const HealthOverview({
@@ -154,6 +180,7 @@ class HealthOverview {
     required this.heart,
     required this.activity,
     required this.body,
+    required this.readiness,
   });
 
   /// The account this was read for; never shown under another account.
@@ -168,6 +195,7 @@ class HealthOverview {
   final Section<HeartOverview> heart;
   final Section<ActivityOverview> activity;
   final Section<BodyOverview> body;
+  final Section<ReadinessOverview> readiness;
 }
 
 const _staleAfter = Duration(minutes: 5);
@@ -343,6 +371,62 @@ List<DayValue> _hrvDaily(List<HealthSample> samples, List<SleepNight> nights) {
   ];
 }
 
+/// A gapped section counts as absent inputs; only two gaps for the same
+/// reason make the whole readiness a gap.
+Section<ReadinessOverview> _readiness(
+  Section<SleepOverview> sleepSection,
+  Section<HeartOverview> heartSection,
+  DateTime today,
+  HealthPlatformKind platform,
+) {
+  if (sleepSection is SectionGap<SleepOverview> &&
+      heartSection is SectionGap<HeartOverview> &&
+      sleepSection.gap == heartSection.gap) {
+    return SectionGap(sleepSection.gap);
+  }
+  final sleep = switch (sleepSection) {
+    SectionData(:final value) => value,
+    SectionGap() => null,
+  };
+  final heart = switch (heartSection) {
+    SectionData(:final value) => value,
+    SectionGap() => null,
+  };
+  final hrvDaily = heart?.hrvDaily ?? const <DayValue>[];
+  final rhrDaily = heart?.restingHrDaily ?? const <DayValue>[];
+  final hrvToday = _valueOn(hrvDaily, today);
+  final rhrToday = _valueOn(rhrDaily, today);
+  final hrvBaseline = baselineOf(hrvDaily, today, sdFloor: hrvSdFloor);
+  final rhrBaseline = baselineOf(rhrDaily, today, sdFloor: rhrSdFloor);
+  final night = sleep?.lastNight;
+  return SectionData(
+    ReadinessOverview(
+      result: scoreReadiness(
+        today: today,
+        lastNight: night,
+        sleepScore: sleep?.score,
+        priorNights: sleep == null
+            ? const []
+            : sleep.nights.sublist(0, sleep.nights.length - 1),
+        hrvDaily: hrvDaily,
+        restingHrDaily: rhrDaily,
+      ),
+      hasHrv: hrvToday != null,
+      hasRestingHr: rhrToday != null,
+      hasSleep: night != null && dayOf(night.date) == today,
+      hrvVsNormal: hrvToday == null || hrvBaseline == null
+          ? null
+          : trendOf(TrendMetric.hrv, hrvToday, hrvBaseline.mean),
+      restingHrVsNormal: rhrToday == null || rhrBaseline == null
+          ? null
+          : trendOf(TrendMetric.restingHr, rhrToday, rhrBaseline.mean),
+      hrvBaseline: hrvBaseline,
+      restingHrBaseline: rhrBaseline,
+      hrvIsSdnn: platform == HealthPlatformKind.appleHealth,
+    ),
+  );
+}
+
 Future<HealthOverview> _read(
   String ownerId,
   HealthReader reader,
@@ -512,6 +596,8 @@ Future<HealthOverview> _read(
     );
   });
 
+  final readiness = _readiness(sleep, heart, today, platform);
+
   return HealthOverview(
     ownerId: ownerId,
     readAt: now,
@@ -524,5 +610,6 @@ Future<HealthOverview> _read(
     heart: heart,
     activity: activity,
     body: body,
+    readiness: readiness,
   );
 }
