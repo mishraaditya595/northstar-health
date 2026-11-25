@@ -14,6 +14,7 @@ from scripts.p2_08_hosted_rls import (
     Reply,
     _requester,
     run_audit,
+    run_catalog_audit,
 )
 
 A = "00000000-0000-4000-8000-000000000001"
@@ -332,6 +333,74 @@ class HostedReadAuditTests(unittest.TestCase):
         result = self._request_with_fake_https(handler)
         self.assertEqual(result, Reply(403, None))
         self.assertEqual(len(handler.requests), 1)
+
+
+SHA = "ab" * 32
+
+
+class FakeCatalogApi:
+    """Locked-down catalogue backend; each flag introduces exactly one fault."""
+
+    def __init__(self, *, anonymous_manifest=False, table_rows=False,
+                 live_rows=False, stale_release=False, publish_reachable=False,
+                 bad_sha=False, manifest_error=False):
+        self.flags = dict(locals())
+        del self.flags["self"]
+
+    def __call__(self, method, path, token=None, query=None, payload=None):
+        f = self.flags
+        if path == "/rest/v1/rpc/catalog_manifest":
+            if token is None:
+                return Reply(200 if f["anonymous_manifest"] else 401,
+                             {"release": 1, "sha256": SHA}
+                             if f["anonymous_manifest"] else None)
+            if f["manifest_error"]:
+                return Reply(500, None)
+            return Reply(200, {"release": 3, "sha256": "xyz" if f["bad_sha"] else SHA})
+        if path == "/rest/v1/rpc/catalog_snapshot":
+            wanted = payload["p_release"]
+            if wanted == 3 or (f["stale_release"] and wanted > 3):
+                return Reply(200, {"release": wanted})
+            return Reply(404, None)
+        if path == "/rest/v1/catalog_releases":
+            return Reply(200, [{"release": 3}]) if f["table_rows"] else Reply(401, None)
+        if path == "/rest/v1/catalog_live":
+            return Reply(200, [{"release": 3}]) if f["live_rows"] else Reply(200, [])
+        if path == "/rest/v1/rpc/publish_catalog_release":
+            return Reply(200 if f["publish_reachable"] else 404, None)
+        raise AssertionError("unexpected call " + path)
+
+
+class CatalogAuditTest(unittest.TestCase):
+    def assert_fails(self, code, **fault):
+        with self.assertRaises(AuditFailure) as ctx:
+            run_catalog_audit(FakeCatalogApi(**fault), "token")
+        self.assertEqual(str(ctx.exception), code)
+
+    def test_catalog_audit_passes_on_locked_down_backend(self):
+        summary = run_catalog_audit(FakeCatalogApi(), "token")
+        self.assertIsInstance(summary, str)
+        self.assertIn("catalogue", summary)
+
+    def test_catalog_anonymous_manifest_leak(self):
+        self.assert_fails("catalog_anonymous_manifest_allowed",
+                          anonymous_manifest=True)
+
+    def test_catalog_table_rows_leak(self):
+        self.assert_fails("catalog_releases_rows_exposed", table_rows=True)
+        self.assert_fails("catalog_live_rows_exposed", live_rows=True)
+
+    def test_catalog_stale_release_served(self):
+        self.assert_fails("catalog_stale_release_served", stale_release=True)
+
+    def test_catalog_publish_reachable(self):
+        self.assert_fails("catalog_publish_reachable", publish_reachable=True)
+
+    def test_catalog_manifest_malformed_sha(self):
+        self.assert_fails("catalog_manifest_malformed", bad_sha=True)
+
+    def test_catalog_manifest_unavailable_when_signed_in(self):
+        self.assert_fails("catalog_manifest_unavailable", manifest_error=True)
 
 
 if __name__ == "__main__":

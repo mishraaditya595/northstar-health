@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -242,6 +243,52 @@ def run_audit(call: Callable[..., Reply], token_a: str, token_b: str,
     return passed
 
 
+_DENIED = (401, 403, 404)
+
+
+def run_catalog_audit(call: Callable[..., Reply], token: str) -> str:
+    """Prove the shared catalogue is readable only through the two RPCs.
+
+    Read-only: the publish probe sends an empty payload, so even a mis-exposed
+    function cannot match its signature and writes nothing.
+    """
+    _require(bool(token), "catalog_session_required")
+
+    anonymous = call("POST", "/rest/v1/rpc/catalog_manifest", None, None, {})
+    _require(anonymous.status in _DENIED, "catalog_anonymous_manifest_allowed")
+
+    manifest = call("POST", "/rest/v1/rpc/catalog_manifest", token, None, {})
+    _require(manifest.status == 200 and isinstance(manifest.data, dict),
+             "catalog_manifest_unavailable")
+    release = manifest.data.get("release")
+    sha = manifest.data.get("sha256")
+    _require(type(release) is int and release >= 1
+             and isinstance(sha, str) and re.fullmatch(r"[0-9a-f]{64}", sha),
+             "catalog_manifest_malformed")
+
+    snapshot = call("POST", "/rest/v1/rpc/catalog_snapshot", token, None,
+                    {"p_release": release})
+    _require(snapshot.status == 200 and isinstance(snapshot.data, dict)
+             and snapshot.data.get("release") == release,
+             "catalog_snapshot_unavailable")
+
+    stale = call("POST", "/rest/v1/rpc/catalog_snapshot", token, None,
+                 {"p_release": release + 1000})
+    _require(stale.status >= 400, "catalog_stale_release_served")
+
+    for table, code in (("catalog_releases", "catalog_releases_rows_exposed"),
+                        ("catalog_live", "catalog_live_rows_exposed")):
+        rows = call("GET", "/rest/v1/" + table, token, {"select": "release"})
+        _require(rows.status in _DENIED
+                 or (rows.status == 200 and rows.data == []), code)
+
+    publish = call("POST", "/rest/v1/rpc/publish_catalog_release", token,
+                   None, {})
+    _require(not 200 <= publish.status < 300, "catalog_publish_reachable")
+
+    return "PASS: catalogue read-only access audit (7 checks)"
+
+
 def main() -> int:
     if os.environ.get("NS_P2_08_DISPOSABLE_ACK") != "nonproduction-disposable-only":
         print("FAIL: disposable_nonproduction_ack_required", file=sys.stderr)
@@ -260,6 +307,9 @@ def main() -> int:
             os.environ["NS_P2_08_JWT_B"],
             os.environ["NS_P2_08_WORKOUT_A"],
             os.environ["NS_P2_08_WORKOUT_B"])
+        call = _requester(os.environ["NS_P2_08_URL"],
+                          os.environ["NS_P2_08_PUBLISHABLE_KEY"])
+        catalog_summary = run_catalog_audit(call, os.environ["NS_P2_08_JWT_A"])
     except AuditFailure as error:
         print("FAIL: " + str(error), file=sys.stderr)
         return 1
@@ -267,6 +317,7 @@ def main() -> int:
     print("PASS: " + str(len(checks)) + " signed-JWT read-isolation checks")
     for name in checks:
         print("PASS: " + name)
+    print(catalog_summary)
     return 0
 
 
