@@ -2,7 +2,7 @@ import '../progress/muscle_recovery.dart';
 import '../workouts/domain/workout_library_models.dart';
 
 /// A muscle group at or above this load still counts as recovering.
-const recoveredBelow = 0.25;
+const recoveredBelow = 0.1;
 
 /// Smallest `worstLoad` lead a plan needs over every other plan to be named.
 const _clearLead = 0.2;

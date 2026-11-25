@@ -104,8 +104,10 @@ HealthOverview _overview({
   bool sleepGap = false,
   bool heartGap = false,
   List<DayValue>? rhr,
+  List<SleepNight>? firstNights,
 }) {
   final nights = [
+    ...?firstNights,
     for (final x in [2, 4, 6, 8]) _night(_d(x), 460),
     for (final x in [10, 11, 12, 13, 14]) _night(_d(x), 420),
   ];
@@ -195,6 +197,17 @@ void main() {
     expect(h.reads, 1);
   });
 
+  test('a night whose previous day is outside the window is dropped', () async {
+    // readAt is March 31, so the window starts March 1: the night of March 1
+    // follows February 28, which cannot be known, so it is not "other".
+    final h = _FakeHistory(_training);
+    final r = (await _read(
+      _container(_overview(firstNights: [_night(_d(1), 460)]), h),
+    ))!;
+    expect(r.sleep!.trainingNights, 4);
+    expect(r.sleep!.otherNightsCount, 5);
+  });
+
   test('overview for another owner is null', () async {
     final c = _container(_overview(owner: 'owner-b'), _FakeHistory(_training));
     expect(await _read(c), isNull);
@@ -271,9 +284,10 @@ void main() {
       readiness: const SectionGap(MetricGap.noData),
     );
     final r = (await _read(_container(o, h)))!;
-    // Nights after Mar 1, 3, 5 only; Mar 1 and Apr 2 nights count as other.
+    // Nights after Mar 1, 3, 5 only; the Mar 1 night follows Feb 28, outside
+    // the window, so it is dropped; the Apr 2 night counts as other.
     expect(r.sleep!.trainingNights, 3);
-    expect(r.sleep!.otherNightsCount, 5);
+    expect(r.sleep!.otherNightsCount, 4);
   });
 
   test('unfinished and discarded sessions are ignored', () async {

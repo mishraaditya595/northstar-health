@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/objectbox_workout_history_repository.dart';
@@ -10,7 +11,11 @@ final completedWorkoutHistoryProvider = FutureProvider<WorkoutHistorySnapshot>(
 );
 
 /// Injectable clock sampled once per Progress visit, not cached with the
-/// completed history. Disposes after the last listener leaves the page.
-final progressNowProvider = Provider.autoDispose<DateTime>(
-  (ref) => DateTime.now().toUtc(),
-);
+/// completed history. Re-sampled on app resume so every page that reads it
+/// (Progress, Train recovery) stays current after days in background.
+/// Disposes after the last listener leaves.
+final progressNowProvider = Provider.autoDispose<DateTime>((ref) {
+  final lifecycle = AppLifecycleListener(onResume: ref.invalidateSelf);
+  ref.onDispose(lifecycle.dispose);
+  return DateTime.now().toUtc();
+});

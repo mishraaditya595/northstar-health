@@ -377,27 +377,23 @@ class TrainPage extends ConsumerWidget {
     };
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: Semantics(
-        container: true,
-        label: 'Better fit today: ${plan.name}. $reason',
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(bottom: 8),
-              child: NsTag('Better fit today'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: NsTag('Better fit today'),
+          ),
+          NsListCard(
+            icon: Icons.bolt,
+            title: plan.name,
+            subtitle: reason,
+            trailing: TextButton(
+              onPressed: () => _startPlan(context, ref, plan.uuid),
+              child: const Text('Start'),
             ),
-            NsListCard(
-              icon: Icons.bolt,
-              title: plan.name,
-              subtitle: reason,
-              trailing: TextButton(
-                onPressed: () => _startPlan(context, ref, plan.uuid),
-                child: const Text('Start'),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

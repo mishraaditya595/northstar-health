@@ -16,7 +16,7 @@
 - Never fabricate: an insight shows only when it passes its minimum-sample rule (≥ 3 matching days with data on each side) **and** its minimum effect size; otherwise nothing is shown. Missing is never shown as zero.
 - Copy is a suggestion or an observation, never an instruction or a medical statement (no "must", "should rest", "injury", "overtraining").
 - Plans are never changed automatically. Never suggest a plan that hits recovering muscles; if none qualifies, suggest nothing.
-- Recovered = muscle load `< 0.25` in the upgraded `MuscleRecovery`; recovering = `≥ 0.25`.
+- Recovered = muscle load `< 0.1` in the upgraded `MuscleRecovery`; recovering = `≥ 0.1` (lowered from 0.25 in the final review so a light session still reads recovering).
 - Custom muscle groups that map to no drawn muscle are ignored by plan fit (spec decision).
 - Account separation: an insight uses an overview and a history of the same owner; on account switch nothing from the previous account shows.
 - Kit-only UI (`test/design_kit_guard_test.dart`); light/dark, tablet, text scale 2.0, screen-reader labels.
@@ -76,7 +76,7 @@ Model (constants pinned by tests; builder's choice per spec "Left to the builder
 **Interfaces:**
 - Consumes: Task 1's `MuscleRecovery` (`load`, `groups`, `loadOf`, `musclesOf`), `WorkoutPlanRecord` (`uuid`, `name`, `exercises: List<PlanExerciseRecord>` with `exerciseUuid`, `targetSets`), `ExerciseRecord` (`uuid`, `muscleGroup`).
 - Produces:
-  - `const recoveredBelow = 0.25;`
+  - `const recoveredBelow = 0.1;`
   - `class PlanRecovery { final String planUuid; final Set<String> groups; final Set<String> recovering; final double worstLoad; final int totalSets; bool get isRecovered => recovering.isEmpty; }` where `groups` are the plan's mapped group display names (capitalised as in `MuscleRecovery.groups`), `recovering` those with load `≥ recoveredBelow`, `worstLoad` the max `loadOf` over the plan's muscles.
   - `PlanRecovery? planRecoveryOf(WorkoutPlanRecord plan, Map<String, ExerciseRecord> exercisesByUuid, MuscleRecovery recovery)`: null when no exercise maps to a drawn muscle.
   - `sealed class PlanSuggestion` with `SuggestRecovered(PlanRecovery plan, Set<String> restedGroups)` and `SuggestLightest(PlanRecovery plan)`.

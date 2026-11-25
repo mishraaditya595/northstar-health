@@ -52,7 +52,17 @@ final trainingInsightsProvider = Provider.autoDispose<TrainingInsights?>((ref) {
 
   return TrainingInsights(
     sleep: switch (overview.sleep) {
-      SectionData(:final value) => sleepAfterTraining(value.nights, training),
+      // A night whose previous day is before the window cannot be told apart
+      // from a rest night, so it is left out.
+      SectionData(:final value) => sleepAfterTraining([
+        for (final n in value.nights)
+          if (!DateTime(
+            n.date.year,
+            n.date.month,
+            n.date.day - 1,
+          ).isBefore(start))
+            n,
+      ], training),
       SectionGap() => null,
     },
     restingHr: switch (overview.heart) {

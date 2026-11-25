@@ -1,6 +1,7 @@
 import 'package:beyondrep/features/progress/muscle_recovery.dart';
 import 'package:beyondrep/features/train/plan_fit.dart';
 import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 ExerciseRecord _ex(String uuid, String group) => ExerciseRecord(
@@ -45,15 +46,48 @@ PlanRecovery _pr(
   totalSets: sets,
 );
 
+/// Three working sets of ten, no RPE, finished at [at] on a Legs exercise.
+WorkoutSessionRecord _lightLegs(DateTime at) => WorkoutSessionRecord(
+  uuid: 'light',
+  name: 'Light',
+  status: WorkoutStatus.completed,
+  startedAtUtc: at.subtract(const Duration(minutes: 30)),
+  completedAtUtc: at,
+  originalOffsetMinutes: 0,
+  revision: 1,
+  exercises: [
+    WorkoutExerciseRecord(
+      uuid: 'e',
+      sessionUuid: 'light',
+      nameSnapshot: 'Squat',
+      muscleSnapshot: 'Legs',
+      position: 0,
+    ),
+  ],
+  sets: [
+    for (var i = 0; i < 3; i++)
+      WorkoutSetRecord(
+        uuid: 's$i',
+        exerciseUuid: 'e',
+        position: i,
+        kind: WorkoutSetKind.working,
+        status: WorkoutSetStatus.completed,
+        reps: 10,
+        completedAtUtc: at,
+      ),
+  ],
+);
+
 void main() {
   final exercises = {
     'bench': _ex('bench', 'Chest'),
     'curl': _ex('curl', 'arms'),
     'yoga': _ex('yoga', 'Mobility'),
+    'squat': _ex('squat', 'Legs'),
   };
   const recovery = MuscleRecovery({
     Muscle.chest: 0.6,
-    Muscle.biceps: 0.1,
+    Muscle.biceps: 0.09,
     Muscle.triceps: 0.05,
   });
 
@@ -70,6 +104,22 @@ void main() {
       expect(r.totalSets, 14);
       expect(r.isRecovered, isFalse);
     });
+
+    test(
+      'a light session is recovering when just finished, recovered at 48 h',
+      () {
+        final done = DateTime.utc(2026, 11, 24, 12);
+        final plan = _plan('p', {'squat': 3});
+        PlanRecovery at(Duration later) => planRecoveryOf(
+          plan,
+          exercises,
+          MuscleRecovery.fromWorkouts([_lightLegs(done)], done.add(later)),
+        )!;
+        expect(at(Duration.zero).recovering, {'Legs'});
+        expect(at(Duration.zero).isRecovered, isFalse);
+        expect(at(const Duration(hours: 48)).isRecovered, isTrue);
+      },
+    );
 
     test('unmapped-only, empty and missing exercises give null', () {
       expect(

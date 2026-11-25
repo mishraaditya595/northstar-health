@@ -209,13 +209,14 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Start'), findsOneWidget);
+    // No outer label that would repeat the plan name and reason: the tag,
+    // the card and Start each read once, in order.
     expect(
-      find.bySemanticsLabel(
-        RegExp(
-          'Better fit today: Leg day. '
-          'Chest still recovering · this plan rests them',
-        ),
-      ),
+      find.bySemanticsLabel(RegExp('Better fit today: Leg day')),
+      findsNothing,
+    );
+    expect(
+      find.bySemanticsLabel(RegExp('Chest still recovering · this plan')),
       findsOneWidget,
     );
   });
@@ -260,6 +261,25 @@ void main() {
     expect(find.textContaining('Recovered'), findsOneWidget);
     expect(find.text('Move bench\nRecovered'), findsOneWidget);
     expect(find.text('Move squat\nLegs recovering'), findsOneWidget);
+  });
+
+  testWidgets('yesterday\'s low readiness does not pick the lightest plan', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      plans: [_push, _legs],
+      history: _chestDone(),
+      health: FakeHealthOverviewController(
+        overview(readiness: _ready(48), readAt: DateTime(2026, 11, 23, 20)),
+      ),
+    );
+    expect(find.textContaining('Lightest plan'), findsNothing);
+    expect(find.text('Better fit today'), findsOneWidget);
+    expect(
+      find.text('Chest still recovering · this plan rests them'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('no completed workouts shows no card and no lines', (
