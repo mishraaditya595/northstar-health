@@ -37,7 +37,7 @@
         "sets": 3,
         "repsMin": 8,
         "repsMax": 12,
-        "restSeconds": 90
+        "restSeconds": 120
       },
       {
         "exerciseId": "builtin.v1.lateral-raise",
@@ -79,7 +79,8 @@
         "sets": 4,
         "repsMin": 5,
         "repsMax": 8,
-        "restSeconds": 150
+        "restSeconds": 150,
+        "note": "Use the band-assisted or machine-assisted pull-up if 5 clean reps are not possible yet."
       },
       {
         "exerciseId": "builtin.v1.bent-over-row",
@@ -93,7 +94,7 @@
         "sets": 3,
         "repsMin": 8,
         "repsMax": 12,
-        "restSeconds": 90
+        "restSeconds": 120
       },
       {
         "exerciseId": "builtin.v1.face-pull",
@@ -133,7 +134,8 @@
         "sets": 4,
         "repsMin": 5,
         "repsMax": 8,
-        "restSeconds": 180
+        "restSeconds": 180,
+        "note": "Squat in a rack with the safeties set just below your lowest position."
       },
       {
         "exerciseId": "builtin.v1.rdl",
@@ -168,7 +170,7 @@
   {
     "id": "tpl.upper-a",
     "name": "Upper body A",
-    "description": "The first of two upper body sessions, built around the bench press and the barbell row. Pair it with Upper body B for a two day split.",
+    "description": "The first of two upper body sessions, built around the bench press and the barbell row. Pair it with Upper body B, and add Lower body A and B for an upper and lower split.",
     "tags": {
       "goal": [
         "hypertrophy",
@@ -210,7 +212,7 @@
         "sets": 3,
         "repsMin": 8,
         "repsMax": 12,
-        "restSeconds": 90
+        "restSeconds": 120
       },
       {
         "exerciseId": "builtin.v1.bicep-curl",
@@ -245,35 +247,36 @@
         "pull_up_bar"
       ]
     },
-    "estimatedMinutes": 45,
+    "estimatedMinutes": 50,
     "exercises": [
       {
         "exerciseId": "builtin.v1.db-incline-press",
         "sets": 3,
         "repsMin": 8,
         "repsMax": 12,
-        "restSeconds": 90
+        "restSeconds": 120
       },
       {
         "exerciseId": "builtin.v1.pull-up",
         "sets": 3,
         "repsMin": 5,
         "repsMax": 8,
-        "restSeconds": 150
+        "restSeconds": 150,
+        "note": "Use the band-assisted or machine-assisted pull-up if 5 clean reps are not possible yet."
       },
       {
         "exerciseId": "builtin.v1.db-shoulder-press",
         "sets": 3,
         "repsMin": 8,
         "repsMax": 10,
-        "restSeconds": 90
+        "restSeconds": 120
       },
       {
         "exerciseId": "builtin.v1.seated-row",
         "sets": 3,
         "repsMin": 8,
         "repsMax": 12,
-        "restSeconds": 90
+        "restSeconds": 120
       },
       {
         "exerciseId": "builtin.v1.lateral-raise",
@@ -307,14 +310,15 @@
         "machine"
       ]
     },
-    "estimatedMinutes": 50,
+    "estimatedMinutes": 55,
     "exercises": [
       {
         "exerciseId": "builtin.v1.squat",
         "sets": 4,
         "repsMin": 5,
         "repsMax": 8,
-        "restSeconds": 180
+        "restSeconds": 180,
+        "note": "Squat in a rack with the safeties set just below your lowest position."
       },
       {
         "exerciseId": "builtin.v1.rdl",
@@ -328,8 +332,8 @@
         "sets": 3,
         "repsMin": 8,
         "repsMax": 10,
-        "restSeconds": 90,
-        "note": "Reps per side."
+        "restSeconds": 120,
+        "note": "Reps per side. Rest after both sides."
       },
       {
         "exerciseId": "builtin.v1.leg-curl",
@@ -353,6 +357,7 @@
     "description": "A lower body session led by the deadlift, with a leg press, a hip thrust and a plank. It pairs with Lower body A.",
     "tags": {
       "goal": [
+        "strength",
         "hypertrophy",
         "general"
       ],
@@ -363,14 +368,15 @@
         "machine"
       ]
     },
-    "estimatedMinutes": 45,
+    "estimatedMinutes": 50,
     "exercises": [
       {
         "exerciseId": "builtin.v1.deadlift",
         "sets": 3,
         "repsMin": 5,
         "repsMax": 5,
-        "restSeconds": 180
+        "restSeconds": 180,
+        "note": "Rest up to 5 minutes if a heavy set needs it."
       },
       {
         "exerciseId": "builtin.v1.leg-press",
@@ -478,7 +484,7 @@
         "machine"
       ]
     },
-    "estimatedMinutes": 35,
+    "estimatedMinutes": 40,
     "exercises": [
       {
         "exerciseId": "builtin.v1.leg-press",
@@ -492,7 +498,8 @@
         "sets": 3,
         "repsMin": 8,
         "repsMax": 12,
-        "restSeconds": 90
+        "restSeconds": 90,
+        "note": "Use a stable bench or box. Raise your hands higher to make it easier."
       },
       {
         "exerciseId": "builtin.v1.lat-pulldown",
@@ -520,14 +527,15 @@
         "sets": 2,
         "repsMin": 8,
         "repsMax": 10,
-        "restSeconds": 60
+        "restSeconds": 60,
+        "note": "Reps per side. Rest after both sides."
       }
     ]
   },
   {
     "id": "tpl.full-body-dumbbell",
     "name": "Full body dumbbell",
-    "description": "A whole body session for a home gym with dumbbells and a bench. Use one pair of dumbbells you can adjust or swap.",
+    "description": "A whole body session for a home gym with dumbbells and a bench. Use adjustable dumbbells or a different weight for each movement.",
     "tags": {
       "goal": [
         "general",
@@ -539,43 +547,43 @@
         "dumbbell"
       ]
     },
-    "estimatedMinutes": 40,
+    "estimatedMinutes": 50,
     "exercises": [
       {
         "exerciseId": "builtin.v1.db-goblet-squat",
         "sets": 3,
         "repsMin": 8,
         "repsMax": 12,
-        "restSeconds": 90
+        "restSeconds": 120
       },
       {
         "exerciseId": "builtin.v1.db-bench-press",
         "sets": 3,
         "repsMin": 8,
         "repsMax": 12,
-        "restSeconds": 90
+        "restSeconds": 120
       },
       {
         "exerciseId": "builtin.v1.db-row",
         "sets": 3,
         "repsMin": 8,
         "repsMax": 12,
-        "restSeconds": 90,
-        "note": "Reps per side."
+        "restSeconds": 120,
+        "note": "Reps per side. Rest after both sides."
       },
       {
         "exerciseId": "builtin.v1.db-rdl",
         "sets": 3,
         "repsMin": 8,
         "repsMax": 12,
-        "restSeconds": 90
+        "restSeconds": 120
       },
       {
         "exerciseId": "builtin.v1.db-shoulder-press",
         "sets": 2,
         "repsMin": 8,
         "repsMax": 12,
-        "restSeconds": 90
+        "restSeconds": 120
       },
       {
         "exerciseId": "builtin.v1.db-hammer-curl",
@@ -589,7 +597,7 @@
   {
     "id": "tpl.bodyweight-full-body",
     "name": "Bodyweight full body",
-    "description": "A beginner session that needs no equipment. It covers legs, chest, hips and core.",
+    "description": "A beginner session that needs no equipment and covers legs, pushing, hips and core. It has no pulling exercise, so it does not replace rows or pull-ups.",
     "tags": {
       "goal": [
         "general",
@@ -600,7 +608,7 @@
         "bodyweight"
       ]
     },
-    "estimatedMinutes": 35,
+    "estimatedMinutes": 40,
     "exercises": [
       {
         "exerciseId": "builtin.v1.bodyweight-squat",
@@ -614,7 +622,8 @@
         "sets": 3,
         "repsMin": 6,
         "repsMax": 12,
-        "restSeconds": 90
+        "restSeconds": 90,
+        "note": "If full push-ups are too hard, do them from your knees or with your hands on a stable surface."
       },
       {
         "exerciseId": "builtin.v1.reverse-lunge",
@@ -622,7 +631,7 @@
         "repsMin": 8,
         "repsMax": 10,
         "restSeconds": 60,
-        "note": "Reps per side."
+        "note": "Reps per side. Rest after both sides."
       },
       {
         "exerciseId": "builtin.v1.glute-bridge",
@@ -636,7 +645,8 @@
         "sets": 2,
         "repsMin": 8,
         "repsMax": 10,
-        "restSeconds": 60
+        "restSeconds": 60,
+        "note": "Reps per side. Rest after both sides."
       },
       {
         "exerciseId": "builtin.v1.plank",
@@ -649,7 +659,7 @@
   {
     "id": "tpl.hotel-room",
     "name": "Hotel room workout",
-    "description": "A session for travel days that needs only floor space. It uses bodyweight moves that work in a small room.",
+    "description": "A session for travel days that needs only floor space and covers legs, pushing and core. It has no pulling exercise, so it does not replace rows or pull-ups.",
     "tags": {
       "goal": [
         "general",
@@ -660,7 +670,7 @@
         "bodyweight"
       ]
     },
-    "estimatedMinutes": 35,
+    "estimatedMinutes": 45,
     "exercises": [
       {
         "exerciseId": "builtin.v1.bodyweight-squat",
@@ -682,7 +692,7 @@
         "repsMin": 8,
         "repsMax": 12,
         "restSeconds": 60,
-        "note": "Reps per side."
+        "note": "Reps per side. Rest after both sides."
       },
       {
         "exerciseId": "builtin.v1.single-leg-glute-bridge",
@@ -690,7 +700,7 @@
         "repsMin": 8,
         "repsMax": 12,
         "restSeconds": 60,
-        "note": "Reps per side."
+        "note": "Reps per side. Rest after both sides."
       },
       {
         "exerciseId": "builtin.v1.pike-push-up",
@@ -704,14 +714,14 @@
         "sets": 2,
         "durationSeconds": 30,
         "restSeconds": 60,
-        "note": "Seconds per side."
+        "note": "Seconds per side. Rest after both sides."
       }
     ]
   },
   {
     "id": "tpl.band-full-body",
     "name": "Resistance band full body",
-    "description": "A whole body session with one long resistance band and a door or post to anchor it. It covers legs, chest, back, shoulders and core.",
+    "description": "A whole body session with a long resistance band and a door anchor or a secure post. Check the band for damage first, and use a lighter or heavier band for each movement as needed.",
     "tags": {
       "goal": [
         "general"
@@ -721,35 +731,35 @@
         "band"
       ]
     },
-    "estimatedMinutes": 35,
+    "estimatedMinutes": 40,
     "exercises": [
       {
         "exerciseId": "builtin.v1.band-squat",
         "sets": 3,
         "repsMin": 10,
         "repsMax": 15,
-        "restSeconds": 60
+        "restSeconds": 90
       },
       {
         "exerciseId": "builtin.v1.band-chest-press",
         "sets": 3,
         "repsMin": 10,
         "repsMax": 15,
-        "restSeconds": 60
+        "restSeconds": 90
       },
       {
         "exerciseId": "builtin.v1.band-seated-row",
         "sets": 3,
         "repsMin": 10,
         "repsMax": 15,
-        "restSeconds": 60
+        "restSeconds": 90
       },
       {
         "exerciseId": "builtin.v1.band-pull-through",
         "sets": 3,
         "repsMin": 10,
         "repsMax": 15,
-        "restSeconds": 60
+        "restSeconds": 90
       },
       {
         "exerciseId": "builtin.v1.band-overhead-press",
@@ -764,14 +774,14 @@
         "repsMin": 10,
         "repsMax": 12,
         "restSeconds": 60,
-        "note": "Reps per side."
+        "note": "Reps per side. Rest after both sides."
       }
     ]
   },
   {
     "id": "tpl.kettlebell-full-body",
     "name": "Kettlebell full body",
-    "description": "A whole body session with a single kettlebell, for people who already know the swing and the goblet squat. Pick a weight you can move with a steady pace.",
+    "description": "A whole body session with a kettlebell, for people who already know the swing and the goblet squat. Use a weight that suits each movement.",
     "tags": {
       "goal": [
         "general",
@@ -782,53 +792,54 @@
         "kettlebell"
       ]
     },
-    "estimatedMinutes": 45,
+    "estimatedMinutes": 55,
     "exercises": [
-      {
-        "exerciseId": "builtin.v1.kb-goblet-squat",
-        "sets": 3,
-        "repsMin": 8,
-        "repsMax": 10,
-        "restSeconds": 90
-      },
       {
         "exerciseId": "builtin.v1.kb-swing",
         "sets": 4,
         "repsMin": 10,
         "repsMax": 15,
-        "restSeconds": 75
+        "restSeconds": 120,
+        "note": "Do these first, after your warm-up. End the set when speed or form drops."
+      },
+      {
+        "exerciseId": "builtin.v1.kb-goblet-squat",
+        "sets": 3,
+        "repsMin": 8,
+        "repsMax": 10,
+        "restSeconds": 120
       },
       {
         "exerciseId": "builtin.v1.kb-press",
         "sets": 3,
         "repsMin": 6,
         "repsMax": 8,
-        "restSeconds": 90,
-        "note": "Reps per side."
+        "restSeconds": 120,
+        "note": "Reps per side. Rest after both sides."
       },
       {
         "exerciseId": "builtin.v1.kb-row",
         "sets": 3,
         "repsMin": 8,
         "repsMax": 10,
-        "restSeconds": 90,
-        "note": "Reps per side."
+        "restSeconds": 120,
+        "note": "Reps per side. Rest after both sides."
       },
       {
         "exerciseId": "builtin.v1.kb-floor-press",
         "sets": 3,
         "repsMin": 8,
         "repsMax": 10,
-        "restSeconds": 90,
-        "note": "Reps per side."
+        "restSeconds": 120,
+        "note": "Reps per side. Rest after both sides."
       },
       {
         "exerciseId": "builtin.v1.kb-reverse-lunge",
         "sets": 2,
         "repsMin": 8,
         "repsMax": 8,
-        "restSeconds": 60,
-        "note": "Reps per side."
+        "restSeconds": 120,
+        "note": "Reps per side. Rest after both sides."
       }
     ]
   },
@@ -846,20 +857,20 @@
         "bodyweight"
       ]
     },
-    "estimatedMinutes": 25,
+    "estimatedMinutes": 30,
     "exercises": [
       {
         "exerciseId": "builtin.v1.plank",
         "sets": 3,
-        "durationSeconds": 40,
+        "durationSeconds": 30,
         "restSeconds": 60
       },
       {
         "exerciseId": "builtin.v1.side-plank",
         "sets": 2,
-        "durationSeconds": 25,
+        "durationSeconds": 20,
         "restSeconds": 60,
-        "note": "Seconds per side."
+        "note": "Seconds per side. Rest after both sides."
       },
       {
         "exerciseId": "builtin.v1.dead-bug",
@@ -867,13 +878,14 @@
         "repsMin": 8,
         "repsMax": 10,
         "restSeconds": 60,
-        "note": "Reps per side."
+        "note": "Reps per side. Rest after both sides."
       },
       {
         "exerciseId": "builtin.v1.hollow-body-hold",
         "sets": 2,
-        "durationSeconds": 20,
-        "restSeconds": 60
+        "durationSeconds": 15,
+        "restSeconds": 60,
+        "note": "Bend your knees to make it easier. Stop before your lower back lifts."
       },
       {
         "exerciseId": "builtin.v1.bird-dog",
@@ -881,7 +893,7 @@
         "repsMin": 8,
         "repsMax": 10,
         "restSeconds": 60,
-        "note": "Reps per side."
+        "note": "Reps per side. Rest after both sides."
       },
       {
         "exerciseId": "builtin.v1.reverse-crunch",
@@ -914,29 +926,29 @@
         "dumbbell"
       ]
     },
-    "estimatedMinutes": 45,
+    "estimatedMinutes": 50,
     "exercises": [
       {
         "exerciseId": "builtin.v1.barbell-hip-thrust",
         "sets": 4,
         "repsMin": 8,
         "repsMax": 10,
-        "restSeconds": 120
+        "restSeconds": 150
       },
       {
         "exerciseId": "builtin.v1.rdl",
         "sets": 3,
         "repsMin": 8,
         "repsMax": 10,
-        "restSeconds": 120
+        "restSeconds": 150
       },
       {
         "exerciseId": "builtin.v1.db-bulgarian-split-squat",
         "sets": 3,
         "repsMin": 8,
         "repsMax": 10,
-        "restSeconds": 90,
-        "note": "Reps per side."
+        "restSeconds": 120,
+        "note": "Reps per side. Rest after both sides."
       },
       {
         "exerciseId": "builtin.v1.cable-glute-kickback",
@@ -944,7 +956,7 @@
         "repsMin": 10,
         "repsMax": 15,
         "restSeconds": 60,
-        "note": "Reps per side."
+        "note": "Reps per side. Rest after both sides."
       },
       {
         "exerciseId": "builtin.v1.side-lying-hip-abduction",
@@ -952,13 +964,7 @@
         "repsMin": 12,
         "repsMax": 15,
         "restSeconds": 60,
-        "note": "Reps per side."
-      },
-      {
-        "exerciseId": "builtin.v1.glute-bridge-hold",
-        "sets": 2,
-        "durationSeconds": 30,
-        "restSeconds": 60
+        "note": "Reps per side. Rest after both sides."
       }
     ]
   }
