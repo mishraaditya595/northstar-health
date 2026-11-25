@@ -286,6 +286,28 @@ void main() {
     expect(find.text('+0.2 °C'), findsOneWidget);
   });
 
+  testWidgets('Android skin temp is a deviation from the device baseline', (
+    tester,
+  ) async {
+    // Health Connect skin temperature is a delta from the device's own
+    // baseline, never an absolute reading.
+    final reader = FakeHealthReader()
+      ..series[HealthSeriesType.skinTemperature] = [
+        _sample(DateTime(2026, 11, 24, 2), 0.2),
+        _sample(DateTime(2026, 11, 24, 4), 0.4),
+      ];
+    await _pump(
+      tester,
+      _overview(_history(2), platform: HealthPlatformKind.healthConnect),
+      reader,
+    );
+
+    expect(find.text('Skin temp'), findsOneWidget);
+    expect(find.text('+0.3 °C'), findsOneWidget);
+    expect(find.text('vs baseline'), findsOneWidget);
+    expect(find.text('0.3 °C'), findsNothing);
+  });
+
   testWidgets('nights without stages draw single-segment bars', (tester) async {
     final segments = [
       for (var i = -13; i < -6; i++) ..._staged(_day(i)),

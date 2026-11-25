@@ -9,7 +9,6 @@ import '../../../core/design/charts/sleep_stages.dart';
 import '../../../core/design/charts/trend_label.dart';
 import '../application/health_details.dart';
 import '../application/health_overview.dart';
-import '../data/health_reader.dart';
 import '../domain/daily_series.dart';
 import '../domain/health_types.dart';
 import '../domain/sleep_nights.dart';
@@ -346,6 +345,8 @@ class _LastNight extends ConsumerWidget {
   Widget? _extras(SleepNightExtras extras) {
     final temp = extras.wristTemp;
     final deviation = extras.wristTempDeviation;
+    String signed(double d) =>
+        '${d < 0 ? '−' : '+'}${d.abs().toStringAsFixed(1)} °C';
     final tiles = [
       if (extras.respiratoryRate case final v?)
         DetailStat('Breathing', '${v.toStringAsFixed(1)} /min'),
@@ -353,21 +354,14 @@ class _LastNight extends ConsumerWidget {
         DetailStat('Blood oxygen', '${v.round()}%'),
       if (temp != null)
         deviation == null
-            ? DetailStat(_tempName, '${temp.toStringAsFixed(1)} °C')
-            : DetailStat(
-                _tempName,
-                '${deviation < 0 ? '−' : '+'}'
-                    '${deviation.abs().toStringAsFixed(1)} °C',
-                'vs your usual',
-              ),
+            ? DetailStat('Wrist temp', '${temp.toStringAsFixed(1)} °C')
+            : DetailStat('Wrist temp', signed(deviation), 'vs your usual'),
+      if (extras.skinTempDelta case final d?)
+        DetailStat('Skin temp', signed(d), 'vs baseline'),
     ];
     if (tiles.isEmpty) return null;
     return DetailPanel(children: [DetailPairs(tiles)]);
   }
-
-  String get _tempName => overview.platform == HealthPlatformKind.appleHealth
-      ? 'Wrist temp'
-      : 'Skin temp';
 }
 
 class _RangeView extends ConsumerWidget {

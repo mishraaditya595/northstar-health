@@ -28,6 +28,7 @@ class SleepNightExtras {
     required this.bloodOxygen,
     required this.wristTemp,
     required this.wristTempDeviation,
+    required this.skinTempDelta,
   });
 
   /// Samples inside last night's window, ascending.
@@ -43,11 +44,16 @@ class SleepNightExtras {
   /// Percent (0-100), mean over the night.
   final double? bloodOxygen;
 
-  /// Last night's wrist (iOS) or skin (Android) temperature, °C.
+  /// Last night's absolute wrist temperature (iOS), °C.
   final double? wristTemp;
 
   /// [wristTemp] minus the mean of earlier nights; null with fewer than 7.
   final double? wristTempDeviation;
+
+  /// Last night's skin temperature (Android), °C above or below the
+  /// device's own baseline. Health Connect stores only this delta, never an
+  /// absolute reading.
+  final double? skinTempDelta;
 }
 
 double? _mean(Iterable<double> values) =>
@@ -178,12 +184,13 @@ final sleepNightExtrasProvider = FutureProvider.autoDispose<SleepNightExtras?>((
   );
   final breathingF = read(HealthSeriesType.respiratoryRate, night.start);
   final oxygenF = read(HealthSeriesType.bloodOxygen, night.start);
-  final tempF = read(
-    overview.platform == HealthPlatformKind.appleHealth
-        ? HealthSeriesType.sleepingWristTemperature
-        : HealthSeriesType.skinTemperature,
-    prior.isEmpty ? night.start : prior.first.start,
-  );
+  final ios = overview.platform == HealthPlatformKind.appleHealth;
+  final tempF = ios
+      ? read(
+          HealthSeriesType.sleepingWristTemperature,
+          prior.isEmpty ? night.start : prior.first.start,
+        )
+      : read(HealthSeriesType.skinTemperature, night.start);
   final hrResult = await hrF;
   final heartRate = [
     for (final s in _samples(hrResult))
@@ -194,7 +201,8 @@ final sleepNightExtrasProvider = FutureProvider.autoDispose<SleepNightExtras?>((
   final temp = await tempF;
   if (!_stillOwner(ref, overview.ownerId)) return null;
 
-  final wristTemp = _meanDuring(temp, night);
+  final nightTemp = _meanDuring(temp, night);
+  final wristTemp = ios ? nightTemp : null;
   final priorTemps = [for (final n in prior) ?_meanDuring(temp, n)];
   return SleepNightExtras(
     heartRate: heartRate,
@@ -205,6 +213,7 @@ final sleepNightExtrasProvider = FutureProvider.autoDispose<SleepNightExtras?>((
     wristTempDeviation: wristTemp == null || priorTemps.length < 7
         ? null
         : wristTemp - _mean(priorTemps)!,
+    skinTempDelta: ios ? null : nightTemp,
   );
 });
 
