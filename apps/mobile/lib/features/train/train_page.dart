@@ -9,6 +9,7 @@ import '../../core/design/dialogs.dart';
 import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
+import '../health/widgets/readiness_note.dart';
 import '../progress/domain/progress_overview.dart';
 import '../workouts/domain/workout_library_models.dart';
 import 'active_workout_state.dart';
@@ -133,6 +134,7 @@ class TrainPage extends ConsumerWidget {
             const SizedBox(height: 18),
             _WeekStrip(today: DateTime.utc(now.year, now.month, now.day)),
             const SizedBox(height: 27),
+            const ReadinessNote(),
             const SectionHeading('Start training'),
             Card(
               margin: EdgeInsets.zero,

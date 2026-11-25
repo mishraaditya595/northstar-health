@@ -22,6 +22,36 @@ String readinessBandWords(ReadinessBand band) => switch (band) {
 
 String readinessHrvName(bool sdnn) => sdnn ? 'HRV (SDNN)' : 'HRV (RMSSD)';
 
+/// The reasons line under a score, e.g. `HRV (SDNN) above your normal ·
+/// slept 7h 12m`; empty when no input has a reason to give.
+String readinessReasons(
+  HealthOverview overview,
+  ReadinessOverview value,
+  Readiness readiness,
+) {
+  final sleep = switch (overview.sleep) {
+    SectionData(:final value) => value,
+    SectionGap() => null,
+  };
+  final inputs = {for (final p in readiness.parts) p.input};
+  final hrvName = readinessHrvName(value.hrvIsSdnn);
+  String vsNormal(TrendResult? t) => switch (t?.direction) {
+    TrendDirection.up => 'above',
+    TrendDirection.down => 'below',
+    _ => 'about',
+  };
+  final reasons = [
+    if (inputs.contains(ReadinessInput.hrv))
+      '$hrvName ${vsNormal(value.hrvVsNormal)} your normal',
+    if (inputs.contains(ReadinessInput.restingHr))
+      'resting HR ${vsNormal(value.restingHrVsNormal)} your normal',
+    if (sleep != null) 'slept ${formatDuration(sleep.lastNight.asleep)}',
+  ].join(' · ');
+  return reasons.isEmpty
+      ? reasons
+      : reasons[0].toUpperCase() + reasons.substring(1);
+}
+
 /// Readiness hero on the Health tab: the score with its reasons, or what is
 /// missing for one. [overview] is null while loading. [onTap] opens the
 /// detail for a score and handles Manage / Try again for a gap.
@@ -80,22 +110,7 @@ class ReadinessCard extends StatelessWidget {
     final heart = _heart(overview);
     final sleep = _sleep(overview);
     final inputs = {for (final p in readiness.parts) p.input};
-    final hrvName = readinessHrvName(value.hrvIsSdnn);
-    String vsNormal(TrendResult? t) => switch (t?.direction) {
-      TrendDirection.up => 'above',
-      TrendDirection.down => 'below',
-      _ => 'about',
-    };
-    final reasons = [
-      if (inputs.contains(ReadinessInput.hrv))
-        '$hrvName ${vsNormal(value.hrvVsNormal)} your normal',
-      if (inputs.contains(ReadinessInput.restingHr))
-        'resting HR ${vsNormal(value.restingHrVsNormal)} your normal',
-      if (sleep != null) 'slept ${formatDuration(sleep.lastNight.asleep)}',
-    ].join(' · ');
-    final sentence = reasons.isEmpty
-        ? reasons
-        : reasons[0].toUpperCase() + reasons.substring(1);
+    final sentence = readinessReasons(overview, value, readiness);
     final basedOn = !inputs.contains(ReadinessInput.restingHr)
         ? 'Based on HRV and sleep'
         : !inputs.contains(ReadinessInput.hrv)
