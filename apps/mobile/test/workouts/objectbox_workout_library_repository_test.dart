@@ -814,4 +814,198 @@ void main() {
       expect(library.getPlan('plan-a'), isNull);
     });
   });
+
+  group('copyCatalogTemplate', () {
+    CatalogDefinitionInput def(
+      String id, {
+      String mode = 'reps_load',
+      List<String> primary = const ['chest'],
+    }) => (
+      id: id,
+      name: 'Name of $id',
+      muscleGroup: 'Chest',
+      equipment: 'Barbell',
+      category: 'push_horizontal',
+      mode: mode,
+      primaryMuscles: primary,
+      secondaryMuscles: const ['triceps'],
+    );
+
+    TemplateRowInput row(
+      String id, {
+      String mode = 'reps_load',
+      String note = '',
+    }) => (
+      exercise: def(id, mode: mode),
+      sets: 3,
+      repsMin: mode == 'duration' ? null : 6,
+      repsMax: mode == 'duration' ? null : 8,
+      durationSeconds: mode == 'duration' ? 45 : null,
+      restSeconds: 90,
+      note: note,
+    );
+
+    WorkoutPlanRecord copy(
+      String request, {
+      String name = 'Push day',
+      String description = 'Synthetic description.',
+      List<TemplateRowInput>? rows,
+      int release = 3,
+    }) => library.copyCatalogTemplate(
+      requestUuid: request,
+      name: name,
+      description: description,
+      rows:
+          rows ??
+          [
+            row('builtin.v1.synthetic-press', note: 'Slow lowering'),
+            row('builtin.v1.synthetic-plank', mode: 'duration'),
+          ],
+      release: release,
+    );
+
+    int definitionCount() => store.box<ExerciseDefinitionEntity>().count();
+    int rowCount() => store.box<PlanExerciseEntity>().count();
+
+    test('creates a plan with rows, targets and materialized exercises', () {
+      final plan = copy('req-1');
+      expect(plan.uuid, 'req-1');
+      expect(plan.name, 'Push day');
+      expect(plan.description, 'Synthetic description.');
+      expect(plan.exercises, hasLength(2));
+      expect(plan.exercises.map((e) => e.position), [0, 1]);
+      expect(plan.exercises.map((e) => e.uuid).toSet(), hasLength(2));
+      final a = plan.exercises[0];
+      expect(a.exerciseUuid, 'builtin.v1.synthetic-press');
+      expect([a.targetSets, a.targetRepsMin, a.targetRepsMax], [3, 6, 8]);
+      expect(a.targetDurationSeconds, isNull);
+      expect(a.restSeconds, 90);
+      expect(a.notes, 'Slow lowering');
+      final b = plan.exercises[1];
+      expect(b.targetDurationSeconds, 45);
+      expect(b.targetRepsMin, isNull);
+      expect(library.getPlan('req-1'), isNotNull);
+      final press = library.listExercises().firstWhere(
+        (e) => e.uuid == 'builtin.v1.synthetic-press',
+      );
+      expect(press.primaryMuscles, ['chest']);
+      expect(press.secondaryMuscles, ['triceps']);
+      expect(
+        library
+            .listExercises()
+            .firstWhere((e) => e.uuid == 'builtin.v1.synthetic-plank')
+            .inputMode,
+        'duration',
+      );
+    });
+
+    test('the same request returns the same plan without a second one', () {
+      final first = copy('req-1');
+      final again = copy('req-1');
+      expect(again.uuid, first.uuid);
+      expect(again.name, 'Push day');
+      expect(library.listPlans(), hasLength(1));
+      expect(rowCount(), 2);
+    });
+
+    test('new requests number the name; archived plans do not count', () {
+      expect(copy('req-1').name, 'Push day');
+      expect(copy('req-2').name, 'Push day (2)');
+      final third = copy('req-3');
+      expect(third.name, 'Push day (3)');
+      library.archivePlan(
+        'req-2',
+        expectedUpdatedAtMs: library.getPlan('req-2')!.updatedAtMs,
+      );
+      expect(copy('req-4').name, 'Push day (2)');
+    });
+
+    test('a long description is cut to the plan limit', () {
+      final plan = copy('req-1', description: 'x' * 1500);
+      expect(plan.description, hasLength(1000));
+    });
+
+    for (final step in ['exercises', 'plan', 'rows']) {
+      test('a failure after "$step" leaves nothing behind', () {
+        library.ensureCatalogSeeded();
+        library.materializeCatalogExercise(
+          id: 'builtin.v1.synthetic-press',
+          name: 'Old name',
+          muscleGroup: 'Chest',
+          equipment: 'Barbell',
+          category: 'push_horizontal',
+          mode: 'reps_load',
+          release: 3,
+          primaryMuscles: const ['chest'],
+          secondaryMuscles: const [],
+        );
+        final definitions = definitionCount();
+        library.debugCopyHook = (reached) {
+          if (reached == step) throw StateError('boom');
+        };
+        expect(() => copy('req-1'), throwsStateError);
+        library.debugCopyHook = null;
+        expect(library.getPlan('req-1'), isNull);
+        expect(library.listPlans(), isEmpty);
+        expect(rowCount(), 0);
+        expect(definitionCount(), definitions);
+        expect(
+          library.listExercises().any(
+            (e) => e.uuid == 'builtin.v1.synthetic-plank',
+          ),
+          isFalse,
+        );
+        // The existing definition is unchanged.
+        expect(
+          library
+              .listExercises()
+              .firstWhere((e) => e.uuid == 'builtin.v1.synthetic-press')
+              .name,
+          'Old name',
+        );
+      });
+    }
+
+    test('an invalid row writes nothing', () {
+      expect(
+        () => copy(
+          'req-1',
+          rows: [
+            row('builtin.v1.synthetic-press'),
+            (
+              exercise: def('builtin.v1.synthetic-plank', mode: 'duration'),
+              sets: 3,
+              repsMin: 6,
+              repsMax: 8,
+              durationSeconds: null,
+              restSeconds: 60,
+              note: '',
+            ),
+          ],
+        ),
+        throwsArgumentError,
+      );
+      expect(library.listPlans(), isEmpty);
+      expect(definitionCount(), 0);
+    });
+
+    test('editing the copy and a newer sync leave the rows unchanged', () {
+      final plan = copy('req-1');
+      final edited = library.savePlan(
+        uuid: plan.uuid,
+        name: 'Mine',
+        description: plan.description,
+        exercises: [plan.exercises.first],
+        expectedUpdatedAtMs: plan.updatedAtMs,
+      );
+      library.syncCatalogDefinitions([
+        def('builtin.v1.synthetic-press', primary: const ['triceps']),
+      ], 9);
+      final after = library.getPlan('req-1')!;
+      expect(after.name, 'Mine');
+      expect(after.exercises, hasLength(1));
+      expect(after.exercises.single.uuid, edited.exercises.single.uuid);
+      expect(after.exercises.single.targetRepsMax, 8);
+    });
+  });
 }

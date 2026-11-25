@@ -33,6 +33,15 @@ class FakeLibrary implements WorkoutLibraryRepository {
   void ensureCatalogSeeded() {}
 
   @override
+  WorkoutPlanRecord copyCatalogTemplate({
+    required String requestUuid,
+    required String name,
+    required String description,
+    required List<TemplateRowInput> rows,
+    required int release,
+  }) => throw UnimplementedError();
+
+  @override
   List<ExerciseRecord> listExercises({bool includeArchived = false}) => [
     exercise,
     ...extraExercises.where((e) => includeArchived || e.archivedAtMs == null),
