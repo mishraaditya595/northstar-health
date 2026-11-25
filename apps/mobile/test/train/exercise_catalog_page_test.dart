@@ -8,6 +8,7 @@ import 'package:beyondrep/features/catalog/application/catalog_providers.dart';
 import 'package:beyondrep/features/catalog/data/catalog_repository.dart';
 import 'package:beyondrep/features/catalog/domain/catalog_models.dart';
 import 'package:beyondrep/features/train/exercise_catalog_page.dart';
+import 'package:beyondrep/features/train/train_library_state.dart';
 import 'package:beyondrep/features/workouts/data/workout_entities.dart';
 import 'package:beyondrep/objectbox.g.dart';
 import 'package:flutter/material.dart';
@@ -275,9 +276,21 @@ void main() {
           200,
           scrollable: listScrollable,
         );
+        // Centre the chip so it is clear of the app bar and the button.
+        await Scrollable.ensureVisible(
+          tester.element(find.text('Custom only')),
+          alignment: 0.5,
+        );
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Custom only'));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
+        expect(
+          tester
+              .widget<NsChip>(find.widgetWithText(NsChip, 'Custom only'))
+              .selected,
+          isTrue,
+        );
       });
     }
   }
@@ -358,4 +371,48 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('a refresh keeps the rows and the scroll position', (
+    tester,
+  ) async {
+    await open(tester, many(), size: const Size(800, 1000));
+    await tester.drag(listScrollable, const Offset(0, -1500));
+    await tester.pumpAndSettle();
+    final before = tester
+        .state<ScrollableState>(listScrollable)
+        .position
+        .pixels;
+    expect(before, greaterThan(1000));
+
+    ProviderScope.containerOf(tester.element(find.byType(ExerciseCatalogPage)))
+        .invalidate(trainLibraryProvider);
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byType(NsListCard), findsWidgets);
+    await tester.pumpAndSettle();
+    expect(
+      tester.state<ScrollableState>(listScrollable).position.pixels,
+      before,
+    );
+  });
+
+  testWidgets('the search text survives scrolling the header away', (
+    tester,
+  ) async {
+    await open(tester, many(), size: const Size(800, 1000));
+    await tester.enterText(find.byType(TextField), 'synthetic');
+    await tester.pumpAndSettle();
+
+    await tester.drag(listScrollable, const Offset(0, -3000));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsNothing);
+    await tester.drag(listScrollable, const Offset(0, 6000));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      'synthetic',
+    );
+  });
 }

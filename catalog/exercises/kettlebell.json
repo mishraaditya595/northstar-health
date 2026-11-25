@@ -35,10 +35,10 @@
     "aliases": [],
     "muscleGroup": "Legs",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "abs"
     ],
     "equipment": [
@@ -57,9 +57,7 @@
   {
     "id": "builtin.v1.kb-deadlift",
     "name": "Kettlebell deadlift",
-    "aliases": [
-      "Kettlebell sumo deadlift"
-    ],
+    "aliases": [],
     "muscleGroup": "Legs",
     "primaryMuscles": [
       "glutes",
@@ -91,10 +89,10 @@
     ],
     "muscleGroup": "Legs",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "abs"
     ],
     "equipment": [
@@ -158,7 +156,7 @@
       "Hold the bell in the hand opposite your standing leg",
       "Hinge and extend your back leg",
       "Keep your hips square to the floor",
-      "Stand tall with your glute"
+      "Squeeze your glute to stand tall"
     ],
     "status": "active"
   },
@@ -198,13 +196,13 @@
     "aliases": [
       "One-arm kettlebell snatch"
     ],
-    "muscleGroup": "Shoulders",
+    "muscleGroup": "Legs",
     "primaryMuscles": [
       "glutes",
-      "hamstrings",
-      "shoulders"
+      "hamstrings"
     ],
     "secondaryMuscles": [
+      "shoulders",
       "traps",
       "lowerBack",
       "forearms"

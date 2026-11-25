@@ -45,7 +45,8 @@
       "shoulders"
     ],
     "equipment": [
-      "bodyweight"
+      "bodyweight",
+      "other"
     ],
     "category": "push_vertical",
     "mode": "reps_load",
@@ -60,9 +61,7 @@
   {
     "id": "builtin.v1.bench-dip",
     "name": "Bench dip",
-    "aliases": [
-      "Triceps dip"
-    ],
+    "aliases": [],
     "muscleGroup": "Arms",
     "primaryMuscles": [
       "triceps"
@@ -147,7 +146,6 @@
     "id": "builtin.v1.diamond-push-up",
     "name": "Diamond push-up",
     "aliases": [
-      "Close-grip push-up",
       "Triceps push-up"
     ],
     "muscleGroup": "Arms",
@@ -453,7 +451,7 @@
     "equipment": [
       "bodyweight"
     ],
-    "category": "hinge",
+    "category": "isolation",
     "mode": "reps_load",
     "cues": [
       "Kneel with your ankles anchored and your body in one line",
@@ -606,7 +604,7 @@
       "Lie on your back with knees bent over your hips",
       "Curl your pelvis off the floor",
       "Do not swing your legs",
-      "Lower slowly"
+      "Press your lower back lightly into the floor"
     ],
     "status": "active"
   },
@@ -686,11 +684,12 @@
     "aliases": [],
     "muscleGroup": "Core",
     "primaryMuscles": [
-      "lowerBack",
-      "glutes"
+      "lowerBack"
     ],
     "secondaryMuscles": [
-      "abs"
+      "glutes",
+      "abs",
+      "shoulders"
     ],
     "equipment": [
       "bodyweight"
@@ -799,7 +798,7 @@
       "Lie on your side with your bottom leg bent",
       "Keep your top leg straight and toes forward",
       "Lift your leg without rolling back",
-      "Lower slowly"
+      "Keep your hips stacked"
     ],
     "status": "active"
   },
@@ -1017,15 +1016,13 @@
   {
     "id": "builtin.v1.dead-hang",
     "name": "Dead hang",
-    "aliases": [
-      "Passive hang"
-    ],
+    "aliases": [],
     "muscleGroup": "Back",
     "primaryMuscles": [
-      "forearms",
-      "lats"
+      "forearms"
     ],
     "secondaryMuscles": [
+      "lats",
       "shoulders"
     ],
     "equipment": [

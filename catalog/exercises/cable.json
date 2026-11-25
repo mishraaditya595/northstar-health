@@ -99,7 +99,7 @@
       "Set the handle low and stand side-on to the stack",
       "Lead with your elbow",
       "Raise to shoulder height",
-      "Lower slowly"
+      "Do not shrug as you raise"
     ],
     "status": "active"
   },
@@ -123,7 +123,7 @@
       "Face away from the low pulley with the handle between your legs",
       "Keep your arm nearly straight",
       "Raise to shoulder height",
-      "Lower slowly"
+      "Keep your ribs down and do not lean back"
     ],
     "status": "active"
   },
@@ -176,7 +176,7 @@
       "Set the pulleys at shoulder height and cross the cables",
       "Hold the handles with a soft bend in your elbows",
       "Pull your arms apart in a wide arc",
-      "Return slowly"
+      "Keep your torso still and your chest up"
     ],
     "status": "active"
   },
@@ -195,13 +195,13 @@
     "equipment": [
       "cable"
     ],
-    "category": "push_vertical",
+    "category": "pull_vertical",
     "mode": "reps_load",
     "cues": [
       "Hold the bar or rope in front of your thighs",
       "Lead with your elbows up and out",
       "Stop around chest height",
-      "Lower slowly"
+      "Stop short of any shoulder pinch"
     ],
     "status": "active"
   },
@@ -225,7 +225,7 @@
       "Hold the handles at your sides",
       "Lift your shoulders straight up",
       "Pause at the top",
-      "Lower slowly"
+      "Keep your arms straight and your ribs down"
     ],
     "status": "active"
   },
@@ -307,7 +307,7 @@
       "Set the handle at about waist height",
       "Stay square and pull your elbow past your torso",
       "Pause with your shoulder blade squeezed",
-      "Return slowly"
+      "Keep your hips and shoulders square"
     ],
     "status": "active"
   },
@@ -333,7 +333,7 @@
       "Stand close to the low pulley with the bar or handle",
       "Keep your elbows at your sides",
       "Curl up and squeeze",
-      "Lower slowly"
+      "Do not rock your torso for momentum"
     ],
     "status": "active"
   },
@@ -358,7 +358,7 @@
       "Hold the rope ends with palms facing each other",
       "Keep your elbows at your sides",
       "Curl up and spread the rope at the top",
-      "Lower slowly"
+      "Keep your wrists straight"
     ],
     "status": "active"
   },
@@ -429,7 +429,7 @@
       "Hold a straight bar overhand at the low pulley",
       "Keep your wrists straight",
       "Curl up with your elbows at your sides",
-      "Lower slowly"
+      "Keep your torso still"
     ],
     "status": "active"
   },
@@ -477,7 +477,7 @@
       "Set the handle on a high pulley",
       "Pin your elbow to your side",
       "Press down until your arm is straight",
-      "Return slowly"
+      "Keep your shoulder down and your torso still"
     ],
     "status": "active"
   },
@@ -503,7 +503,7 @@
       "Kneel below the high pulley holding the rope by your head",
       "Keep your hips still",
       "Curl your ribs toward your pelvis",
-      "Return slowly"
+      "Do not pull with your arms"
     ],
     "status": "active"
   },
@@ -654,7 +654,7 @@
       "Attach the strap to your outside ankle",
       "Stand tall and hold the frame",
       "Lift your leg out to the side",
-      "Lower slowly"
+      "Keep your torso upright and do not lean away"
     ],
     "status": "active"
   },
@@ -677,7 +677,7 @@
       "Rest your forearms on your thighs with palms up",
       "Let the bar roll to your fingertips",
       "Curl your wrists up",
-      "Lower under control"
+      "Keep your forearms still on your thighs"
     ],
     "status": "active"
   },
@@ -701,7 +701,7 @@
       "Keep your elbow at your side bent to 90 degrees",
       "Rotate your forearm outward",
       "Use a light weight",
-      "Return slowly"
+      "Keep your shoulder blade down and back"
     ],
     "status": "active"
   }

@@ -47,7 +47,7 @@
       "Adjust the seat so the handles start at upper chest height",
       "Keep your shoulder blades back against the pad",
       "Press up and forward",
-      "Lower under control"
+      "Keep your wrists stacked over your elbows"
     ],
     "status": "active"
   },
@@ -101,7 +101,7 @@
       "Set the seat so the handles are at your sides",
       "Keep your shoulders down",
       "Press the handles down until your arms are straight",
-      "Return slowly"
+      "Do not shrug as you press"
     ],
     "status": "active"
   },
@@ -151,7 +151,7 @@
       "Set the seat so the pads sit just above your elbows",
       "Lead with your elbows, not your hands",
       "Raise to shoulder height",
-      "Lower slowly"
+      "Do not shrug as you raise"
     ],
     "status": "active"
   },
@@ -213,9 +213,7 @@
   {
     "id": "builtin.v1.assisted-pull-up-machine",
     "name": "Assisted pull-up machine",
-    "aliases": [
-      "Assisted chin-up machine"
-    ],
+    "aliases": [],
     "muscleGroup": "Back",
     "primaryMuscles": [
       "lats"
@@ -270,10 +268,10 @@
     ],
     "muscleGroup": "Legs",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "hamstrings"
     ],
     "equipment": [
@@ -463,7 +461,7 @@
       "Adjust the pad so it sits just above your heels",
       "Lock your thighs under the pad",
       "Curl your heels under you",
-      "Return slowly"
+      "Keep your hips pressed into the seat"
     ],
     "status": "active"
   },
@@ -487,7 +485,7 @@
       "Sit upright with the pads on the outside of your knees",
       "Push your knees apart",
       "Pause at the widest point",
-      "Return slowly"
+      "Keep your back against the pad"
     ],
     "status": "active"
   },
@@ -584,7 +582,7 @@
       "Set the pad across your hips and fasten the belt",
       "Place your feet flat and shoulder width",
       "Drive your hips up and squeeze",
-      "Lower slowly"
+      "Keep your ribs down so your lower back does not arch"
     ],
     "status": "active"
   },
@@ -638,8 +636,8 @@
     "cues": [
       "Lie face down with your hips at the pad edge",
       "Hold the handles and keep your torso still",
-      "Swing your legs up to hip height",
-      "Lower under control"
+      "Raise your legs to hip height without swinging",
+      "Keep your abs braced so your lower back stays still"
     ],
     "status": "active"
   },
@@ -652,17 +650,17 @@
     ],
     "muscleGroup": "Legs",
     "primaryMuscles": [
-      "hamstrings",
-      "glutes"
+      "hamstrings"
     ],
     "secondaryMuscles": [
+      "glutes",
       "lowerBack",
       "calves"
     ],
     "equipment": [
       "machine"
     ],
-    "category": "hinge",
+    "category": "isolation",
     "mode": "reps_load",
     "cues": [
       "Lock your feet in and set your knees just behind the pad",

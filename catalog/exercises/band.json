@@ -8,9 +8,7 @@
       "shoulders",
       "traps"
     ],
-    "secondaryMuscles": [
-      "lats"
-    ],
+    "secondaryMuscles": [],
     "equipment": [
       "band"
     ],
@@ -20,7 +18,7 @@
       "Hold the band at shoulder height with straight arms",
       "Pull your hands apart until the band touches your chest",
       "Squeeze your shoulder blades together",
-      "Return slowly"
+      "Keep your ribs down and your arms level"
     ],
     "status": "active"
   },
@@ -45,7 +43,7 @@
       "Anchor the band at face height",
       "Pull the ends toward your ears with elbows high",
       "Squeeze your shoulder blades together",
-      "Return slowly"
+      "Keep your wrists straight and your ribs down"
     ],
     "status": "active"
   },
@@ -67,7 +65,7 @@
       "Stand on the band with a handle in each hand",
       "Lead with your elbows",
       "Raise to shoulder height",
-      "Lower slowly"
+      "Stay tall and keep steady tension on the band"
     ],
     "status": "active"
   },
@@ -91,7 +89,7 @@
       "Stand on the band and hold the handles at your shoulders",
       "Brace your trunk",
       "Press overhead until your arms are straight",
-      "Lower under control"
+      "Keep your ribs down and do not arch your back"
     ],
     "status": "active"
   },
@@ -163,7 +161,8 @@
     ],
     "equipment": [
       "band",
-      "pull_up_bar"
+      "pull_up_bar",
+      "bodyweight"
     ],
     "category": "pull_vertical",
     "mode": "reps_load",
@@ -171,7 +170,7 @@
       "Loop the band over the bar and place a foot or knee in it",
       "Start with straight arms",
       "Pull until your chin clears the bar",
-      "Lower under control"
+      "Check the band is firmly looped over the bar before you hang"
     ],
     "status": "active"
   },
@@ -196,7 +195,7 @@
       "Anchor the band behind you at chest height",
       "Stand in a split stance and brace",
       "Press forward until your arms are straight",
-      "Return slowly"
+      "Check the anchor is firm before you press"
     ],
     "status": "active"
   },
@@ -244,7 +243,7 @@
       "Stand on the band with your elbows at your sides",
       "Curl up without swinging",
       "Squeeze at the top",
-      "Lower slowly"
+      "Keep the band flat under your feet"
     ],
     "status": "active"
   },
@@ -266,7 +265,7 @@
       "Anchor the band overhead",
       "Keep your elbows pinned to your sides",
       "Press down until your arms are straight",
-      "Return slowly"
+      "Check the anchor is firm and keep your wrists straight"
     ],
     "status": "active"
   },
@@ -301,7 +300,7 @@
     "id": "builtin.v1.band-good-morning",
     "name": "Band good morning",
     "aliases": [],
-    "muscleGroup": "Back",
+    "muscleGroup": "Legs",
     "primaryMuscles": [
       "hamstrings",
       "glutes",
@@ -350,7 +349,6 @@
     "id": "builtin.v1.band-lateral-walk",
     "name": "Band lateral walk",
     "aliases": [
-      "Monster walk",
       "Banded side step"
     ],
     "muscleGroup": "Legs",
@@ -391,7 +389,7 @@
       "Anchor the band at elbow height",
       "Keep your elbow at your side bent to 90 degrees",
       "Rotate your forearm outward",
-      "Return slowly"
+      "Keep your wrist in line with your forearm"
     ],
     "status": "active"
   },

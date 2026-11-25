@@ -369,13 +369,13 @@
     "equipment": [
       "dumbbell"
     ],
-    "category": "push_vertical",
+    "category": "pull_vertical",
     "mode": "reps_load",
     "cues": [
       "Hold the dumbbells in front of your thighs",
       "Lift your elbows up and out, leading with them",
       "Stop around chest height",
-      "Lower slowly"
+      "Stop short of any shoulder pinch"
     ],
     "status": "active"
   },
@@ -556,10 +556,10 @@
     ],
     "muscleGroup": "Legs",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "abs"
     ],
     "equipment": [
@@ -858,7 +858,7 @@
       "Hold the dumbbells with palms facing each other",
       "Keep your elbows at your sides",
       "Curl without swinging",
-      "Lower slowly"
+      "Do not rock your torso for momentum"
     ],
     "status": "active"
   },
@@ -983,7 +983,7 @@
       "Hold the dumbbells overhand",
       "Keep your wrists straight",
       "Curl up with your elbows at your sides",
-      "Lower slowly"
+      "Use lighter dumbbells than for a regular curl"
     ],
     "status": "active"
   },
@@ -1015,7 +1015,7 @@
     "id": "builtin.v1.db-triceps-kickback",
     "name": "Dumbbell triceps kickback",
     "aliases": [
-      "Kickback"
+      "Triceps kickback"
     ],
     "muscleGroup": "Arms",
     "primaryMuscles": [
@@ -1032,7 +1032,7 @@
       "Hinge forward with your upper arm parallel to your torso",
       "Extend your elbow until your arm is straight",
       "Hold your upper arm still",
-      "Lower slowly"
+      "Keep your back flat and your neck neutral"
     ],
     "status": "active"
   },
@@ -1080,7 +1080,7 @@
       "Rest your forearm on a bench with your palm up",
       "Let the dumbbell roll to your fingertips",
       "Curl your wrist up",
-      "Lower under control"
+      "Choose a load you can control through the full range"
     ],
     "status": "active"
   },

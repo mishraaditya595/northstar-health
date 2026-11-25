@@ -4,7 +4,7 @@
 
 ## Release 2 (2026-11-26)
 
-- sha256: 4c4b08bc9a4727b8a998e5b394590e9a6b667583f7fb66b82c516eba1c570223
+- sha256: 1338bcfbb00914bbdeafc922e44d13b1c98ef9ed3313581873a01039e2da7e92
 - 238 exercises, 0 templates, 0 programs
 
 ## Release 1 (2026-11-26)

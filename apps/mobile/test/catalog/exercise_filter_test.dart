@@ -72,4 +72,16 @@ void main() {
     expect(equipmentOptions(all), ['Barbell', 'Bench', 'Dumbbell', 'Sled']);
     expect(equipmentOptions(const []), isEmpty);
   });
+
+  test('equipment compares and dedupes ignoring case', () {
+    final mixed = [
+      choice('Dumbbell lunge', equipment: 'Dumbbell'),
+      choice('My curl', equipment: 'dumbbell', custom: true),
+    ];
+    expect(equipmentOptions(mixed), ['Dumbbell']);
+    expect(
+      mixed.where(const ExerciseFilter(equipment: 'Dumbbell').matches),
+      hasLength(2),
+    );
+  });
 }

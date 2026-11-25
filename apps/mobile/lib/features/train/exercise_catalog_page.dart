@@ -30,9 +30,16 @@ class ExerciseCatalogPage extends ConsumerStatefulWidget {
 
 class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
   String query = '';
+  final searchController = TextEditingController();
   bool customOnly = false;
   String? group;
   String? equipment;
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
 
   Future<void> _edit(ExerciseRecord? existing) async {
     final name = TextEditingController(text: existing?.name ?? '');
@@ -235,6 +242,7 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
       ],
       const SizedBox(height: 16),
       NsTextField(
+        controller: searchController,
         onChanged: (value) =>
             setState(() => query = value.trim().toLowerCase()),
         prefixIcon: Icons.search,
@@ -269,9 +277,9 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
         .toList();
     // One builder per row below the header, so a long library builds lazily.
     final rows = <WidgetBuilder>[
-      if (async.isLoading)
+      if (!async.hasValue && async.isLoading)
         (_) => const Center(child: CircularProgressIndicator())
-      else if (async.hasError)
+      else if (!async.hasValue && async.hasError)
         (_) => TextButton(
           onPressed: () => ref.invalidate(trainLibraryProvider),
           child: const Text('Could not load exercises. Retry'),

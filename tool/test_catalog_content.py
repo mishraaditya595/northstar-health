@@ -82,6 +82,11 @@ class ContentTest(unittest.TestCase):
 
 
 LOGGABLE_MODES = {"reps_load", "duration"}
+OUTCOME_CLAIM = re.compile(
+    r"\b(burn\w*|fat loss|tone[sd]?|toning|prevent\w* injur\w*|cure[sd]?|"
+    r"guarantee\w*)\b",
+    re.I,
+)
 LEGACY_SHA256 = "c0dd24bb15ce2319dc3478f50b6be8fc25a626075c8e5348eb6f7d34da8d3509"
 
 
@@ -115,19 +120,34 @@ class ExerciseStyleTest(unittest.TestCase):
             with self.subTest(ex["id"]):
                 # Legacy exercises have 3 cues each, so the same bounds apply.
                 self.assertGreaterEqual(len(ex["cues"]), 2)
-                self.assertLessEqual(len(ex["cues"]), 6)
+                self.assertLessEqual(len(ex["cues"]), 4)
                 for cue in ex["cues"]:
                     self.assertFalse(cue.endswith("."), cue)
                     self.assertNotIn("http", cue)
 
     def test_no_outcome_claims(self):
-        banned = ("burn", "fat loss", "tone", "prevent injur", "cure", "guarantee")
         for ex in source_exercises():
-            texts = [ex["name"], *ex["aliases"], *ex["cues"]]
-            for text in texts:
-                for word in banned:
-                    with self.subTest(ex["id"], text=text):
-                        self.assertNotIn(word, text.casefold())
+            for text in [ex["name"], *ex["aliases"], *ex["cues"]]:
+                with self.subTest(ex["id"], text=text):
+                    self.assertIsNone(OUTCOME_CLAIM.search(text))
+
+    def test_outcome_claim_matches_whole_words_only(self):
+        self.assertIsNone(OUTCOME_CLAIM.search("Secure the pin"))
+        self.assertIsNone(OUTCOME_CLAIM.search("Stone grip"))
+        self.assertIsNotNone(OUTCOME_CLAIM.search("Burn fat"))
+        self.assertIsNotNone(OUTCOME_CLAIM.search("Tone your arms"))
+        self.assertIsNotNone(OUTCOME_CLAIM.search("Helps prevent injury"))
+
+    def test_generic_closing_cues_are_not_overused(self):
+        generic = ("lower slowly", "return slowly", "lower under control")
+        counts = {g: 0 for g in generic}
+        for ex in source_exercises():
+            for cue in ex["cues"]:
+                if cue.casefold() in counts:
+                    counts[cue.casefold()] += 1
+        for cue, n in counts.items():
+            with self.subTest(cue):
+                self.assertLessEqual(n, 5)
 
     def test_primary_count(self):
         for ex in source_exercises():

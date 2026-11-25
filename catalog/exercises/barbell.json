@@ -7,10 +7,10 @@
     ],
     "muscleGroup": "Legs",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "abs",
       "lowerBack",
       "hamstrings"
@@ -231,7 +231,7 @@
     "aliases": [
       "Good morning"
     ],
-    "muscleGroup": "Back",
+    "muscleGroup": "Legs",
     "primaryMuscles": [
       "hamstrings",
       "glutes",
@@ -475,7 +475,7 @@
     "equipment": [
       "barbell"
     ],
-    "category": "push_vertical",
+    "category": "pull_vertical",
     "mode": "reps_load",
     "cues": [
       "Use a grip about shoulder width or wider",
@@ -589,7 +589,7 @@
     "category": "push_horizontal",
     "mode": "reps_load",
     "cues": [
-      "Lie on the floor and unrack or lift the bar from a rack",
+      "Lie on the floor inside a rack with the bar set just below lockout height",
       "Lower until your upper arms touch the floor",
       "Pause without relaxing",
       "Press back to full lockout"
@@ -782,7 +782,7 @@
       "Hold the bar overhand about shoulder width",
       "Keep your wrists straight",
       "Curl up with your elbows at your sides",
-      "Lower slowly"
+      "Use a lighter bar than you would for a regular curl"
     ],
     "status": "active"
   },
@@ -807,7 +807,7 @@
       "Rest your forearms on your thighs or a bench with wrists past the edge",
       "Let the bar roll to your fingertips",
       "Curl the bar up with your wrists only",
-      "Lower under control"
+      "Choose a load you can control through the full range"
     ],
     "status": "active"
   },
