@@ -1,10 +1,20 @@
 import 'dart:io';
 
+import 'package:beyondrep/core/ids/uuid_factory.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:beyondrep/features/workouts/data/objectbox_workout_library_repository.dart';
 import 'package:beyondrep/features/workouts/data/workout_entities.dart';
 import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
 import 'package:beyondrep/objectbox.g.dart';
+
+class _FixedIds implements UuidFactory {
+  _FixedIds(this.values);
+  final List<String> values;
+  var next = 0;
+
+  @override
+  String newId() => values[next++];
+}
 
 void main() {
   late Directory directory;
@@ -918,6 +928,32 @@ void main() {
         expectedUpdatedAtMs: library.getPlan('req-2')!.updatedAtMs,
       );
       expect(copy('req-4').name, 'Push day (2)');
+    });
+
+    test('row ids come from the uuid factory and look like UUIDs', () {
+      final plan = copy('req-1');
+      final uuid = RegExp(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-'
+        r'[0-9a-f]{12}$',
+      );
+      for (final row in plan.exercises) {
+        expect(row.uuid, matches(uuid));
+      }
+      final seeded = ObjectBoxWorkoutLibraryRepository(
+        store,
+        uuidFactory: _FixedIds(['row-x', 'row-y']),
+      );
+      final other = seeded.copyCatalogTemplate(
+        requestUuid: 'req-2',
+        name: 'Other',
+        description: '',
+        rows: [
+          row('builtin.v1.synthetic-press'),
+          row('builtin.v1.synthetic-plank', mode: 'duration'),
+        ],
+        release: 3,
+      );
+      expect(other.exercises.map((e) => e.uuid), ['row-x', 'row-y']);
     });
 
     test('a long description is cut to the plan limit', () {

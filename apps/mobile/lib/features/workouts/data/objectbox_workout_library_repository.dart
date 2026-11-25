@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ids/uuid_factory.dart';
 import '../../../core/storage/objectbox_store_provider.dart';
 import '../../../objectbox.g.dart';
 import '../domain/muscles.dart';
@@ -17,12 +18,14 @@ final workoutLibraryRepositoryProvider = Provider<WorkoutLibraryRepository>((
 
 /// Only uses existing PR1 entities: deliberately no ObjectBox UID/schema change.
 class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
-  ObjectBoxWorkoutLibraryRepository(this._store)
-    : _catalog = _store.box<ExerciseDefinitionEntity>(),
+  ObjectBoxWorkoutLibraryRepository(this._store, {UuidFactory? uuidFactory})
+    : _ids = uuidFactory ?? SecureUuidFactory(),
+      _catalog = _store.box<ExerciseDefinitionEntity>(),
       _plans = _store.box<WorkoutPlanEntity>(),
       _items = _store.box<PlanExerciseEntity>();
 
   final Store _store;
+  final UuidFactory _ids;
   final Box<ExerciseDefinitionEntity> _catalog;
   final Box<WorkoutPlanEntity> _plans;
   final Box<PlanExerciseEntity> _items;
@@ -391,7 +394,7 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
     final items = [
       for (var i = 0; i < rows.length; i++)
         PlanExerciseRecord(
-          uuid: '$requestUuid-${i + 1}',
+          uuid: _ids.newId(),
           exerciseUuid: rows[i].exercise.id,
           position: i,
           targetSets: rows[i].sets,
