@@ -61,6 +61,18 @@ Implemented in source on a feature branch, **not released or device-verified**. 
 | A Health Connect source that writes sleep sessions without stages: the night shows its duration, no stages, no score | n/a | not run |
 | Skin temperature on a Pixel / Galaxy Watch: sleep detail shows a deviation vs baseline, never an absolute °C | n/a | not run |
 
+## Health insights stage 2 device QA (ADR-0009, owner actions, none done)
+
+Readiness is implemented in source, **not released or device-verified**. Every row is not run.
+
+| Check | iOS | Android |
+| --- | --- | --- |
+| Good day with a watch: readiness card, detail screen and Today row show a score and its parts | not run | not run |
+| Low day: note on the Train card, and the start note appears once per day before a workout (Train and Today) | not run | not run |
+| HRV without resting heart rate (and the reverse): score still shows from the input present | not run | not run |
+| Baseline building (under 14 days): "not ready" with days remaining, no score | not run | not run |
+| Phone only, no watch or wearable: no score, no zero | not run | not run |
+
 ## Feature and privacy readiness
 
 - ObjectBox real sessions/sets with generated model UID fixture migration, durable offline writes and recovery through process death.
