@@ -72,6 +72,7 @@ void main() {
     Brightness brightness = Brightness.light,
     double textScale = 1,
     DateTime? now,
+    DateTime Function()? clock,
   }) => pumpPrograms(
     tester,
     store: store,
@@ -80,6 +81,7 @@ void main() {
     brightness: brightness,
     textScale: textScale,
     now: now,
+    clock: clock,
   );
 
   group('programs list', () {
@@ -258,6 +260,47 @@ void main() {
       expect(session.programUuid, uuid);
       expect(session.programDayLocalDate, '2026-11-25');
       expect(session.name, 'Synthetic push');
+    });
+
+    testWidgets('the clock crossing midnight after build does not start', (
+      tester,
+    ) async {
+      final uuid = seed('prog.three');
+      var clock = DateTime(2026, 11, 25, 23, 58);
+      final visited = await open(
+        tester,
+        '/train/program/$uuid',
+        now: DateTime(2026, 11, 25, 23, 58),
+        clock: () => clock,
+      );
+      clock = DateTime(2026, 11, 26, 0, 2); // Thursday: a rest day
+      await tester.tap(find.text("Start today's workout"));
+      await tester.pumpAndSettle();
+      expect(visited, isEmpty);
+      expect(store.box<WorkoutSessionEntity>().count(), 0);
+      expect(
+        find.text("Today's workout changed. Check it and try again."),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a clock still on the same day starts and stores that date', (
+      tester,
+    ) async {
+      final uuid = seed('prog.three');
+      final visited = await open(
+        tester,
+        '/train/program/$uuid',
+        now: DateTime(2026, 11, 25, 9),
+        clock: () => DateTime(2026, 11, 25, 23, 50),
+      );
+      await tester.tap(find.text("Start today's workout"));
+      await tester.pumpAndSettle();
+      expect(visited, ['logger']);
+      expect(
+        store.box<WorkoutSessionEntity>().getAll().single.programDayLocalDate,
+        '2026-11-25',
+      );
     });
 
     testWidgets('a rest day shows Rest day today and no start', (tester) async {

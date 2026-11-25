@@ -24,6 +24,7 @@ void main() {
   late ObjectBoxLiveWorkoutEngine engine;
   late ObjectBoxWorkoutLibraryRepository library;
   late RepositoryWorkoutActions actions;
+  var clock = DateTime(2026, 11, 25, 10);
 
   setUp(() {
     directory = Directory.systemTemp.createTempSync('beyondrep-start-');
@@ -35,6 +36,7 @@ void main() {
       ObjectBoxWorkoutRepository(store),
       library,
       _Ids(),
+      clock: () => clock,
     );
     for (final (uuid, program) in [('plan-a', 'prog-1'), ('own', null)]) {
       library.savePlan(
@@ -76,9 +78,10 @@ void main() {
       );
 
   test('a program-day start stores both fields', () {
+    clock = DateTime(2026, 11, 25, 23, 50);
     final session = actions.startProgramDay(
       program(),
-      DateTime(2026, 11, 25, 23, 50),
+      expectedPlanUuid: 'plan-a',
     );
     expect(session.programUuid, 'prog-1');
     expect(session.programDayLocalDate, '2026-11-25');
@@ -95,11 +98,40 @@ void main() {
   });
 
   test('a rest day throws StateError and writes nothing', () {
+    clock = DateTime(2026, 11, 26);
     expect(
-      () => actions.startProgramDay(program(), DateTime(2026, 11, 26)),
+      () => actions.startProgramDay(program(), expectedPlanUuid: null),
       throwsStateError,
     );
     expect(store.box<WorkoutSessionEntity>().count(), 0);
+  });
+
+  test('the clock moving past midnight after the screen was built does '
+      'not start; the day the screen showed is not recorded', () {
+    clock = DateTime(2026, 11, 26, 0, 5); // now a rest day
+    expect(
+      () => actions.startProgramDay(program(), expectedPlanUuid: 'plan-a'),
+      throwsA(isA<ProgramDayChanged>()),
+    );
+    expect(store.box<WorkoutSessionEntity>().count(), 0);
+  });
+
+  test('a different plan than the screen showed does not start', () {
+    clock = DateTime(2026, 11, 25, 9);
+    expect(
+      () => actions.startProgramDay(program(), expectedPlanUuid: 'other'),
+      throwsA(isA<ProgramDayChanged>()),
+    );
+    expect(store.box<WorkoutSessionEntity>().count(), 0);
+  });
+
+  test('the start time comes from the clock at the tap', () {
+    clock = DateTime(2026, 11, 25, 18, 30);
+    final session = actions.startProgramDay(
+      program(),
+      expectedPlanUuid: 'plan-a',
+    );
+    expect(session.startedAtUtc, clock.toUtc());
   });
 
   test('a mismatched program throws and writes nothing', () {
@@ -165,7 +197,7 @@ void main() {
   test('another unfinished workout blocks the start', () {
     actions.startQuick('Quick');
     expect(
-      () => actions.startProgramDay(program(), DateTime(2026, 11, 25)),
+      () => actions.startProgramDay(program(), expectedPlanUuid: 'plan-a'),
       throwsStateError,
     );
   });

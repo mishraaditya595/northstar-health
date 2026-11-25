@@ -56,9 +56,22 @@ class _MyProgramPageState extends ConsumerState<MyProgramPage> {
       try {
         ref
             .read(workoutActionsProvider)
-            .startProgramDay(program, ref.read(localNowProvider));
+            .startProgramDay(
+              program,
+              expectedPlanUuid: dayFor(
+                program,
+                ref.read(localNowProvider),
+              ).planUuid,
+            );
         ref.invalidate(activeWorkoutProvider);
         invalidatePrograms(ref);
+      } on ProgramDayChanged {
+        // The day rolled over or the schedule changed since the screen was
+        // built: show the current day instead of starting the wrong one.
+        ref.invalidate(localNowProvider);
+        invalidatePrograms(ref);
+        _failed("Today's workout changed. Check it and try again.");
+        return;
       } on Object {
         _startFailed();
         return;
