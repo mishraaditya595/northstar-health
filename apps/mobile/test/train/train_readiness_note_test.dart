@@ -119,6 +119,19 @@ List<String> _texts(WidgetTester tester) => [
 ];
 
 void main() {
+  testWidgets('shown and resumed, it asks the overview to re-read if stale', (
+    tester,
+  ) async {
+    final controller = FakeHealthOverviewController(_with(_ready(48)));
+    await _pump(tester, controller);
+    expect(controller.refreshIfStaleCalls, 1);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(controller.refreshIfStaleCalls, 2);
+  });
+
   testWidgets('low shows the full card', (tester) async {
     await _pump(tester, FakeHealthOverviewController(_with(_ready(48))));
     expect(find.text('Recovery is low today'), findsOneWidget);

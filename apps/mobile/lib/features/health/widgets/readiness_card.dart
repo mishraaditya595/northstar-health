@@ -58,12 +58,20 @@ String readinessReasons(
 class ReadinessCard extends StatelessWidget {
   const ReadinessCard({
     required this.overview,
+    required this.now,
+    this.refreshing = false,
     this.onTap,
     this.onAllowMore,
     super.key,
   });
 
   final HealthOverview? overview;
+
+  /// The device's local time: a score read on an earlier day is not shown.
+  final DateTime now;
+
+  /// A re-read is in flight; shown instead of a score from an earlier day.
+  final bool refreshing;
   final VoidCallback? onTap;
   final VoidCallback? onAllowMore;
 
@@ -77,6 +85,23 @@ class ReadinessCard extends StatelessWidget {
       );
     }
     final platform = overview.platform;
+    if (hasStaleReadiness(overview, now)) {
+      return refreshing
+          ? const NsHeroFrame(
+              eyebrow: _eyebrow,
+              loadingLabel: 'Loading readiness',
+            )
+          : _OutlinedCard(
+              onTap: onTap,
+              children: [
+                MetricUnavailable(
+                  gap: MetricGap.failed,
+                  metricName: 'Readiness',
+                  platform: platform,
+                ),
+              ],
+            );
+    }
     return switch (overview.readiness) {
       SectionGap(gap: MetricGap.noData) => _notEnough(overview, null),
       SectionGap(:final gap) => _OutlinedCard(
@@ -122,7 +147,7 @@ class ReadinessCard extends StatelessWidget {
     final rhr = value.hasRestingHr ? heart?.restingHr?.value.round() : null;
     final chips = [
       _Chip(
-        label: 'HRV',
+        label: readinessHrvName(value.hrvIsSdnn),
         value: hrv == null ? null : '$hrv ms',
         trend: value.hrvVsNormal,
       ),

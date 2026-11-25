@@ -1,3 +1,4 @@
+import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/core/design/hero_frame.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
@@ -125,6 +126,7 @@ Future<(FakeHealthOverviewController, FakeHealthSummaryController)> pump(
         fakeHealthSummary(summary),
         fakeHealthOverview(overview),
         healthClockProvider.overrideWithValue(() => clock),
+        localNowProvider.overrideWithValue(clock),
       ],
       child: MaterialApp.router(
         theme: BeyondRepTheme.build(brightness),
@@ -160,7 +162,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('HRV'), findsOneWidget);
+    expect(find.text('HRV (SDNN)'), findsWidgets);
     expect(find.text('52 ms'), findsOneWidget);
     // The Heart card also has a Resting HR label.
     expect(find.text('Resting HR'), findsNWidgets(2));
@@ -326,6 +328,35 @@ void main() {
     await tester.tap(find.text("Couldn't read · Try again"));
     await tester.pumpAndSettle();
     expect(c.refreshCalls, 1);
+  });
+
+  testWidgets("yesterday's score is not shown today; Try again re-reads", (
+    tester,
+  ) async {
+    final (c, _) = await pump(
+      tester,
+      overview(readiness: ready(), readAt: DateTime(2026, 11, 23, 7, 42)),
+    );
+    expect(find.text('77'), findsNothing);
+    expect(find.text('Good to train'), findsNothing);
+    expect(find.text("Couldn't read · Try again"), findsOneWidget);
+    await tester.tap(find.text("Couldn't read · Try again"));
+    await tester.pumpAndSettle();
+    expect(c.refreshCalls, 1);
+  });
+
+  testWidgets('a re-read in flight shows loading, not the old score', (
+    tester,
+  ) async {
+    final (c, _) = await pump(
+      tester,
+      overview(readiness: ready(), readAt: DateTime(2026, 11, 23, 7, 42)),
+    );
+    c.setLoading();
+    await tester.pump();
+    expect(find.bySemanticsLabel(RegExp('Loading readiness')), findsOneWidget);
+    expect(find.text('77'), findsNothing);
+    expect(find.text("Couldn't read · Try again"), findsNothing);
   });
 
   testWidgets('loading shows a readiness spinner, no score', (tester) async {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' hide Baseline;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/clock.dart';
 import '../../../core/design/beyondrep_theme.dart';
 import '../../../core/design/charts/bar_series.dart';
 import '../../../core/design/charts/score_ring.dart';
@@ -64,33 +65,53 @@ class _ReadinessDetailPageState extends ConsumerState<ReadinessDetailPage> {
           if (range != SleepRange.lastNight) _opened.add(range);
         }),
       ),
-      builder: (overview) => switch (overview.readiness) {
-        SectionGap(gap: MetricGap.noData) => ReadinessCard(overview: overview),
-        SectionGap(:final gap) => DetailPanel(
+      builder: (overview) {
+        final now = ref.watch(localNowProvider);
+        void retry() => ref.read(healthOverviewProvider.notifier).refresh();
+        Widget unavailable(MetricGap gap) => DetailPanel(
           children: [
             DetailUnavailable(
               gap: gap,
               metricName: 'Readiness',
               platform: overview.platform,
-              onRetry: () =>
-                  ref.read(healthOverviewProvider.notifier).refresh(),
+              onRetry: retry,
             ),
           ],
-        ),
-        SectionData(:final value) =>
-          _range == SleepRange.lastNight
-              ? _Today(overview: overview, readiness: value)
-              : _RangeView(overview: overview, range: _range),
+        );
+        final today = todaysReadiness(overview, now);
+        // An earlier day's score is never shown as today's: wait for the
+        // re-read, or offer to try again.
+        if (today == null && hasStaleReadiness(overview, now)) {
+          return ref.watch(healthOverviewProvider).isLoading
+              ? const DetailLoading()
+              : unavailable(MetricGap.failed);
+        }
+        return switch (overview.readiness) {
+          SectionGap(gap: MetricGap.noData) => ReadinessCard(
+            overview: overview,
+            now: now,
+          ),
+          SectionGap(:final gap) => unavailable(gap),
+          SectionData() =>
+            _range == SleepRange.lastNight
+                ? _Today(overview: overview, readiness: today!, now: now)
+                : _RangeView(overview: overview, range: _range),
+        };
       },
     );
   }
 }
 
 class _Today extends StatelessWidget {
-  const _Today({required this.overview, required this.readiness});
+  const _Today({
+    required this.overview,
+    required this.readiness,
+    required this.now,
+  });
 
   final HealthOverview overview;
   final ReadinessOverview readiness;
+  final DateTime now;
 
   @override
   Widget build(BuildContext context) {
@@ -105,7 +126,7 @@ class _Today extends StatelessWidget {
           ],
           // The card's copy for what is missing.
           ReadinessNotReady() => [
-            ReadinessCard(overview: overview),
+            ReadinessCard(overview: overview, now: now),
             const SizedBox(height: 12),
           ],
         },
@@ -116,8 +137,10 @@ class _Today extends StatelessWidget {
               "Readiness compares today's $hrvName and resting heart rate "
               'with your own normal, their average over the 30 days before '
               "today, and adds last night's sleep. A measure counts once it "
-              'has 14 days of data. Readiness is a suggestion for planning '
-              'your training, not medical advice.',
+              'has 14 days of data. The 7 and 30 day comparison scores the '
+              'days before the period without sleep heart rate. Readiness '
+              'is a suggestion for planning your training, not medical '
+              'advice.',
             ),
           ],
         ),

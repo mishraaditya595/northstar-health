@@ -602,6 +602,15 @@ void main() {
       expect(r.hasHrv && r.hasRestingHr, true);
     });
 
+    test('denied sleep with heart data makes readiness Not allowed', () async {
+      readinessWeek();
+      fake.sleepResult = const SeriesNotAllowed();
+      final c = container();
+      final o = (await c.read(healthOverviewProvider.future))!;
+      expect((o.sleep as SectionGap).gap, MetricGap.notAllowed);
+      expect((o.readiness as SectionGap).gap, MetricGap.notAllowed);
+    });
+
     test('a failed sleep read makes readiness a failed gap', () async {
       readinessWeek();
       fake.throwOnSleep = true;

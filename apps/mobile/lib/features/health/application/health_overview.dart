@@ -209,6 +209,11 @@ ReadinessOverview? todaysReadiness(HealthOverview o, DateTime now) {
   };
 }
 
+/// True when [o] still holds a readiness score from an earlier day, which
+/// must not be shown as today's.
+bool hasStaleReadiness(HealthOverview o, DateTime now) =>
+    todaysReadiness(o, now) == null && o.readiness is SectionData;
+
 const _staleAfter = Duration(minutes: 5);
 
 class HealthOverviewController extends AsyncNotifier<HealthOverview?> {
@@ -404,6 +409,10 @@ Section<ReadinessOverview> _readiness(
       heartSection is SectionGap<HeartOverview> &&
       sleepSection.gap == heartSection.gap) {
     return SectionGap(sleepSection.gap);
+  }
+  // Sleep is required for a score: without permission, say so.
+  if (sleepSection case SectionGap(gap: MetricGap.notAllowed)) {
+    return const SectionGap(MetricGap.notAllowed);
   }
   final sleep = switch (sleepSection) {
     SectionData(:final value) => value,

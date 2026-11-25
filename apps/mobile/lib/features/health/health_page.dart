@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/clock.dart';
 import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
 import 'application/health_overview.dart';
@@ -216,8 +217,12 @@ class _HealthPageState extends ConsumerState<HealthPage>
       if (overview != null || !async.hasError) ...[
         ReadinessCard(
           overview: overview,
+          now: ref.watch(localNowProvider),
+          refreshing: async.isLoading,
           onTap: overview == null
               ? null
+              : hasStaleReadiness(overview, ref.watch(localNowProvider))
+              ? guardedOverview(busy, (c) => c.refresh())
               : tapFor(overview.readiness, '/health/readiness'),
           onAllowMore: allowMore,
         ),

@@ -407,7 +407,9 @@ typedef ReadinessDay = ({DateTime day, ReadinessResult result});
 /// Readiness for each day of [range] and the same-length period before it,
 /// oldest first, each scored as the overview scores today. Uses the sleep
 /// tab's nights and night-window heart rate, plus one HRV and one resting HR
-/// read over the 60 days before the range end; held in memory only. Null
+/// read starting 30 days before the first day of the previous period, so
+/// every day has the overview's 30-day baseline window; held in memory only.
+/// Days before the range are scored without sleep heart rate. Null
 /// without an overview for the signed-in account.
 final readinessHistoryProvider = FutureProvider.autoDispose
     .family<List<ReadinessDay>?, SleepRange>((ref, range) async {
@@ -418,11 +420,12 @@ final readinessHistoryProvider = FutureProvider.autoDispose
       if (overview == null) return null;
       final today = dayOf(overview.readAt);
       final reader = ref.read(healthReaderProvider);
+      final days = 2 * range.nights;
       Future<SeriesResult<List<HealthSample>>> read(HealthSeriesType type) =>
           _readResult(
             reader,
             type,
-            DateTime(today.year, today.month, today.day - 60),
+            DateTime(today.year, today.month, today.day - (days + 30)),
             overview.readAt,
           );
       final hrvF = read(HealthSeriesType.hrv);
@@ -448,7 +451,6 @@ final readinessHistoryProvider = FutureProvider.autoDispose
       final nights = [for (final d in byDate.keys.toList()..sort()) byDate[d]!];
       final hrvDaily = hrvDailyOf(_samples(hrv), nights);
       final rhrDaily = reduceDaily(_samples(rhr), DailyReduction.latest);
-      final days = 2 * range.nights;
       return [
         for (var i = 0; i < days; i++)
           _readinessOn(

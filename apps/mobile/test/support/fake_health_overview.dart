@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:beyondrep/features/health/application/health_overview.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' show AsyncData;
+import 'package:flutter_riverpod/flutter_riverpod.dart'
+    show AsyncData, AsyncLoading;
 import 'package:flutter_riverpod/misc.dart' show Override;
 
 /// Fixed-state stand-in for [HealthOverviewController] that records calls.
@@ -26,6 +27,9 @@ class FakeHealthOverviewController extends HealthOverviewController {
 
   /// Replaces the overview, as a finished re-read would.
   void replace(HealthOverview? next) => state = AsyncData(next);
+
+  /// A re-read in flight: loading, still holding the previous value.
+  void setLoading() => state = const AsyncLoading();
 
   @override
   Future<void> refresh() async => refreshCalls++;

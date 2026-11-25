@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/core/design/charts/bar_series.dart';
 import 'package:beyondrep/core/design/charts/trend_label.dart';
@@ -149,11 +150,12 @@ HealthOverview _overview(List<SleepSegment> segments, FakeHealthReader reader) {
 HealthOverview _todayOverview({
   HealthPlatformKind platform = HealthPlatformKind.appleHealth,
   bool restingHr = true,
+  DateTime? readAt,
 }) {
   // sleepOverview's vsWeek is 36 min under the 7-night average: 6h 48m.
   return HealthOverview(
     ownerId: _owner,
-    readAt: overviewReadAt,
+    readAt: readAt ?? overviewReadAt,
     platform: platform,
     readableFrom: null,
     needsMoreAccess: false,
@@ -215,6 +217,7 @@ Future<void> _pump(
   FakeHealthReader reader, {
   double textScale = 1,
   Brightness brightness = Brightness.light,
+  FakeHealthOverviewController? controller,
 }) async {
   tester.view.physicalSize = const Size(390, 2400);
   tester.view.devicePixelRatio = 1;
@@ -223,10 +226,13 @@ Future<void> _pump(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        fakeHealthOverview(FakeHealthOverviewController(overview)),
+        fakeHealthOverview(
+          controller ?? FakeHealthOverviewController(overview),
+        ),
         healthReaderProvider.overrideWithValue(reader),
         healthOwnerIdProvider.overrideWithValue(_owner),
         healthClockProvider.overrideWithValue(() => _now),
+        localNowProvider.overrideWithValue(_now),
       ],
       child: MaterialApp(
         theme: BeyondRepTheme.build(brightness),
@@ -341,6 +347,59 @@ void main() {
       expect(find.text('Not enough data for a score'), findsOneWidget);
       expect(find.text('How readiness works'), findsOneWidget);
     });
+
+    testWidgets('explains that older days are scored without sleep HR', (
+      tester,
+    ) async {
+      await _pump(tester, _todayOverview(), FakeHealthReader());
+
+      expect(
+        find.textContaining('days before the period without sleep heart rate'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets("yesterday's overview never shows yesterday's score", (
+      tester,
+    ) async {
+      final controller = FakeHealthOverviewController(
+        _todayOverview(readAt: DateTime(2026, 11, 23, 7, 42)),
+      );
+      await _pump(
+        tester,
+        _todayOverview(),
+        FakeHealthReader(),
+        controller: controller,
+      );
+
+      expect(find.text('Good to train'), findsNothing);
+      expect(find.text('78'), findsNothing);
+      expect(find.text('How readiness works'), findsNothing);
+      expect(find.text("Couldn't read · Try again"), findsOneWidget);
+      await tester.tap(find.text("Couldn't read · Try again"));
+      await tester.pumpAndSettle();
+      expect(controller.refreshCalls, 1);
+    });
+
+    testWidgets('a re-read in flight shows loading, not the old score', (
+      tester,
+    ) async {
+      final controller = FakeHealthOverviewController(
+        _todayOverview(readAt: DateTime(2026, 11, 23, 7, 42)),
+      );
+      await _pump(
+        tester,
+        _todayOverview(),
+        FakeHealthReader(),
+        controller: controller,
+      );
+      controller.setLoading();
+      await tester.pump();
+
+      expect(find.byType(DetailLoading), findsOneWidget);
+      expect(find.text('Good to train'), findsNothing);
+      expect(find.text("Couldn't read · Try again"), findsNothing);
+    });
   });
 
   group('7 and 30 days', () {
@@ -369,7 +428,7 @@ void main() {
       final hrv = reader.seriesCalls.firstWhere(
         (c) => c.$1 == HealthSeriesType.hrv,
       );
-      expect(hrv.$2, _day(-60));
+      expect(hrv.$2, _day(-44));
       expect(hrv.$3, _now);
       expect(reader.sleepCalls, isEmpty);
 
@@ -446,6 +505,89 @@ void main() {
       expect(find.text('Scored on 30 of 30 days'), findsOneWidget);
     });
 
+    test(
+      '30 days scores every previous-period day on full baselines',
+      () async {
+        final reader = FakeHealthReader()
+          ..applyWindows = true
+          ..sleep = _nights(-100);
+        _heartFrom(reader, -100);
+        final overview = _overview(_nights(-100), reader);
+        final c = ProviderContainer(
+          overrides: [
+            fakeHealthOverview(FakeHealthOverviewController(overview)),
+            healthReaderProvider.overrideWithValue(reader),
+            healthOwnerIdProvider.overrideWithValue(_owner),
+            healthClockProvider.overrideWithValue(() => _now),
+          ],
+        );
+        addTearDown(c.dispose);
+        final provider = readinessHistoryProvider(SleepRange.month);
+        c.listen(provider, (_, _) {});
+        final history = (await c.read(provider.future))!;
+
+        expect(history, hasLength(60));
+        expect(history.every((d) => d.result is ReadinessReady), isTrue);
+
+        // Independent expectation: every day scored against the full HRV and
+        // resting HR history, with the nights the 30 day tab reads (day -59
+        // on) and no sleep heart rate, as for the previous period.
+        final nights = [
+          for (final n in buildNights(_nights(-100)))
+            if (!n.date.isBefore(_day(-59))) n,
+        ];
+        final hrvDaily = hrvDailyOf(
+          reader.series[HealthSeriesType.hrv]!,
+          buildNights(_nights(-100)),
+        );
+        final rhrDaily = reduceDaily(
+          reader.series[HealthSeriesType.restingHeartRate]!,
+          DailyReduction.latest,
+        );
+        final restingHr =
+            (overview.heart as SectionData<HeartOverview>).value.restingHrDaily;
+        int expected(int offset) {
+          final night = nights.firstWhere((n) => n.date == _day(offset));
+          final result = scoreReadiness(
+            today: _day(offset),
+            lastNight: night,
+            sleepScore: scoreSleep(
+              night,
+              priorNights: [
+                for (final n in nights)
+                  if (n.date.isBefore(night.date)) n,
+              ],
+              restingHr: restingHr
+                  .where((d) => !d.day.isAfter(night.date))
+                  .lastOrNull
+                  ?.value,
+            ),
+            priorNights: [
+              for (final n in nights)
+                if (n.date.isBefore(night.date)) n,
+            ],
+            hrvDaily: hrvDaily,
+            restingHrDaily: rhrDaily,
+          );
+          return (result as ReadinessReady).readiness.value;
+        }
+
+        final previous = history
+            .where((d) => d.day.isBefore(_day(-29)))
+            .toList();
+        expect(previous, hasLength(30));
+        expect(previous.first.day, _day(-59));
+        for (final d in previous) {
+          final offset = d.day.difference(_day(0)).inDays;
+          expect(
+            (d.result as ReadinessReady).readiness.value,
+            expected(offset),
+            reason: 'day $offset',
+          );
+        }
+      },
+    );
+
     testWidgets('no overflow at text scale 2.0 in dark mode', (tester) async {
       final reader = FakeHealthReader()..sleep = _nights(-40);
       _heartFrom(reader, -40);
@@ -481,6 +623,7 @@ void main() {
           healthReaderProvider.overrideWithValue(reader),
           healthOwnerIdProvider.overrideWithValue(_owner),
           healthClockProvider.overrideWithValue(() => _now),
+          localNowProvider.overrideWithValue(_now),
           sleepRangeHrProvider.overrideWith((ref, range) {
             builds++;
             throw StateError('synthetic history bug');

@@ -7,7 +7,9 @@ import 'package:beyondrep/features/health/widgets/readiness_note.dart';
 import 'package:beyondrep/features/train/active_workout_state.dart';
 import 'package:beyondrep/features/train/train_library_state.dart';
 import 'package:beyondrep/features/train/train_page.dart';
+import 'package:beyondrep/features/workouts/domain/live_workout_engine.dart';
 import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -93,7 +95,11 @@ late _Actions _actions;
 late ProviderContainer _container;
 late FakeHealthOverviewController _controller;
 
-Future<void> _pump(WidgetTester tester, HealthOverview? health) async {
+Future<void> _pump(
+  WidgetTester tester,
+  HealthOverview? health, {
+  AsyncValue<ActiveWorkoutView?> active = const AsyncData(null),
+}) async {
   _actions = _Actions();
   _controller = FakeHealthOverviewController(health);
   final router = GoRouter(
@@ -119,9 +125,7 @@ Future<void> _pump(WidgetTester tester, HealthOverview? health) async {
         (ref) async =>
             const WorkoutLibrarySnapshot(exercises: [], plans: [_plan]),
       ),
-      activeWorkoutProvider.overrideWith(
-        (ref) => const AsyncData<ActiveWorkoutView?>(null),
-      ),
+      activeWorkoutProvider.overrideWith((ref) => active),
     ],
   );
   addTearDown(_container.dispose);
@@ -160,6 +164,36 @@ void main() {
     await _tapStart(tester);
     expect(_actions.started, ['plan-1', 'plan-1']);
     expect(find.text('Not now'), findsNothing);
+  });
+
+  testWidgets('an unfinished workout blocks the start before the note', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _low(),
+      active: AsyncData(
+        ActiveWorkoutView(
+          WorkoutSessionRecord(
+            uuid: 'open',
+            name: 'Morning lift',
+            status: WorkoutStatus.paused,
+            startedAtUtc: DateTime.utc(2026, 11, 24, 7),
+            originalOffsetMinutes: 0,
+            revision: 2,
+          ),
+          const WorkoutRecoveryCheckpoint(
+            sessionUuid: 'open',
+            checkpointRevision: 1,
+          ),
+        ),
+      ),
+    );
+    await _tapStart(tester);
+    expect(find.text('Not now'), findsNothing);
+    expect(find.textContaining('Could not start this workout'), findsOneWidget);
+    expect(_actions.started, isEmpty);
+    expect(_container.read(readinessStartNoteShownProvider), isNull);
   });
 
   testWidgets('Not now starts nothing and marks the note shown', (

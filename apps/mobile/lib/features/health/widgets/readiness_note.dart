@@ -66,11 +66,38 @@ Future<bool> confirmReadinessBeforeStart(
 /// Readiness on Train: a card when recovery is low, a one-line row otherwise.
 /// Renders nothing while loading, on error, when health is not connected or
 /// without a score; health never blocks or changes Train.
-class ReadinessNote extends ConsumerWidget {
+class ReadinessNote extends ConsumerStatefulWidget {
   const ReadinessNote({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ReadinessNote> createState() => _ReadinessNoteState();
+}
+
+class _ReadinessNoteState extends ConsumerState<ReadinessNote> {
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    // As the Today row: a stale overview (e.g. read yesterday) is re-read
+    // when this is shown or the app resumes.
+    _lifecycle = AppLifecycleListener(onResume: _refreshIfStale);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshIfStale());
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  void _refreshIfStale() {
+    if (!mounted) return;
+    ref.read(healthOverviewProvider.notifier).refreshIfStale();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final overview = ref.watch(healthOverviewProvider).value;
     if (overview == null) return const SizedBox.shrink();
     final readiness = todaysReadiness(overview, ref.watch(localNowProvider));

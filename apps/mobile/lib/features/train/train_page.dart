@@ -77,6 +77,13 @@ class TrainPage extends ConsumerWidget {
     WidgetRef ref,
     void Function() action,
   ) async {
+    // The start would fail while a workout is unfinished or unrecoverable:
+    // say so before the readiness note, which only shows once a day.
+    final active = ref.read(activeWorkoutProvider);
+    if (active.value != null || active.hasError) {
+      _showStartFailed(context, ref);
+      return;
+    }
     if (!await confirmReadinessBeforeStart(context, ref) || !context.mounted) {
       return;
     }
@@ -85,12 +92,16 @@ class TrainPage extends ConsumerWidget {
       ref.invalidate(activeWorkoutProvider);
       context.push('/train/workout');
     } catch (_) {
-      showNsMessage(
-        context,
-        'Could not start this workout. Check the plan and any unfinished workout.',
-      );
-      ref.invalidate(activeWorkoutProvider);
+      _showStartFailed(context, ref);
     }
+  }
+
+  void _showStartFailed(BuildContext context, WidgetRef ref) {
+    showNsMessage(
+      context,
+      'Could not start this workout. Check the plan and any unfinished workout.',
+    );
+    ref.invalidate(activeWorkoutProvider);
   }
 
   @override

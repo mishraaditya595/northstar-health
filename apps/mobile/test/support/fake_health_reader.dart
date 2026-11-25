@@ -19,6 +19,9 @@ class FakeHealthReader implements HealthReader {
   int openSettingsCalls = 0;
   bool throwOnOpenSettings = false;
   List<SleepSegment> sleep = [];
+
+  /// Overrides what [readSleep] returns, e.g. [SeriesNotAllowed].
+  SeriesResult<List<SleepSegment>>? sleepResult;
   final Map<HealthSeriesType, List<HealthSample>> series = {};
   final Map<HealthTotalType, List<HealthSample>> totals = {};
   Set<HealthSeriesType> throwOnSeries = {};
@@ -78,7 +81,7 @@ class FakeHealthReader implements HealthReader {
     sleepCalls.add((from, to));
     await sleepGate?.future;
     if (throwOnSleep) throw StateError('synthetic sleep bug');
-    return SeriesData(sleep);
+    return sleepResult ?? SeriesData(sleep);
   }
 
   @override
