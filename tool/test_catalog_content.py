@@ -87,6 +87,7 @@ OUTCOME_CLAIM = re.compile(
     r"guarantee\w*)\b",
     re.I,
 )
+STANDALONE_SHA256 = "51d5e033e9266da4e9824bebd6957ee06c1065bbe2f6bd2373ca8d28f8a5a106"
 LEGACY_SHA256 = "c0dd24bb15ce2319dc3478f50b6be8fc25a626075c8e5348eb6f7d34da8d3509"
 
 
@@ -257,8 +258,18 @@ def program_shape_errors(programs, templates_by_id):
             errors.append(f"{pid}: estimatedMinutes is not within 5 of {average:.0f}")
         text = prog["description"].strip()
         sentences = [x for x in re.split(r"(?<=[.!?])\s+", text) if x]
-        if not text or len(sentences) > 2:
-            errors.append(f"{pid}: description must be 1 or 2 sentences")
+        if not text or len(sentences) > 5:
+            errors.append(f"{pid}: description must be 1 to 5 sentences")
+        counts = {}
+        for day in prog["week"]:
+            if day is not None:
+                counts[day] = counts.get(day, 0) + 1
+        if len(set(counts.values())) > 1:
+            for word in ("twice", "once"):
+                if word not in text.lower():
+                    errors.append(
+                        f"{pid}: sessions repeat unevenly, so the description must say '{word}'"
+                    )
         if re.search(r"next week|week \d|this week", text, re.I):
             errors.append(f"{pid}: the schedule is a fixed repeating week")
         for value in (prog["name"], text):
@@ -366,6 +377,45 @@ class ProgramContentTest(unittest.TestCase):
                     self.assertIn("assisted", note)
                     self.assertIn(f"{row['repsMin']} clean reps", note)
 
+    def program_only(self):
+        standalone_ids = {
+            t["id"]
+            for t in json.loads(
+                (ROOT / "catalog/templates/standalone.json").read_text(encoding="utf-8")
+            )
+        }
+        return [t for t in self.templates if t["id"] not in standalone_ids]
+
+    def test_standalone_templates_are_unchanged_since_release_3(self):
+        import hashlib
+
+        data = (ROOT / "catalog/templates/standalone.json").read_bytes()
+        self.assertEqual(hashlib.sha256(data).hexdigest(), STANDALONE_SHA256)
+
+    def test_program_only_barbell_presses_name_safeties(self):
+        for tpl in self.program_only():
+            for row in tpl["exercises"]:
+                if row["exerciseId"] in (
+                    "builtin.v1.bench-press",
+                    "builtin.v1.incline-bench-press",
+                ):
+                    with self.subTest(msg=f"{tpl['id']} {row['exerciseId']}"):
+                        self.assertIn("safeties or a spotter", row.get("note", ""))
+
+    def test_program_only_squats_name_the_rack(self):
+        for tpl in self.program_only():
+            for row in tpl["exercises"]:
+                if row["exerciseId"] == "builtin.v1.squat":
+                    with self.subTest(tpl["id"]):
+                        self.assertIn("rack", row.get("note", ""))
+
+    def test_program_only_assisted_notes_need_a_band_or_machine(self):
+        for tpl in self.program_only():
+            for row in tpl["exercises"]:
+                if row["exerciseId"] in ("builtin.v1.pull-up", "builtin.v1.chin-up"):
+                    with self.subTest(msg=f"{tpl['id']} {row['exerciseId']}"):
+                        self.assertIn("band or machine", row.get("note", ""))
+
     def test_unilateral_rows_say_per_side(self):
         side = {
             "builtin.v1.reverse-lunge", "builtin.v1.walking-lunge",
@@ -375,6 +425,7 @@ class ProgramContentTest(unittest.TestCase):
             "builtin.v1.kb-single-leg-deadlift", "builtin.v1.kb-row",
             "builtin.v1.kb-press", "builtin.v1.kb-push-press",
             "builtin.v1.single-arm-cable-row", "builtin.v1.cable-glute-kickback",
+            "builtin.v1.cable-lateral-raise",
         }
         for tpl in self.templates:
             for row in tpl["exercises"]:
@@ -397,6 +448,19 @@ class ProgramContentTest(unittest.TestCase):
         }
         by_id = {"tpl.x": tpl}
         self.assertEqual(program_shape_errors([good], by_id), [])
+        uneven = {
+            **good,
+            "daysPerWeek": 3,
+            "week": ["tpl.x", None, "tpl.y", None, "tpl.x", None, None],
+        }
+        by_two = {"tpl.x": tpl, "tpl.y": tpl}
+        self.assertNotEqual(program_shape_errors([uneven], by_two), [])
+        self.assertEqual(
+            program_shape_errors(
+                [{**uneven, "description": "A twice and B once each week."}], by_two
+            ),
+            [],
+        )
         self.assertEqual(program_equipment_errors([good], by_id), [])
         self.assertEqual(orphan_template_errors([good], [tpl]), [])
         self.assertEqual(rest_spacing_errors([good]), [])
@@ -404,7 +468,7 @@ class ProgramContentTest(unittest.TestCase):
             {"daysPerWeek": 1},
             {"level": "beginner"},
             {"estimatedMinutes": 50},
-            {"description": "One. Two. Three."},
+            {"description": "One. Two. Three. Four. Five. Six."},
             {"description": "Burns fat fast."},
             {"description": "Start the next week with B."},
         ):
