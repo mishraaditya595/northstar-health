@@ -402,6 +402,14 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
         if (definition == null) {
           throw StateError('Plan refers to an unknown exercise');
         }
+        final timed = definition.inputMode == 'duration';
+        if (timed &&
+            (item.targetRepsMin != null || item.targetRepsMax != null)) {
+          throw ArgumentError('Timed exercise targets seconds, not reps');
+        }
+        if (!timed && item.targetDurationSeconds != null) {
+          throw ArgumentError('Rep exercise targets reps, not seconds');
+        }
         if (definition.archivedAtMs != null &&
             !prior.any(
               (saved) =>

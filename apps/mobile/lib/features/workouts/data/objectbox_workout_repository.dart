@@ -23,6 +23,7 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
     : _sessions = _store.box<WorkoutSessionEntity>(),
       _exercises = _store.box<WorkoutExerciseEntity>(),
       _sets = _store.box<WorkoutSetEntity>(),
+      _definitions = _store.box<ExerciseDefinitionEntity>(),
       _checkpoints = _store.box<WorkoutSessionStateEntity>();
 
   final Store _store;
@@ -30,6 +31,7 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
   final Box<WorkoutSessionEntity> _sessions;
   final Box<WorkoutExerciseEntity> _exercises;
   final Box<WorkoutSetEntity> _sets;
+  final Box<ExerciseDefinitionEntity> _definitions;
   final Box<WorkoutSessionStateEntity> _checkpoints;
 
   T? _one<T>(Box<T> box, QueryStringProperty<T> property, String value) {
@@ -291,6 +293,19 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
       );
       if (exercise == null || exercise.sessionUuid != sessionUuid) {
         throw StateError('Set exercise does not belong to session');
+      }
+      final definitionUuid = exercise.definitionUuid;
+      final definition = definitionUuid == null
+          ? null
+          : _one(_definitions, ExerciseDefinitionEntity_.uuid, definitionUuid);
+      if (definition != null) {
+        final timed = definition.inputMode == 'duration';
+        if (timed && set.reps != null) {
+          throw ArgumentError('Timed exercise takes seconds, not reps');
+        }
+        if (!timed && set.durationSeconds != null) {
+          throw ArgumentError('Rep exercise takes reps, not seconds');
+        }
       }
       final prior = _one(_sets, WorkoutSetEntity_.uuid, set.uuid);
       if (prior != null && prior.exerciseUuid != set.exerciseUuid) {
