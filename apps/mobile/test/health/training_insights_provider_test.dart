@@ -242,21 +242,20 @@ void main() {
     expect(r.sleep, isNotNull);
   });
 
-  test('sessions outside the 30 day window are ignored', () async {
-    // March 31 minus 30 is March 1: Feb 28 is out, March 1 is in.
+  test('window is readAt-30 through readAt, inclusive', () async {
+    // readAt is Mar 31: Mar 1 (-30) is in, Feb 28 (-31) and Apr 1 are out.
+    // Each out-of-window session has a following night, so counting one
+    // would raise trainingNights above 3.
     final h = _FakeHistory([
-      _session('old', _d(28, 2)),
+      _session('before', _d(28, 2)),
       _session('edge', _d(1)),
-      _session('future', DateTime(2026, 4, 1)),
+      _session('s3', _d(3)),
+      _session('s5', _d(5)),
+      _session('after', DateTime(2026, 4, 1)),
     ]);
-    final r = (await _read(_container(_overview(), h)))!;
-    expect(r.sleep, isNull); // one training day only
-    final inWindow = _FakeHistory([
-      for (final x in [2, 4, 6]) _session('s$x', _d(x)),
-      _session('old', _d(28, 2)),
-    ]);
-    final n = [
-      for (final x in [3, 5, 7]) _night(_d(x), 480),
+    final nights = [
+      for (final x in [1, 2, 4, 6]) _night(_d(x), 480),
+      _night(DateTime(2026, 4, 2), 480),
       for (final x in [10, 11, 12]) _night(_d(x), 400),
     ];
     final o = HealthOverview(
@@ -265,14 +264,16 @@ void main() {
       platform: HealthPlatformKind.healthConnect,
       readableFrom: null,
       needsMoreAccess: false,
-      sleep: SectionData(sleepOverview(n.last).withNights(n)),
+      sleep: SectionData(sleepOverview(nights.last).withNights(nights)),
       heart: const SectionGap(MetricGap.noData),
       activity: const SectionGap(MetricGap.noData),
       body: const SectionGap(MetricGap.noData),
       readiness: const SectionGap(MetricGap.noData),
     );
-    final r2 = (await _read(_container(o, inWindow)))!;
-    expect(r2.sleep!.trainingNights, 3);
+    final r = (await _read(_container(o, h)))!;
+    // Nights after Mar 1, 3, 5 only; Mar 1 and Apr 2 nights count as other.
+    expect(r.sleep!.trainingNights, 3);
+    expect(r.sleep!.otherNightsCount, 5);
   });
 
   test('unfinished and discarded sessions are ignored', () async {
@@ -297,22 +298,25 @@ void main() {
   });
 
   test('sets from sessions on the same day are summed', () async {
-    // Two 3-set sessions on day 1 are hard (6) against 5-set days.
+    // Days 1-3 hold two 2-set sessions (4 sets each day); days 4-9 hold one
+    // 3-set session. Summed, only days 1-3 are hard; unsummed (2 vs 3 sets)
+    // days 4-9 would be.
     final h = _FakeHistory([
-      _session('a', _d(1), working: 3),
-      _session('b', _d(1), working: 3),
-      for (final x in [2, 3, 4, 5, 6]) _session('s$x', _d(x), working: 5),
+      for (final x in [1, 2, 3]) ...[
+        _session('a$x', _d(x), working: 2),
+        _session('b$x', _d(x), working: 2),
+      ],
+      for (final x in [4, 5, 6, 7, 8, 9]) _session('s$x', _d(x), working: 3),
     ]);
     final o = _overview(
       rhr: [
-        (day: _d(2), value: 70.0),
-        (day: _d(3), value: 70.0),
-        (day: _d(4), value: 70.0),
-        for (final x in [10, 11, 12]) (day: _d(x), value: 60.0),
+        for (final x in [2, 3, 4]) (day: _d(x), value: 58.0),
+        for (final x in [5, 6, 7, 8, 9, 10]) (day: _d(x), value: 55.0),
       ],
     );
     final r = (await _read(_container(o, h)))!;
-    // 6 days, k=2, threshold 5 -> day 1 (6) and ties at 5: all days hard.
-    expect(r.restingHr, isNotNull);
+    expect(r.restingHr!.hardDays, 3);
+    expect(r.restingHr!.otherDaysCount, 6);
+    expect(r.restingHr!.difference, closeTo(3, 1e-9));
   });
 }
