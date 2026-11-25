@@ -16,9 +16,9 @@ Stage 1 requests read access to these types in one permission sheet (`platform_h
 | Heart | heart rate, resting heart rate, VO₂ max | HRV (SDNN), walking heart rate | HRV (RMSSD) |
 | Breathing | respiratory rate, blood oxygen | | |
 | Activity | steps, active energy | | |
-| Body | weight, body fat, lean body mass | | skin temperature (only where Health Connect offers it) |
+| Body | weight, body fat, lean body mass | | skin temperature (only where Health Connect offers it; a deviation from the device's own baseline, shown as such, never as an absolute reading) |
 
-On Android it also requests Health Connect's history permission where available; without it only the 30 days before connecting are readable. The only things stored are the per-account opt-in row (connected time and the version of the requested type list, so Android offers "Allow more data" once per new list); no health value or score.
+On Android it also requests Health Connect's history permission where available. Without it Health Connect returns data from 30 days before the app was first granted access onward. The app does not know that grant date, so it uses the account's connect date instead: that date is never earlier than the first grant, so the approximation can only hide a comparison, never show a period that is not readable. The only things stored are the per-account opt-in row (connected time and the version of the requested type list, so Android offers "Allow more data" once per new list); no health value or score.
 
 ## Data ownership
 

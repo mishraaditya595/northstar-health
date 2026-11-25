@@ -58,6 +58,8 @@ Implemented in source on a feature branch, **not released or device-verified**. 
 | Text scale 2.0 on overview and the four detail screens | not run | not run |
 | Tablet / split screen layout | not run | not run |
 | Light and dark themes | not run | not run |
+| A Health Connect source that writes sleep sessions without stages: the night shows its duration, no stages, no score | n/a | not run |
+| Skin temperature on a Pixel / Galaxy Watch: sleep detail shows a deviation vs baseline, never an absolute °C | n/a | not run |
 
 ## Feature and privacy readiness
 
