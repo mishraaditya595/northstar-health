@@ -307,7 +307,8 @@ class ObjectBoxProgramRepository implements ProgramRepository {
     });
   }
 
-  List<TrainingProgramRecord> _listLive() {
+  @override
+  List<TrainingProgramRecord> listPrograms() {
     return _store.runInTransaction(TxMode.read, () {
       final list = _programs.getAll()
         ..removeWhere((p) => p.archivedAtMs != null)
@@ -321,7 +322,7 @@ class ObjectBoxProgramRepository implements ProgramRepository {
     return _programs
         .query()
         .watch(triggerImmediately: true)
-        .map((_) => _listLive());
+        .map((_) => listPrograms());
   }
 
   @override

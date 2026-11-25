@@ -1,0 +1,474 @@
+import 'dart:io';
+
+import 'package:beyondrep/features/catalog/domain/catalog_programs.dart';
+import 'package:beyondrep/features/catalog/domain/catalog_templates.dart';
+import 'package:beyondrep/features/programs/data/objectbox_program_repository.dart';
+import 'package:beyondrep/features/workouts/data/workout_entities.dart';
+import 'package:beyondrep/objectbox.g.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'program_test_support.dart';
+
+Future<void> tapLow(WidgetTester tester, String text) async {
+  await tester.scrollUntilVisible(
+    find.text(text),
+    200,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.ensureVisible(find.text(text));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(text));
+  await tester.pumpAndSettle();
+}
+
+void main() {
+  late Directory directory;
+  late Store store;
+
+  setUp(() {
+    directory = Directory.systemTemp.createTempSync('beyondrep-programs-ui-');
+    store = Store(getObjectBoxModel(), directory: directory.path);
+  });
+
+  tearDown(() {
+    store.close();
+    directory.deleteSync(recursive: true);
+  });
+
+  /// Imports a synthetic program straight into the store.
+  String seed(String id, {int firstDay = 3, bool active = true}) {
+    final snapshot = programsSnapshot();
+    final program = browsablePrograms(snapshot).firstWhere((p) => p.id == id);
+    final templates = {
+      for (final t in program.week.whereType<String>())
+        t: programTemplate(snapshot, t)!,
+    };
+    return ObjectBoxProgramRepository(store)
+        .importProgram(
+          requestUuid: 'seed-${store.box<TrainingProgramEntity>().count()}',
+          program: program,
+          templateRows: {
+            for (final e in templates.entries)
+              e.key: templateRowInputs(e.value, snapshot),
+          },
+          templateNames: {
+            for (final e in templates.entries) e.key: e.value.name,
+          },
+          release: 4,
+          firstDayWeekday: firstDay,
+          makeActive: active,
+          localToday: DateTime(2026, 11, 25),
+        )
+        .uuid;
+  }
+
+  TrainingProgramEntity onlyProgram() =>
+      store.box<TrainingProgramEntity>().getAll().single;
+
+  Future<List<String>> open(
+    WidgetTester tester,
+    String initial, {
+    Brightness brightness = Brightness.light,
+    double textScale = 1,
+    DateTime? now,
+  }) => pumpPrograms(
+    tester,
+    store: store,
+    directory: directory,
+    initial: initial,
+    brightness: brightness,
+    textScale: textScale,
+    now: now,
+  );
+
+  group('programs list', () {
+    testWidgets('lists programs with their summary and filters', (
+      tester,
+    ) async {
+      await open(tester, '/train/programs');
+      expect(find.text('Synthetic three-day'), findsOneWidget);
+      expect(find.text('Synthetic six-day'), findsOneWidget);
+      expect(
+        find.textContaining('3 days a week · Beginner · about 40 min'),
+        findsOneWidget,
+      );
+      await tester.enterText(find.byType(TextField), 'six');
+      await tester.pumpAndSettle();
+      expect(find.text('Synthetic three-day'), findsNothing);
+      expect(find.text('Synthetic six-day'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), '');
+      await tester.tap(find.text('Beginner'));
+      await tester.pumpAndSettle();
+      expect(find.text('Synthetic six-day'), findsNothing);
+      expect(find.text('Synthetic three-day'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'zzz');
+      await tester.pumpAndSettle();
+      expect(find.text('No matching programs.'), findsOneWidget);
+    });
+
+    testWidgets('your programs are listed first and open', (tester) async {
+      final uuid = seed('prog.three');
+      await open(tester, '/train/programs');
+      expect(find.text('Your programs'), findsOneWidget);
+      expect(find.text('Active'), findsOneWidget);
+      await tester.tap(find.text('Active'));
+      await tester.pumpAndSettle();
+      expect(find.text('Your program'), findsOneWidget);
+      expect(uuid, isNotEmpty);
+    });
+
+    testWidgets('an unavailable catalogue says so', (tester) async {
+      await pumpPrograms(
+        tester,
+        store: store,
+        directory: directory,
+        initial: '/train/programs',
+        state: unavailableCatalog(),
+      );
+      expect(find.text('Retry'), findsOneWidget);
+    });
+  });
+
+  group('program detail', () {
+    testWidgets('shows seven days and expands one', (tester) async {
+      await open(tester, '/train/programs/prog.three');
+      expect(
+        find.textContaining('Day 1 · Synthetic push · 2 exercises'),
+        findsOneWidget,
+      );
+      expect(find.text('Day 2 · Rest'), findsOneWidget);
+      for (var i = 3; i <= 7; i++) {
+        await tester.scrollUntilVisible(
+          find.textContaining('Day $i ·'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+      }
+      await tester.scrollUntilVisible(
+        find.textContaining('Day 1 ·'),
+        -400,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.textContaining('4 × 6–8 reps'), findsNothing);
+      await tester.tap(find.textContaining('Day 1 · Synthetic push'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('4 × 6–8 reps'), findsOneWidget);
+      expect(find.textContaining('Rest 2 min 30 s'), findsOneWidget);
+      expect(find.text('Pause at the bottom'), findsOneWidget);
+      await tester.tap(find.textContaining('Day 1 · Synthetic push'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('4 × 6–8 reps'), findsNothing);
+    });
+
+    testWidgets('a program-only template is previewed', (tester) async {
+      await open(tester, '/train/programs/prog.three');
+      expect(find.textContaining('Synthetic hidden'), findsOneWidget);
+    });
+
+    testWidgets('an unknown program is not available', (tester) async {
+      await open(tester, '/train/programs/prog.nope');
+      expect(find.text("This program isn't available."), findsOneWidget);
+    });
+
+    testWidgets('Add on Wednesday, active: creates the program and opens it', (
+      tester,
+    ) async {
+      await open(tester, '/train/programs/prog.three');
+      await tester.tap(find.text('Add program'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Wednesday'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Add program').last);
+      await tester.pumpAndSettle();
+      final program = onlyProgram();
+      expect(program.firstDayWeekday, 3);
+      expect(program.isActive, isTrue);
+      expect(store.box<WorkoutPlanEntity>().count(), 3);
+      expect(find.text('Your program'), findsOneWidget);
+      expect(find.text('Active'), findsOneWidget);
+      expect(find.text('Added Synthetic three-day'), findsOneWidget);
+    });
+
+    testWidgets('unchecking active adds an inactive program', (tester) async {
+      await open(tester, '/train/programs/prog.three');
+      await tester.tap(find.text('Add program'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Make it my active program'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Add program').last);
+      await tester.pumpAndSettle();
+      expect(onlyProgram().isActive, isFalse);
+      expect(find.text('Not active'), findsOneWidget);
+    });
+
+    testWidgets('a double tap on Add gives one program', (tester) async {
+      await open(tester, '/train/programs/prog.three');
+      await tester.tap(find.text('Add program'));
+      await tester.pumpAndSettle();
+      final confirm = find.widgetWithText(FilledButton, 'Add program').last;
+      await tester.tap(confirm);
+      await tester.tap(confirm, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(store.box<TrainingProgramEntity>().count(), 1);
+      expect(store.box<WorkoutPlanEntity>().count(), 3);
+    });
+
+    testWidgets('a second add later is numbered (2)', (tester) async {
+      seed('prog.three');
+      await open(tester, '/train/programs/prog.three');
+      await tester.tap(find.text('Add program'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Add program').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Synthetic three-day (2)'), findsOneWidget);
+      expect(store.box<TrainingProgramEntity>().count(), 2);
+      expect(
+        store.box<TrainingProgramEntity>().getAll().where((p) => p.isActive),
+        hasLength(1),
+      );
+    });
+  });
+
+  group('your program', () {
+    final wednesday = DateTime(2026, 11, 25, 10);
+
+    testWidgets('lists the week from the first weekday', (tester) async {
+      final uuid = seed('prog.three');
+      await open(tester, '/train/program/$uuid', now: wednesday);
+      expect(find.text('Wednesday · Synthetic push'), findsOneWidget);
+      expect(find.text('Thursday · Rest'), findsOneWidget);
+      expect(find.text('Day 1 · Today'), findsOneWidget);
+      expect(find.text('Active'), findsOneWidget);
+    });
+
+    testWidgets('start today opens the logger with the program fields', (
+      tester,
+    ) async {
+      final uuid = seed('prog.three');
+      final visited = await open(
+        tester,
+        '/train/program/$uuid',
+        now: wednesday,
+      );
+      await tester.tap(find.text("Start today's workout"));
+      await tester.pumpAndSettle();
+      expect(visited, ['logger']);
+      final session = store.box<WorkoutSessionEntity>().getAll().single;
+      expect(session.programUuid, uuid);
+      expect(session.programDayLocalDate, '2026-11-25');
+      expect(session.name, 'Synthetic push');
+    });
+
+    testWidgets('a rest day shows Rest day today and no start', (tester) async {
+      final uuid = seed('prog.three');
+      await open(
+        tester,
+        '/train/program/$uuid',
+        now: DateTime(2026, 11, 26, 10),
+      );
+      expect(find.text('Rest day today'), findsOneWidget);
+      expect(find.text("Start today's workout"), findsNothing);
+    });
+
+    testWidgets('a day can be changed to Rest', (tester) async {
+      final uuid = seed('prog.three');
+      await open(tester, '/train/program/$uuid', now: wednesday);
+      await tester.tap(find.text('Wednesday · Synthetic push'));
+      await tester.pumpAndSettle();
+      expect(find.text('Edit workout'), findsOneWidget);
+      await tester.tap(find.text('Synthetic push').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rest').last);
+      await tester.pumpAndSettle();
+      final days = store.box<ProgramDayEntity>().getAll()
+        ..sort((a, b) => a.dayIndex.compareTo(b.dayIndex));
+      expect(days.first.planUuid, isNull);
+      expect(find.text('Wednesday · Rest'), findsOneWidget);
+    });
+
+    testWidgets('a rest day can be pointed at another program workout', (
+      tester,
+    ) async {
+      final uuid = seed('prog.three');
+      await open(tester, '/train/program/$uuid', now: wednesday);
+      await tester.tap(find.text('Thursday · Rest'));
+      await tester.pumpAndSettle();
+      expect(find.text('Edit workout'), findsNothing);
+      await tester.tap(find.text('Rest').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Synthetic pull').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Thursday · Synthetic pull'), findsOneWidget);
+    });
+
+    testWidgets('Edit workout opens that plan in the editor', (tester) async {
+      final uuid = seed('prog.three');
+      final visited = await open(
+        tester,
+        '/train/program/$uuid',
+        now: wednesday,
+      );
+      await tester.tap(find.text('Wednesday · Synthetic push'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit workout'));
+      await tester.pumpAndSettle();
+      final plan = store.box<WorkoutPlanEntity>().getAll().firstWhere(
+        (p) => p.name == 'Synthetic push',
+      );
+      expect(visited, ['edit ${plan.uuid}']);
+    });
+
+    testWidgets('changing the start day reorders the week', (tester) async {
+      final uuid = seed('prog.three');
+      await open(tester, '/train/program/$uuid', now: wednesday);
+      await tapLow(tester, 'Change start day');
+      await tester.tap(find.text('Monday'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(onlyProgram().firstDayWeekday, 1);
+      expect(find.text('Monday · Synthetic push'), findsOneWidget);
+    });
+
+    testWidgets('stop using and make active', (tester) async {
+      final uuid = seed('prog.three');
+      await open(tester, '/train/program/$uuid', now: wednesday);
+      await tapLow(tester, 'Stop using this program');
+      expect(onlyProgram().isActive, isFalse);
+      await tapLow(tester, 'Make active');
+      expect(onlyProgram().isActive, isTrue);
+      expect(onlyProgram().activatedLocalDate, '2026-11-25');
+    });
+
+    testWidgets('archive asks first, then archives program and plans', (
+      tester,
+    ) async {
+      final uuid = seed('prog.three');
+      await open(tester, '/train/program/$uuid', now: wednesday);
+      await tapLow(tester, 'Archive program');
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(onlyProgram().archivedAtMs, isNull);
+      await tapLow(tester, 'Archive program');
+      await tester.tap(find.text('Archive'));
+      await tester.pumpAndSettle();
+      expect(onlyProgram().archivedAtMs, isNotNull);
+      expect(
+        store.box<WorkoutPlanEntity>().getAll().every(
+          (p) => p.archivedAtMs != null,
+        ),
+        isTrue,
+      );
+    });
+
+    testWidgets('a week with no training day says so', (tester) async {
+      final uuid = seed('prog.three');
+      final repo = ObjectBoxProgramRepository(store);
+      for (var i = 0; i < 7; i++) {
+        repo.setDayPlan(uuid, i, null);
+      }
+      await open(tester, '/train/program/$uuid', now: wednesday);
+      expect(find.text('No training days'), findsOneWidget);
+      expect(find.text('Rest day today'), findsOneWidget);
+    });
+  });
+
+  group('train page', () {
+    testWidgets('programs card always, program card only when active', (
+      tester,
+    ) async {
+      await open(tester, '/train');
+      await tester.scrollUntilVisible(
+        find.text('Programs'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Programs'), findsOneWidget);
+      expect(
+        find.text('Multi-week plans with a weekly schedule'),
+        findsOneWidget,
+      );
+      expect(find.text('Your program'), findsNothing);
+    });
+
+    testWidgets('the active program shows today; its plans are not listed', (
+      tester,
+    ) async {
+      seed('prog.three');
+      await open(tester, '/train', now: DateTime(2026, 11, 25, 10));
+      expect(find.text('Your program'), findsOneWidget);
+      expect(find.text('Synthetic three-day'), findsOneWidget);
+      expect(find.text('Today: Synthetic push'), findsOneWidget);
+      expect(find.text('Synthetic pull'), findsNothing);
+      expect(find.text('No plans yet'), findsOneWidget);
+    });
+
+    testWidgets('a rest day reads Today: Rest day', (tester) async {
+      seed('prog.three');
+      await open(tester, '/train', now: DateTime(2026, 11, 26, 10));
+      expect(find.text('Today: Rest day'), findsOneWidget);
+    });
+
+    testWidgets('an inactive program has no card', (tester) async {
+      seed('prog.three', active: false);
+      await open(tester, '/train');
+      expect(find.text('Your program'), findsNothing);
+    });
+  });
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'text scale 2.0: six-day detail does not overflow (${brightness.name})',
+      (tester) async {
+        await open(
+          tester,
+          '/train/programs/prog.six',
+          brightness: brightness,
+          textScale: 2,
+        );
+        expect(tester.takeException(), isNull);
+        final scrollable = find.byType(Scrollable).first;
+        await tester.scrollUntilVisible(
+          find.textContaining('Day 3 ·'),
+          200,
+          scrollable: scrollable,
+        );
+        await tester.ensureVisible(find.textContaining('Day 3 ·'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.textContaining('Day 3 ·'));
+        await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(
+          find.textContaining('Day 7 ·'),
+          300,
+          scrollable: scrollable,
+        );
+        await tester.ensureVisible(find.textContaining('Day 7 ·'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.textContaining('Day 7 ·').hitTestable(), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'text scale 2.0: Your program does not overflow (${brightness.name})',
+      (tester) async {
+        final uuid = seed('prog.six');
+        await open(
+          tester,
+          '/train/program/$uuid',
+          brightness: brightness,
+          textScale: 2,
+        );
+        expect(tester.takeException(), isNull);
+        await tester.scrollUntilVisible(
+          find.text('Archive program'),
+          300,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(tester.takeException(), isNull);
+        expect(find.text('Archive program').hitTestable(), findsOneWidget);
+      },
+    );
+  }
+}

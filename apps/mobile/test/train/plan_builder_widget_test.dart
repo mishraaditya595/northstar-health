@@ -12,6 +12,7 @@ import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
 import 'package:beyondrep/features/workouts/domain/workout_library_repository.dart';
 
 import '../catalog/catalog_fixtures.dart';
+import '../support/fake_health_overview.dart';
 
 class FakeLibrary implements WorkoutLibraryRepository {
   final planRecords = <String, WorkoutPlanRecord>{};
@@ -194,6 +195,7 @@ void main() {
       ProviderScope(
         overrides: [
           ...catalogTestOverrides(),
+          fakeHealthOverview(FakeHealthOverviewController(null)),
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
           activeWorkoutProvider.overrideWith(
             (ref) => const AsyncData<ActiveWorkoutView?>(null),

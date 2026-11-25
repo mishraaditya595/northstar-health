@@ -17,6 +17,9 @@ import '../features/today/today_page.dart';
 import '../features/train/train_page.dart';
 import '../features/train/exercise_catalog_page.dart';
 import '../features/train/template_detail_page.dart';
+import '../features/train/my_program_page.dart';
+import '../features/train/program_detail_page.dart';
+import '../features/train/programs_page.dart';
 import '../features/train/workout_templates_page.dart';
 import '../features/train/exercise_detail_page.dart';
 import '../features/train/plan_editor_page.dart';
@@ -88,6 +91,20 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/train/workouts/:id',
             builder: (_, state) =>
                 TemplateDetailPage(templateId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: '/train/programs',
+            builder: (_, _) => const ProgramsPage(),
+          ),
+          GoRoute(
+            path: '/train/programs/:id',
+            builder: (_, state) =>
+                ProgramDetailPage(programId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: '/train/program/:uuid',
+            builder: (_, state) =>
+                MyProgramPage(programUuid: state.pathParameters['uuid']!),
           ),
           GoRoute(
             path: '/train/exercises',

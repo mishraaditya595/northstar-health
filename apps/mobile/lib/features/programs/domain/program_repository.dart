@@ -36,6 +36,9 @@ abstract interface class ProgramRepository {
   TrainingProgramRecord? getProgram(String programUuid);
 
   /// Non-archived programs, most recently updated first.
+  List<TrainingProgramRecord> listPrograms();
+
+  /// The same list as a stream that re-emits after every change.
   Stream<List<TrainingProgramRecord>> watchPrograms();
 
   TrainingProgramRecord? activeProgram();
