@@ -228,6 +228,168 @@ class TemplateContentTest(unittest.TestCase):
                 self.assertEqual(set(tpl["tags"]["equipment"]), used)
 
 
+def source_programs():
+    items = []
+    for path in sorted((ROOT / "catalog/programs").glob("*.json")):
+        items.extend(json.loads(path.read_text(encoding="utf-8")))
+    return items
+
+
+LEVEL_RANK = {"beginner": 0, "intermediate": 1, "advanced": 2}
+
+
+def used_templates(program, templates_by_id):
+    return [templates_by_id[day] for day in program["week"] if day is not None]
+
+
+def program_shape_errors(programs, templates_by_id):
+    errors = []
+    for prog in programs:
+        pid = prog["id"]
+        days = used_templates(prog, templates_by_id)
+        if not 2 <= prog["daysPerWeek"] <= 6:
+            errors.append(f"{pid}: daysPerWeek outside 2 to 6")
+        hardest = max((LEVEL_RANK[t["tags"]["level"]] for t in days), default=0)
+        if LEVEL_RANK[prog["level"]] < hardest:
+            errors.append(f"{pid}: level is easier than its hardest template")
+        average = sum(t["estimatedMinutes"] for t in days) / max(len(days), 1)
+        if abs(prog["estimatedMinutes"] - average) > 5:
+            errors.append(f"{pid}: estimatedMinutes is not within 5 of {average:.0f}")
+        text = prog["description"].strip()
+        sentences = [x for x in re.split(r"(?<=[.!?])\s+", text) if x]
+        if not text or len(sentences) > 2:
+            errors.append(f"{pid}: description must be 1 or 2 sentences")
+        for value in (prog["name"], text):
+            if OUTCOME_CLAIM.search(value):
+                errors.append(f"{pid}: outcome claim in {value!r}")
+    return errors
+
+
+def program_equipment_errors(programs, templates_by_id):
+    errors = []
+    for prog in programs:
+        used = set()
+        for tpl in used_templates(prog, templates_by_id):
+            used |= set(tpl["tags"]["equipment"])
+        if len(used) > 1:
+            used.discard("bodyweight")
+        if set(prog["equipment"]) != used:
+            errors.append(f"{prog['id']}: equipment {sorted(prog['equipment'])} != {sorted(used)}")
+    return errors
+
+
+def orphan_template_errors(programs, templates):
+    used = {day for prog in programs for day in prog["week"] if day is not None}
+    return [
+        f"{tpl['id']}: program-only template is used by no program"
+        for tpl in templates
+        if tpl.get("standalone", True) is False and tpl["id"] not in used
+    ]
+
+
+def rest_spacing_errors(programs):
+    errors = []
+    for prog in programs:
+        if prog["daysPerWeek"] > 4:
+            continue
+        week = [day is not None for day in prog["week"]]
+        # The week repeats, so Sunday-to-Monday counts as consecutive too.
+        for start in range(7):
+            if all(week[(start + i) % 7] for i in range(3)):
+                errors.append(f"{prog['id']}: 3 training days in a row")
+                break
+    return errors
+
+
+class ProgramContentTest(unittest.TestCase):
+    """Shape and safety rules for every source program (stage 7)."""
+
+    def setUp(self):
+        self.programs = source_programs()
+        self.templates = source_templates()
+        self.by_id = {t["id"]: t for t in self.templates}
+        self.exercises = {e["id"]: e for e in source_exercises()}
+
+    def test_programs_exist(self):
+        self.assertGreaterEqual(len(self.programs), 8)
+
+    def test_program_templates_loggable(self):
+        for prog in self.programs:
+            for day in prog["week"]:
+                if day is None:
+                    continue
+                with self.subTest(msg=f"{prog['id']} {day}"):
+                    self.assertIn(day, self.by_id)
+                    for row in self.by_id[day]["exercises"]:
+                        ex = self.exercises[row["exerciseId"]]
+                        self.assertEqual(ex["status"], "active")
+                        self.assertIn(ex["mode"], LOGGABLE_MODES)
+
+    def test_program_shape(self):
+        self.assertEqual(program_shape_errors(self.programs, self.by_id), [])
+
+    def test_program_equipment_matches_templates(self):
+        self.assertEqual(program_equipment_errors(self.programs, self.by_id), [])
+
+    def test_no_orphan_program_templates(self):
+        self.assertEqual(orphan_template_errors(self.programs, self.templates), [])
+
+    def test_program_rest_spacing(self):
+        self.assertEqual(rest_spacing_errors(self.programs), [])
+
+    def test_program_only_templates_are_flagged(self):
+        used = {d for p in self.programs for d in p["week"] if d}
+        standalone_ids = {
+            t["id"]
+            for t in json.loads(
+                (ROOT / "catalog/templates/standalone.json").read_text(encoding="utf-8")
+            )
+        }
+        for tpl in self.templates:
+            if tpl["id"] not in standalone_ids:
+                with self.subTest(tpl["id"]):
+                    self.assertIs(tpl.get("standalone"), False)
+                    self.assertIn(tpl["id"], used)
+
+    def test_checks_reject_bad_fixtures(self):
+        tpl = {
+            "id": "tpl.x",
+            "tags": {"level": "advanced", "equipment": ["barbell", "bodyweight"]},
+            "estimatedMinutes": 40,
+            "standalone": False,
+        }
+        good = {
+            "id": "prog.x", "name": "X", "description": "One. Two.",
+            "level": "advanced", "daysPerWeek": 3, "estimatedMinutes": 40,
+            "equipment": ["barbell"],
+            "week": ["tpl.x", None, "tpl.x", None, "tpl.x", None, None],
+        }
+        by_id = {"tpl.x": tpl}
+        self.assertEqual(program_shape_errors([good], by_id), [])
+        self.assertEqual(program_equipment_errors([good], by_id), [])
+        self.assertEqual(orphan_template_errors([good], [tpl]), [])
+        self.assertEqual(rest_spacing_errors([good]), [])
+        for change in (
+            {"daysPerWeek": 1},
+            {"level": "beginner"},
+            {"estimatedMinutes": 50},
+            {"description": "One. Two. Three."},
+            {"description": "Burns fat fast."},
+        ):
+            with self.subTest(change=change):
+                self.assertNotEqual(
+                    program_shape_errors([{**good, **change}], by_id), []
+                )
+        self.assertNotEqual(
+            program_equipment_errors([{**good, "equipment": ["barbell", "band"]}], by_id), []
+        )
+        self.assertNotEqual(orphan_template_errors([], [tpl]), [])
+        three = {**good, "week": ["tpl.x", "tpl.x", "tpl.x", None, None, None, None]}
+        self.assertNotEqual(rest_spacing_errors([three]), [])
+        wrap = {**good, "week": ["tpl.x", "tpl.x", None, None, None, None, "tpl.x"]}
+        self.assertNotEqual(rest_spacing_errors([wrap]), [])
+
+
 class PublishedReleaseTest(unittest.TestCase):
     """Each committed release migration must be exactly what the lock records."""
 

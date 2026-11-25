@@ -1,0 +1,323 @@
+[
+  {
+    "id": "prog.full-body-2-day",
+    "name": "Full body, 2 days",
+    "description": "Two whole body sessions a week, Full body A and Full body B, with at least two rest days between them. It suits people who are new to lifting or have little time.",
+    "goals": [
+      "general"
+    ],
+    "level": "beginner",
+    "daysPerWeek": 2,
+    "estimatedMinutes": 40,
+    "equipment": [
+      "bench",
+      "cable",
+      "dumbbell",
+      "machine"
+    ],
+    "week": [
+      "tpl.full-body-a",
+      null,
+      null,
+      "tpl.full-body-b",
+      null,
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.full-body-3-day",
+    "name": "Full body, 3 days",
+    "description": "Three whole body sessions a week on alternate days, using Full body A and Full body B. Start the next week with the session you did not do last.",
+    "goals": [
+      "general",
+      "strength"
+    ],
+    "level": "beginner",
+    "daysPerWeek": 3,
+    "estimatedMinutes": 40,
+    "equipment": [
+      "bench",
+      "cable",
+      "dumbbell",
+      "machine"
+    ],
+    "week": [
+      "tpl.full-body-a",
+      null,
+      "tpl.full-body-b",
+      null,
+      "tpl.full-body-a",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.dumbbell-home-3-day",
+    "name": "Dumbbells at home, 3 days",
+    "description": "Three whole body sessions a week for a home gym with dumbbells and a bench. It alternates Full body dumbbell and Full body dumbbell B.",
+    "goals": [
+      "general",
+      "hypertrophy"
+    ],
+    "level": "beginner",
+    "daysPerWeek": 3,
+    "estimatedMinutes": 48,
+    "equipment": [
+      "bench",
+      "dumbbell"
+    ],
+    "week": [
+      "tpl.full-body-dumbbell",
+      null,
+      "tpl.dumbbell-full-body-b",
+      null,
+      "tpl.full-body-dumbbell",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.upper-lower-4-day",
+    "name": "Upper and lower, 4 days",
+    "description": "Four sessions a week that alternate upper body and lower body days, with a rest day after each pair. It uses Upper body A and B and Lower body A and B.",
+    "goals": [
+      "hypertrophy",
+      "strength"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 4,
+    "estimatedMinutes": 52,
+    "equipment": [
+      "barbell",
+      "bench",
+      "cable",
+      "dumbbell",
+      "machine",
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.upper-a",
+      "tpl.lower-a",
+      null,
+      "tpl.upper-b",
+      "tpl.lower-b",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.push-pull-legs-3-day",
+    "name": "Push, pull, legs, 3 days",
+    "description": "One push day, one pull day and one leg day a week on alternate days. Each muscle group is trained once a week.",
+    "goals": [
+      "hypertrophy",
+      "strength"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 3,
+    "estimatedMinutes": 47,
+    "equipment": [
+      "barbell",
+      "bench",
+      "cable",
+      "dumbbell",
+      "machine",
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.push-day",
+      null,
+      "tpl.pull-day",
+      null,
+      "tpl.legs-day",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.push-pull-legs-6-day",
+    "name": "Push, pull, legs, 6 days",
+    "description": "Push, pull and leg days run twice a week with one rest day. It has a high weekly workload and suits people who already train regularly.",
+    "goals": [
+      "hypertrophy"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 6,
+    "estimatedMinutes": 47,
+    "equipment": [
+      "barbell",
+      "bench",
+      "cable",
+      "dumbbell",
+      "machine",
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.push-day",
+      "tpl.pull-day",
+      "tpl.legs-day",
+      "tpl.push-day",
+      "tpl.pull-day",
+      "tpl.legs-day",
+      null
+    ]
+  },
+  {
+    "id": "prog.strength-5x5",
+    "name": "Strength 5x5, 3 days",
+    "description": "Three barbell sessions a week that alternate Strength 5x5 A and B, mostly sets of five on the main lifts. Start the next week with the session you did not do last.",
+    "goals": [
+      "strength"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 3,
+    "estimatedMinutes": 62,
+    "equipment": [
+      "barbell",
+      "bench",
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.strength-5x5-a",
+      null,
+      "tpl.strength-5x5-b",
+      null,
+      "tpl.strength-5x5-a",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.bodybuilding-5-day",
+    "name": "Bodybuilding split, 5 days",
+    "description": "A five day split with a chest day, a back day, a leg day, a shoulders and arms day and a posterior lower body day. It has a rest day after the first three sessions.",
+    "goals": [
+      "hypertrophy"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 5,
+    "estimatedMinutes": 44,
+    "equipment": [
+      "barbell",
+      "bench",
+      "cable",
+      "dumbbell",
+      "ez_bar",
+      "machine",
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.bodybuilding-chest-triceps",
+      "tpl.bodybuilding-back-biceps",
+      "tpl.legs-day",
+      null,
+      "tpl.bodybuilding-shoulders-arms",
+      "tpl.lower-b",
+      null
+    ]
+  },
+  {
+    "id": "prog.push-pull-legs-upper-lower-5-day",
+    "name": "Push, pull, legs, upper, lower, 5 days",
+    "description": "Push, pull and leg days early in the week, then an upper body day and a lower body day. It has a rest day in the middle and at the end.",
+    "goals": [
+      "hypertrophy",
+      "strength"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 5,
+    "estimatedMinutes": 50,
+    "equipment": [
+      "barbell",
+      "bench",
+      "cable",
+      "dumbbell",
+      "machine",
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.push-day",
+      "tpl.pull-day",
+      "tpl.legs-day",
+      null,
+      "tpl.upper-a",
+      "tpl.lower-a",
+      null
+    ]
+  },
+  {
+    "id": "prog.low-volume-3-day",
+    "name": "Low volume, 3 days",
+    "description": "Three short barbell sessions a week with one or two hard sets per exercise and long rests. It is for experienced lifters who recover well between sessions.",
+    "goals": [
+      "strength"
+    ],
+    "level": "advanced",
+    "daysPerWeek": 3,
+    "estimatedMinutes": 28,
+    "equipment": [
+      "barbell",
+      "bench",
+      "machine",
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.low-volume-a",
+      null,
+      "tpl.low-volume-b",
+      null,
+      "tpl.low-volume-a",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.calisthenics-3-day",
+    "name": "Calisthenics, 3 days",
+    "description": "Three bodyweight sessions a week that need only a pull-up bar and floor space. They cover pulling and core, pushing and legs, and the whole body.",
+    "goals": [
+      "general",
+      "strength"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 3,
+    "estimatedMinutes": 38,
+    "equipment": [
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.calisthenics-pull-core",
+      null,
+      "tpl.calisthenics-push-legs",
+      null,
+      "tpl.calisthenics-full-body",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.kettlebell-3-day",
+    "name": "Kettlebell, 3 days",
+    "description": "Three whole body sessions a week with one kettlebell, alternating Kettlebell full body and Kettlebell full body B. Use a weight that suits each movement.",
+    "goals": [
+      "general",
+      "strength"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 3,
+    "estimatedMinutes": 55,
+    "equipment": [
+      "kettlebell"
+    ],
+    "week": [
+      "tpl.kettlebell-full-body",
+      null,
+      "tpl.kettlebell-full-body-b",
+      null,
+      "tpl.kettlebell-full-body",
+      null,
+      null
+    ]
+  }
+]
