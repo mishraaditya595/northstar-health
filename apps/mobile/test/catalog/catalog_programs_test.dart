@@ -93,7 +93,7 @@ void main() {
         );
         expect(
           snapshot.programs,
-          name.endsWith('4') ? hasLength(12) : isEmpty,
+          name.endsWith('4') ? hasLength(17) : isEmpty,
           reason: name,
         );
       }

@@ -158,7 +158,7 @@ Workout templates (release 3, 16 templates) are implemented in source, **not dep
 
 ## Training library stage 7 device QA (ADR-0010, owner actions, none done)
 
-Programs (release 4, 12 programs) are implemented in source, **not deployed, released or device-verified**. Every row is not run.
+Programs (release 4, 17 programs) are implemented in source, **not deployed, released or device-verified**. Every row is not run.
 
 | Check | iOS | Android |
 | --- | --- | --- |

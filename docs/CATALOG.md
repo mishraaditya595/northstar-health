@@ -85,7 +85,7 @@ Release 3 is in source as `supabase/migrations/20261126040000_catalog_release_3.
 
 ## Programs (release 4, stage 7)
 
-Release 4 adds 12 programs in `catalog/programs/programs.json` (IDs `prog.<slug>`, never reused) and 12 program-only templates in `catalog/templates/program_sessions.json` (`"standalone": false`, so the Workouts list never shows them and the template routes never open them). Programs also reuse the standalone templates. Rules, enforced by `ProgramContentTest` in `tool/test_catalog_content.py` where a test can check them:
+Release 4 adds 17 programs in `catalog/programs/programs.json` (IDs `prog.<slug>`, never reused) and 18 program-only templates in `catalog/templates/program_sessions.json` (`"standalone": false`, so the Workouts list never shows them and the template routes never open them). Programs also reuse the standalone templates. Rules, enforced by `ProgramContentTest` in `tool/test_catalog_content.py` where a test can check them:
 
 - **Week.** Seven entries, index 0 is the program's first day (the user picks its weekday when adding it), `null` is a rest day, `daysPerWeek` is the number of training days (2 to 6). A template may appear on several days.
 - **Level and time.** The program level is at least as hard as its hardest template (beginner < intermediate < advanced), and `estimatedMinutes` is within 5 of the average of its training days.
