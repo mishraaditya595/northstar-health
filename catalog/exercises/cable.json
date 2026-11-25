@@ -1,0 +1,707 @@
+[
+  {
+    "id": "builtin.v1.cable-crossover",
+    "name": "Cable crossover",
+    "aliases": [
+      "High-to-low cable fly"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "shoulders"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Set both pulleys high and step forward into a split stance",
+      "Keep a soft bend in your elbows",
+      "Bring your hands together in front of your lower chest",
+      "Open slowly until you feel a stretch"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.low-to-high-cable-fly",
+    "name": "Low-to-high cable fly",
+    "aliases": [
+      "Upper chest cable fly"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "shoulders"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Set both pulleys low",
+      "Keep your elbows slightly bent",
+      "Sweep your hands up to face height",
+      "Lower slowly to your sides"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cable-chest-press",
+    "name": "Cable chest press",
+    "aliases": [
+      "Standing cable press"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "shoulders"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Set the handles at chest height and step forward",
+      "Brace in a split stance",
+      "Press forward until your arms are straight",
+      "Return slowly until you feel a chest stretch"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cable-lateral-raise",
+    "name": "Cable lateral raise",
+    "aliases": [
+      "Single-arm cable lateral raise"
+    ],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "cable"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Set the handle low and stand side-on to the stack",
+      "Lead with your elbow",
+      "Raise to shoulder height",
+      "Do not shrug as you raise"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cable-front-raise",
+    "name": "Cable front raise",
+    "aliases": [],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "chest"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Face away from the low pulley with the handle between your legs",
+      "Keep your arm nearly straight",
+      "Raise to shoulder height",
+      "Keep your ribs down and do not lean back"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.face-pull",
+    "name": "Cable face pull",
+    "aliases": [
+      "Face pull"
+    ],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "biceps"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "pull_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Set the rope at about head height",
+      "Pull the ends toward your ears, elbows high",
+      "Squeeze your shoulder blades together",
+      "Return slowly with control"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cable-rear-delt-fly",
+    "name": "Cable rear delt fly",
+    "aliases": [
+      "Cable reverse fly"
+    ],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "traps"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Set the pulleys at shoulder height and cross the cables",
+      "Hold the handles with a soft bend in your elbows",
+      "Pull your arms apart in a wide arc",
+      "Keep your torso still and your chest up"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cable-upright-row",
+    "name": "Cable upright row",
+    "aliases": [],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "biceps"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "pull_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the bar or rope in front of your thighs",
+      "Lead with your elbows up and out",
+      "Stop around chest height",
+      "Stop short of any shoulder pinch"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cable-shrug",
+    "name": "Cable shrug",
+    "aliases": [],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the handles at your sides",
+      "Lift your shoulders straight up",
+      "Pause at the top",
+      "Keep your arms straight and your ribs down"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.straight-arm-pulldown",
+    "name": "Straight-arm pulldown",
+    "aliases": [
+      "Cable pullover"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats"
+    ],
+    "secondaryMuscles": [
+      "triceps"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Hinge slightly and keep your arms nearly straight",
+      "Sweep the bar down to your thighs",
+      "Squeeze your lats at the bottom",
+      "Return slowly until you feel a stretch"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.single-arm-pulldown",
+    "name": "Single-arm cable pulldown",
+    "aliases": [
+      "One-arm lat pulldown"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "traps"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "pull_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Kneel or sit facing the high pulley",
+      "Pull your elbow down toward your hip",
+      "Keep your torso still",
+      "Return slowly to a full stretch"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.single-arm-cable-row",
+    "name": "Single-arm cable row",
+    "aliases": [
+      "One-arm cable row"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "shoulders",
+      "obliques"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "pull_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Set the handle at about waist height",
+      "Stay square and pull your elbow past your torso",
+      "Pause with your shoulder blade squeezed",
+      "Keep your hips and shoulders square"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cable-biceps-curl",
+    "name": "Cable biceps curl",
+    "aliases": [
+      "Cable curl"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Stand close to the low pulley with the bar or handle",
+      "Keep your elbows at your sides",
+      "Curl up and squeeze",
+      "Do not rock your torso for momentum"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cable-hammer-curl",
+    "name": "Cable rope hammer curl",
+    "aliases": [
+      "Rope hammer curl"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "biceps",
+      "forearms"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "cable"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the rope ends with palms facing each other",
+      "Keep your elbows at your sides",
+      "Curl up and spread the rope at the top",
+      "Keep your wrists straight"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.overhead-cable-curl",
+    "name": "Overhead cable curl",
+    "aliases": [],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "cable"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Set both pulleys high and stand between them",
+      "Hold the handles out at shoulder height",
+      "Curl your hands toward your head",
+      "Return slowly to straight arms"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.bayesian-cable-curl",
+    "name": "Bayesian cable curl",
+    "aliases": [
+      "Behind-the-body cable curl"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Set the pulley low and face away from it",
+      "Start with your arm behind your torso",
+      "Curl up without moving your upper arm forward",
+      "Lower slowly to a full stretch"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cable-reverse-curl",
+    "name": "Cable reverse curl",
+    "aliases": [],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "forearms",
+      "biceps"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "cable"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Hold a straight bar overhand at the low pulley",
+      "Keep your wrists straight",
+      "Curl up with your elbows at your sides",
+      "Keep your torso still"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cable-overhead-triceps-extension",
+    "name": "Cable overhead triceps extension",
+    "aliases": [
+      "Rope overhead extension"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "cable"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Face away from the pulley with the rope behind your head",
+      "Keep your elbows pointing forward",
+      "Extend your arms until they are straight",
+      "Return slowly to a deep stretch"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.single-arm-cable-pushdown",
+    "name": "Single-arm cable pushdown",
+    "aliases": [
+      "One-arm triceps pushdown"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "cable"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Set the handle on a high pulley",
+      "Pin your elbow to your side",
+      "Press down until your arm is straight",
+      "Keep your shoulder down and your torso still"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cable-crunch",
+    "name": "Cable crunch",
+    "aliases": [
+      "Kneeling cable crunch"
+    ],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [
+      "obliques"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Kneel below the high pulley holding the rope by your head",
+      "Keep your hips still",
+      "Curl your ribs toward your pelvis",
+      "Do not pull with your arms"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cable-woodchop",
+    "name": "Cable woodchop",
+    "aliases": [
+      "Wood chop"
+    ],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "obliques"
+    ],
+    "secondaryMuscles": [
+      "abs",
+      "shoulders"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Stand side-on to the pulley",
+      "Turn through your trunk and pivot your back foot",
+      "Pull the handle diagonally across your body",
+      "Control the return"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.pallof-press",
+    "name": "Pallof press",
+    "aliases": [
+      "Anti-rotation press"
+    ],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "abs",
+      "obliques"
+    ],
+    "secondaryMuscles": [
+      "shoulders"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Stand side-on to the cable with the handle at your chest",
+      "Brace so you do not rotate",
+      "Press the handle straight out",
+      "Hold briefly then return"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cable-side-bend",
+    "name": "Cable side bend",
+    "aliases": [],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "obliques"
+    ],
+    "secondaryMuscles": [
+      "abs"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the handle at your side with the pulley low",
+      "Bend sideways without twisting",
+      "Return to upright with your side muscles",
+      "Keep the motion slow"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cable-pull-through",
+    "name": "Cable pull-through",
+    "aliases": [
+      "Pull-through"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "lowerBack"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Face away from the low pulley with the rope between your legs",
+      "Hinge your hips back with a flat back",
+      "Drive your hips forward and squeeze your glutes",
+      "Keep the rope close to your body"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cable-glute-kickback",
+    "name": "Cable glute kickback",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Attach the ankle strap and hold the frame for balance",
+      "Keep your hips square",
+      "Kick your leg back and slightly up",
+      "Return slowly without swinging"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cable-hip-abduction",
+    "name": "Cable hip abduction",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "cable"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Attach the strap to your outside ankle",
+      "Stand tall and hold the frame",
+      "Lift your leg out to the side",
+      "Keep your torso upright and do not lean away"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cable-wrist-curl",
+    "name": "Cable wrist curl",
+    "aliases": [],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "forearms"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "cable",
+      "bench"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Rest your forearms on your thighs with palms up",
+      "Let the bar roll to your fingertips",
+      "Curl your wrists up",
+      "Keep your forearms still on your thighs"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cable-external-rotation",
+    "name": "Cable external rotation",
+    "aliases": [
+      "Cable rotator cuff rotation"
+    ],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "cable"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Keep your elbow at your side bent to 90 degrees",
+      "Rotate your forearm outward",
+      "Use a light weight",
+      "Keep your shoulder blade down and back"
+    ],
+    "status": "active"
+  }
+]

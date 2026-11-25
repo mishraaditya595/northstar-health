@@ -1,0 +1,981 @@
+[
+  {
+    "id": "builtin.v1.front-squat",
+    "name": "Barbell front squat",
+    "aliases": [
+      "Front squat"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "glutes",
+      "abs",
+      "lowerBack",
+      "hamstrings"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "squat",
+    "mode": "reps_load",
+    "cues": [
+      "Rest the bar on your front shoulders with elbows high",
+      "Keep your torso tall as you descend",
+      "Knees track over your toes",
+      "Stand up by driving through mid foot"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.zercher-squat",
+    "name": "Barbell Zercher squat",
+    "aliases": [
+      "Zercher squat"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "abs",
+      "lowerBack",
+      "biceps"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "squat",
+    "mode": "reps_load",
+    "cues": [
+      "Hook the bar in the crease of your elbows",
+      "Keep your chest up and ribs down",
+      "Sit between your hips and stand tall",
+      "Wrap the bar with a pad if it bites"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.barbell-walking-lunge",
+    "name": "Barbell walking lunge",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "abs",
+      "lowerBack"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "lunge",
+    "mode": "reps_load",
+    "cues": [
+      "Set the bar on your upper back and brace",
+      "Take a long step and lower your back knee",
+      "Keep your front foot flat",
+      "Push through the front heel into the next step"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.barbell-reverse-lunge",
+    "name": "Barbell reverse lunge",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "abs",
+      "lowerBack"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "lunge",
+    "mode": "reps_load",
+    "cues": [
+      "Brace and step straight back",
+      "Lower until your front thigh is near parallel",
+      "Keep your weight on the front foot",
+      "Push the floor away to return"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.barbell-bulgarian-split-squat",
+    "name": "Barbell Bulgarian split squat",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "abs"
+    ],
+    "equipment": [
+      "barbell",
+      "bench"
+    ],
+    "category": "lunge",
+    "mode": "reps_load",
+    "cues": [
+      "Rest your back foot on a bench behind you",
+      "Choose a comfortable stance with your front foot planted",
+      "Lower straight down between your feet",
+      "Drive through your front foot to stand"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.barbell-step-up",
+    "name": "Barbell step-up",
+    "aliases": [
+      "Barbell box step-up"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "calves",
+      "abs"
+    ],
+    "equipment": [
+      "barbell",
+      "box"
+    ],
+    "category": "lunge",
+    "mode": "reps_load",
+    "cues": [
+      "Place your whole front foot on the box",
+      "Drive through the front heel to stand tall",
+      "Lower under control without bouncing off the floor",
+      "Keep your hips level as you step"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.barbell-hip-thrust",
+    "name": "Barbell hip thrust",
+    "aliases": [
+      "Hip thrust"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "quads",
+      "abs"
+    ],
+    "equipment": [
+      "barbell",
+      "bench"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Rest your upper back on the bench edge",
+      "Pad the bar and roll it over your hips",
+      "Tuck your chin and keep your shins vertical at the top",
+      "Squeeze your glutes to lock out without arching your lower back"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.barbell-glute-bridge",
+    "name": "Barbell glute bridge",
+    "aliases": [
+      "Floor hip thrust"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "quads",
+      "abs"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Lie on the floor with the bar over your hips",
+      "Feet flat, shins near vertical at the top",
+      "Press your hips up and pause",
+      "Lower slowly until the plates touch down"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.good-morning",
+    "name": "Barbell good morning",
+    "aliases": [
+      "Good morning"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "hamstrings",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "lowerBack",
+      "abs"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Bar sits low on your back, soft knees",
+      "Push your hips back with a flat back",
+      "Stop when you feel a strong hamstring stretch",
+      "Drive your hips forward to stand"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.sumo-deadlift",
+    "name": "Sumo deadlift",
+    "aliases": [
+      "Wide-stance deadlift"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "glutes",
+      "quads",
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "lowerBack",
+      "lats",
+      "traps",
+      "forearms"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Wide stance, toes turned out, hands inside your knees",
+      "Spread the floor with your feet as you pull",
+      "Keep your chest up and the bar against your legs",
+      "Finish by squeezing your glutes"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.rack-pull",
+    "name": "Barbell rack pull",
+    "aliases": [
+      "Rack pull"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lowerBack",
+      "glutes",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "lats",
+      "forearms"
+    ],
+    "equipment": [
+      "barbell",
+      "other"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Set the bar on safety pins or blocks at or just below knee height",
+      "Pull the slack out before you lift",
+      "Drive your hips through to stand tall",
+      "Lower the bar back to the pins under control"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.bent-over-row",
+    "name": "Barbell bent-over row",
+    "aliases": [
+      "Bent-over row",
+      "Overhand barbell row"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "lowerBack",
+      "shoulders",
+      "forearms"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "pull_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Hinge until your torso is near parallel with the floor",
+      "Hold your back flat for the whole set",
+      "Pull the bar to your lower ribs",
+      "Lower until your arms are straight"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.reverse-grip-barbell-row",
+    "name": "Reverse-grip barbell row",
+    "aliases": [
+      "Underhand barbell row"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "traps",
+      "lowerBack"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "pull_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the bar underhand about shoulder width",
+      "Hinge until your torso leans forward, brace and hold that angle for the set",
+      "Pull the bar toward your lower stomach",
+      "Keep your elbows close to your sides"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.pendlay-row",
+    "name": "Pendlay row",
+    "aliases": [],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "lowerBack",
+      "shoulders"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "pull_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Torso parallel to the floor and the bar on the ground each rep",
+      "Brace before you pull",
+      "Row the bar to your lower chest in one fast pull",
+      "Reset on the floor between reps"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.t-bar-row",
+    "name": "T-bar row",
+    "aliases": [
+      "Landmine row"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "lowerBack",
+      "shoulders",
+      "forearms"
+    ],
+    "equipment": [
+      "barbell",
+      "other"
+    ],
+    "category": "pull_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Anchor the bar in a landmine or T-bar base, then stand over it and hinge with a flat back",
+      "Pull the handle toward your chest",
+      "Keep your hips still",
+      "Lower until your arms are straight"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.barbell-shrug",
+    "name": "Barbell shrug",
+    "aliases": [
+      "Shrug"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "forearms",
+      "shoulders"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the bar at arm length in front of your thighs",
+      "Lift your shoulders straight up toward your ears",
+      "Pause briefly at the top",
+      "Lower without letting the bar swing"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.barbell-upright-row",
+    "name": "Barbell upright row",
+    "aliases": [
+      "Upright row"
+    ],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "biceps"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "pull_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Use a grip about shoulder width or wider",
+      "Lead with your elbows and keep the bar close",
+      "Stop at about chest height",
+      "Lower slowly without leaning back"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.incline-bench-press",
+    "name": "Incline barbell bench press",
+    "aliases": [
+      "Incline bench press"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": [
+      "barbell",
+      "bench"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Set the bench to a low to medium incline",
+      "Shoulder blades pinched and down",
+      "Lower the bar to your upper chest",
+      "Press back over your shoulders"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.decline-bench-press",
+    "name": "Decline barbell bench press",
+    "aliases": [
+      "Decline bench press"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "shoulders"
+    ],
+    "equipment": [
+      "barbell",
+      "bench"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Hook your legs in and lie back on the decline bench",
+      "Lower the bar to your lower chest",
+      "Keep your wrists stacked over your elbows",
+      "Press up and slightly back"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.close-grip-bench-press",
+    "name": "Close-grip bench press",
+    "aliases": [
+      "Close-grip barbell press"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "triceps",
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "shoulders"
+    ],
+    "equipment": [
+      "barbell",
+      "bench"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Hands about shoulder width, not narrower",
+      "Tuck your elbows toward your sides",
+      "Lower the bar to your lower chest",
+      "Press until your elbows lock out"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.barbell-floor-press",
+    "name": "Barbell floor press",
+    "aliases": [
+      "Floor press"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest",
+      "triceps"
+    ],
+    "secondaryMuscles": [
+      "shoulders"
+    ],
+    "equipment": [
+      "barbell",
+      "other"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Lie inside a rack with the safeties set just above your chest and the bar below lockout height",
+      "Lower until your upper arms touch the floor",
+      "Pause without relaxing",
+      "Press back to full lockout"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.barbell-push-press",
+    "name": "Barbell push press",
+    "aliases": [
+      "Push press"
+    ],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "quads",
+      "glutes",
+      "traps",
+      "abs"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "push_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Bar on your front shoulders, ribs down",
+      "Dip a few inches and drive up with your legs",
+      "Press the bar overhead as your legs finish",
+      "Lock out with the bar over your mid foot"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.landmine-press",
+    "name": "Landmine press",
+    "aliases": [
+      "Single-arm landmine press"
+    ],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders",
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "abs"
+    ],
+    "equipment": [
+      "barbell",
+      "other"
+    ],
+    "category": "push_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Secure one end of the bar in a landmine anchor and hold the other end at your shoulder",
+      "Stand with a split stance and brace",
+      "Press up and forward along the arc of the bar",
+      "Lower back to your shoulder under control"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.barbell-curl",
+    "name": "Barbell curl",
+    "aliases": [
+      "Straight-bar curl"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [
+      "forearms",
+      "shoulders"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Stand tall with your elbows at your sides",
+      "Curl the bar without swinging your hips",
+      "Squeeze at the top",
+      "Lower to full arm length"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.ez-bar-curl",
+    "name": "EZ bar curl",
+    "aliases": [
+      "EZ curl"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "equipment": [
+      "ez_bar"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Grip the angled sections of the bar",
+      "Keep your elbows pinned beside you",
+      "Curl up without leaning back",
+      "Lower slowly to straight arms"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.ez-bar-preacher-curl",
+    "name": "EZ bar preacher curl",
+    "aliases": [
+      "Preacher curl"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "equipment": [
+      "ez_bar",
+      "bench",
+      "other"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Sit at a preacher bench with the pad under your armpits",
+      "Lower the bar until your arms are nearly straight",
+      "Curl up without lifting your elbows off the pad",
+      "Control the way down"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.ez-bar-skull-crusher",
+    "name": "EZ bar skull crusher",
+    "aliases": [
+      "Lying triceps extension",
+      "Skullcrusher"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [
+      "shoulders"
+    ],
+    "equipment": [
+      "ez_bar",
+      "bench"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Lie on a bench with the bar over your chest",
+      "Keep your upper arms still",
+      "Bend your elbows to lower the bar toward your forehead",
+      "Extend back to the start"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.reverse-barbell-curl",
+    "name": "Reverse barbell curl",
+    "aliases": [
+      "Reverse curl"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "forearms",
+      "biceps"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the bar overhand about shoulder width",
+      "Keep your wrists straight",
+      "Curl up with your elbows at your sides",
+      "Use a lighter bar than you would for a regular curl"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.barbell-wrist-curl",
+    "name": "Barbell wrist curl",
+    "aliases": [
+      "Seated wrist curl"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "forearms"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "barbell",
+      "bench"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Rest your forearms on your thighs or a bench with wrists past the edge",
+      "Let the bar roll to your fingertips",
+      "Curl the bar up with your wrists only",
+      "Choose a load you can control through the full range"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.barbell-calf-raise",
+    "name": "Barbell standing calf raise",
+    "aliases": [
+      "Barbell calf raise"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "calves"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "calf",
+    "mode": "reps_load",
+    "cues": [
+      "Bar on your upper back, balls of your feet on a plate or step",
+      "Rise as high as you can",
+      "Pause at the top",
+      "Lower to a full stretch"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.trap-bar-deadlift",
+    "name": "Trap bar deadlift",
+    "aliases": [
+      "Hex bar deadlift"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "quads",
+      "glutes",
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "lowerBack",
+      "traps",
+      "forearms"
+    ],
+    "equipment": [
+      "trap_bar"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Stand in the middle of the bar and grip the handles",
+      "Brace and push the floor away",
+      "Keep the bar close and your chest up",
+      "Stand tall and squeeze your glutes"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.trap-bar-shrug",
+    "name": "Trap bar shrug",
+    "aliases": [
+      "Hex bar shrug"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "equipment": [
+      "trap_bar"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Stand inside the bar with arms straight",
+      "Lift your shoulders straight up",
+      "Pause at the top",
+      "Lower without letting your arms bend"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.barbell-rollout",
+    "name": "Barbell rollout",
+    "aliases": [
+      "Barbell ab rollout"
+    ],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [
+      "lats",
+      "shoulders"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Use round plates with collars and kneel holding the bar",
+      "Brace your trunk and posteriorly tilt your pelvis",
+      "Roll out only as far as you can keep your back flat",
+      "Pull back using your abs, not your hips"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.barbell-side-bend",
+    "name": "Barbell side bend",
+    "aliases": [],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "obliques"
+    ],
+    "secondaryMuscles": [
+      "abs"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the bar across your upper back",
+      "Bend sideways without twisting",
+      "Return to upright with your side muscles",
+      "Keep the load light and the motion smooth"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.power-clean",
+    "name": "Barbell power clean",
+    "aliases": [
+      "Power clean"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "glutes",
+      "quads",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "lowerBack",
+      "shoulders",
+      "forearms"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Set up like a deadlift with the bar over mid foot",
+      "Pull to your thighs then extend your hips fast",
+      "Shrug and pull yourself under the bar",
+      "Catch it on your front shoulders with elbows forward"
+    ],
+    "status": "active"
+  }
+]

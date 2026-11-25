@@ -81,6 +81,97 @@ class ContentTest(unittest.TestCase):
         walk(source_exercises())
 
 
+LOGGABLE_MODES = {"reps_load", "duration"}
+OUTCOME_CLAIM = re.compile(
+    r"\b(burn\w*|fat loss|tone[sd]?|toning|prevent\w* injur\w*|cure[sd]?|"
+    r"guarantee\w*)\b",
+    re.I,
+)
+LEGACY_SHA256 = "c0dd24bb15ce2319dc3478f50b6be8fc25a626075c8e5348eb6f7d34da8d3509"
+
+
+class ExerciseStyleTest(unittest.TestCase):
+    """Style and safety rules for every source exercise (stage 5 content)."""
+
+    def test_new_exercises_use_loggable_modes(self):
+        for ex in source_exercises():
+            with self.subTest(ex["id"]):
+                self.assertIn(ex["mode"], LOGGABLE_MODES)
+
+    def test_names_and_aliases_are_unique(self):
+        exercises = source_exercises()
+        names = {}
+        for ex in exercises:
+            key = ex["name"].casefold()
+            self.assertNotIn(key, names, f"duplicate name {ex['name']}")
+            names[key] = ex["id"]
+        seen = {}
+        for ex in exercises:
+            for alias in ex["aliases"]:
+                key = alias.casefold()
+                self.assertNotIn(key, seen, f"duplicate alias {alias}")
+                seen[key] = ex["id"]
+                if key in names:
+                    self.assertEqual(names[key], ex["id"], f"alias {alias} is another exercise")
+                    self.fail(f"alias {alias} repeats its own exercise name")
+
+    def test_cue_style(self):
+        for ex in source_exercises():
+            with self.subTest(ex["id"]):
+                # Legacy exercises have 3 cues each, so the same bounds apply.
+                self.assertGreaterEqual(len(ex["cues"]), 2)
+                self.assertLessEqual(len(ex["cues"]), 4)
+                for cue in ex["cues"]:
+                    self.assertFalse(cue.endswith("."), cue)
+                    self.assertNotIn("http", cue)
+
+    def test_no_outcome_claims(self):
+        for ex in source_exercises():
+            for text in [ex["name"], *ex["aliases"], *ex["cues"]]:
+                with self.subTest(ex["id"], text=text):
+                    self.assertIsNone(OUTCOME_CLAIM.search(text))
+
+    def test_outcome_claim_matches_whole_words_only(self):
+        self.assertIsNone(OUTCOME_CLAIM.search("Secure the pin"))
+        self.assertIsNone(OUTCOME_CLAIM.search("Stone grip"))
+        self.assertIsNotNone(OUTCOME_CLAIM.search("Burn fat"))
+        self.assertIsNotNone(OUTCOME_CLAIM.search("Tone your arms"))
+        self.assertIsNotNone(OUTCOME_CLAIM.search("Helps prevent injury"))
+
+    def test_generic_closing_cues_are_not_overused(self):
+        generic = ("lower slowly", "return slowly", "lower under control")
+        counts = {g: 0 for g in generic}
+        for ex in source_exercises():
+            for cue in ex["cues"]:
+                if cue.casefold() in counts:
+                    counts[cue.casefold()] += 1
+        for cue, n in counts.items():
+            with self.subTest(cue):
+                self.assertLessEqual(n, 5)
+
+    def test_primary_count(self):
+        for ex in source_exercises():
+            with self.subTest(ex["id"]):
+                self.assertTrue(1 <= len(ex["primaryMuscles"]) <= 3)
+
+    @unittest.skipUnless(len(source_exercises()) > 200, "full library not landed yet")
+    def test_every_muscle_is_well_covered(self):
+        counts = {m: 0 for m in MUSCLES}
+        for ex in source_exercises():
+            if ex["status"] == "active":
+                for m in ex["primaryMuscles"]:
+                    counts[m] += 1
+        for muscle, n in counts.items():
+            with self.subTest(muscle):
+                self.assertGreaterEqual(n, 5)
+
+    def test_legacy_file_unchanged(self):
+        import hashlib
+
+        data = (ROOT / "catalog/exercises/legacy.json").read_bytes()
+        self.assertEqual(hashlib.sha256(data).hexdigest(), LEGACY_SHA256)
+
+
 class PublishedReleaseTest(unittest.TestCase):
     """Each committed release migration must be exactly what the lock records."""
 

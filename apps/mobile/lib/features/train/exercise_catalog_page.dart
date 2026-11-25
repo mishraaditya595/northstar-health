@@ -13,8 +13,10 @@ import '../catalog/application/catalog_providers.dart';
 import '../catalog/application/exercise_choices_provider.dart';
 import '../catalog/data/catalog_repository.dart';
 import '../catalog/domain/exercise_choices.dart';
+import '../catalog/domain/exercise_filter.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
 import '../workouts/domain/workout_library_models.dart';
+import 'exercise_filter_bar.dart';
 import 'exercise_picker_sheet.dart';
 import 'train_library_state.dart';
 
@@ -28,7 +30,16 @@ class ExerciseCatalogPage extends ConsumerStatefulWidget {
 
 class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
   String query = '';
+  final searchController = TextEditingController();
   bool customOnly = false;
+  String? group;
+  String? equipment;
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
 
   Future<void> _edit(ExerciseRecord? existing) async {
     final name = TextEditingController(text: existing?.name ?? '');
@@ -162,12 +173,125 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
     }
   }
 
+  Widget _row(ExerciseChoice choice) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: NsListCard(
+      onTap: () =>
+          context.push('/train/exercises/${Uri.encodeComponent(choice.id)}'),
+      icon: choice.isCustom ? Icons.edit_note : Icons.fitness_center,
+      title: choice.name,
+      subtitle: [
+        choice.muscleGroup,
+        choice.equipment,
+      ].where((s) => s.isNotEmpty).join(' · '),
+      trailing: !choice.isCustom
+          ? const NsTag('Built-in')
+          : PopupMenuButton<String>(
+              tooltip: 'Exercise actions for ${choice.name}',
+              onSelected: (action) {
+                if (action == 'edit') {
+                  _edit(choice.local);
+                }
+                if (action == 'archive') {
+                  _archive(choice.local!);
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'edit', child: Text('Edit')),
+                PopupMenuItem(value: 'archive', child: Text('Archive')),
+              ],
+            ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(exerciseChoicesProvider);
     final status = safeCatalogState(() => ref.watch(catalogStateProvider))
         .status;
     final muted = Theme.of(context).extension<BeyondRepColors>()!.muted;
+    final all = async.asData?.value ?? const <ExerciseChoice>[];
+    final equipmentChoices = equipmentOptions(all);
+    final filter = ExerciseFilter(
+      group: group,
+      equipment: equipmentChoices.contains(equipment) ? equipment : null,
+    );
+    final headers = <Widget>[
+      const SectionHeading('Find your movement'),
+      Text(
+        'Built-ins are read-only. Your own exercises stay on this device.',
+        style: TextStyle(color: muted),
+      ),
+      if (status == CatalogStatus.unavailable) ...[
+        const SizedBox(height: 8),
+        Text(catalogUnavailableCopy, style: TextStyle(color: muted)),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            onPressed: () => retryCatalogDownload(ref),
+            child: const Text('Retry'),
+          ),
+        ),
+      ],
+      if (status == CatalogStatus.outdatedApp) ...[
+        const SizedBox(height: 8),
+        Text(
+          'Update BeyondRep to get the latest exercises.',
+          style: TextStyle(color: muted),
+        ),
+      ],
+      const SizedBox(height: 16),
+      NsTextField(
+        controller: searchController,
+        onChanged: (value) =>
+            setState(() => query = value.trim().toLowerCase()),
+        prefixIcon: Icons.search,
+        hint: 'Search exercise or equipment',
+      ),
+      const SizedBox(height: 12),
+      ExerciseFilterBar(
+        group: group,
+        equipment: equipment,
+        equipmentChoices: equipmentChoices,
+        onGroup: (value) => setState(() => group = value),
+        onEquipment: (value) => setState(() => equipment = value),
+      ),
+      const SizedBox(height: 8),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: NsChip(
+          label: 'Custom only',
+          selected: customOnly,
+          onSelected: (value) => setState(() => customOnly = value),
+        ),
+      ),
+      const SizedBox(height: 14),
+    ];
+    final visible = all
+        .where(
+          (choice) =>
+              (!customOnly || choice.isCustom) &&
+              filter.matches(choice) &&
+              matchesExerciseQuery(choice, query),
+        )
+        .toList();
+    // One builder per row below the header, so a long library builds lazily.
+    final rows = <WidgetBuilder>[
+      if (!async.hasValue && async.isLoading)
+        (_) => const Center(child: CircularProgressIndicator())
+      else if (!async.hasValue && async.hasError)
+        (_) => TextButton(
+          onPressed: () => ref.invalidate(trainLibraryProvider),
+          child: const Text('Could not load exercises. Retry'),
+        )
+      else if (visible.isEmpty)
+        (_) => const Padding(
+          padding: EdgeInsets.all(20),
+          child: Text('No matching exercises.'),
+        )
+      else
+        for (final choice in visible) (_) => _row(choice),
+    ];
     return Scaffold(
       appBar: AppBar(
         leading: const NsBackButton(),
@@ -186,7 +310,7 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
           constraints: const BoxConstraints(maxWidth: 900),
           child: RefreshIndicator(
             onRefresh: _refreshCatalog,
-            child: ListView(
+            child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.fromLTRB(
                 16,
@@ -194,116 +318,10 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
                 16,
                 100 + MediaQuery.paddingOf(context).bottom,
               ),
-              children: [
-                const SectionHeading('Find your movement'),
-                Text(
-                  'Built-ins are read-only. Your own exercises stay on this device.',
-                  style: TextStyle(color: muted),
-                ),
-                if (status == CatalogStatus.unavailable) ...[
-                  const SizedBox(height: 8),
-                  Text(catalogUnavailableCopy, style: TextStyle(color: muted)),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton(
-                      onPressed: () => retryCatalogDownload(ref),
-                      child: const Text('Retry'),
-                    ),
-                  ),
-                ],
-                if (status == CatalogStatus.outdatedApp) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'Update BeyondRep to get the latest exercises.',
-                    style: TextStyle(color: muted),
-                  ),
-                ],
-                const SizedBox(height: 16),
-                NsTextField(
-                  onChanged: (value) =>
-                      setState(() => query = value.trim().toLowerCase()),
-                  prefixIcon: Icons.search,
-                  hint: 'Search exercise or equipment',
-                ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: NsChip(
-                    label: 'Custom only',
-                    selected: customOnly,
-                    onSelected: (value) => setState(() => customOnly = value),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                async.when(
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (_, _) => TextButton(
-                    onPressed: () => ref.invalidate(trainLibraryProvider),
-                    child: const Text('Could not load exercises. Retry'),
-                  ),
-                  data: (choices) {
-                    final visible = choices
-                        .where(
-                          (choice) =>
-                              (!customOnly || choice.isCustom) &&
-                              matchesExerciseQuery(choice, query),
-                        )
-                        .toList();
-                    if (visible.isEmpty) {
-                      return const Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Text('No matching exercises.'),
-                      );
-                    }
-                    return Column(
-                      children: [
-                        for (final choice in visible)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: NsListCard(
-                              onTap: () => context.push(
-                                '/train/exercises/${Uri.encodeComponent(choice.id)}',
-                              ),
-                              icon: choice.isCustom
-                                  ? Icons.edit_note
-                                  : Icons.fitness_center,
-                              title: choice.name,
-                              subtitle: [
-                                choice.muscleGroup,
-                                choice.equipment,
-                              ].where((s) => s.isNotEmpty).join(' · '),
-                              trailing: !choice.isCustom
-                                  ? const NsTag('Built-in')
-                                  : PopupMenuButton<String>(
-                                      tooltip:
-                                          'Exercise actions for ${choice.name}',
-                                      onSelected: (action) {
-                                        if (action == 'edit') {
-                                          _edit(choice.local);
-                                        }
-                                        if (action == 'archive') {
-                                          _archive(choice.local!);
-                                        }
-                                      },
-                                      itemBuilder: (_) => const [
-                                        PopupMenuItem(
-                                          value: 'edit',
-                                          child: Text('Edit'),
-                                        ),
-                                        PopupMenuItem(
-                                          value: 'archive',
-                                          child: Text('Archive'),
-                                        ),
-                                      ],
-                                    ),
-                            ),
-                          ),
-                      ],
-                    );
-                  },
-                ),
-              ],
+              itemCount: headers.length + rows.length,
+              itemBuilder: (context, index) => index < headers.length
+                  ? headers[index]
+                  : rows[index - headers.length](context),
             ),
           ),
         ),

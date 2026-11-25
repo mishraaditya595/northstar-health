@@ -171,7 +171,11 @@ class MigrationTest(unittest.TestCase):
             self.assertEqual(len(lock["releases"]), 1)
             entry = lock["releases"][0]
             self.assertEqual(entry["release"], 1)
-            self.assertEqual(len(entry["exercises"]), 18)
+            source = sum(
+                len(json.loads(path.read_text(encoding="utf-8")))
+                for path in (root / "catalog/exercises").glob("*.json")
+            )
+            self.assertEqual(len(entry["exercises"]), source)
             self.assertIn(entry["sha256"], sql.read_text(encoding="utf-8"))
             changelog = (root / "catalog/CHANGELOG.md").read_text(encoding="utf-8")
             self.assertIn("Release 1", changelog)

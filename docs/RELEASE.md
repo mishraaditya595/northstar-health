@@ -128,6 +128,19 @@ Timed sets are implemented in source, **not deployed, released or device-verifie
 | Plan a plank at 45 s: the row reads "3 sets · 45 s" and a workout started from the plan logs seconds | not run | not run |
 | A rep workout logged before this build still uploads, restores and counts as before | not run | not run |
 
+## Training library stage 5 device QA (ADR-0010, owner actions, none done)
+
+The expanded library (release 2, 240 exercises) and the picker filters are implemented in source, **not deployed, released or device-verified**. Every row is not run.
+
+| Check | iOS | Android |
+| --- | --- | --- |
+| Deploy order: the owner has read the review sheet, merged, and the `supabase-database` job has applied `20261126030000_catalog_release_2.sql` | not run | not run |
+| First download of release 2: an install with release 1 cached updates to 240 exercises on the next refresh and the Exercises page lists them | not run | not run |
+| Picker scroll and filter at large text: at text size 200 percent, open the picker, scroll the full list, pick a muscle group chip and an equipment, then search; nothing overflows and rows stay tappable | not run | not run |
+| Search by muscle: typing "hamstrings" lists Romanian deadlifts | not run | not run |
+| Offline with a cached release 1, then online: the picker shows release 1 while offline and release 2 after reconnecting | not run | not run |
+| Custom exercises and the 18 earlier built-ins still appear under All and under their own group chip | not run | not run |
+
 ## Feature and privacy readiness
 
 - ObjectBox real sessions/sets with generated model UID fixture migration, durable offline writes and recovery through process death.

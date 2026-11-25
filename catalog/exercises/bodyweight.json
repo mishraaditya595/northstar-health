@@ -1,0 +1,1230 @@
+[
+  {
+    "id": "builtin.v1.chin-up",
+    "name": "Chin-up",
+    "aliases": [
+      "Underhand pull-up"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats",
+      "biceps"
+    ],
+    "secondaryMuscles": [
+      "traps",
+      "forearms",
+      "abs"
+    ],
+    "equipment": [
+      "bodyweight",
+      "pull_up_bar"
+    ],
+    "category": "pull_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Grip the bar underhand about shoulder width",
+      "Start from straight arms with shoulders down",
+      "Pull until your chin clears the bar",
+      "Lower under control to straight arms"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.parallel-bar-dip",
+    "name": "Parallel bar dip",
+    "aliases": [
+      "Dip",
+      "Chest dip"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest",
+      "triceps"
+    ],
+    "secondaryMuscles": [
+      "shoulders"
+    ],
+    "equipment": [
+      "bodyweight",
+      "other"
+    ],
+    "category": "push_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Support yourself on straight arms with shoulders down",
+      "Lean slightly forward and lower until your upper arms are parallel to the floor",
+      "Keep your elbows close to your sides",
+      "Press back up to straight arms"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.bench-dip",
+    "name": "Bench dip",
+    "aliases": [],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [
+      "chest",
+      "shoulders"
+    ],
+    "equipment": [
+      "bodyweight",
+      "bench"
+    ],
+    "category": "push_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Place your hands on the bench edge behind you",
+      "Keep your back close to the bench",
+      "Lower only as far as your shoulders stay comfortable",
+      "Press back up without shrugging"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.incline-push-up",
+    "name": "Incline push-up",
+    "aliases": [
+      "Hands-elevated push-up"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "shoulders",
+      "abs"
+    ],
+    "equipment": [
+      "bodyweight",
+      "bench"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Place your hands on a bench, shoulder width",
+      "Keep your body in a straight line",
+      "Lower your chest to the edge",
+      "Press away to straight arms"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.decline-push-up",
+    "name": "Decline push-up",
+    "aliases": [
+      "Feet-elevated push-up"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest",
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "abs"
+    ],
+    "equipment": [
+      "bodyweight",
+      "bench"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Place your feet on a bench and hands on the floor",
+      "Brace so your hips do not sag",
+      "Lower your chest toward the floor",
+      "Press back up"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.diamond-push-up",
+    "name": "Diamond push-up",
+    "aliases": [
+      "Triceps push-up"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "triceps",
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "shoulders"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Place your hands together under your chest",
+      "Keep your elbows close to your sides",
+      "Lower your chest to your hands",
+      "Press up to straight arms"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.pike-push-up",
+    "name": "Pike push-up",
+    "aliases": [],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "chest"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "push_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Start in a high pike with hips up and arms straight",
+      "Bend your elbows to lower your head between your hands",
+      "Keep your hips high",
+      "Press back up"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.bodyweight-squat",
+    "name": "Bodyweight squat",
+    "aliases": [
+      "Air squat"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "squat",
+    "mode": "reps_load",
+    "cues": [
+      "Feet about shoulder width, toes slightly out",
+      "Brace and sit down between your hips",
+      "Keep your heels down",
+      "Stand tall and squeeze your glutes"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.bodyweight-bulgarian-split-squat",
+    "name": "Bulgarian split squat",
+    "aliases": [
+      "Rear-foot elevated split squat"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "abs"
+    ],
+    "equipment": [
+      "bodyweight",
+      "bench"
+    ],
+    "category": "lunge",
+    "mode": "reps_load",
+    "cues": [
+      "Rest your back foot on a bench behind you",
+      "Choose a comfortable stance and keep your front foot planted as you lower",
+      "Lower straight down",
+      "Drive through your front foot to stand"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.walking-lunge",
+    "name": "Walking lunge",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "lunge",
+    "mode": "reps_load",
+    "cues": [
+      "Take a long step forward",
+      "Lower your back knee toward the floor",
+      "Keep your torso upright",
+      "Push through the front foot into the next step"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.reverse-lunge",
+    "name": "Reverse lunge",
+    "aliases": [
+      "Step-back lunge"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "lunge",
+    "mode": "reps_load",
+    "cues": [
+      "Step straight back and lower your back knee",
+      "Keep your front heel down",
+      "Keep your hips square",
+      "Push through your front foot to return"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.step-up",
+    "name": "Bodyweight step-up",
+    "aliases": [
+      "Box step-up"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "calves"
+    ],
+    "equipment": [
+      "bodyweight",
+      "box"
+    ],
+    "category": "lunge",
+    "mode": "reps_load",
+    "cues": [
+      "Place your whole front foot on the box",
+      "Stand tall by pushing through that heel",
+      "Do not push off the back foot",
+      "Lower under control"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.pistol-squat",
+    "name": "Pistol squat",
+    "aliases": [
+      "Single-leg squat"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "abs"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "squat",
+    "mode": "reps_load",
+    "cues": [
+      "Stand on one leg with the other extended forward",
+      "Reach your arms forward for balance",
+      "Sit down slowly with your heel flat",
+      "Stand up without letting your knee collapse inward"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.cossack-squat",
+    "name": "Cossack squat",
+    "aliases": [
+      "Side-to-side squat"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "lunge",
+    "mode": "reps_load",
+    "cues": [
+      "Take a wide stance with toes slightly out",
+      "Shift to one side and sit onto that leg",
+      "Keep your other leg straight with toes up",
+      "Push back to the middle and switch"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.glute-bridge",
+    "name": "Glute bridge",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Lie on your back with knees bent and feet flat",
+      "Press through your heels and lift your hips",
+      "Squeeze your glutes at the top",
+      "Lower slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.single-leg-glute-bridge",
+    "name": "Single-leg glute bridge",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Lie on your back with one foot flat and the other leg extended",
+      "Press through your heel to lift your hips",
+      "Keep your pelvis level",
+      "Lower slowly and switch sides"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.nordic-hamstring-curl",
+    "name": "Nordic hamstring curl",
+    "aliases": [
+      "Nordic curl"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "glutes",
+      "calves"
+    ],
+    "equipment": [
+      "bodyweight",
+      "other"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Kneel with your ankles anchored under a pad or held by a partner",
+      "Lower your torso forward as slowly as you can",
+      "Catch yourself with your hands at the bottom",
+      "Push off lightly to return up"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.inverted-row",
+    "name": "Inverted row",
+    "aliases": [
+      "Bodyweight row",
+      "Australian pull-up"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "shoulders",
+      "forearms"
+    ],
+    "equipment": [
+      "bodyweight",
+      "other"
+    ],
+    "category": "pull_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Lie under a fixed bar and hold it overhand",
+      "Keep your body in a straight line",
+      "Pull your chest to the bar",
+      "Lower to straight arms"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.hanging-leg-raise",
+    "name": "Hanging leg raise",
+    "aliases": [],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "equipment": [
+      "bodyweight",
+      "pull_up_bar"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Hang with your shoulders engaged",
+      "Raise your legs without swinging",
+      "Tilt your pelvis up at the top",
+      "Lower under control"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.hanging-knee-raise",
+    "name": "Hanging knee raise",
+    "aliases": [],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "equipment": [
+      "bodyweight",
+      "pull_up_bar"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Hang with your shoulders engaged",
+      "Curl your knees toward your chest",
+      "Curl your pelvis up at the top",
+      "Lower slowly without swinging"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.sit-up",
+    "name": "Sit-up",
+    "aliases": [],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Lie on your back with knees bent and feet flat",
+      "Curl your torso up toward your knees",
+      "Keep your neck relaxed",
+      "Lower slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.crunch",
+    "name": "Crunch",
+    "aliases": [],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Lie on your back with knees bent",
+      "Lift your shoulder blades off the floor",
+      "Curl your ribs toward your pelvis",
+      "Lower slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.reverse-crunch",
+    "name": "Reverse crunch",
+    "aliases": [],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Lie on your back with knees bent over your hips",
+      "Curl your pelvis off the floor",
+      "Do not swing your legs",
+      "Press your lower back lightly into the floor"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.bicycle-crunch",
+    "name": "Bicycle crunch",
+    "aliases": [],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "abs",
+      "obliques"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Lie on your back with your hands by your head",
+      "Bring one elbow toward the opposite knee",
+      "Extend the other leg",
+      "Switch sides in a slow rhythm"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.russian-twist",
+    "name": "Russian twist",
+    "aliases": [],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "obliques",
+      "abs"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Sit with your torso leaned back and feet down or raised",
+      "Rotate your ribs to each side",
+      "Move your torso, not just your arms",
+      "Keep your back long"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.dead-bug",
+    "name": "Dead bug",
+    "aliases": [],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [
+      "obliques"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Lie on your back with arms up and knees bent over hips",
+      "Press your lower back lightly into the floor",
+      "Lower the opposite arm and leg slowly",
+      "Return and switch sides"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.bird-dog",
+    "name": "Bird dog",
+    "aliases": [],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "lowerBack",
+      "abs"
+    ],
+    "secondaryMuscles": [
+      "glutes",
+      "obliques",
+      "shoulders"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Start on hands and knees with a neutral back",
+      "Extend the opposite arm and leg",
+      "Keep your hips level",
+      "Return slowly and switch sides"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.ab-wheel-rollout",
+    "name": "Ab wheel rollout",
+    "aliases": [
+      "Ab roller"
+    ],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [
+      "lats",
+      "shoulders"
+    ],
+    "equipment": [
+      "bodyweight",
+      "other"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Kneel and hold the wheel under your shoulders",
+      "Tuck your pelvis and brace",
+      "Roll out as far as you can keep your back flat",
+      "Pull back with your abs"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.lying-leg-raise",
+    "name": "Lying leg raise",
+    "aliases": [
+      "Leg raise"
+    ],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Lie flat with your hands under your hips",
+      "Raise your legs together without arching your back",
+      "Lower slowly until just above the floor",
+      "Keep your lower back pressed down"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.single-leg-calf-raise",
+    "name": "Single-leg calf raise",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "calves"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "calf",
+    "mode": "reps_load",
+    "cues": [
+      "Stand on one foot on a step edge, holding a support",
+      "Rise onto the ball of your foot",
+      "Pause at the top",
+      "Lower to a full stretch"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.side-lying-hip-abduction",
+    "name": "Side-lying hip abduction",
+    "aliases": [
+      "Side leg raise"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Lie on your side with your bottom leg bent",
+      "Keep your top leg straight and toes forward",
+      "Lift your leg without rolling back",
+      "Keep your hips stacked"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.donkey-kick",
+    "name": "Donkey kick",
+    "aliases": [
+      "Quadruped glute kickback"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Start on hands and knees with a flat back",
+      "Kick one heel up toward the ceiling",
+      "Do not arch your lower back",
+      "Lower slowly and switch sides"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.ring-row",
+    "name": "Ring row",
+    "aliases": [
+      "Suspended row"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "shoulders"
+    ],
+    "equipment": [
+      "rings"
+    ],
+    "category": "pull_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Set the rings at about chest height",
+      "Walk your feet forward to lean back with a straight body",
+      "Pull the rings to your lower ribs",
+      "Lower with control"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.ring-dip",
+    "name": "Ring dip",
+    "aliases": [],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest",
+      "triceps"
+    ],
+    "secondaryMuscles": [
+      "shoulders"
+    ],
+    "equipment": [
+      "rings"
+    ],
+    "category": "push_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Support yourself with your arms straight and the rings turned out",
+      "Lower until your upper arms are about parallel",
+      "Keep the rings close to your body",
+      "Press back up to full extension"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.ring-push-up",
+    "name": "Ring push-up",
+    "aliases": [
+      "Suspended push-up"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "shoulders",
+      "abs"
+    ],
+    "equipment": [
+      "rings"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Set the rings low and brace in a plank",
+      "Lower your chest between your hands",
+      "Keep the rings steady",
+      "Press back to straight arms"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.ring-fallout",
+    "name": "Ring fallout",
+    "aliases": [
+      "Suspended fallout"
+    ],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [
+      "lats",
+      "shoulders"
+    ],
+    "equipment": [
+      "rings"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the rings and brace your trunk",
+      "Slide your arms forward as your body leans out",
+      "Keep your back flat",
+      "Pull back using your abs"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.side-plank",
+    "name": "Side plank",
+    "aliases": [],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "obliques"
+    ],
+    "secondaryMuscles": [
+      "abs",
+      "glutes",
+      "shoulders"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "core",
+    "mode": "duration",
+    "cues": [
+      "Stack your feet and place your elbow under your shoulder",
+      "Lift your hips so your body is straight",
+      "Keep your hips from sagging",
+      "Breathe steadily and switch sides"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.hollow-body-hold",
+    "name": "Hollow body hold",
+    "aliases": [
+      "Hollow hold"
+    ],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [
+      "quads"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "core",
+    "mode": "duration",
+    "cues": [
+      "Lie on your back and press your lower back into the floor",
+      "Lift your shoulders and legs a few inches",
+      "Reach your arms overhead",
+      "Raise your legs higher if your back lifts"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.wall-sit",
+    "name": "Wall sit",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "glutes",
+      "calves"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "squat",
+    "mode": "duration",
+    "cues": [
+      "Back flat against the wall",
+      "Slide down until your thighs are near parallel",
+      "Keep your knees over your ankles",
+      "Hold with your weight on your heels"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.dead-hang",
+    "name": "Dead hang",
+    "aliases": [
+      "Passive hang"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "forearms"
+    ],
+    "secondaryMuscles": [
+      "lats",
+      "shoulders"
+    ],
+    "equipment": [
+      "bodyweight",
+      "pull_up_bar"
+    ],
+    "category": "pull_vertical",
+    "mode": "duration",
+    "cues": [
+      "Hang from the bar with a firm grip",
+      "Keep your arms straight and let your shoulders settle overhead without swinging",
+      "Keep your legs still",
+      "Step down when your grip fades"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.flexed-arm-hang",
+    "name": "Flexed-arm hang",
+    "aliases": [],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats",
+      "biceps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "equipment": [
+      "bodyweight",
+      "pull_up_bar"
+    ],
+    "category": "pull_vertical",
+    "mode": "duration",
+    "cues": [
+      "Start with your chin above the bar",
+      "Keep your elbows bent and your body still",
+      "Hold your chest close to the bar",
+      "Lower with control when you tire"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.glute-bridge-hold",
+    "name": "Glute bridge hold",
+    "aliases": [
+      "Bridge hold"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "hinge",
+    "mode": "duration",
+    "cues": [
+      "Lie on your back with knees bent",
+      "Lift your hips until your body is straight from knees to shoulders",
+      "Squeeze your glutes",
+      "Keep your ribs down and breathe"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.l-sit",
+    "name": "L-sit",
+    "aliases": [],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "shoulders",
+      "quads"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "core",
+    "mode": "duration",
+    "cues": [
+      "Sit on the floor or on parallettes and press down on straight arms with shoulders low",
+      "Lift your legs out in front of you",
+      "Keep your knees straight if you can",
+      "Hold without leaning back or shrugging"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.superman-hold",
+    "name": "Superman hold",
+    "aliases": [],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lowerBack",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "shoulders"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "core",
+    "mode": "duration",
+    "cues": [
+      "Lie face down with arms reaching forward",
+      "Lift your arms and legs a few inches",
+      "Keep your neck in line with your spine",
+      "Squeeze your glutes and breathe"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.reverse-plank",
+    "name": "Reverse plank",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "lowerBack",
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "core",
+    "mode": "duration",
+    "cues": [
+      "Sit with your hands behind you and legs straight",
+      "Press your hips up until your body is straight",
+      "Keep your shoulders away from your ears",
+      "Look forward and breathe steadily"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.split-squat-hold",
+    "name": "Split squat hold",
+    "aliases": [
+      "Isometric split squat"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "lunge",
+    "mode": "duration",
+    "cues": [
+      "Set a long split stance",
+      "Lower until your back knee hovers above the floor",
+      "Keep your torso tall",
+      "Hold, then switch legs"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.prone-back-extension",
+    "name": "Prone back extension",
+    "aliases": [
+      "Floor back extension"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lowerBack"
+    ],
+    "secondaryMuscles": [
+      "glutes"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Lie face down with your hands by your ears",
+      "Lift your chest a few inches off the floor",
+      "Keep your neck in line and your feet down",
+      "Lower with control and pause before the next rep"
+    ],
+    "status": "active"
+  }
+]

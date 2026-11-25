@@ -1,0 +1,445 @@
+[
+  {
+    "id": "builtin.v1.kb-swing",
+    "name": "Kettlebell swing",
+    "aliases": [
+      "Two-hand kettlebell swing"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "lowerBack",
+      "quads",
+      "shoulders",
+      "abs"
+    ],
+    "equipment": [
+      "kettlebell"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Hinge and hike the bell back between your legs",
+      "Snap your hips forward to float the bell",
+      "Let your arms guide the bell and not lift it",
+      "Let it fall back and hinge again, back flat"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.kb-goblet-squat",
+    "name": "Kettlebell goblet squat",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "glutes",
+      "abs"
+    ],
+    "equipment": [
+      "kettlebell"
+    ],
+    "category": "squat",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the kettlebell by the horns at your chest",
+      "Elbows point down between your knees",
+      "Sit deep with your chest up",
+      "Stand by pushing through your whole foot"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.kb-deadlift",
+    "name": "Kettlebell deadlift",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes",
+      "hamstrings",
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "lowerBack",
+      "traps"
+    ],
+    "equipment": [
+      "kettlebell"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Stand over the bell with feet about hip width",
+      "Hinge and grip the handle with a flat back",
+      "Push the floor away to stand",
+      "Squeeze your glutes at the top"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.kb-front-squat",
+    "name": "Double kettlebell front squat",
+    "aliases": [
+      "Front-rack kettlebell squat"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "glutes",
+      "abs"
+    ],
+    "equipment": [
+      "kettlebell"
+    ],
+    "category": "squat",
+    "mode": "reps_load",
+    "cues": [
+      "Rack both bells with elbows tucked at your ribs",
+      "Brace your trunk and stay tall",
+      "Sit between your hips",
+      "Stand up without letting the bells drop forward"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.kb-reverse-lunge",
+    "name": "Kettlebell reverse lunge",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "abs"
+    ],
+    "equipment": [
+      "kettlebell"
+    ],
+    "category": "lunge",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the kettlebell at your chest or in the rack",
+      "Step back and lower your back knee",
+      "Keep your front heel down",
+      "Push through the front foot to stand"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.kb-single-leg-deadlift",
+    "name": "Kettlebell single-leg deadlift",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "hamstrings",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "lowerBack",
+      "abs"
+    ],
+    "equipment": [
+      "kettlebell"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the bell in the hand opposite your standing leg",
+      "Hinge and extend your back leg",
+      "Keep your hips square to the floor",
+      "Squeeze your glute to stand tall"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.kb-clean",
+    "name": "Kettlebell clean",
+    "aliases": [
+      "One-arm kettlebell clean"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "traps",
+      "shoulders",
+      "biceps",
+      "forearms"
+    ],
+    "equipment": [
+      "kettlebell"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Hike the bell back like a swing",
+      "Drive your hips forward and pull the bell close",
+      "Rotate your hand around it to the rack position",
+      "Land it softly on your forearm and chest"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.kb-snatch",
+    "name": "Kettlebell snatch",
+    "aliases": [
+      "One-arm kettlebell snatch"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "shoulders",
+      "traps",
+      "lowerBack",
+      "forearms"
+    ],
+    "equipment": [
+      "kettlebell"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Hike the bell back and drive your hips forward",
+      "Pull the handle high and close to your body",
+      "Punch your hand through at the top",
+      "Lock out overhead with your arm by your ear"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.kb-press",
+    "name": "Kettlebell overhead press",
+    "aliases": [
+      "One-arm kettlebell press",
+      "Kettlebell military press"
+    ],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "abs"
+    ],
+    "equipment": [
+      "kettlebell"
+    ],
+    "category": "push_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Start with the bell in the rack position",
+      "Squeeze your glutes and brace",
+      "Press straight up, keeping your wrist straight",
+      "Lower to the rack with your elbow near your ribs"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.kb-push-press",
+    "name": "Kettlebell push press",
+    "aliases": [],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "quads",
+      "glutes",
+      "traps",
+      "abs"
+    ],
+    "equipment": [
+      "kettlebell"
+    ],
+    "category": "push_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Rack the bell at your shoulder",
+      "Dip your knees a few inches and drive up",
+      "Press the bell overhead as your legs extend",
+      "Lower it back to the rack under control"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.kb-row",
+    "name": "One-arm kettlebell row",
+    "aliases": [
+      "Single-arm kettlebell row"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats"
+    ],
+    "secondaryMuscles": [
+      "traps",
+      "biceps",
+      "lowerBack",
+      "shoulders"
+    ],
+    "equipment": [
+      "kettlebell"
+    ],
+    "category": "pull_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Hinge with your free hand on your knee or a bench",
+      "Keep your back flat",
+      "Row the bell toward your hip",
+      "Lower until your arm is straight"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.kb-floor-press",
+    "name": "Kettlebell floor press",
+    "aliases": [],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest",
+      "triceps"
+    ],
+    "secondaryMuscles": [
+      "shoulders"
+    ],
+    "equipment": [
+      "kettlebell"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Lie on the floor with the bell in one hand",
+      "Keep your forearm vertical",
+      "Lower until your upper arm touches the floor",
+      "Press back up without shifting your wrist"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.kb-windmill",
+    "name": "Kettlebell windmill",
+    "aliases": [
+      "Windmill"
+    ],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "obliques"
+    ],
+    "secondaryMuscles": [
+      "shoulders",
+      "glutes",
+      "hamstrings",
+      "abs"
+    ],
+    "equipment": [
+      "kettlebell"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Press the bell overhead and watch it",
+      "Turn your back foot out and push your hip toward the bell",
+      "Hinge down the opposite leg with a straight back",
+      "Return to standing the same way"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.kb-turkish-get-up",
+    "name": "Kettlebell Turkish get-up",
+    "aliases": [
+      "Turkish get-up",
+      "TGU"
+    ],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "shoulders",
+      "abs"
+    ],
+    "secondaryMuscles": [
+      "glutes",
+      "quads",
+      "obliques",
+      "triceps"
+    ],
+    "equipment": [
+      "kettlebell"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Keep your eyes on the bell and your arm vertical",
+      "Move slowly through each position",
+      "Brace and keep your wrist straight",
+      "Reverse the steps to lie back down"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.kb-halo",
+    "name": "Kettlebell halo",
+    "aliases": [
+      "Halo"
+    ],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "abs",
+      "traps"
+    ],
+    "equipment": [
+      "kettlebell"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the bell upside down by the horns at chest height",
+      "Circle it around your head, keeping it close",
+      "Keep your ribs down and your neck relaxed",
+      "Reverse the direction every set"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.kb-overhead-triceps-extension",
+    "name": "Kettlebell overhead triceps extension",
+    "aliases": [],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [
+      "shoulders"
+    ],
+    "equipment": [
+      "kettlebell"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the bell by the horns overhead",
+      "Keep your elbows pointing forward",
+      "Lower behind your head under control",
+      "Extend back to straight arms"
+    ],
+    "status": "active"
+  }
+]

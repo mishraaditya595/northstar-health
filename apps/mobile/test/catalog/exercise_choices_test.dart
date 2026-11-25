@@ -179,6 +179,20 @@ void main() {
     expect(matchesExerciseQuery(choice, 'kettlebell'), isFalse);
   });
 
+  test('choices carry the primary muscles of the catalogue entry', () {
+    final choices = buildExerciseChoices(
+      local: [local('custom-1', 'Sled push', builtIn: false)],
+      catalog: snapshotOf([cat('builtin.v1.row', 'Barbell row')]),
+    );
+    expect(choices.firstWhere((c) => c.id == 'builtin.v1.row').primaryMuscles, [
+      'quads',
+    ]);
+    expect(
+      choices.firstWhere((c) => c.id == 'custom-1').primaryMuscles,
+      isEmpty,
+    );
+  });
+
   test('equipment labels', () {
     expect(equipmentLabel(['barbell', 'bench']), 'Barbell, Bench');
     expect(equipmentLabel(['pull_up_bar']), 'Pull-up bar');
