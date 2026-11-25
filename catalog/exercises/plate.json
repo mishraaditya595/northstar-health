@@ -1,0 +1,101 @@
+[
+  {
+    "id": "builtin.v1.plate-front-raise",
+    "name": "Plate front raise",
+    "aliases": [],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "chest"
+    ],
+    "equipment": [
+      "plate"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the plate at its sides in front of your thighs",
+      "Raise it to shoulder height with straight arms",
+      "Keep your ribs down",
+      "Lower slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.plate-halo",
+    "name": "Plate halo",
+    "aliases": [],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "abs"
+    ],
+    "equipment": [
+      "plate"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the plate in front of your chest",
+      "Circle it around your head, keeping it close",
+      "Keep your ribs down and neck relaxed",
+      "Reverse direction every set"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.svend-press",
+    "name": "Svend press",
+    "aliases": [
+      "Plate squeeze press"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "shoulders"
+    ],
+    "equipment": [
+      "plate"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Squeeze two plates together between your palms",
+      "Press them straight out in front of your chest",
+      "Keep squeezing the whole time",
+      "Return to your chest"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.plate-russian-twist",
+    "name": "Plate Russian twist",
+    "aliases": [],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "obliques",
+      "abs"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "plate"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Sit with your torso leaned back holding a plate",
+      "Rotate your ribs to each side",
+      "Move your torso, not just your arms",
+      "Keep your back long"
+    ],
+    "status": "active"
+  }
+]

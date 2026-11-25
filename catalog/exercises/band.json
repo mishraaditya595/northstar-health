@@ -1,0 +1,423 @@
+[
+  {
+    "id": "builtin.v1.band-pull-apart",
+    "name": "Band pull-apart",
+    "aliases": [],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "lats"
+    ],
+    "equipment": [
+      "band"
+    ],
+    "category": "pull_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the band at shoulder height with straight arms",
+      "Pull your hands apart until the band touches your chest",
+      "Squeeze your shoulder blades together",
+      "Return slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.band-face-pull",
+    "name": "Band face pull",
+    "aliases": [],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "biceps"
+    ],
+    "equipment": [
+      "band"
+    ],
+    "category": "pull_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Anchor the band at face height",
+      "Pull the ends toward your ears with elbows high",
+      "Squeeze your shoulder blades together",
+      "Return slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.band-lateral-raise",
+    "name": "Band lateral raise",
+    "aliases": [],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "band"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Stand on the band with a handle in each hand",
+      "Lead with your elbows",
+      "Raise to shoulder height",
+      "Lower slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.band-overhead-press",
+    "name": "Band overhead press",
+    "aliases": [],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "triceps"
+    ],
+    "equipment": [
+      "band"
+    ],
+    "category": "push_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Stand on the band and hold the handles at your shoulders",
+      "Brace your trunk",
+      "Press overhead until your arms are straight",
+      "Lower under control"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.band-seated-row",
+    "name": "Band seated row",
+    "aliases": [
+      "Seated band row"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "biceps"
+    ],
+    "equipment": [
+      "band"
+    ],
+    "category": "pull_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Sit with your legs out and the band around your feet",
+      "Keep your back tall",
+      "Pull your elbows back past your torso",
+      "Return slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.band-lat-pulldown",
+    "name": "Band lat pulldown",
+    "aliases": [
+      "Band pulldown"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "traps"
+    ],
+    "equipment": [
+      "band"
+    ],
+    "category": "pull_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Anchor the band high and kneel or sit under it",
+      "Pull your elbows down toward your ribs",
+      "Keep your chest up",
+      "Return slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.band-assisted-pull-up",
+    "name": "Band-assisted pull-up",
+    "aliases": [],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "traps"
+    ],
+    "equipment": [
+      "band",
+      "pull_up_bar"
+    ],
+    "category": "pull_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Loop the band over the bar and place a foot or knee in it",
+      "Start with straight arms",
+      "Pull until your chin clears the bar",
+      "Lower under control"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.band-chest-press",
+    "name": "Band chest press",
+    "aliases": [],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "shoulders"
+    ],
+    "equipment": [
+      "band"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Anchor the band behind you at chest height",
+      "Stand in a split stance and brace",
+      "Press forward until your arms are straight",
+      "Return slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.band-chest-fly",
+    "name": "Band chest fly",
+    "aliases": [],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "shoulders"
+    ],
+    "equipment": [
+      "band"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Anchor the band behind you at chest height",
+      "Keep a soft bend in your elbows",
+      "Bring your hands together in front of your chest",
+      "Open slowly with control"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.band-biceps-curl",
+    "name": "Band biceps curl",
+    "aliases": [],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "equipment": [
+      "band"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Stand on the band with your elbows at your sides",
+      "Curl up without swinging",
+      "Squeeze at the top",
+      "Lower slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.band-triceps-pushdown",
+    "name": "Band triceps pushdown",
+    "aliases": [],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "band"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Anchor the band overhead",
+      "Keep your elbows pinned to your sides",
+      "Press down until your arms are straight",
+      "Return slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.band-squat",
+    "name": "Banded squat",
+    "aliases": [
+      "Band squat"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "band"
+    ],
+    "category": "squat",
+    "mode": "reps_load",
+    "cues": [
+      "Stand on the band with the other end over your shoulders",
+      "Brace and sit down between your hips",
+      "Keep your heels down",
+      "Stand tall and squeeze your glutes"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.band-good-morning",
+    "name": "Band good morning",
+    "aliases": [],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "hamstrings",
+      "glutes",
+      "lowerBack"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "band"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Stand on the band with the other end across your upper back",
+      "Push your hips back with a flat back",
+      "Stop at a strong hamstring stretch",
+      "Drive your hips forward to stand"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.band-pull-through",
+    "name": "Band pull-through",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "lowerBack"
+    ],
+    "equipment": [
+      "band"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Anchor the band low behind you and step forward",
+      "Hinge your hips back with a flat back",
+      "Drive your hips forward and squeeze your glutes",
+      "Keep your arms relaxed"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.band-lateral-walk",
+    "name": "Band lateral walk",
+    "aliases": [
+      "Monster walk",
+      "Banded side step"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "quads"
+    ],
+    "equipment": [
+      "band"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Place the band above your knees or around your ankles",
+      "Stay in a quarter squat",
+      "Step sideways without letting your knees cave in",
+      "Keep tension on the band the whole time"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.band-external-rotation",
+    "name": "Band external rotation",
+    "aliases": [],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "band"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Anchor the band at elbow height",
+      "Keep your elbow at your side bent to 90 degrees",
+      "Rotate your forearm outward",
+      "Return slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.band-pallof-press",
+    "name": "Band Pallof press",
+    "aliases": [],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "abs",
+      "obliques"
+    ],
+    "secondaryMuscles": [
+      "shoulders"
+    ],
+    "equipment": [
+      "band"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Anchor the band at chest height and stand side-on",
+      "Hold your hands at your chest and brace",
+      "Press straight out without twisting",
+      "Hold briefly and return"
+    ],
+    "status": "active"
+  }
+]

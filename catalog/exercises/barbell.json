@@ -60,9 +60,7 @@
   {
     "id": "builtin.v1.barbell-walking-lunge",
     "name": "Barbell walking lunge",
-    "aliases": [
-      "Walking lunge"
-    ],
+    "aliases": [],
     "muscleGroup": "Legs",
     "primaryMuscles": [
       "quads",
@@ -89,9 +87,7 @@
   {
     "id": "builtin.v1.barbell-reverse-lunge",
     "name": "Barbell reverse lunge",
-    "aliases": [
-      "Reverse lunge"
-    ],
+    "aliases": [],
     "muscleGroup": "Legs",
     "primaryMuscles": [
       "quads",
@@ -118,9 +114,7 @@
   {
     "id": "builtin.v1.barbell-bulgarian-split-squat",
     "name": "Barbell Bulgarian split squat",
-    "aliases": [
-      "Rear-foot elevated split squat"
-    ],
+    "aliases": [],
     "muscleGroup": "Legs",
     "primaryMuscles": [
       "quads",
