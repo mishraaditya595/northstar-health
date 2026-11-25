@@ -354,8 +354,9 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
                   'Completed phone workouts (including sets, loads, exercise '
                   'labels and timestamps) can be backed up automatically. '
                   'Unfinished sessions, custom plans and preferences stay '
-                  'on this device. HealthKit/Health Connect measurements '
-                  'are not integrated in this build. Signing out never deletes '
+                  'on this device. Readings from Apple Health or Health '
+                  'Connect are read on this device when shown and are never '
+                  'saved or backed up by BeyondRep. Signing out never deletes '
                   'either local or cloud records.',
                 ),
                 const SizedBox(height: 16),

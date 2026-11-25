@@ -226,6 +226,40 @@ void main() {
     expect(binding.saved, accountA);
   });
 
+  testWidgets('data scope explains health readings are never backed up', (
+    tester,
+  ) async {
+    final api = FakeAuthApi()..sessionId = accountA;
+    final auth = controller(api, FakeBoundAccountStore()..saved = accountA);
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+    await auth.restore();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          accountAuthControllerProvider.overrideWithValue(auth),
+          workoutSyncFlagsProvider.overrideWithValue(const {}),
+        ],
+        child: MaterialApp(
+          theme: BeyondRepTheme.build(Brightness.light),
+          home: const AccountSyncPage(),
+        ),
+      ),
+    );
+    final scope = find.textContaining('Completed phone workouts');
+    await tester.scrollUntilVisible(scope, 160);
+    final copy = tester.widget<Text>(scope).data!;
+    expect(copy, isNot(contains('not integrated')));
+    expect(
+      copy,
+      contains(
+        'Readings from Apple Health or Health Connect are read on this '
+        'device when shown and are never saved or backed up by BeyondRep.',
+      ),
+    );
+  });
+
   testWidgets('secure binding clear failure keeps account and shows message', (
     tester,
   ) async {
