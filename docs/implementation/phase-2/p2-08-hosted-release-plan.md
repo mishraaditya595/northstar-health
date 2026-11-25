@@ -56,6 +56,12 @@ exposure or data loss is an unconditional stop.
 the **real hosted REST API** with a publishable key and two verified, nonanonymous
 Supabase Auth access tokens. It **never writes or deletes** data, accounts or
 migrations, and never prints response bodies, tokens or owner/workout UUIDs.
+After the owner-isolation checks it also runs `run_catalog_audit` (training
+catalogue, [CATALOG.md](../../CATALOG.md)). That audit **requires the
+catalogue migrations to be applied** to the project under test: an unmigrated
+project fails with `catalog_manifest_unavailable`. Each response is read up to
+a 2 MiB cap, so a catalogue snapshot over 2 MiB fails the audit with
+`network_or_invalid_response` (the validator also rejects such snapshots).
 A dedicated urllib opener rejects **all HTTP 301/302/303/307/308
 redirects** with `unexpected_redirect`, without attempting the destination
 URL; it never forwards bearer tokens or the publishable key to a redirect

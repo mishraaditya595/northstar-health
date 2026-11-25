@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -69,19 +70,25 @@ def _requester(url: str, key: str) -> Callable[..., Reply]:
 
     def call(method: str, path: str, token: str | None = None,
              query: dict[str, str] | None = None,
-             payload: dict[str, Any] | None = None) -> Reply:
+             payload: dict[str, Any] | None = None,
+             headers: dict[str, str] | None = None) -> Reply:
         target = base + path
         if query:
             target += "?" + urllib.parse.urlencode(query)
-        headers = {"apikey": key, "Accept": "application/json"}
+        # Caller headers (for example Accept-Profile) come first so they can
+        # never replace the credentials set below.
+        request_headers = dict(headers or {})
+        request_headers.update({"apikey": key, "Accept": "application/json"})
         if token:
-            headers["Authorization"] = "Bearer " + token
+            request_headers["Authorization"] = "Bearer " + token
+        else:
+            request_headers.pop("Authorization", None)
         body = None
         if payload is not None:
-            headers["Content-Type"] = "application/json"
+            request_headers["Content-Type"] = "application/json"
             body = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(target, data=body, headers=headers,
-                                     method=method)
+        req = urllib.request.Request(target, data=body,
+                                     headers=request_headers, method=method)
         try:
             with opener.open(req, timeout=20) as response:
                 return Reply(response.status, json.loads(
@@ -242,6 +249,56 @@ def run_audit(call: Callable[..., Reply], token_a: str, token_b: str,
     return passed
 
 
+_DENIED = (401, 403, 404)
+
+
+def run_catalog_audit(call: Callable[..., Reply], token: str) -> str:
+    """Prove the shared catalogue is readable only through the two RPCs.
+
+    Read-only. Needs the catalogue migrations applied to the hosted project
+    (an unmigrated project fails with catalog_manifest_unavailable). Each
+    response is read up to the requester's 2 MiB cap; a larger catalogue
+    snapshot fails as network_or_invalid_response.
+    """
+    _require(bool(token), "catalog_session_required")
+
+    anonymous = call("POST", "/rest/v1/rpc/catalog_manifest", None, None, {})
+    _require(anonymous.status in _DENIED, "catalog_anonymous_manifest_allowed")
+
+    manifest = call("POST", "/rest/v1/rpc/catalog_manifest", token, None, {})
+    _require(manifest.status == 200 and isinstance(manifest.data, dict),
+             "catalog_manifest_unavailable")
+    release = manifest.data.get("release")
+    sha = manifest.data.get("sha256")
+    _require(type(release) is int and release >= 1
+             and isinstance(sha, str) and re.fullmatch(r"[0-9a-f]{64}", sha),
+             "catalog_manifest_malformed")
+
+    snapshot = call("POST", "/rest/v1/rpc/catalog_snapshot", token, None,
+                    {"p_release": release})
+    _require(snapshot.status == 200 and isinstance(snapshot.data, dict)
+             and snapshot.data.get("release") == release,
+             "catalog_snapshot_unavailable")
+
+    stale = call("POST", "/rest/v1/rpc/catalog_snapshot", token, None,
+                 {"p_release": release + 1000})
+    _require(stale.status >= 400, "catalog_stale_release_served")
+
+    for table, code in (("catalog_releases", "catalog_releases_rows_exposed"),
+                        ("catalog_live", "catalog_live_rows_exposed")):
+        rows = call("GET", "/rest/v1/" + table, token, {"select": "release"})
+        _require(rows.status in _DENIED
+                 or (rows.status == 200 and rows.data == []), code)
+
+    # The private schema (publish and rollback functions) must not be exposed
+    # through the API. Asking PostgREST for that profile is a read-only probe.
+    private = call("GET", "/rest/v1/", token, None, None,
+                   {"Accept-Profile": "northstar_private"})
+    _require(not 200 <= private.status < 300, "catalog_private_schema_exposed")
+
+    return "PASS: catalogue read-only access audit (7 checks)"
+
+
 def main() -> int:
     if os.environ.get("NS_P2_08_DISPOSABLE_ACK") != "nonproduction-disposable-only":
         print("FAIL: disposable_nonproduction_ack_required", file=sys.stderr)
@@ -260,6 +317,9 @@ def main() -> int:
             os.environ["NS_P2_08_JWT_B"],
             os.environ["NS_P2_08_WORKOUT_A"],
             os.environ["NS_P2_08_WORKOUT_B"])
+        call = _requester(os.environ["NS_P2_08_URL"],
+                          os.environ["NS_P2_08_PUBLISHABLE_KEY"])
+        catalog_summary = run_catalog_audit(call, os.environ["NS_P2_08_JWT_A"])
     except AuditFailure as error:
         print("FAIL: " + str(error), file=sys.stderr)
         return 1
@@ -267,6 +327,7 @@ def main() -> int:
     print("PASS: " + str(len(checks)) + " signed-JWT read-isolation checks")
     for name in checks:
         print("PASS: " + name)
+    print(catalog_summary)
     return 0
 
 
