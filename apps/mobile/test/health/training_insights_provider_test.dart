@@ -94,10 +94,9 @@ class _FakeHistory implements WorkoutHistoryRepository {
   }
 }
 
-// Training on March 1, 3, 5, 7; nights after are 40 min longer.
-final _training = [
-  for (final x in [1, 3, 5, 7]) _session('s$x', _d(x)),
-];
+// Training every day March 1-13 (all equally hard); nights and mornings
+// after are 40 min longer / 3 bpm higher than the other days.
+final _training = [for (var x = 1; x <= 13; x++) _session('s$x', _d(x))];
 
 HealthOverview _overview({
   String owner = _owner,
@@ -108,8 +107,8 @@ HealthOverview _overview({
 }) {
   final nights = [
     ...?firstNights,
-    for (final x in [2, 4, 6, 8]) _night(_d(x), 460),
-    for (final x in [10, 11, 12, 13, 14]) _night(_d(x), 420),
+    for (var x = 2; x <= 14; x++) _night(_d(x), 460),
+    for (var x = 16; x <= 20; x++) _night(_d(x), 420),
   ];
   return HealthOverview(
     ownerId: owner,
@@ -126,8 +125,8 @@ HealthOverview _overview({
             _heart(
               rhr ??
                   [
-                    for (final x in [2, 4, 6, 8]) (day: _d(x), value: 58.0),
-                    for (final x in [10, 11, 12, 13]) (day: _d(x), value: 55.0),
+                    for (var x = 2; x <= 14; x++) (day: _d(x), value: 58.0),
+                    for (var x = 16; x <= 20; x++) (day: _d(x), value: 55.0),
                   ],
             ),
           ),
@@ -191,7 +190,7 @@ void main() {
     final h = _FakeHistory(_training);
     final r = (await _read(_container(_overview(), h)))!;
     expect(r.sleep!.difference, const Duration(minutes: 40));
-    expect(r.sleep!.trainingNights, 4);
+    expect(r.sleep!.trainingNights, 13);
     expect(r.restingHr, isNotNull);
     expect(r.restingHr!.difference, closeTo(3, 1e-9));
     expect(h.reads, 1);
@@ -204,8 +203,47 @@ void main() {
     final r = (await _read(
       _container(_overview(firstNights: [_night(_d(1), 460)]), h),
     ))!;
-    expect(r.sleep!.trainingNights, 4);
+    expect(r.sleep!.trainingNights, 13);
     expect(r.sleep!.otherNightsCount, 5);
+  });
+
+  test('nights and mornings before the first workout are not rest', () async {
+    // First completed workout is March 10, so the quiet nights of March 3-9
+    // and the low mornings of March 2-9 cannot be told from rest days.
+    final h = _FakeHistory([
+      for (var x = 10; x <= 22; x++) _session('s$x', _d(x)),
+      // Never completed, so it must not move the first-workout date.
+      _session('early', _d(2), status: WorkoutStatus.paused),
+    ]);
+    final nights = [
+      for (final x in [3, 5, 7]) _night(_d(x), 300),
+      for (var x = 11; x <= 23; x++) _night(_d(x), 460),
+      for (var x = 25; x <= 29; x++) _night(_d(x), 420),
+    ];
+    final o = HealthOverview(
+      ownerId: _owner,
+      readAt: _readAt,
+      platform: HealthPlatformKind.healthConnect,
+      readableFrom: null,
+      needsMoreAccess: false,
+      sleep: SectionData(sleepOverview(nights.last).withNights(nights)),
+      heart: SectionData(
+        _heart([
+          for (var x = 2; x <= 9; x++) (day: _d(x), value: 50.0),
+          for (var x = 11; x <= 23; x++) (day: _d(x), value: 58.0),
+          for (var x = 25; x <= 29; x++) (day: _d(x), value: 55.0),
+        ]),
+      ),
+      activity: const SectionGap(MetricGap.noData),
+      body: const SectionGap(MetricGap.noData),
+      readiness: const SectionGap(MetricGap.noData),
+    );
+    final r = (await _read(_container(o, h)))!;
+    expect(r.sleep!.trainingNights, 13);
+    expect(r.sleep!.otherNightsCount, 5);
+    expect(r.restingHr!.hardDays, 13);
+    expect(r.restingHr!.otherDaysCount, 5);
+    expect(r.restingHr!.difference, closeTo(3, 1e-9));
   });
 
   test('overview for another owner is null', () async {
@@ -258,18 +296,16 @@ void main() {
   test('window is readAt-30 through readAt, inclusive', () async {
     // readAt is Mar 31: Mar 1 (-30) is in, Feb 28 (-31) and Apr 1 are out.
     // Each out-of-window session has a following night, so counting one
-    // would raise trainingNights above 3.
+    // would raise trainingNights above 5.
     final h = _FakeHistory([
       _session('before', _d(28, 2)),
-      _session('edge', _d(1)),
-      _session('s3', _d(3)),
-      _session('s5', _d(5)),
+      for (final x in [1, 3, 5, 7, 9]) _session('s$x', _d(x)),
       _session('after', DateTime(2026, 4, 1)),
     ]);
     final nights = [
-      for (final x in [1, 2, 4, 6]) _night(_d(x), 480),
+      for (final x in [1, 2, 4, 6, 8, 10]) _night(_d(x), 480),
       _night(DateTime(2026, 4, 2), 480),
-      for (final x in [10, 11, 12]) _night(_d(x), 400),
+      for (final x in [12, 13, 14, 15]) _night(_d(x), 400),
     ];
     final o = HealthOverview(
       ownerId: _owner,
@@ -284,10 +320,10 @@ void main() {
       readiness: const SectionGap(MetricGap.noData),
     );
     final r = (await _read(_container(o, h)))!;
-    // Nights after Mar 1, 3, 5 only; the Mar 1 night follows Feb 28, outside
-    // the window, so it is dropped; the Apr 2 night counts as other.
-    expect(r.sleep!.trainingNights, 3);
-    expect(r.sleep!.otherNightsCount, 4);
+    // Nights after Mar 1, 3, 5, 7, 9 only; the Mar 1 night follows Feb 28,
+    // outside the window, so it is dropped; the Apr 2 night counts as other.
+    expect(r.sleep!.trainingNights, 5);
+    expect(r.sleep!.otherNightsCount, 5);
   });
 
   test('unfinished and discarded sessions are ignored', () async {
@@ -312,25 +348,25 @@ void main() {
   });
 
   test('sets from sessions on the same day are summed', () async {
-    // Days 1-3 hold two 2-set sessions (4 sets each day); days 4-9 hold one
-    // 3-set session. Summed, only days 1-3 are hard; unsummed (2 vs 3 sets)
-    // days 4-9 would be.
+    // Days 1-5 hold two 2-set sessions (4 sets each day); days 6-13 hold one
+    // 3-set session. Summed, only days 1-5 are hard; unsummed (2 vs 3 sets)
+    // days 6-13 would be.
     final h = _FakeHistory([
-      for (final x in [1, 2, 3]) ...[
+      for (final x in [1, 2, 3, 4, 5]) ...[
         _session('a$x', _d(x), working: 2),
         _session('b$x', _d(x), working: 2),
       ],
-      for (final x in [4, 5, 6, 7, 8, 9]) _session('s$x', _d(x), working: 3),
+      for (var x = 6; x <= 13; x++) _session('s$x', _d(x), working: 3),
     ]);
     final o = _overview(
       rhr: [
-        for (final x in [2, 3, 4]) (day: _d(x), value: 58.0),
-        for (final x in [5, 6, 7, 8, 9, 10]) (day: _d(x), value: 55.0),
+        for (final x in [2, 3, 4, 5, 6]) (day: _d(x), value: 58.0),
+        for (var x = 7; x <= 14; x++) (day: _d(x), value: 55.0),
       ],
     );
     final r = (await _read(_container(o, h)))!;
-    expect(r.restingHr!.hardDays, 3);
-    expect(r.restingHr!.otherDaysCount, 6);
+    expect(r.restingHr!.hardDays, 5);
+    expect(r.restingHr!.otherDaysCount, 8);
     expect(r.restingHr!.difference, closeTo(3, 1e-9));
   });
 }

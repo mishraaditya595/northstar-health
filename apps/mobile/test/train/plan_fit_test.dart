@@ -121,6 +121,15 @@ void main() {
       },
     );
 
+    test('group names are normalised so case variants merge', () {
+      final r = planRecoveryOf(_plan('p', {'a': 2, 'b': 2}), {
+        'a': _ex('a', 'GLUTES'),
+        'b': _ex('b', ' glutes '),
+      }, const MuscleRecovery({Muscle.glutes: 0.5}))!;
+      expect(r.groups, {'Glutes'});
+      expect(r.recovering, {'Glutes'});
+    });
+
     test('unmapped-only, empty and missing exercises give null', () {
       expect(
         planRecoveryOf(_plan('p', {'yoga': 3}), exercises, recovery),

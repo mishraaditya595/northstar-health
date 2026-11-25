@@ -3,6 +3,7 @@ import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
+import 'package:beyondrep/features/progress/muscle_recovery.dart';
 import 'package:beyondrep/features/progress/workout_history_state.dart';
 import 'package:beyondrep/features/train/active_workout_state.dart';
 import 'package:beyondrep/features/train/train_page.dart';
@@ -131,6 +132,7 @@ final _exercises = [
   _ex('squat', 'Legs'),
   _ex('plank', 'Core'),
   _ex('stretch', 'Mobility'),
+  _ex('row', 'Back'),
 ];
 
 final _push = _plan('push', 'Push day', 'bench', 8);
@@ -144,6 +146,7 @@ Future<void> _pump(
   WidgetTester tester, {
   required List<WorkoutPlanRecord> plans,
   Object? history, // a snapshot, or an error to throw
+  MuscleRecovery? recovery,
   FakeHealthOverviewController? health,
   double textScale = 1,
   Brightness brightness = Brightness.light,
@@ -180,6 +183,8 @@ Future<void> _pump(
         activeWorkoutProvider.overrideWith(
           (ref) => const AsyncData<ActiveWorkoutView?>(null),
         ),
+        if (recovery != null)
+          muscleRecoveryProvider.overrideWithValue(recovery),
       ],
       child: MaterialApp.router(
         theme: BeyondRepTheme.build(brightness),
@@ -194,6 +199,10 @@ Future<void> _pump(
   );
   await tester.pumpAndSettle();
 }
+
+// Plan fit needs some history; the recovery itself is overridden.
+WorkoutHistorySnapshot _anyHistory() =>
+    WorkoutHistorySnapshot(sessions: [_done('Chest', 100)]);
 
 WorkoutHistorySnapshot _chestDone() =>
     WorkoutHistorySnapshot(sessions: [_done('Chest', 6)]);
@@ -263,6 +272,64 @@ void main() {
     expect(find.text('Move squat\nLegs recovering'), findsOneWidget);
   });
 
+  testWidgets('four recovering groups read "A, B, C and more"', (tester) async {
+    final all = WorkoutPlanRecord(
+      uuid: 'all',
+      name: 'Everything',
+      description: '',
+      updatedAtMs: 0,
+      exercises: [
+        for (final (i, e) in ['bench', 'squat', 'plank', 'row'].indexed)
+          PlanExerciseRecord(
+            uuid: 'all-$i',
+            exerciseUuid: e,
+            position: i,
+            targetSets: 3,
+          ),
+      ],
+    );
+    await _pump(
+      tester,
+      plans: [all],
+      history: _anyHistory(),
+      recovery: const MuscleRecovery({
+        Muscle.chest: 0.5,
+        Muscle.quads: 0.5,
+        Muscle.abs: 0.5,
+        Muscle.lats: 0.5,
+      }),
+    );
+    expect(
+      find.textContaining('Back, Chest, Core and more recovering'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a group at 0.09 reads Recovered, at 0.11 recovering', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      plans: [_legs],
+      history: _anyHistory(),
+      recovery: const MuscleRecovery(
+        {Muscle.quads: 0.09, Muscle.hamstrings: 0.09},
+        groups: {'Legs': 0.09},
+      ),
+    );
+    expect(find.text('Move squat\nRecovered'), findsOneWidget);
+    await _pump(
+      tester,
+      plans: [_legs],
+      history: _anyHistory(),
+      recovery: const MuscleRecovery(
+        {Muscle.quads: 0.11},
+        groups: {'Legs': 0.11},
+      ),
+    );
+    expect(find.text('Move squat\nLegs recovering'), findsOneWidget);
+  });
+
   testWidgets('yesterday\'s low readiness does not pick the lightest plan', (
     tester,
   ) async {
@@ -287,7 +354,7 @@ void main() {
   ) async {
     await _pump(
       tester,
-      plans: [_push, _legs],
+      plans: [_legs],
       history: const WorkoutHistorySnapshot(sessions: []),
     );
     expect(find.text('Better fit today'), findsNothing);

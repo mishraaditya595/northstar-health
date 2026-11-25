@@ -26,95 +26,97 @@ DayValue rhr(DateTime day, double v) => (day: day, value: v);
 
 void main() {
   group('sleepAfterTraining', () {
-    // Training on days 1,3,5,7 -> nights 2,4,6,8 follow training.
+    // Training on days 1,3,5,7,9 -> nights 2,4,6,8,10 follow training.
     final training = [
-      for (final x in [1, 3, 5, 7]) train(d(x)),
+      for (final x in [1, 3, 5, 7, 9]) train(d(x)),
     ];
+    final others = [12, 13, 14, 15, 16];
 
     test('+40 min after training', () {
       final r = sleepAfterTraining([
-        for (final x in [2, 4, 6, 8]) night(d(x), 460),
-        for (final x in [10, 11, 12, 13, 14]) night(d(x), 420),
+        for (final x in [2, 4, 6, 8, 10]) night(d(x), 460),
+        for (final x in others) night(d(x), 420),
       ], training)!;
       expect(r.difference, const Duration(minutes: 40));
-      expect(r.trainingNights, 4);
+      expect(r.trainingNights, 5);
       expect(r.otherNightsCount, 5);
       expect(r.afterTraining, const Duration(minutes: 460));
     });
 
-    test('fewer than 3 after-training nights is null', () {
+    test('fewer than 5 after-training nights is null', () {
       final nights = [
-        night(d(2), 480),
-        night(d(4), 480),
-        for (final x in [10, 11, 12, 13]) night(d(x), 420),
+        for (final x in [2, 4, 6, 8]) night(d(x), 480),
+        for (final x in others) night(d(x), 420),
       ];
       expect(sleepAfterTraining(nights, training), isNull);
     });
 
-    test('15 minute difference is null', () {
+    test('fewer than 5 other nights is null', () {
       final nights = [
-        for (final x in [2, 4, 6, 8]) night(d(x), 435),
-        for (final x in [10, 11, 12]) night(d(x), 420),
+        for (final x in [2, 4, 6, 8, 10]) night(d(x), 480),
+        for (final x in others.take(4)) night(d(x), 420),
       ];
       expect(sleepAfterTraining(nights, training), isNull);
     });
 
-    test('exactly 20 minute difference is kept', () {
+    test('25 minute difference is null', () {
       final nights = [
-        for (final x in [2, 4, 6, 8]) night(d(x), 440),
-        for (final x in [10, 11, 12]) night(d(x), 420),
+        for (final x in [2, 4, 6, 8, 10]) night(d(x), 445),
+        for (final x in others) night(d(x), 420),
+      ];
+      expect(sleepAfterTraining(nights, training), isNull);
+    });
+
+    test('exactly 30 minute difference is kept', () {
+      final nights = [
+        for (final x in [2, 4, 6, 8, 10]) night(d(x), 450),
+        for (final x in others) night(d(x), 420),
       ];
       expect(sleepAfterTraining(nights, training), isNotNull);
     });
 
     test('night after a no-workout day counts as other', () {
       final nights = [
-        for (final x in [2, 4, 6]) night(d(x), 480),
-        for (final x in [3, 5, 9]) night(d(x), 400),
+        for (final x in [2, 4, 6, 8, 10]) night(d(x), 480),
+        for (final x in [3, 5, 12, 13, 14]) night(d(x), 400),
       ];
       final r = sleepAfterTraining(nights, training)!;
-      expect(r.trainingNights, 3);
-      expect(r.otherNightsCount, 3);
+      expect(r.trainingNights, 5);
+      expect(r.otherNightsCount, 5);
       expect(r.difference, const Duration(minutes: 80));
     });
 
     test('pairs correctly across a DST change', () {
       // US spring forward 2026-03-08.
-      final train7 = [train(d(7)), train(d(8)), train(d(9))];
+      final train7 = [
+        for (final x in [7, 8, 9, 10, 11]) train(d(x)),
+      ];
       final nights = [
-        night(d(8), 480),
-        night(d(9), 480),
-        night(d(10), 480),
-        night(d(12), 400),
-        night(d(13), 400),
-        night(d(14), 400),
+        for (final x in [8, 9, 10, 11, 12]) night(d(x), 480),
+        for (final x in [14, 15, 16, 17, 18]) night(d(x), 400),
       ];
       final r = sleepAfterTraining(nights, train7)!;
-      expect(r.trainingNights, 3);
-      expect(r.otherNightsCount, 3);
+      expect(r.trainingNights, 5);
+      expect(r.otherNightsCount, 5);
     });
   });
 
   group('restingHrAfterHardSessions', () {
-    // 9 training days 1..9; sets 20,19,18 on days 1,2,3 (hard), rest lower.
+    // 13 training days 1..13; sets 20..16 on days 1..5 (hard), rest lower.
     final training = [
-      train(d(1), 20),
-      train(d(2), 19),
-      train(d(3), 18),
-      for (final x in [4, 5, 6, 7, 8, 9]) train(d(x), 10),
+      for (final x in [1, 2, 3, 4, 5]) train(d(x), 21 - x),
+      for (final x in [6, 7, 8, 9, 10, 11, 12, 13]) train(d(x), 10),
     ];
     List<DayValue> series({double hard = 58, double other = 55}) => [
-      rhr(d(2), hard),
-      rhr(d(3), hard),
-      rhr(d(4), hard),
-      for (final x in [5, 6, 7, 8, 9, 10]) rhr(d(x), other),
+      for (final x in [2, 3, 4, 5, 6]) rhr(d(x), hard),
+      for (final x in [7, 8, 9, 10, 11, 12, 13, 14]) rhr(d(x), other),
     ];
 
-    test('+3 bpm after hard days', () {
-      final r = restingHrAfterHardSessions(series(), training)!;
-      expect(r.hardDays, 3);
-      expect(r.otherDaysCount, 6);
-      expect(r.difference, closeTo(3, 1e-9));
+    test('+4 bpm after hard days', () {
+      final r = restingHrAfterHardSessions(series(hard: 59), training)!;
+      expect(r.hardDays, 5);
+      expect(r.otherDaysCount, 8);
+      expect(r.difference, closeTo(4, 1e-9));
     });
 
     test('fewer than 3 training days is null', () {
@@ -124,8 +126,13 @@ void main() {
       );
     });
 
-    test('1.5 bpm is null', () {
-      expect(restingHrAfterHardSessions(series(hard: 56.5), training), isNull);
+    test('2.5 bpm is null', () {
+      expect(restingHrAfterHardSessions(series(hard: 57.5), training), isNull);
+    });
+
+    test('fewer than 5 other days is null', () {
+      final s = series()..removeRange(9, 13);
+      expect(restingHrAfterHardSessions(s, training), isNull);
     });
 
     test('hard day without next-morning value is dropped', () {
@@ -133,41 +140,37 @@ void main() {
       expect(restingHrAfterHardSessions(s, training), isNull);
     });
 
-    test('exactly 2.0 bpm is kept', () {
-      expect(restingHrAfterHardSessions(series(hard: 57), training), isNotNull);
+    test('exactly 3.0 bpm is kept', () {
+      expect(restingHrAfterHardSessions(series(), training), isNotNull);
     });
 
-    test('3 hard mornings remain when a fourth has no value', () {
-      final four = [
-        train(d(1), 20),
-        train(d(2), 20),
-        train(d(3), 20),
-        train(d(4), 20),
-        for (final x in [5, 6, 7, 8]) train(d(x), 5),
+    test('5 hard mornings remain when a sixth has no value', () {
+      final six = [
+        for (final x in [1, 2, 3, 4, 5, 6]) train(d(x), 20),
+        for (final x in [7, 8, 9, 10, 11, 12, 13, 14]) train(d(x), 5),
       ];
+      // n=14 -> k=5, threshold 20, six hard days; the morning of day 7 has
+      // no value.
       final s = [
-        for (final x in [2, 3, 4]) rhr(d(x), 60),
-        for (final x in [6, 7, 8, 9]) rhr(d(x), 55),
+        for (final x in [2, 3, 4, 5, 6]) rhr(d(x), 60),
+        for (final x in [8, 9, 10, 11, 12, 13]) rhr(d(x), 55),
       ];
-      final r = restingHrAfterHardSessions(s, four)!;
-      expect(r.hardDays, 3);
+      final r = restingHrAfterHardSessions(s, six)!;
+      expect(r.hardDays, 5);
     });
 
     test('ties at the cut are included', () {
       final tied = [
-        train(d(1), 20),
-        train(d(2), 20),
-        train(d(3), 20),
-        train(d(4), 20),
-        for (final x in [5, 6, 7, 8]) train(d(x), 5),
+        for (final x in [1, 2, 3, 4, 5, 6]) train(d(x), 20),
+        for (final x in [7, 8, 9, 10, 11, 12, 13, 14]) train(d(x), 5),
       ];
-      // n=8 -> k=3, threshold 20, four hard days.
+      // n=14 -> k=5, threshold 20, six hard days.
       final s = [
-        for (final x in [2, 3, 4, 5]) rhr(d(x), 60),
-        for (final x in [6, 7, 8, 9]) rhr(d(x), 55),
+        for (final x in [2, 3, 4, 5, 6, 7]) rhr(d(x), 60),
+        for (final x in [8, 9, 10, 11, 12, 13, 14, 15]) rhr(d(x), 55),
       ];
       final r = restingHrAfterHardSessions(s, tied)!;
-      expect(r.hardDays, 4);
+      expect(r.hardDays, 6);
       expect(r.difference, closeTo(5, 1e-9));
     });
   });

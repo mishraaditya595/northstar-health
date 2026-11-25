@@ -39,7 +39,7 @@ class TrainingInsightLine extends StatelessWidget {
       icon: Icons.favorite_border,
       sentence:
           'Resting HR was ${insight.difference.abs().round()} bpm '
-          '${higher ? 'higher' : 'lower'} the morning after your hardest '
+          '${higher ? 'higher' : 'lower'} the morning after your biggest '
           'sessions',
       caption:
           '${insight.hardDays} mornings vs ${insight.otherDaysCount} other '

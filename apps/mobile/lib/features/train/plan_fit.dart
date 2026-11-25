@@ -1,9 +1,6 @@
 import '../progress/muscle_recovery.dart';
 import '../workouts/domain/workout_library_models.dart';
 
-/// A muscle group at or above this load still counts as recovering.
-const recoveredBelow = 0.1;
-
 /// Smallest `worstLoad` lead a plan needs over every other plan to be named.
 const _clearLead = 0.2;
 
@@ -53,7 +50,7 @@ PlanRecovery? planRecoveryOf(
     final muscles = MuscleRecovery.musclesOf(trimmed);
     if (muscles.isEmpty) continue;
     mapped = true;
-    final name = '${trimmed[0].toUpperCase()}${trimmed.substring(1)}';
+    final name = groupDisplayName(trimmed);
     groups.add(name);
     var groupLoad = 0.0;
     for (final muscle in muscles) {

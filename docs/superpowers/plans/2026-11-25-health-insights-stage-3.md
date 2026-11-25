@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Health values are joined with workout data **only in memory**; never written to workouts, ObjectBox, outbox, sync, export, logs or analytics.
-- Never fabricate: an insight shows only when it passes its minimum-sample rule (≥ 3 matching days with data on each side) **and** its minimum effect size; otherwise nothing is shown. Missing is never shown as zero.
+- Never fabricate: an insight shows only when it passes its minimum-sample rule (≥ 5 matching days with data on each side) **and** its minimum effect size; otherwise nothing is shown. Missing is never shown as zero.
 - Copy is a suggestion or an observation, never an instruction or a medical statement (no "must", "should rest", "injury", "overtraining").
 - Plans are never changed automatically. Never suggest a plan that hits recovering muscles; if none qualifies, suggest nothing.
 - Recovered = muscle load `< 0.1` in the upgraded `MuscleRecovery`; recovering = `≥ 0.1` (lowered from 0.25 in the final review so a light session still reads recovering).
@@ -47,7 +47,7 @@
 
 Model (constants pinned by tests; builder's choice per spec "Left to the builder"):
 - Per completed `working` set: `stimulus = repsFactor × effortFactor`.
-  - `repsFactor`: reps null → 1.0; else `clamp(reps / 10, 0.5, 1.5)`.
+  - `repsFactor`: reps null → 1.0; reps ≥ 5 → 1.0; reps 0-4 → 0.7 (heavy low-rep work still counts). A map shade or "recently trained" listing needs a group load of at least `recoveredBelow` (0.1, defined in `muscle_recovery.dart`, shared with Train); group display names share `groupDisplayName` (trim, lower-case, capitalise the first letter).
   - `effortFactor`: RPE null → 0.8; RPE ≥ 8 → 1.0; 6 ≤ RPE < 8 → 0.75; RPE < 6 → 0.5.
 - Per session and muscle group: `fresh = min(1, Σ stimulus / 10)` (about ten hard sets of ten saturate a group).
 - Fade: linear from `fresh` at `completedAtUtc` to 0 at the group's window: **72 h** for chest, back, legs; **48 h** for shoulders, arms, core and custom groups named after a small drawn muscle (calves, biceps, triceps, forearms, abs, obliques); other custom groups 72 h.
@@ -57,7 +57,7 @@ Model (constants pinned by tests; builder's choice per spec "Left to the builder
 - [ ] **Step 1: Failing tests** (synthetic sessions, fixed `nowUtc`):
   - 10 sets × 10 reps @ RPE 8 legs, finished now → quads/hamstrings/glutes/calves load 1.0; after 36 h → 0.5; after 72 h → 0 (absent or 0).
   - Same volume for arms: after 24 h → 0.5; after 48 h → 0.
-  - 4 sets × 10 reps, RPE null → fresh 0.32; 4 sets × 5 reps @ RPE 5 → fresh 0.1.
+  - 4 sets × 10 reps, RPE null → fresh 0.32; 4 sets × 5 reps @ RPE 5 → fresh 0.2; 5 × 5 @ RPE 9 legs → 0.5; 3 × 3 @ RPE 9 → 0.21 (both still recovering at 24 h).
   - Two leg sessions 24 h apart, each fresh 0.6 → sum capped at 1.0 at the second finish.
   - Warm-up, skipped and in-progress-session sets ignored; non-completed sessions ignored (as today).
   - `musclesOf('Legs')` → quads, hamstrings, glutes, calves; `musclesOf('Glutes')` → glutes; `musclesOf('Grip')` → empty.
@@ -123,12 +123,12 @@ UI (kit components only; follow the existing plan list cards):
 - Produces (pure Dart):
   - `typedef TrainingDay = ({DateTime day, int workingSets});` — local date of a finished workout and its completed working sets (summed if several that day).
   - `class SleepAfterTraining { final Duration afterTraining, otherNights; final int trainingNights, otherNightsCount; Duration get difference; }`
-  - `SleepAfterTraining? sleepAfterTraining(List<SleepNight> nights, List<TrainingDay> training)`: a night is "after training" when a training day equals the day before `night.date`. Mean `asleep` per side. Needs ≥ 3 nights each side and `|difference| ≥ 20 min`; else null.
+  - `SleepAfterTraining? sleepAfterTraining(List<SleepNight> nights, List<TrainingDay> training)`: a night is "after training" when a training day equals the day before `night.date`. Mean `asleep` per side. Needs ≥ 5 nights each side and `|difference| ≥ 30 min`; else null.
   - `class RestingHrAfterHard { final double afterHard, otherDays; final int hardDays, otherDaysCount; double get difference; }`
-  - `RestingHrAfterHard? restingHrAfterHardSessions(List<DayValue> restingHr, List<TrainingDay> training)`: hard days = training days in the top third by `workingSets` (ceil of n/3, at least 1, ties at the cut included), needs ≥ 3 training days; the morning after = resting HR on the next local date. Compare mean RHR the day after hard days vs all other days with RHR. Needs ≥ 3 values each side and `|difference| ≥ 2 bpm`; else null.
+  - `RestingHrAfterHard? restingHrAfterHardSessions(List<DayValue> restingHr, List<TrainingDay> training)`: hard days = training days in the top third by `workingSets` (ceil of n/3, at least 1, ties at the cut included), needs ≥ 3 training days (and so, with the 5-morning minimum, in practice about 13); the morning after = resting HR on the next local date. Compare mean RHR the day after hard days vs all other days with RHR. Needs ≥ 5 values each side and `|difference| ≥ 3 bpm`; else null.
 - Day arithmetic uses calendar dates (`DateTime(y, m, d + 1)`), DST-safe.
 
-- [ ] **Step 1: Failing tests:** sleep: 4 nights after training at 7h40 vs 5 others at 7h00 → +40 min; only 2 after-training nights → null; 15-min difference → null; night whose previous day had no workout counts as other; DST week still pairs correctly. Resting HR: 9 training days, top 3 by sets, 3 next-morning RHR at 58 vs 6 others at 55 → +3; 2 training days → null; 1.5 bpm → null; missing next-morning RHR → that hard day dropped (and null if fewer than 3 remain); ties at the cut included.
+- [ ] **Step 1: Failing tests:** sleep: 5 nights after training at 7h40 vs 5 others at 7h00 → +40 min; only 4 after-training nights → null; 25-min difference → null (exactly 30 kept); night whose previous day had no workout counts as other; DST week still pairs correctly. Resting HR: 13 training days, top 5 by sets, 5 next-morning RHR at 58 vs 8 others at 55 → +3 (exactly 3.0 kept); 2 training days → null; 2.5 bpm → null; missing next-morning RHR → that hard day dropped (and null if fewer than 5 remain); ties at the cut included.
 - [ ] Steps 2-4, commit `feat(health): training insights domain`.
 
 ### Task 5: Training insights provider
@@ -139,7 +139,7 @@ UI (kit components only; follow the existing plan list cards):
 
 **Interfaces:**
 - Consumes: Task 4; `healthOverviewProvider` (sleep `nights`, heart `restingHrDaily`, `ownerId`), `healthOwnerIdProvider`, `completedWorkoutHistoryProvider` (`WorkoutHistorySnapshot.sessions`).
-- Produces: `class TrainingInsights { final SleepAfterTraining? sleep; final RestingHrAfterHard? restingHr; }` and `final trainingInsightsProvider = Provider.autoDispose<TrainingInsights?>` — null unless the overview is loaded for the current owner and the history is loaded; training days built from sessions with `status == completed` and `completedAtUtc` inside the overview's 30-day window, local date of `completedAtUtc.toLocal()`, counting `completed` + `working` sets.
+- Produces: `class TrainingInsights { final SleepAfterTraining? sleep; final RestingHrAfterHard? restingHr; }` and `final trainingInsightsProvider = Provider.autoDispose<TrainingInsights?>` — null unless the overview is loaded for the current owner and the history is loaded; training days built from sessions with `status == completed` and `completedAtUtc` inside the overview's 30-day window, local date of `completedAtUtc.toLocal()`, counting `completed` + `working` sets. The comparison starts at the later of the window start and the local date of the first completed workout in the whole history; nights and mornings whose previous day is before that start are left out.
 
 - [ ] **Step 1: Failing tests:** both insights computed from a synthetic overview + history; overview owner ≠ current owner → null; history loading/error → null; overview gap sections → that insight null; sessions outside the window ignored; in-progress/discarded sessions ignored; nothing written (fake history repository records only reads).
 - [ ] Steps 2-4, commit `feat(health): training insights from overview and history`.
@@ -155,7 +155,7 @@ UI (kit components only; follow the existing plan list cards):
 - Consumes: Task 5.
 - Produces: `TrainingInsightLine` (kit insight-card style, see `docs/DESIGN_SYSTEM.md` catalog) with copy:
   - Sleep: `"You slept <d> more on nights after training"` / `"<d> less"` (`formatDuration`), caption `"<n> nights after training vs <m> other nights, last 30 days"`.
-  - Resting HR: `"Resting HR was <x> bpm higher the morning after your hardest sessions"` / `"lower"` (rounded to whole bpm), caption `"<n> mornings vs <m> other days, last 30 days"`.
+  - Resting HR: `"Resting HR was <x> bpm higher the morning after your biggest sessions"` / `"lower"` (rounded to whole bpm), caption `"<n> mornings vs <m> other days, last 30 days"`.
 - Health tab: one "From your training" line showing the sleep insight if present, else the resting-HR insight; nothing when both are null. Sleep detail: sleep insight only. Heart detail: resting-HR insight only.
 
 - [ ] **Step 1: Failing tests:** each copy variant (more/less, higher/lower); Health tab picks sleep first then RHR; nothing rendered when null; account switch (provider override flips to null) → line gone; text scale 2.0 at 390 px and dark → no exception; copy contains no banned words.

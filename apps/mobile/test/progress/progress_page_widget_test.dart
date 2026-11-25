@@ -201,9 +201,11 @@ void main() {
     expect(find.text('Total sessions'), findsOneWidget);
     expect(find.text('Week streak'), findsOneWidget);
     expect(find.text('Muscle Recovery'), findsOneWidget);
-    // Finished about 50 hours before the clock: the body map shades chest.
+    // One set finished about 50 hours before the clock is already below the
+    // recovered threshold, so the body map lists no group.
     expect(find.text('Sample data'), findsNothing);
-    expect(find.text('Chest'), findsOneWidget);
+    expect(find.text('Chest'), findsNothing);
+    expect(find.text('No muscle group trained recently'), findsOneWidget);
     expect(find.text('Training summary'), findsOneWidget);
     expect(find.text('Workout wk'), findsOneWidget);
     expect(find.text('00:30:00'), findsOneWidget);

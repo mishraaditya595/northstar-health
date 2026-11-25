@@ -26,7 +26,7 @@ SleepAfterTraining _sleep(int minutes) => SleepAfterTraining(
 RestingHrAfterHard _rhr(double diff) => RestingHrAfterHard(
   afterHard: 55 + diff,
   otherDays: 55,
-  hardDays: 4,
+  hardDays: 5,
   otherDaysCount: 22,
 );
 
@@ -34,8 +34,8 @@ const _sleepMore = 'You slept 41m more on nights after training';
 const _sleepCaption =
     '9 nights after training vs 17 other nights, last 30 days';
 const _rhrHigher =
-    'Resting HR was 3 bpm higher the morning after your hardest sessions';
-const _rhrCaption = '4 mornings vs 22 other days, last 30 days';
+    'Resting HR was 3 bpm higher the morning after your biggest sessions';
+const _rhrCaption = '5 mornings vs 22 other days, last 30 days';
 
 class _Insights extends Notifier<TrainingInsights?> {
   _Insights(this.initial);
@@ -140,7 +140,7 @@ void main() {
       await show(tester, TrainingInsightLine.restingHr(_rhr(-2.6)));
       expect(
         find.textContaining(
-          'Resting HR was 3 bpm lower the morning after your hardest sessions',
+          'Resting HR was 3 bpm lower the morning after your biggest sessions',
           findRichText: true,
         ),
         findsOneWidget,

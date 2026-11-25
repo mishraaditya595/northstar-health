@@ -213,4 +213,27 @@ void main() {
     );
     expect(find.text('No muscle group trained recently'), findsOneWidget);
   });
+
+  testWidgets('a group below the recovered threshold is not listed', (
+    tester,
+  ) async {
+    Future<void> pump(double load) => tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          muscleRecoveryProvider.overrideWithValue(
+            MuscleRecovery({Muscle.chest: load}, groups: {'Chest': load}),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: MuscleRecoveryCard())),
+      ),
+    );
+    await pump(0.09);
+    expect(find.text('No muscle group trained recently'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel(RegExp('Recently trained: none')),
+      findsOneWidget,
+    );
+    await pump(0.11);
+    expect(find.text('Chest'), findsOneWidget);
+  });
 }

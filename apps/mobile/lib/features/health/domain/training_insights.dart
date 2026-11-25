@@ -5,9 +5,10 @@ import 'sleep_nights.dart';
 /// several that day).
 typedef TrainingDay = ({DateTime day, int workingSets});
 
-const _minSide = 3;
-const _minSleepDifference = Duration(minutes: 20);
-const _minRestingHrDifference = 2.0;
+const _minSide = 5;
+const _minTrainingDays = 3;
+const _minSleepDifference = Duration(minutes: 30);
+const _minRestingHrDifference = 3.0;
 
 typedef _Ymd = (int, int, int);
 
@@ -73,7 +74,7 @@ RestingHrAfterHard? restingHrAfterHardSessions(
   List<TrainingDay> training,
 ) {
   final n = training.length;
-  if (n < _minSide) return null;
+  if (n < _minTrainingDays) return null;
   final sorted = [...training]
     ..sort((a, b) => b.workingSets.compareTo(a.workingSets));
   final k = ((n + 2) ~/ 3).clamp(1, n);

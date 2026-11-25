@@ -21,6 +21,18 @@ enum Muscle {
   hamstrings,
 }
 
+/// A muscle group below this load counts as recovered: not shaded or listed
+/// on Progress, not recovering on Train.
+const recoveredBelow = 0.1;
+
+/// Display name of a logged muscle group: trimmed, lower-cased, first letter
+/// capitalised, so "UPPER chest" and "Upper chest" are one group. Empty stays
+/// empty.
+String groupDisplayName(String group) {
+  final key = group.trim().toLowerCase();
+  return key.isEmpty ? key : key[0].toUpperCase() + key.substring(1);
+}
+
 /// How recently each muscle was trained, 0 (recovered / not trained) to 1
 /// (just trained). Missing means no data, drawn neutral.
 class MuscleRecovery {
@@ -77,12 +89,12 @@ class MuscleRecovery {
         ];
   }
 
-  /// Per completed working set: reps (null counts as 10) over 10, clamped
-  /// to 0.5..1.5, times an effort weight (RPE 8+ 1.0, 6-8 0.75, below 6
-  /// 0.5, unrated 0.8).
+  /// Per completed working set: a reps weight (unknown or 5 and up 1.0,
+  /// 0 to 4 reps 0.7, so heavy low-rep work still counts) times an effort
+  /// weight (RPE 8+ 1.0, 6-8 0.75, below 6 0.5, unrated 0.8).
   static double _stimulus(WorkoutSetRecord set) {
     final reps = set.reps;
-    final repsFactor = reps == null ? 1.0 : (reps / 10).clamp(0.5, 1.5);
+    final repsFactor = reps == null || reps >= 5 ? 1.0 : 0.7;
     final rpe = set.rpe;
     final effort = rpe == null
         ? 0.8
@@ -134,7 +146,7 @@ class MuscleRecovery {
         final value = (entry.value / 10).clamp(0.0, 1.0) * fade;
         // Named even when no drawn muscle matches, so the card never says
         // nothing was trained after a workout of custom groups.
-        final name = group[0].toUpperCase() + group.substring(1);
+        final name = groupDisplayName(group);
         groups[name] = ((groups[name] ?? 0) + value).clamp(0.0, 1.0);
       }
     }

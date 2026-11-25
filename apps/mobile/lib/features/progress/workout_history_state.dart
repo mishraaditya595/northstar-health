@@ -10,10 +10,10 @@ final completedWorkoutHistoryProvider = FutureProvider<WorkoutHistorySnapshot>(
   (ref) => ref.watch(workoutHistoryRepositoryProvider).readCompletedAsync(),
 );
 
-/// Injectable clock sampled once per Progress visit, not cached with the
-/// completed history. Re-sampled on app resume so every page that reads it
-/// (Progress, Train recovery) stays current after days in background.
-/// Disposes after the last listener leaves.
+/// Injectable clock used by Progress and Train recovery, not cached with the
+/// completed history. Sampled when first read and re-sampled on app resume,
+/// so those pages stay current after days in background; there is no periodic
+/// timer. Disposes after the last listener leaves.
 final progressNowProvider = Provider.autoDispose<DateTime>((ref) {
   final lifecycle = AppLifecycleListener(onResume: ref.invalidateSelf);
   ref.onDispose(lifecycle.dispose);

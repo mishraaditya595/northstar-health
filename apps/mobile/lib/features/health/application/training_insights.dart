@@ -29,7 +29,23 @@ final trainingInsightsProvider = Provider.autoDispose<TrainingInsights?>((ref) {
   }
 
   final end = dayOf(overview.readAt);
-  final start = DateTime(end.year, end.month, end.day - _windowDays);
+  final windowStart = DateTime(end.year, end.month, end.day - _windowDays);
+  // Nights and mornings before the first logged workout look like rest days
+  // but only mean the app was not used yet, so the comparison starts there.
+  DateTime? firstWorkout;
+  for (final s in history.sessions) {
+    final at = s.completedAtUtc;
+    if (s.status != WorkoutStatus.completed || at == null) continue;
+    final day = dayOf(at.toLocal());
+    if (firstWorkout == null || day.isBefore(firstWorkout)) firstWorkout = day;
+  }
+  final start = firstWorkout != null && firstWorkout.isAfter(windowStart)
+      ? firstWorkout
+      : windowStart;
+  // A night or morning whose previous day is before [start] cannot be told
+  // apart from a rest day, so it is left out.
+  bool known(DateTime day) =>
+      !DateTime(day.year, day.month, day.day - 1).isBefore(start);
   final perDay = <DateTime, int>{};
   for (final s in history.sessions) {
     final at = s.completedAtUtc;
@@ -52,24 +68,17 @@ final trainingInsightsProvider = Provider.autoDispose<TrainingInsights?>((ref) {
 
   return TrainingInsights(
     sleep: switch (overview.sleep) {
-      // A night whose previous day is before the window cannot be told apart
-      // from a rest night, so it is left out.
       SectionData(:final value) => sleepAfterTraining([
         for (final n in value.nights)
-          if (!DateTime(
-            n.date.year,
-            n.date.month,
-            n.date.day - 1,
-          ).isBefore(start))
-            n,
+          if (known(n.date)) n,
       ], training),
       SectionGap() => null,
     },
     restingHr: switch (overview.heart) {
-      SectionData(:final value) => restingHrAfterHardSessions(
-        value.restingHrDaily,
-        training,
-      ),
+      SectionData(:final value) => restingHrAfterHardSessions([
+        for (final v in value.restingHrDaily)
+          if (known(v.day)) v,
+      ], training),
       SectionGap() => null,
     },
   );

@@ -128,14 +128,14 @@ void main() {
       expect(r.loadOf(Muscle.chest), closeTo(.32, .001));
     });
 
-    test('4 sets x 5 reps at RPE 5 is fresh 0.1', () {
+    test('4 sets x 5 reps at RPE 5 is fresh 0.2', () {
       final r = _recover([
         _session('a', Duration.zero, 'Chest', count: 4, reps: 5, rpe: 5),
       ]);
-      expect(r.loadOf(Muscle.chest), closeTo(.1, .001));
+      expect(r.loadOf(Muscle.chest), closeTo(.2, .001));
     });
 
-    test('null reps count as 1.0, zero reps as the 0.5 floor', () {
+    test('null reps count as 1.0, zero reps as 0.7', () {
       expect(
         _recover([_session('a', Duration.zero, 'Chest', count: 5, reps: null)])
             .loadOf(Muscle.chest),
@@ -144,11 +144,11 @@ void main() {
       expect(
         _recover([_session('a', Duration.zero, 'Chest', count: 10, reps: 0)])
             .loadOf(Muscle.chest),
-        closeTo(.5, .001),
+        closeTo(.7, .001),
       );
     });
 
-    test('RPE 6-7.9 weighs 0.75 and reps clamp at 1.5', () {
+    test('RPE 6-7.9 weighs 0.75 and reps of 5 or more weigh the same', () {
       expect(
         _recover([_session('a', Duration.zero, 'Chest', count: 4, rpe: 7)])
             .loadOf(Muscle.chest),
@@ -157,8 +157,51 @@ void main() {
       expect(
         _recover([_session('a', Duration.zero, 'Chest', count: 4, reps: 30)])
             .loadOf(Muscle.chest),
-        closeTo(.6, .001),
+        closeTo(.4, .001),
       );
+    });
+
+    test('heavy low-rep work is not counted as light', () {
+      final fives = _recover([
+        _session('a', Duration.zero, 'Legs', count: 5, reps: 5, rpe: 9),
+      ]);
+      expect(fives.loadOf(Muscle.quads), closeTo(.5, .001));
+      final threes = _recover([
+        _session('b', Duration.zero, 'Legs', count: 3, reps: 3, rpe: 9),
+      ]);
+      expect(threes.loadOf(Muscle.quads), closeTo(.21, .001));
+      for (final s in [
+        _session(
+          'a',
+          const Duration(hours: 24),
+          'Legs',
+          count: 5,
+          reps: 5,
+          rpe: 9,
+        ),
+        _session(
+          'b',
+          const Duration(hours: 24),
+          'Legs',
+          count: 3,
+          reps: 3,
+          rpe: 9,
+        ),
+      ]) {
+        expect(
+          _recover([s]).loadOf(Muscle.quads),
+          greaterThanOrEqualTo(recoveredBelow),
+        );
+      }
+    });
+
+    test('display names share one normalisation', () {
+      expect(groupDisplayName('  UPPER chest '), 'Upper chest');
+      final r = _recover([
+        _session('a', Duration.zero, 'UPPER chest', count: 2),
+        _session('b', Duration.zero, 'Upper chest', count: 2),
+      ]);
+      expect(r.groups.keys, ['Upper chest']);
     });
 
     test('sessions add up per group, capped at 1', () {
