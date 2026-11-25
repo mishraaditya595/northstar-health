@@ -86,6 +86,20 @@ Training tie-ins are implemented in source, **not released or device-verified**.
 | Fewer than the minimum nights or sessions: no insight line shown | not run | not run |
 | No wearable: Better fit and recovery lines still work, no insight lines | not run | not run |
 
+## Training library stage 2 device QA (ADR-0010, owner actions, none done)
+
+The catalogue cache and exercise pickers are implemented in source, **not released or device-verified**, and need the stage 1 catalogue migrations applied to the project under test. Every row is not run.
+
+| Check | iOS | Android |
+| --- | --- | --- |
+| First download: fresh install, sign in online, the Exercises page and both pickers show the catalogue exercises within a few seconds | not run | not run |
+| Offline fresh install: signed in earlier, then wipe the cache, go offline, relaunch: the "hasn't downloaded yet" copy with Retry, local exercises still work, Retry succeeds once online | not run | not run |
+| Airplane mode after a download: pickers and the Exercises page still list the saved catalogue | not run | not run |
+| Kill the app during the first download: next launch has no partial catalogue, then downloads normally | not run | not run |
+| Account switch: sign out and sign in as another account on the same backend: the second account sees the saved catalogue without a new download within 24 hours | not run | not run |
+| Rollback: roll back to a previous release on the test project, pull to refresh: the app switches to the rolled-back release and shows no error | not run | not run |
+| Pick a catalogue exercise in a plan and in an active workout: it is saved offline and logs sets | not run | not run |
+
 ## Feature and privacy readiness
 
 - ObjectBox real sessions/sets with generated model UID fixture migration, durable offline writes and recovery through process death.

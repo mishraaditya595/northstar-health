@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:beyondrep/features/catalog/data/catalog_file_store.dart';
+import 'package:beyondrep/features/catalog/data/catalog_repository.dart';
 import 'package:beyondrep/features/catalog/data/catalog_transport.dart';
 import 'package:beyondrep/features/catalog/domain/canonical_json.dart';
 import 'package:beyondrep/features/catalog/domain/catalog_models.dart';
@@ -66,5 +70,31 @@ class FakeCatalogTransport implements CatalogTransport {
   Future<Object?> fetchSnapshot(int release) {
     snapshotRequests.add(release);
     return snapshot!(release);
+  }
+}
+
+/// Reports a fixed state and records refresh calls; never touches disk or
+/// network.
+class StubCatalogRepository extends CatalogRepository {
+  StubCatalogRepository(
+    this.fixed,
+    Directory directory, {
+    this.outcome = CatalogRefreshOutcome.skippedFresh,
+  }) : super(
+         transport: FakeCatalogTransport(),
+         store: CatalogFileStore(directory),
+       );
+
+  final CatalogState fixed;
+  CatalogRefreshOutcome outcome;
+  final forceCalls = <bool>[];
+
+  @override
+  CatalogState get state => fixed;
+
+  @override
+  Future<CatalogRefreshOutcome> refresh({bool force = false}) async {
+    forceCalls.add(force);
+    return outcome;
   }
 }

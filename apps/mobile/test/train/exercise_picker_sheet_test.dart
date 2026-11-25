@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/core/storage/objectbox_store_provider.dart';
 import 'package:beyondrep/features/catalog/application/catalog_providers.dart';
-import 'package:beyondrep/features/catalog/data/catalog_file_store.dart';
 import 'package:beyondrep/features/catalog/data/catalog_repository.dart';
 import 'package:beyondrep/features/catalog/domain/catalog_models.dart';
 import 'package:beyondrep/features/train/exercise_picker_sheet.dart';
@@ -15,28 +14,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../catalog/catalog_fixtures.dart';
-
-/// Reports a fixed state and records refresh calls; never touches disk or
-/// network.
-class _StubRepository extends CatalogRepository {
-  _StubRepository(this._fixed, Directory directory)
-    : super(
-        transport: FakeCatalogTransport(),
-        store: CatalogFileStore(directory),
-      );
-
-  final CatalogState _fixed;
-  final forceCalls = <bool>[];
-
-  @override
-  CatalogState get state => _fixed;
-
-  @override
-  Future<CatalogRefreshOutcome> refresh({bool force = false}) async {
-    forceCalls.add(force);
-    return CatalogRefreshOutcome.skippedFresh;
-  }
-}
 
 CatalogExercise cat(
   String id,
@@ -88,12 +65,15 @@ void main() {
     directory.deleteSync(recursive: true);
   });
 
-  Future<_StubRepository> open(WidgetTester tester, CatalogState state) async {
+  Future<StubCatalogRepository> open(
+    WidgetTester tester,
+    CatalogState state,
+  ) async {
     // Tall enough that the lazy list builds every row.
     tester.view.physicalSize = const Size(800, 4000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    final repository = _StubRepository(state, directory);
+    final repository = StubCatalogRepository(state, directory);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
