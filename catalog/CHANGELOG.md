@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## Release 3 (2026-11-26)
+
+- sha256: 950ba60d1f4e6eca638f79b0fd90231a5a052acff230ccf9b9c4ae1890d0e6f7
+- 240 exercises, 16 templates, 0 programs
+
 ## Release 2 (2026-11-26)
 
 - sha256: 9910ab0c909dd9b626f57ac7a2cfc794391aac5d7fabe2751e1517d3c0eec722

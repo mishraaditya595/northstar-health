@@ -70,6 +70,19 @@ Release 2 grows the library from 18 to 240 exercises in `catalog/exercises/` (on
 
 Release 2 is in source as `supabase/migrations/20261126030000_catalog_release_2.sql`, **not deployed**.
 
+## Templates (release 3, stage 6)
+
+Release 3 adds 16 standalone templates in `catalog/templates/standalone.json` (IDs `tpl.<slug>`, never reused). Rules, enforced by `TemplateContentTest` in `tool/test_catalog_content.py` where a test can check them:
+
+- **Content.** 4 to 7 exercises, each active and in a loggable mode (`reps_load` or `duration`), no exercise twice. Compounds are 3 to 5 sets of 5 to 10 reps with 120 to 180 s rest, accessories 2 to 4 sets of 8 to 15 reps with 60 to 90 s rest, holds 2 to 3 sets of 20 to 60 s. At most 18 working sets for beginner templates and 24 otherwise, and at least 60 s rest on any row of 8 reps or fewer. Unilateral exercises are counted per side (the row note says so) and one logged set covers both sides.
+- **Writing.** Each description is one or two plain sentences saying who it suits and what it covers, with no outcome claims. All text is original.
+- **Tags.** `tags.equipment` is the union of the exercises' equipment, without `bodyweight` when other equipment is present. Goal filters, equipment filters and programs come in later stages; `standalone: false` hides a template from the Workouts list (program-only templates arrive with their programs).
+- **Owner review gate.** As release 2: the owner reads a review sheet of every template before merging, and merging plus the `supabase-database` job publishes release 3. Rollback: `python3 scripts/catalog_build.py rollback --to 2`.
+
+Phone behaviour (in source, not released): a template is shown only if every exercise is active in the cached snapshot and has a loggable mode. **Copy to My Plans** (`copyCatalogTemplate`) materializes the exercises and writes the plan and its rows in one ObjectBox transaction; the screen's request UUID is the plan UUID, so a repeated tap returns the same plan, and a deliberate second copy gets " (2)", " (3)" in the name while an active plan has it. Any failure leaves no plan, rows or new exercises. The copy has no link back to the template, so later catalogue releases never change it. **Start now** (`startTemplateWorkout`) materializes the exercises, then creates the session and its planned sets in one transaction with no saved plan; an unfinished workout blocks it with the usual message. Targets are not shown inside the logger. No catalogue schema bump: `minAppCatalogSchema` stays 1 and older builds ignore the templates.
+
+Release 3 is in source as `supabase/migrations/20261126040000_catalog_release_3.sql`, **not deployed**.
+
 ## Provenance and licence
 
 All text is original BeyondRep writing under MPL-2.0 (`catalog/PROVENANCE.md`). No third-party text or media. A checklist source may be used for coverage only after its licence is recorded there. Release 2 used the public-domain Free Exercise DB (github.com/yuhonas/free-exercise-db, Unlicense) only as a checklist of which movements exist; no text, wording or muscle tags were copied.
