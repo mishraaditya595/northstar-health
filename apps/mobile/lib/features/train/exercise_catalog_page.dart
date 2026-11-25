@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/design/inputs.dart';
 import '../../core/design/dialogs.dart';
@@ -261,6 +262,9 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
                           Padding(
                             padding: const EdgeInsets.only(bottom: 10),
                             child: NsListCard(
+                              onTap: () => context.push(
+                                '/train/exercises/${Uri.encodeComponent(choice.id)}',
+                              ),
                               icon: choice.isCustom
                                   ? Icons.edit_note
                                   : Icons.fitness_center,

@@ -57,6 +57,8 @@ Future<ExerciseRecord?> showExercisePicker(
           category: categoryLabel(catalog.category),
           mode: catalog.mode,
           release: release,
+          primaryMuscles: catalog.primaryMuscles,
+          secondaryMuscles: catalog.secondaryMuscles,
         );
     ref.invalidate(trainLibraryProvider);
     return record;

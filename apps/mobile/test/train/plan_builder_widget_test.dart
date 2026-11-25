@@ -59,7 +59,13 @@ class FakeLibrary implements WorkoutLibraryRepository {
     required String category,
     required String mode,
     required int release,
+    required List<String> primaryMuscles,
+    required List<String> secondaryMuscles,
   }) => throw UnimplementedError();
+
+  @override
+  int syncCatalogDefinitions(List<CatalogDefinitionInput> items, int release) =>
+      throw UnimplementedError();
 
   @override
   WorkoutPlanRecord? getPlan(String uuid) {

@@ -144,6 +144,12 @@ class ObjectBoxWorkoutHistoryRepository implements WorkoutHistoryRepository {
               muscleSnapshot: e.muscleSnapshot,
               equipmentSnapshot: e.equipmentSnapshot,
               position: e.position,
+              primaryMusclesSnapshot: List.unmodifiable(
+                e.primaryMusclesSnapshot,
+              ),
+              secondaryMusclesSnapshot: List.unmodifiable(
+                e.secondaryMusclesSnapshot,
+              ),
             ),
           );
           final childSets = setsByExercise[e.uuid] ?? [];

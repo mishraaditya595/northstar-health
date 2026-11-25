@@ -172,6 +172,8 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
             muscleSnapshot: definition.muscleGroup,
             equipmentSnapshot: definition.equipment,
             position: row.position,
+            primaryMusclesSnapshot: List.of(definition.primaryMuscles),
+            secondaryMusclesSnapshot: List.of(definition.secondaryMuscles),
           ),
         );
         for (var position = 0; position < row.targetSets; position++) {

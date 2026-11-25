@@ -1,4 +1,5 @@
 import '../progress/muscle_recovery.dart';
+import '../workouts/domain/muscles.dart';
 import '../workouts/domain/workout_library_models.dart';
 
 /// Smallest `worstLoad` lead a plan needs over every other plan to be named.
@@ -46,19 +47,34 @@ PlanRecovery? planRecoveryOf(
     totalSets += planExercise.targetSets;
     final exercise = exercisesByUuid[planExercise.exerciseUuid];
     if (exercise == null) continue;
-    final trimmed = exercise.muscleGroup.trim();
-    final muscles = MuscleRecovery.musclesOf(trimmed);
-    if (muscles.isEmpty) continue;
-    mapped = true;
-    final name = groupDisplayName(trimmed);
-    groups.add(name);
-    var groupLoad = 0.0;
-    for (final muscle in muscles) {
-      final load = recovery.loadOf(muscle);
-      if (load > groupLoad) groupLoad = load;
+    // Catalogue exercises name their specific primary muscles; secondary
+    // muscles never make a plan "recovering". Others use the logged group.
+    final specific = [
+      for (final name in exercise.primaryMuscles)
+        if (muscleFromName(name) case final muscle?) (muscle, name),
+    ];
+    final entries = <(String, List<Muscle>)>[
+      if (specific.isNotEmpty)
+        for (final (muscle, name) in specific)
+          (muscleDisplayName(name), [muscle])
+      else
+        (
+          groupDisplayName(exercise.muscleGroup.trim()),
+          MuscleRecovery.musclesOf(exercise.muscleGroup.trim()),
+        ),
+    ];
+    for (final (name, muscles) in entries) {
+      if (muscles.isEmpty) continue;
+      mapped = true;
+      groups.add(name);
+      var groupLoad = 0.0;
+      for (final muscle in muscles) {
+        final load = recovery.loadOf(muscle);
+        if (load > groupLoad) groupLoad = load;
+      }
+      if (groupLoad >= recoveredBelow) recovering.add(name);
+      if (groupLoad > worst) worst = groupLoad;
     }
-    if (groupLoad >= recoveredBelow) recovering.add(name);
-    if (groupLoad > worst) worst = groupLoad;
   }
   if (!mapped) return null;
   return PlanRecovery(

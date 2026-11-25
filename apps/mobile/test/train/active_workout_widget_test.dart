@@ -103,6 +103,8 @@ void main() {
     final added = store.box<WorkoutExerciseEntity>().getAll().single;
     expect(added.definitionUuid, 'builtin.v1.hip-thrust');
     expect(added.nameSnapshot, 'Hip thrust');
+    expect(added.primaryMusclesSnapshot, ['glutes']);
+    expect(added.secondaryMusclesSnapshot, isEmpty);
     expect(find.text('Hip thrust'), findsOneWidget);
     expect(find.text('Add set'), findsOneWidget);
     final definition = store

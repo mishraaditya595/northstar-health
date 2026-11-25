@@ -11,6 +11,8 @@ class ExerciseRecord {
     required this.isBuiltIn,
     required this.updatedAtMs,
     this.archivedAtMs,
+    this.primaryMuscles = const [],
+    this.secondaryMuscles = const [],
   });
 
   final String uuid;
@@ -22,7 +24,23 @@ class ExerciseRecord {
   final bool isBuiltIn;
   final int updatedAtMs;
   final int? archivedAtMs;
+
+  /// Specific muscles from the catalogue; empty for custom exercises.
+  final List<String> primaryMuscles;
+  final List<String> secondaryMuscles;
 }
+
+/// One catalogue exercise as the local definitions backfill needs it.
+typedef CatalogDefinitionInput = ({
+  String id,
+  String name,
+  String muscleGroup,
+  String equipment,
+  String category,
+  String mode,
+  List<String> primaryMuscles,
+  List<String> secondaryMuscles,
+});
 
 class PlanExerciseRecord {
   const PlanExerciseRecord({

@@ -73,6 +73,25 @@ void main() {
     },
   );
 
+  test('exercise muscle arrays survive the export unchanged', () async {
+    final row = exportRow(0);
+    final exercise =
+        ((row['payload'] as Map)['exercises'] as List).single as Map;
+    exercise['primary_muscles'] = ['hamstrings', 'glutes'];
+    exercise['secondary_muscles'] = ['lowerBack'];
+    final data = jsonDecode(
+      await makeExporter(FakeExportReader([row])).exportJson(),
+    ) as Map<String, dynamic>;
+    final out =
+        ((((data['workouts'] as List).single as Map)['payload']
+                        as Map)['exercises']
+                    as List)
+                .single
+            as Map;
+    expect(out['primary_muscles'], ['hamstrings', 'glutes']);
+    expect(out['secondary_muscles'], ['lowerBack']);
+  });
+
   test('invalid workout UUID is a typed export error', () async {
     final row = exportRow(0)..['workout_id'] = 'not-a-uuid';
     await expectLater(

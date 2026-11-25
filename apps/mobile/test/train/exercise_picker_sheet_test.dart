@@ -152,6 +152,7 @@ void main() {
       ..equipment = 'Barbell, Bench'
       ..movementCategory = 'Hinge'
       ..catalogVersion = 4
+      ..primaryMuscles = ['glutes']
       ..updatedAtMs = 42;
     store.box<ExerciseDefinitionEntity>().put(seeded);
     final before = definitions();

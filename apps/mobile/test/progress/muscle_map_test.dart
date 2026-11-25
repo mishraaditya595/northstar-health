@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:beyondrep/features/progress/muscle_map.dart';
+import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
 import 'package:beyondrep/features/progress/muscle_recovery.dart';
+import 'package:beyondrep/features/progress/workout_history_state.dart';
 import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 
 final _now = DateTime.utc(2026, 11, 24, 12);
@@ -149,6 +151,65 @@ void main() {
     expect(find.text('Sample data'), findsNothing);
     expect(find.byType(MuscleMap), findsNWidgets(2));
     expect(find.textContaining('48 to 72 hours'), findsOneWidget);
+  });
+
+  testWidgets('after an RDL day the hamstrings are worked and quads are not', (
+    tester,
+  ) async {
+    final at = _now;
+    final rdl = WorkoutSessionRecord(
+      uuid: 'rdl',
+      name: 'RDL',
+      status: WorkoutStatus.completed,
+      startedAtUtc: at.subtract(const Duration(minutes: 40)),
+      completedAtUtc: at,
+      originalOffsetMinutes: 0,
+      revision: 1,
+      exercises: const [
+        WorkoutExerciseRecord(
+          uuid: 'e',
+          sessionUuid: 'rdl',
+          nameSnapshot: 'Romanian deadlift',
+          muscleSnapshot: 'Legs',
+          position: 0,
+          primaryMusclesSnapshot: ['hamstrings', 'glutes'],
+          secondaryMusclesSnapshot: ['lowerBack'],
+        ),
+      ],
+      sets: [
+        for (var i = 0; i < 10; i++)
+          WorkoutSetRecord(
+            uuid: 's$i',
+            exerciseUuid: 'e',
+            position: i,
+            kind: WorkoutSetKind.working,
+            status: WorkoutSetStatus.completed,
+            reps: 10,
+            rpe: 8,
+            completedAtUtc: at,
+          ),
+      ],
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          completedWorkoutHistoryProvider.overrideWith(
+            (ref) async => WorkoutHistorySnapshot(sessions: [rdl]),
+          ),
+          progressNowProvider.overrideWithValue(_now),
+        ],
+        child: const MaterialApp(home: Scaffold(body: MuscleRecoveryCard())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (final map in tester.widgetList<MuscleMap>(find.byType(MuscleMap))) {
+      expect(map.recovery.loadOf(Muscle.hamstrings), closeTo(1, .001));
+      expect(map.recovery.loadOf(Muscle.glutes), closeTo(1, .001));
+      expect(map.recovery.loadOf(Muscle.lowerBack), closeTo(.5, .001));
+      expect(map.recovery.loadOf(Muscle.quads), 0);
+    }
+    expect(find.text('Hamstrings · Glutes · Lower back'), findsOneWidget);
   });
 
   testWidgets('names recently trained muscles for screen readers', (

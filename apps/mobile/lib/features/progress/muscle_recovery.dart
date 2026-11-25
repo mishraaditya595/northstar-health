@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../workouts/domain/muscles.dart';
 import '../workouts/domain/workout_models.dart';
 import 'workout_history_state.dart';
 
@@ -21,6 +22,17 @@ enum Muscle {
   hamstrings,
 }
 
+/// The drawn muscle for a catalogue muscle name, or null for an unknown name.
+Muscle? muscleFromName(String name) {
+  for (final muscle in Muscle.values) {
+    if (muscle.name == name) return muscle;
+  }
+  return null;
+}
+
+/// Share of a set's stimulus that a secondary muscle receives.
+const secondaryMuscleWeight = 0.5;
+
 /// A muscle group below this load counts as recovered: not shaded or listed
 /// on Progress, not recovering on Train.
 const recoveredBelow = 0.1;
@@ -40,10 +52,11 @@ class MuscleRecovery {
 
   final Map<Muscle, double> load;
 
-  /// The logged muscle groups, by display name, with the same 0..1 value.
-  /// Exercises only record a group ("Legs"), so this, not the individual
-  /// drawn muscles, is what the card names as trained. It includes custom
-  /// groups that map to no drawn muscle.
+  /// What the card names as trained, by display name, with a 0..1 value:
+  /// the logged group ("Legs") of exercises without a muscle snapshot, and
+  /// the specific muscles ("Hamstrings") of catalogue exercises, the larger
+  /// value when a name appears in both. It includes custom groups that map
+  /// to no drawn muscle.
   final Map<String, double> groups;
 
   double loadOf(Muscle muscle) => (load[muscle] ?? 0).clamp(0.0, 1.0);
@@ -106,17 +119,45 @@ class MuscleRecovery {
     return repsFactor * effort;
   }
 
-  /// A finished workout loads each group it worked with
-  /// `min(1, Σ stimulus / 10)`, fading linearly to 0 over the group's
-  /// window (48 h small groups, 72 h others). Sessions add up per group,
-  /// capped at 1; each drawn muscle takes its group's value (the highest if
-  /// two groups cover it).
+  /// Muscles that recover in [_smallWindow] on the fine path.
+  static const _smallMuscles = {
+    Muscle.shoulders,
+    Muscle.biceps,
+    Muscle.triceps,
+    Muscle.forearms,
+    Muscle.abs,
+    Muscle.obliques,
+    Muscle.calves,
+  };
+
+  static double _fade(Duration age, Duration span) => age.isNegative
+      ? 1.0
+      : age >= span
+      ? 0.0
+      : 1 - age.inSeconds / span.inSeconds;
+
+  /// A finished workout loads what it worked, within 72 h.
+  ///
+  /// Exercises with a muscle snapshot (catalogue exercises) work specific
+  /// muscles: each completed working set adds its stimulus to every primary
+  /// muscle and [secondaryMuscleWeight] times that to every secondary one.
+  /// A muscle's session load is `min(1, Σ / 10)`, fading linearly over its
+  /// window (48 h small muscles, 72 h others); sessions add up, capped at 1.
+  ///
+  /// Exercises without one (custom, or logged before muscles existed) work
+  /// their logged group: `min(1, Σ stimulus / 10)` fading over the group's
+  /// window (48 h small groups, 72 h others), summed per group across
+  /// sessions, capped at 1; each drawn muscle takes its group's value (the
+  /// highest if two groups cover it).
+  ///
+  /// A drawn muscle takes the larger of its specific and group values, never
+  /// their sum.
   factory MuscleRecovery.fromWorkouts(
     Iterable<WorkoutSessionRecord> sessions,
     DateTime nowUtc,
   ) {
-    final load = <Muscle, double>{};
-    final groups = <String, double>{};
+    final coarse = <String, double>{};
+    final fine = <Muscle, double>{};
     for (final session in sessions) {
       final finished = session.completedAtUtc;
       if (session.status != WorkoutStatus.completed || finished == null) {
@@ -125,14 +166,35 @@ class MuscleRecovery {
       final age = nowUtc.difference(finished);
       if (age >= window) continue;
       final stimulus = <String, double>{};
+      final fineStimulus = <Muscle, double>{};
       for (final exercise in session.exercises) {
+        final primary = [
+          for (final name in exercise.primaryMusclesSnapshot)
+            ?muscleFromName(name),
+        ];
+        final secondary = [
+          for (final name in exercise.secondaryMusclesSnapshot)
+            ?muscleFromName(name),
+        ];
         final group = exercise.muscleSnapshot.trim().toLowerCase();
-        if (group.isEmpty) continue;
+        if (primary.isEmpty && group.isEmpty) continue;
         for (final set in session.sets) {
-          if (set.exerciseUuid == exercise.uuid &&
-              set.status == WorkoutSetStatus.completed &&
-              set.kind == WorkoutSetKind.working) {
-            stimulus[group] = (stimulus[group] ?? 0) + _stimulus(set);
+          if (set.exerciseUuid != exercise.uuid ||
+              set.status != WorkoutSetStatus.completed ||
+              set.kind != WorkoutSetKind.working) {
+            continue;
+          }
+          final value = _stimulus(set);
+          if (primary.isEmpty) {
+            stimulus[group] = (stimulus[group] ?? 0) + value;
+            continue;
+          }
+          for (final m in primary) {
+            fineStimulus[m] = (fineStimulus[m] ?? 0) + value;
+          }
+          for (final m in secondary) {
+            fineStimulus[m] =
+                (fineStimulus[m] ?? 0) + secondaryMuscleWeight * value;
           }
         }
       }
@@ -140,20 +202,29 @@ class MuscleRecovery {
         final group = entry.key;
         // `legs` is a catalog group, so its calves keep the 72 h window.
         final span = _smallGroups.contains(group) ? _smallWindow : window;
-        final fade = age.isNegative || age >= span
-            ? (age.isNegative ? 1.0 : 0.0)
-            : 1 - age.inSeconds / span.inSeconds;
-        final value = (entry.value / 10).clamp(0.0, 1.0) * fade;
+        final value = (entry.value / 10).clamp(0.0, 1.0) * _fade(age, span);
         // Named even when no drawn muscle matches, so the card never says
         // nothing was trained after a workout of custom groups.
         final name = groupDisplayName(group);
-        groups[name] = ((groups[name] ?? 0) + value).clamp(0.0, 1.0);
+        coarse[name] = ((coarse[name] ?? 0) + value).clamp(0.0, 1.0);
+      }
+      for (final entry in fineStimulus.entries) {
+        final span = _smallMuscles.contains(entry.key) ? _smallWindow : window;
+        final value = (entry.value / 10).clamp(0.0, 1.0) * _fade(age, span);
+        fine[entry.key] = ((fine[entry.key] ?? 0) + value).clamp(0.0, 1.0);
       }
     }
-    for (final entry in groups.entries) {
+    final load = <Muscle, double>{};
+    for (final entry in coarse.entries) {
       for (final m in musclesOf(entry.key)) {
         if (entry.value > (load[m] ?? 0)) load[m] = entry.value;
       }
+    }
+    final groups = {...coarse};
+    for (final entry in fine.entries) {
+      if (entry.value > (load[entry.key] ?? 0)) load[entry.key] = entry.value;
+      final name = muscleDisplayName(entry.key.name);
+      if (entry.value > (groups[name] ?? 0)) groups[name] = entry.value;
     }
     return MuscleRecovery(load, groups: groups);
   }

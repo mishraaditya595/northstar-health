@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/ids/uuid_factory.dart';
 import '../../../core/storage/objectbox_store_provider.dart';
 import '../../../objectbox.g.dart';
+import '../domain/muscles.dart';
 import 'workout_entities.dart';
 
 final workoutOutboxProvider = Provider<ObjectBoxWorkoutOutbox>(
@@ -331,7 +332,14 @@ class ObjectBoxWorkoutOutbox {
           exercise.nameSnapshot.isEmpty ||
           exercise.nameSnapshot.runes.length > 160 ||
           exercise.muscleSnapshot.runes.length > 160 ||
-          exercise.equipmentSnapshot.runes.length > 160) {
+          exercise.equipmentSnapshot.runes.length > 160 ||
+          ((exercise.primaryMusclesSnapshot.isNotEmpty ||
+                  exercise.secondaryMusclesSnapshot.isNotEmpty) &&
+              validMuscles(
+                    exercise.primaryMusclesSnapshot,
+                    exercise.secondaryMusclesSnapshot,
+                  ) ==
+                  null)) {
         throw StateError('Invalid exercise for cloud backup');
       }
       final sets = _find(_sets, WorkoutSetEntity_.exerciseUuid, exercise.uuid)
@@ -383,6 +391,12 @@ class ObjectBoxWorkoutOutbox {
         'muscle': exercise.muscleSnapshot,
         'equipment': exercise.equipmentSnapshot,
         'position': exercise.position,
+        // Only catalogue exercises carry muscles; custom and older workouts
+        // keep exactly the payload they always had.
+        if (exercise.primaryMusclesSnapshot.isNotEmpty) ...{
+          'primary_muscles': exercise.primaryMusclesSnapshot,
+          'secondary_muscles': exercise.secondaryMusclesSnapshot,
+        },
         'sets': setRows,
       });
     }

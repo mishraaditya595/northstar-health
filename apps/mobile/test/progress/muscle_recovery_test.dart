@@ -50,6 +50,55 @@ WorkoutSessionRecord _session(
   );
 }
 
+/// One catalogue-style exercise with [primary] and [secondary] snapshots.
+WorkoutSessionRecord _fine(
+  String id,
+  Duration ago,
+  List<String> primary, {
+  List<String> secondary = const [],
+  int count = 10,
+  String group = 'Legs',
+  List<WorkoutExerciseRecord> extraExercises = const [],
+  List<WorkoutSetRecord> extraSets = const [],
+}) {
+  final at = _now.subtract(ago);
+  return WorkoutSessionRecord(
+    uuid: id,
+    name: id,
+    status: WorkoutStatus.completed,
+    startedAtUtc: at.subtract(const Duration(minutes: 40)),
+    completedAtUtc: at,
+    originalOffsetMinutes: 0,
+    revision: 1,
+    exercises: [
+      WorkoutExerciseRecord(
+        uuid: '$id-e',
+        sessionUuid: id,
+        nameSnapshot: 'Catalogue exercise',
+        muscleSnapshot: group,
+        position: 0,
+        primaryMusclesSnapshot: primary,
+        secondaryMusclesSnapshot: secondary,
+      ),
+      ...extraExercises,
+    ],
+    sets: [
+      for (var i = 0; i < count; i++)
+        WorkoutSetRecord(
+          uuid: '$id-s$i',
+          exerciseUuid: '$id-e',
+          position: i,
+          kind: WorkoutSetKind.working,
+          status: WorkoutSetStatus.completed,
+          reps: 10,
+          rpe: 8,
+          completedAtUtc: at,
+        ),
+      ...extraSets,
+    ],
+  );
+}
+
 MuscleRecovery _recover(Iterable<WorkoutSessionRecord> s) =>
     MuscleRecovery.fromWorkouts(s, _now);
 
@@ -248,5 +297,175 @@ void main() {
     ]);
     expect(MuscleRecovery.musclesOf(' glutes '), [Muscle.glutes]);
     expect(MuscleRecovery.musclesOf('Grip'), isEmpty);
+  });
+  group('specific muscles', () {
+    test(
+      'an RDL day loads hamstrings and glutes fully, lower back at half',
+      () {
+        final r = _recover([
+          _fine(
+            'rdl',
+            Duration.zero,
+            ['hamstrings', 'glutes'],
+            secondary: ['lowerBack'],
+          ),
+        ]);
+        expect(r.loadOf(Muscle.hamstrings), closeTo(1, .001));
+        expect(r.loadOf(Muscle.glutes), closeTo(1, .001));
+        expect(r.loadOf(Muscle.lowerBack), closeTo(.5, .001));
+        expect(r.loadOf(Muscle.quads), 0);
+        expect(r.loadOf(Muscle.calves), 0);
+        expect(r.groups['Hamstrings'], closeTo(1, .001));
+        expect(r.groups['Lower back'], closeTo(.5, .001));
+        expect(r.groups.containsKey('Legs'), isFalse);
+      },
+    );
+
+    test('a catalogue calf raise fades over 48 h, legacy Legs keeps 72 h', () {
+      final calf24 = _recover([
+        _fine('c', const Duration(hours: 24), ['calves'], group: 'Legs'),
+      ]);
+      expect(calf24.loadOf(Muscle.calves), closeTo(.5, .001));
+      expect(
+        _recover([
+          _fine('c', const Duration(hours: 48), ['calves']),
+        ]).loadOf(Muscle.calves),
+        0,
+      );
+      expect(
+        _recover([_session('l', const Duration(hours: 48), 'Legs')])
+            .loadOf(Muscle.calves),
+        closeTo(1 / 3, .001),
+      );
+    });
+
+    test('legacy-only history gives exactly the coarse numbers', () {
+      final r = _recover([_session('l', const Duration(hours: 36), 'Legs')]);
+      expect(r.loadOf(Muscle.quads), closeTo(.5, .001));
+      expect(r.groups, {'Legs': closeTo(.5, .001)});
+    });
+
+    test('two exercises add on a shared muscle with no double counting', () {
+      final at = _now;
+      final r = _recover([
+        _fine(
+          'a',
+          Duration.zero,
+          ['hamstrings'],
+          count: 3,
+          extraExercises: [
+            WorkoutExerciseRecord(
+              uuid: 'b-e',
+              sessionUuid: 'a',
+              nameSnapshot: 'Second',
+              position: 1,
+              primaryMusclesSnapshot: const ['glutes'],
+              secondaryMusclesSnapshot: const ['hamstrings'],
+            ),
+          ],
+          extraSets: [
+            for (var i = 0; i < 4; i++)
+              WorkoutSetRecord(
+                uuid: 'b-s$i',
+                exerciseUuid: 'b-e',
+                position: i,
+                kind: WorkoutSetKind.working,
+                status: WorkoutSetStatus.completed,
+                reps: 10,
+                rpe: 8,
+                completedAtUtc: at,
+              ),
+          ],
+        ),
+      ]);
+      // hamstrings: 3 primary + 4 * 0.5 secondary = 5 of 10.
+      expect(r.loadOf(Muscle.hamstrings), closeTo(.5, .001));
+      expect(r.loadOf(Muscle.glutes), closeTo(.4, .001));
+    });
+
+    test(
+      'mixed session: a drawn muscle takes the larger of fine and coarse',
+      () {
+        final custom = WorkoutExerciseRecord(
+          uuid: 'm-custom',
+          sessionUuid: 'mixed',
+          nameSnapshot: 'Sled push',
+          muscleSnapshot: 'Legs',
+          position: 1,
+        );
+        final at = _now;
+        final r = _recover([
+          _fine(
+            'mixed',
+            Duration.zero,
+            ['hamstrings', 'glutes'],
+            secondary: ['lowerBack'],
+            count: 5,
+            extraExercises: [custom],
+            extraSets: [
+              for (var i = 0; i < 10; i++)
+                WorkoutSetRecord(
+                  uuid: 'm-s$i',
+                  exerciseUuid: 'm-custom',
+                  position: i,
+                  kind: WorkoutSetKind.working,
+                  status: WorkoutSetStatus.completed,
+                  reps: 10,
+                  rpe: 8,
+                  completedAtUtc: at,
+                ),
+            ],
+          ),
+        ]);
+        // Fine hamstrings 0.5, coarse Legs 1.0: the larger wins, not the sum.
+        expect(r.loadOf(Muscle.hamstrings), closeTo(1, .001));
+        expect(r.loadOf(Muscle.quads), closeTo(1, .001));
+        // Lower back has only the fine half-weight value.
+        expect(r.loadOf(Muscle.lowerBack), closeTo(.25, .001));
+        expect(r.groups['Legs'], closeTo(1, .001));
+        expect(r.groups['Hamstrings'], closeTo(.5, .001));
+      },
+    );
+
+    test('fine and coarse values never add up for one muscle', () {
+      final custom = WorkoutExerciseRecord(
+        uuid: 'm-custom',
+        sessionUuid: 'mixed',
+        nameSnapshot: 'Sled push',
+        muscleSnapshot: 'Legs',
+        position: 1,
+      );
+      final r = _recover([
+        _fine(
+          'mixed',
+          Duration.zero,
+          ['hamstrings'],
+          count: 4,
+          extraExercises: [custom],
+          extraSets: [
+            for (var i = 0; i < 4; i++)
+              WorkoutSetRecord(
+                uuid: 'm-s$i',
+                exerciseUuid: 'm-custom',
+                position: i,
+                kind: WorkoutSetKind.working,
+                status: WorkoutSetStatus.completed,
+                reps: 10,
+                rpe: 8,
+                completedAtUtc: _now,
+              ),
+          ],
+        ),
+      ]);
+      expect(r.loadOf(Muscle.hamstrings), closeTo(.4, .001));
+    });
+
+    test('sessions add up per muscle, capped at 1', () {
+      final r = _recover([
+        _fine('old', const Duration(hours: 24), ['chest'], count: 10),
+        _fine('new', Duration.zero, ['chest'], count: 10),
+      ]);
+      expect(r.loadOf(Muscle.chest), 1);
+    });
   });
 }

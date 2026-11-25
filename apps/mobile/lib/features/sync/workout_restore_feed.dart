@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../core/units/load_units.dart';
+import '../workouts/domain/muscles.dart';
 import '../workouts/domain/workout_models.dart';
 
 /// A contract violation must never advance a durable restore cursor.
@@ -16,6 +17,33 @@ class RestoreContractException extends FormatException {
   /// Stable non-PII reason; no server payload, account, or workout values.
   final String code;
   final bool request;
+}
+
+/// Optional muscle arrays of a restored exercise; absent means empty. Any
+/// malformed value rejects the whole page.
+({List<String> primary, List<String> secondary}) _muscles(
+  Map<String, dynamic> exercise,
+) {
+  List<String> read(String key) {
+    if (!exercise.containsKey(key)) return const [];
+    final value = exercise[key];
+    if (value is! List || value.any((m) => m is! String)) {
+      _invalid('invalid_exercise_muscles');
+    }
+    return List.unmodifiable(value.cast<String>());
+  }
+
+  // The server rejects a secondary key without a primary key, even if empty.
+  if (exercise.containsKey('secondary_muscles') &&
+      !exercise.containsKey('primary_muscles')) {
+    _invalid('invalid_exercise_muscles');
+  }
+  final primary = read('primary_muscles');
+  final secondary = read('secondary_muscles');
+  if (validMuscles(primary, secondary) == null) {
+    _invalid('invalid_exercise_muscles');
+  }
+  return (primary: primary, secondary: secondary);
 }
 
 Never _invalid(String code) => throw RestoreContractException(code);
@@ -155,7 +183,13 @@ const _workoutFields = <String>{
   'exercises',
 };
 const _exerciseRequired = <String>{'id', 'name', 'position', 'sets'};
-const _exerciseFields = <String>{..._exerciseRequired, 'muscle', 'equipment'};
+const _exerciseFields = <String>{
+  ..._exerciseRequired,
+  'muscle',
+  'equipment',
+  'primary_muscles',
+  'secondary_muscles',
+};
 const _setRequired = <String>{'id', 'position', 'kind', 'status', 'input_unit'};
 const _setFields = <String>{
   ..._setRequired,
@@ -377,6 +411,7 @@ class WorkoutRestorePage {
       if (!exerciseIds.add(exerciseId)) {
         _invalid('duplicate_exercise_id');
       }
+      final muscles = _muscles(exercise);
       final item = WorkoutExerciseRecord(
         uuid: exerciseId,
         sessionUuid: workoutId,
@@ -388,6 +423,8 @@ class WorkoutRestorePage {
             ? _text(exercise['equipment'], allowEmpty: true)
             : '',
         position: _integer(exercise['position'], max: 10000),
+        primaryMusclesSnapshot: muscles.primary,
+        secondaryMusclesSnapshot: muscles.secondary,
       );
       exercises.add(item);
       for (final rawSet in _list(

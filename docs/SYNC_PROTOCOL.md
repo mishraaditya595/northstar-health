@@ -51,6 +51,43 @@ ACK #1 never means the cloud has backed up data. Pairing/reachability isn't deli
 
 Other event types: `workout_started`, `workout_paused`, `workout_resumed`, `set_corrected`, `workout_completed`, `workout_abandoned`, `platform_workout_exported`. A correction references the original event and cannot silently overwrite history. Sanitize payloads before any operational logs/telemetry.
 
+## Cloud workout payload (phone to Supabase, schema_version 1)
+
+This is the JSON the phone sends to `sync_workout` and the server stores,
+returns from `get_workout_changes` and includes in the account export. It is
+separate from the portable watch event envelope above. Authority:
+`northstar_private.validate_workout_v1`; extra keys are rejected.
+
+Workout: `schema_version` (1), `workout_id`, `origin` (`northstar_phone`),
+`status` (`completed`), `name`, `started_at_utc`, `completed_at_utc`,
+`original_offset_minutes`, `exercises` (at most 120).
+
+Exercise: `id`, `name`, `position`, `sets` (at most 300) are required.
+Optional: `muscle` (logged group text), `equipment` (text),
+`primary_muscles` and `secondary_muscles`.
+
+- `primary_muscles` and `secondary_muscles` are arrays of the 14 muscle names
+  `chest, shoulders, biceps, forearms, abs, obliques, quads, calves, traps,
+  lats, lowerBack, triceps, glutes, hamstrings` (exact, case sensitive). At
+  most 14 entries each, no duplicates, no muscle in both arrays, and
+  `secondary_muscles` may be non-empty only when `primary_muscles` is.
+- **Omission rule:** the phone sends both arrays only when the exercise
+  snapshot has at least one primary muscle (a catalogue exercise). Workouts of
+  custom exercises and workouts logged before muscles existed keep exactly the
+  payload they always had, so older data and replays are unchanged.
+- The two arrays add up to roughly 300 bytes per exercise at most, counted toward the 64 KiB payload limit that the outbox size check and the server already enforce.
+- The restore parser applies the same rules and rejects the whole page with
+  code `invalid_exercise_muscles`; the export passes the stored payload
+  through unchanged.
+- Deploy order: the migration `20261126010000_workout_exercise_muscles.sql`
+  must be deployed before any app build that uploads the arrays. Older app
+  builds reject unknown exercise keys when restoring, so update every install.
+
+Set: `id`, `position`, `kind` (`working|warmup`), `status`
+(`planned|completed|skipped`), `input_unit` (`kg|lb`) are required; optional
+`reps`, `load_grams`, `rpe`, `completed_at_utc`. A completed set needs `reps`
+and `completed_at_utc`.
+
 ## Workout owner / platform writer matrix
 
 | Origin | Owns detailed set journal | Phone ObjectBox | Health platform writer | Supabase coordinator |

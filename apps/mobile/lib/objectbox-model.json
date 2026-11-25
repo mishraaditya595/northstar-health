@@ -5,7 +5,7 @@
   "entities": [
     {
       "id": "1:1785871154773577577",
-      "lastPropertyId": "12:7524072561778364915",
+      "lastPropertyId": "14:4856351347101796860",
       "name": "ExerciseDefinitionEntity",
       "properties": [
         {
@@ -70,6 +70,16 @@
           "id": "12:7524072561778364915",
           "name": "archivedAtMs",
           "type": 6
+        },
+        {
+          "id": "13:6449177774496968743",
+          "name": "primaryMuscles",
+          "type": 30
+        },
+        {
+          "id": "14:4856351347101796860",
+          "name": "secondaryMuscles",
+          "type": 30
         }
       ],
       "relations": []
@@ -139,7 +149,7 @@
     },
     {
       "id": "3:3017320090453043651",
-      "lastPropertyId": "8:3304870629363982816",
+      "lastPropertyId": "10:5074623232287720617",
       "name": "WorkoutExerciseEntity",
       "properties": [
         {
@@ -186,6 +196,16 @@
           "id": "8:3304870629363982816",
           "name": "position",
           "type": 6
+        },
+        {
+          "id": "9:4472426474251822796",
+          "name": "primaryMusclesSnapshot",
+          "type": 30
+        },
+        {
+          "id": "10:5074623232287720617",
+          "name": "secondaryMusclesSnapshot",
+          "type": 30
         }
       ],
       "relations": []

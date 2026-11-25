@@ -72,6 +72,8 @@ class WorkoutExerciseRecord {
     this.definitionUuid,
     this.muscleSnapshot = '',
     this.equipmentSnapshot = '',
+    this.primaryMusclesSnapshot = const [],
+    this.secondaryMusclesSnapshot = const [],
   });
   final String uuid;
   final String sessionUuid;
@@ -80,6 +82,11 @@ class WorkoutExerciseRecord {
   final String muscleSnapshot;
   final String equipmentSnapshot;
   final int position;
+
+  /// Specific muscles copied when the exercise joined the workout; empty for
+  /// custom exercises and workouts logged before muscles existed.
+  final List<String> primaryMusclesSnapshot;
+  final List<String> secondaryMusclesSnapshot;
 }
 
 class WorkoutSessionRecord {

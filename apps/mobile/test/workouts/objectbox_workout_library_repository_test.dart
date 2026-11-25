@@ -423,6 +423,8 @@ void main() {
       String category = 'pull_horizontal',
       String mode = 'reps_load',
       int release = 1,
+      List<String> primaryMuscles = const [],
+      List<String> secondaryMuscles = const [],
     }) => library.materializeCatalogExercise(
       id: id,
       name: name,
@@ -431,6 +433,8 @@ void main() {
       category: category,
       mode: mode,
       release: release,
+      primaryMuscles: primaryMuscles,
+      secondaryMuscles: secondaryMuscles,
     );
 
     ExerciseDefinitionEntity stored(String id) => store
@@ -529,6 +533,8 @@ void main() {
         category: seeded.movementCategory,
         mode: seeded.inputMode,
         release: 1,
+        primaryMuscles: const ['quads'],
+        secondaryMuscles: const ['glutes'],
       );
       expect(same.name, seeded.name);
       final newer = materialize(
@@ -539,10 +545,74 @@ void main() {
         category: seeded.movementCategory,
         mode: seeded.inputMode,
         release: 2,
+        primaryMuscles: const ['quads'],
+        secondaryMuscles: const ['glutes'],
       );
       expect(newer.name, 'Back squat');
       expect(stored('builtin.v1.squat').catalogVersion, 2);
       expect(library.listExercises(), hasLength(18));
+    });
+
+    test('fills muscles on a seeded squat at the same release', () {
+      library.ensureCatalogSeeded();
+      expect(stored('builtin.v1.squat').primaryMuscles, isEmpty);
+      final record = materialize(
+        id: 'builtin.v1.squat',
+        name: 'Squat',
+        muscleGroup: 'Legs',
+        category: 'Squat',
+        release: 1,
+        primaryMuscles: const ['quads', 'glutes'],
+        secondaryMuscles: const ['hamstrings'],
+      );
+      expect(record.primaryMuscles, ['quads', 'glutes']);
+      expect(record.secondaryMuscles, ['hamstrings']);
+      expect(stored('builtin.v1.squat').primaryMuscles, ['quads', 'glutes']);
+      expect(stored('builtin.v1.squat').catalogVersion, 1);
+    });
+
+    test('same release with muscles already set writes nothing', () {
+      final first = materialize(
+        release: 2,
+        primaryMuscles: const ['lats'],
+        secondaryMuscles: const ['biceps'],
+      );
+      final again = materialize(
+        release: 2,
+        name: 'Renamed',
+        primaryMuscles: const ['lats', 'traps'],
+      );
+      expect(again.updatedAtMs, first.updatedAtMs);
+      expect(again.primaryMuscles, ['lats']);
+      expect(again.name, 'Barbell row');
+    });
+
+    test('invalid catalogue muscles are stored as empty lists', () {
+      for (final (primary, secondary) in [
+        (['adductors'], <String>[]),
+        (['quads', 'quads'], <String>[]),
+        (['quads'], ['quads']),
+        (<String>[], ['glutes']),
+      ]) {
+        final record = materialize(
+          id: 'builtin.v1.bad-${primary.join()}-${secondary.join()}',
+          primaryMuscles: primary,
+          secondaryMuscles: secondary,
+        );
+        expect(record.primaryMuscles, isEmpty, reason: '$primary/$secondary');
+        expect(record.secondaryMuscles, isEmpty);
+      }
+    });
+
+    test('a newer release replaces the muscles', () {
+      materialize(release: 1, primaryMuscles: const ['lats']);
+      final next = materialize(
+        release: 2,
+        primaryMuscles: const ['lats', 'traps'],
+        secondaryMuscles: const ['biceps'],
+      );
+      expect(next.primaryMuscles, ['lats', 'traps']);
+      expect(next.secondaryMuscles, ['biceps']);
     });
 
     test('plans referencing the exercise are untouched', () {
@@ -558,6 +628,134 @@ void main() {
       expect(after.updatedAtMs, plan.updatedAtMs);
       expect(after.exercises.single.exerciseUuid, 'builtin.v1.row');
       expect(after.exercises.single.targetSets, 3);
+    });
+  });
+  group('syncCatalogDefinitions', () {
+    CatalogDefinitionInput item(
+      String id, {
+      String mode = 'reps_load',
+      List<String> primary = const ['quads'],
+      List<String> secondary = const ['glutes'],
+    }) => (
+      id: id,
+      name: 'Name of $id',
+      muscleGroup: 'Legs',
+      equipment: 'Barbell',
+      category: 'Squat',
+      mode: mode,
+      primaryMuscles: primary,
+      secondaryMuscles: secondary,
+    );
+
+    ExerciseDefinitionEntity stored(String id) => store
+        .box<ExerciseDefinitionEntity>()
+        .query(ExerciseDefinitionEntity_.uuid.equals(id))
+        .build()
+        .findFirst()!;
+
+    test('updates seeded rows only', () {
+      library.ensureCatalogSeeded();
+      final count = library.syncCatalogDefinitions([
+        item('builtin.v1.squat'),
+        item('builtin.v1.not-local'),
+      ], 1);
+      expect(count, 1);
+      expect(stored('builtin.v1.squat').primaryMuscles, ['quads']);
+      expect(stored('builtin.v1.squat').secondaryMuscles, ['glutes']);
+      expect(library.listExercises(), hasLength(18), reason: 'no inserts');
+    });
+
+    test('ignores custom rows even when the id looks like a catalogue id', () {
+      store.box<ExerciseDefinitionEntity>().put(
+        ExerciseDefinitionEntity(
+          uuid: 'builtin.v1.mine',
+          name: 'Mine',
+          createdAtMs: 1,
+          updatedAtMs: 1,
+        ),
+      );
+      store.box<ExerciseDefinitionEntity>().put(
+        ExerciseDefinitionEntity(
+          uuid: 'custom-1',
+          name: 'Custom',
+          createdAtMs: 1,
+          updatedAtMs: 1,
+        ),
+      );
+      final count = library.syncCatalogDefinitions([
+        item('builtin.v1.mine'),
+        item('custom-1'),
+      ], 1);
+      expect(count, 0);
+      expect(stored('builtin.v1.mine').primaryMuscles, isEmpty);
+      expect(stored('builtin.v1.mine').name, 'Mine');
+      expect(stored('custom-1').primaryMuscles, isEmpty);
+    });
+
+    test('skips a row whose mode differs and changes no mode', () {
+      library.ensureCatalogSeeded();
+      final count = library.syncCatalogDefinitions([
+        item('builtin.v1.squat', mode: 'duration'),
+      ], 2);
+      expect(count, 0);
+      expect(stored('builtin.v1.squat').inputMode, 'reps_load');
+      expect(stored('builtin.v1.squat').primaryMuscles, isEmpty);
+      expect(stored('builtin.v1.squat').catalogVersion, 1);
+    });
+
+    test('is idempotent', () {
+      library.ensureCatalogSeeded();
+      final items = [item('builtin.v1.squat'), item('builtin.v1.deadlift')];
+      expect(library.syncCatalogDefinitions(items, 1), 2);
+      final before = stored('builtin.v1.squat').updatedAtMs;
+      expect(library.syncCatalogDefinitions(items, 1), 0);
+      expect(stored('builtin.v1.squat').updatedAtMs, before);
+    });
+
+    test('invalid muscles update display fields but store empty lists', () {
+      library.ensureCatalogSeeded();
+      final count = library.syncCatalogDefinitions([
+        item('builtin.v1.squat', primary: const ['adductors']),
+      ], 2);
+      expect(count, 1, reason: 'newer release still refreshes the row');
+      expect(stored('builtin.v1.squat').primaryMuscles, isEmpty);
+      expect(stored('builtin.v1.squat').secondaryMuscles, isEmpty);
+      expect(
+        library.syncCatalogDefinitions([
+          item('builtin.v1.deadlift', primary: const ['adductors']),
+        ], 1),
+        0,
+        reason: 'same release, nothing valid to fill',
+      );
+    });
+
+    test('items without muscles never write', () {
+      library.ensureCatalogSeeded();
+      expect(
+        library.syncCatalogDefinitions([
+          item('builtin.v1.squat', primary: const [], secondary: const []),
+        ], 1),
+        0,
+      );
+    });
+
+    test('a newer release refreshes display fields and muscles', () {
+      library.ensureCatalogSeeded();
+      library.syncCatalogDefinitions([item('builtin.v1.squat')], 1);
+      expect(
+        library.syncCatalogDefinitions([
+          item(
+            'builtin.v1.squat',
+            primary: const ['glutes'],
+            secondary: const [],
+          ),
+        ], 2),
+        1,
+      );
+      final row = stored('builtin.v1.squat');
+      expect(row.primaryMuscles, ['glutes']);
+      expect(row.name, 'Name of builtin.v1.squat');
+      expect(row.catalogVersion, 2);
     });
   });
 }
