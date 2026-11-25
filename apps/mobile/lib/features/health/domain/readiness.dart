@@ -24,6 +24,15 @@ double rhrSdFloor(double mean) => 1.5;
 DateTime _daysBefore(DateTime day, int n) =>
     DateTime(day.year, day.month, day.day - n);
 
+List<double> _baselineValues(List<DayValue> daily, DateTime today) {
+  final end = dayOf(today);
+  final start = _daysBefore(end, _baselineWindowDays);
+  return [
+    for (final d in daily)
+      if (!dayOf(d.day).isBefore(start) && dayOf(d.day).isBefore(end)) d.value,
+  ];
+}
+
 /// Mean and population sd of the values on the 30 local days before [today]
 /// (today excluded); null with fewer than 14 such days.
 Baseline? baselineOf(
@@ -31,12 +40,7 @@ Baseline? baselineOf(
   DateTime today, {
   required double Function(double mean) sdFloor,
 }) {
-  final end = dayOf(today);
-  final start = _daysBefore(end, _baselineWindowDays);
-  final values = [
-    for (final d in daily)
-      if (!dayOf(d.day).isBefore(start) && dayOf(d.day).isBefore(end)) d.value,
-  ];
+  final values = _baselineValues(daily, today);
   if (values.length < _baselineMinDays) return null;
   final mean = values.fold(0.0, (a, b) => a + b) / values.length;
   final variance =
@@ -145,33 +149,27 @@ ReadinessResult scoreReadiness({
       : null;
   final hrvToday = _todayValue(hrvDaily, day);
   final rhrToday = _todayValue(restingHrDaily, day);
-  if (night == null) return const ReadinessNotReady(noSleep: true);
-  if (hrvToday == null && rhrToday == null) {
-    return const ReadinessNotReady(noHrvOrRhrToday: true);
-  }
-
   final hrvBase = hrvToday == null
       ? null
       : baselineOf(hrvDaily, day, sdFloor: hrvSdFloor);
   final rhrBase = rhrToday == null
       ? null
       : baselineOf(restingHrDaily, day, sdFloor: rhrSdFloor);
-  if (hrvBase == null && rhrBase == null) {
+  final noMeasureToday = hrvToday == null && rhrToday == null;
+  final noBaseline = !noMeasureToday && hrvBase == null && rhrBase == null;
+  if (night == null || noMeasureToday || noBaseline) {
     var most = 0;
-    for (final (daily, value) in [
-      (hrvDaily, hrvToday),
-      (restingHrDaily, rhrToday),
-    ]) {
-      if (value == null) continue;
-      final start = _daysBefore(day, _baselineWindowDays);
-      final n = daily
-          .where(
-            (d) => !dayOf(d.day).isBefore(start) && dayOf(d.day).isBefore(day),
-          )
-          .length;
-      most = max(most, n);
+    if (hrvToday != null) {
+      most = max(most, _baselineValues(hrvDaily, day).length);
     }
-    return ReadinessNotReady(daysUntilBaseline: _baselineMinDays - most);
+    if (rhrToday != null) {
+      most = max(most, _baselineValues(restingHrDaily, day).length);
+    }
+    return ReadinessNotReady(
+      noSleep: night == null,
+      noHrvOrRhrToday: noMeasureToday,
+      daysUntilBaseline: noBaseline ? _baselineMinDays - most : null,
+    );
   }
 
   final scores = <ReadinessInput, ({double score, double? z})>{};
@@ -196,8 +194,8 @@ ReadinessResult scoreReadiness({
           dayOf(n.date).isBefore(dayOf(night.date)))
         n.asleep.inMinutes,
   ];
-  if (week.length >= 3) {
-    final mean = week.fold(0, (a, b) => a + b) / week.length;
+  final mean = week.isEmpty ? 0.0 : week.fold(0, (a, b) => a + b) / week.length;
+  if (week.length >= 3 && mean > 0) {
     final r = night.asleep.inMinutes / mean;
     scores[ReadinessInput.sleepDebt] = (
       score: _clamp100((r - 0.7) / 0.3 * 100),

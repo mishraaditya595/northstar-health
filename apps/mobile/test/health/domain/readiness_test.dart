@@ -212,6 +212,46 @@ void main() {
     expect(r.noSleep, isFalse);
   });
 
+  test('names every missing input', () {
+    final r = score() as ReadinessNotReady;
+    expect(r.noSleep, isTrue);
+    expect(r.noHrvOrRhrToday, isTrue);
+    expect(r.daysUntilBaseline, isNull);
+  });
+
+  test('no sleep and baseline building names both', () {
+    final r = score(
+      hrv: series(List.filled(9, 50.0), todayValue: 50),
+    ) as ReadinessNotReady;
+    expect(r.noSleep, isTrue);
+    expect(r.noHrvOrRhrToday, isFalse);
+    expect(r.daysUntilBaseline, 5);
+  });
+
+  test('daysUntilBaseline uses the larger count', () {
+    final r = score(
+      lastNight: nightOn(today, asleep: 450),
+      hrv: series(List.filled(9, 50.0), todayValue: 50),
+      rhr: series(List.filled(12, 60.0), todayValue: 60),
+    ) as ReadinessNotReady;
+    expect(r.daysUntilBaseline, 2);
+  });
+
+  test('zero-minute week skips sleep debt without throwing', () {
+    final v = ready(
+      score(
+        lastNight: nightOn(today, asleep: 450),
+        sleepScore: scoreOf(80),
+        prior: weekOf(0),
+        hrv: series(alternating(20, 50, 5), todayValue: 50),
+      ),
+    );
+    expect(
+      v.parts.map((p) => p.input),
+      isNot(contains(ReadinessInput.sleepDebt)),
+    );
+  });
+
   group('band edges', () {
     for (final (value, band) in [
       (70, ReadinessBand.good),
