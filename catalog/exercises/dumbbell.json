@@ -1,0 +1,1136 @@
+[
+  {
+    "id": "builtin.v1.db-bench-press",
+    "name": "Dumbbell bench press",
+    "aliases": [
+      "DB bench press"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "shoulders"
+    ],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Shoulder blades pinched and down",
+      "Lower the dumbbells beside your mid chest",
+      "Press up and slightly together over your shoulders",
+      "Keep your wrists stacked over your elbows"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-incline-press",
+    "name": "Incline dumbbell press",
+    "aliases": [
+      "Incline DB press"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Set the bench to a low to medium incline",
+      "Lower to your upper chest with elbows about 45 degrees from your body",
+      "Press up without bouncing",
+      "Keep your feet planted"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-decline-press",
+    "name": "Decline dumbbell press",
+    "aliases": [
+      "Decline DB press"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "shoulders"
+    ],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Lock your legs in and lie back on the decline bench",
+      "Lower the dumbbells beside your lower chest",
+      "Press up over your chest",
+      "Keep the dumbbells controlled when you set them down"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-floor-press",
+    "name": "Dumbbell floor press",
+    "aliases": [
+      "DB floor press"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest",
+      "triceps"
+    ],
+    "secondaryMuscles": [
+      "shoulders"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Lie on the floor with knees bent",
+      "Lower until your upper arms touch the floor",
+      "Pause without relaxing",
+      "Press to full lockout"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-squeeze-press",
+    "name": "Dumbbell squeeze press",
+    "aliases": [
+      "Close-grip dumbbell press"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest",
+      "triceps"
+    ],
+    "secondaryMuscles": [
+      "shoulders"
+    ],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Press the dumbbells together the whole set",
+      "Keep your elbows close to your ribs",
+      "Lower to your mid chest",
+      "Press up without losing the squeeze"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-fly",
+    "name": "Dumbbell fly",
+    "aliases": [
+      "Dumbbell chest fly",
+      "Flat dumbbell fly"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "shoulders",
+      "biceps"
+    ],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Soft bend in your elbows that stays fixed",
+      "Open your arms wide until you feel a chest stretch",
+      "Bring the dumbbells together in a hugging arc",
+      "Use a lighter weight than you press"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-incline-fly",
+    "name": "Incline dumbbell fly",
+    "aliases": [
+      "Incline fly"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "shoulders",
+      "biceps"
+    ],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Set the bench to a low incline",
+      "Keep a soft bend in your elbows",
+      "Lower in a wide arc to chest level",
+      "Squeeze the dumbbells back over your upper chest"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-pullover",
+    "name": "Dumbbell pullover",
+    "aliases": [
+      "Pullover"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats",
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "triceps"
+    ],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Lie across or along the bench holding one dumbbell with both hands",
+      "Keep a slight bend in your elbows",
+      "Lower the dumbbell behind your head until you feel a stretch",
+      "Pull it back over your chest with your lats"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.arnold-press",
+    "name": "Arnold press",
+    "aliases": [
+      "Dumbbell Arnold press"
+    ],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "triceps"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "push_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Start with palms facing you at chest height",
+      "Rotate your palms forward as you press up",
+      "Reverse the turn as you lower",
+      "Keep your ribs down and your back neutral"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-single-arm-shoulder-press",
+    "name": "Single-arm dumbbell shoulder press",
+    "aliases": [
+      "One-arm dumbbell press"
+    ],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "abs"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "push_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the dumbbell at your shoulder",
+      "Brace your trunk and stay upright",
+      "Press straight up beside your ear",
+      "Lower to your shoulder and repeat on both sides"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-push-press",
+    "name": "Dumbbell push press",
+    "aliases": [],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "quads"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "push_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Start with the dumbbells on your shoulders",
+      "Dip your knees slightly and drive up",
+      "Press overhead as your legs extend",
+      "Lower to your shoulders under control"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-front-raise",
+    "name": "Dumbbell front raise",
+    "aliases": [
+      "Front raise"
+    ],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "chest"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Stand tall with the dumbbells in front of your thighs",
+      "Raise one or both arms to shoulder height",
+      "Keep a soft bend in your elbows",
+      "Lower slowly without swinging"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-rear-delt-raise",
+    "name": "Dumbbell rear delt raise",
+    "aliases": [
+      "Bent-over reverse fly",
+      "Rear delt fly"
+    ],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "traps"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Hinge forward with a flat back and arms hanging",
+      "Raise the dumbbells out to the sides",
+      "Lead with your elbows",
+      "Pause at the top and lower slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-upright-row",
+    "name": "Dumbbell upright row",
+    "aliases": [],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "biceps"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "push_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the dumbbells in front of your thighs",
+      "Lift your elbows up and out, leading with them",
+      "Stop around chest height",
+      "Lower slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-shrug",
+    "name": "Dumbbell shrug",
+    "aliases": [],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the dumbbells at your sides with arms straight",
+      "Lift your shoulders straight up",
+      "Pause briefly at the top",
+      "Lower without rolling your shoulders"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-row",
+    "name": "One-arm dumbbell row",
+    "aliases": [
+      "Single-arm dumbbell row",
+      "DB row"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "shoulders",
+      "forearms"
+    ],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "pull_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Support yourself with one hand and a knee on the bench",
+      "Keep your back flat and hips square",
+      "Pull the dumbbell toward your hip",
+      "Lower until your arm is straight"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.chest-supported-db-row",
+    "name": "Chest-supported dumbbell row",
+    "aliases": [
+      "Incline bench dumbbell row"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "shoulders"
+    ],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "pull_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Lie face down on an incline bench",
+      "Let your arms hang straight down",
+      "Row the dumbbells toward your ribs",
+      "Pause with your shoulder blades squeezed"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-bent-over-row",
+    "name": "Dumbbell bent-over row",
+    "aliases": [
+      "Two-arm dumbbell row"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "lowerBack",
+      "shoulders"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "pull_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Hinge until your torso is near parallel",
+      "Keep your back flat and neck neutral",
+      "Row both dumbbells to your lower ribs",
+      "Lower with control"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-rdl",
+    "name": "Dumbbell Romanian deadlift",
+    "aliases": [
+      "Dumbbell RDL"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "hamstrings",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "lowerBack",
+      "forearms"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the dumbbells in front of your thighs",
+      "Soft knees, push your hips back",
+      "Keep the dumbbells close to your legs",
+      "Stand up by driving your hips forward"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-single-leg-rdl",
+    "name": "Single-leg dumbbell Romanian deadlift",
+    "aliases": [
+      "Single-leg RDL"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "hamstrings",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "lowerBack",
+      "abs"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Hold a dumbbell in the hand opposite your standing leg",
+      "Hinge and let your back leg extend behind you",
+      "Keep your hips level to the floor",
+      "Return upright without twisting"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-goblet-squat",
+    "name": "Dumbbell goblet squat",
+    "aliases": [
+      "Goblet squat"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "abs"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "squat",
+    "mode": "reps_load",
+    "cues": [
+      "Hold one dumbbell upright against your chest",
+      "Elbows point down between your knees",
+      "Sit deep while keeping your chest up",
+      "Stand by driving through your whole foot"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-walking-lunge",
+    "name": "Dumbbell walking lunge",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "lunge",
+    "mode": "reps_load",
+    "cues": [
+      "Hold a dumbbell in each hand at your sides",
+      "Step forward and lower your back knee",
+      "Keep your torso upright",
+      "Push off the front foot into the next step"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-reverse-lunge",
+    "name": "Dumbbell reverse lunge",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "lunge",
+    "mode": "reps_load",
+    "cues": [
+      "Stand tall with dumbbells at your sides",
+      "Step back and lower your back knee toward the floor",
+      "Keep your front heel down",
+      "Push through your front foot to return"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-split-squat",
+    "name": "Dumbbell split squat",
+    "aliases": [
+      "Static lunge"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "lunge",
+    "mode": "reps_load",
+    "cues": [
+      "Set a long split stance and keep it fixed",
+      "Lower straight down",
+      "Keep your front knee tracking over your toes",
+      "Drive up without shifting your feet"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-bulgarian-split-squat",
+    "name": "Dumbbell Bulgarian split squat",
+    "aliases": [
+      "DB Bulgarian split squat"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "abs"
+    ],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "lunge",
+    "mode": "reps_load",
+    "cues": [
+      "Rest your back foot on a bench",
+      "Step out far enough to keep your front shin upright",
+      "Lower until your front thigh is near parallel",
+      "Drive through the front foot to stand"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-step-up",
+    "name": "Dumbbell step-up",
+    "aliases": [
+      "Dumbbell box step-up"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "calves"
+    ],
+    "equipment": [
+      "dumbbell",
+      "box"
+    ],
+    "category": "lunge",
+    "mode": "reps_load",
+    "cues": [
+      "Place your whole front foot on the box",
+      "Stand tall by pushing through that heel",
+      "Do not push off the back foot",
+      "Lower under control"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-lateral-lunge",
+    "name": "Dumbbell lateral lunge",
+    "aliases": [
+      "Side lunge"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "lunge",
+    "mode": "reps_load",
+    "cues": [
+      "Step wide to one side with toes forward",
+      "Sit back into the stepping hip",
+      "Keep your other leg straight",
+      "Push back to the start"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-sumo-squat",
+    "name": "Dumbbell sumo squat",
+    "aliases": [
+      "Plie squat"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "squat",
+    "mode": "reps_load",
+    "cues": [
+      "Stand wide with toes turned out",
+      "Hold one dumbbell between your legs",
+      "Lower with your knees tracking over your toes",
+      "Squeeze your glutes as you stand"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-hip-thrust",
+    "name": "Dumbbell hip thrust",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "quads"
+    ],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Rest your upper back on a bench",
+      "Hold the dumbbell across your hips",
+      "Drive your hips up until your torso is level",
+      "Lower slowly without arching your lower back"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-calf-raise",
+    "name": "Dumbbell standing calf raise",
+    "aliases": [
+      "Dumbbell calf raise"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "calves"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "calf",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the dumbbells at your sides",
+      "Rise onto the balls of your feet",
+      "Pause at the top",
+      "Lower to a full stretch"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-seated-calf-raise",
+    "name": "Seated dumbbell calf raise",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "calves"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "calf",
+    "mode": "reps_load",
+    "cues": [
+      "Sit with the dumbbells on your thighs near your knees",
+      "Keep the balls of your feet on a raised edge",
+      "Raise your heels as high as you can",
+      "Lower to a full stretch"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-hammer-curl",
+    "name": "Dumbbell hammer curl",
+    "aliases": [
+      "Hammer curl"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "biceps",
+      "forearms"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the dumbbells with palms facing each other",
+      "Keep your elbows at your sides",
+      "Curl without swinging",
+      "Lower slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-incline-curl",
+    "name": "Incline dumbbell curl",
+    "aliases": [],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Sit back on an incline bench with arms hanging",
+      "Keep your upper arms still behind your torso",
+      "Curl up and squeeze",
+      "Lower to a full stretch"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-concentration-curl",
+    "name": "Concentration curl",
+    "aliases": [
+      "Seated concentration curl"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Sit and brace your elbow against your inner thigh",
+      "Curl the dumbbell toward your shoulder",
+      "Squeeze at the top",
+      "Lower slowly to a full stretch"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-preacher-curl",
+    "name": "One-arm dumbbell preacher curl",
+    "aliases": [
+      "Dumbbell preacher curl"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Rest your upper arm on the pad",
+      "Curl the dumbbell up without lifting your elbow",
+      "Pause at the top",
+      "Lower until your arm is nearly straight"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.zottman-curl",
+    "name": "Zottman curl",
+    "aliases": [],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "biceps",
+      "forearms"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Curl up with palms facing up",
+      "Rotate your palms to face down at the top",
+      "Lower slowly with an overhand grip",
+      "Rotate back at the bottom"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-reverse-curl",
+    "name": "Dumbbell reverse curl",
+    "aliases": [],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "forearms",
+      "biceps"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Hold the dumbbells overhand",
+      "Keep your wrists straight",
+      "Curl up with your elbows at your sides",
+      "Lower slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-overhead-triceps-extension",
+    "name": "Dumbbell overhead triceps extension",
+    "aliases": [
+      "Overhead triceps extension"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Hold one dumbbell overhead with both hands",
+      "Keep your elbows pointing forward",
+      "Lower behind your head until you feel a stretch",
+      "Extend back to straight arms"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-triceps-kickback",
+    "name": "Dumbbell triceps kickback",
+    "aliases": [
+      "Kickback"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Hinge forward with your upper arm parallel to your torso",
+      "Extend your elbow until your arm is straight",
+      "Hold your upper arm still",
+      "Lower slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-skull-crusher",
+    "name": "Dumbbell skull crusher",
+    "aliases": [
+      "Lying dumbbell triceps extension"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Lie on a bench with the dumbbells over your chest",
+      "Keep your upper arms still",
+      "Bend at the elbows to lower beside your head",
+      "Extend back up"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-wrist-curl",
+    "name": "Dumbbell wrist curl",
+    "aliases": [],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "forearms"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Rest your forearm on a bench with your palm up",
+      "Let the dumbbell roll to your fingertips",
+      "Curl your wrist up",
+      "Lower under control"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-reverse-wrist-curl",
+    "name": "Dumbbell reverse wrist curl",
+    "aliases": [
+      "Wrist extension"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "forearms"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Rest your forearm on a bench with your palm down",
+      "Lower your wrist as far as is comfortable",
+      "Lift the back of your hand up",
+      "Use a light weight"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-side-bend",
+    "name": "Dumbbell side bend",
+    "aliases": [],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "obliques"
+    ],
+    "secondaryMuscles": [
+      "abs"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Hold one dumbbell at your side",
+      "Bend sideways without twisting",
+      "Return to upright with your side muscles",
+      "Keep the movement slow"
+    ],
+    "status": "active"
+  }
+]

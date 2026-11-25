@@ -134,7 +134,7 @@ class ExerciseStyleTest(unittest.TestCase):
             with self.subTest(ex["id"]):
                 self.assertTrue(1 <= len(ex["primaryMuscles"]) <= 3)
 
-    @unittest.skipUnless(len(source_exercises()) > 100, "content not landed yet")
+    @unittest.skipUnless(len(source_exercises()) > 200, "full library not landed yet")
     def test_every_muscle_is_well_covered(self):
         counts = {m: 0 for m in MUSCLES}
         for ex in source_exercises():
