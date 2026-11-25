@@ -52,10 +52,11 @@ class MuscleRecovery {
 
   final Map<Muscle, double> load;
 
-  /// The logged muscle groups, by display name, with the same 0..1 value.
-  /// Exercises only record a group ("Legs"), so this, not the individual
-  /// drawn muscles, is what the card names as trained. It includes custom
-  /// groups that map to no drawn muscle.
+  /// What the card names as trained, by display name, with a 0..1 value:
+  /// the logged group ("Legs") of exercises without a muscle snapshot, and
+  /// the specific muscles ("Hamstrings") of catalogue exercises, the larger
+  /// value when a name appears in both. It includes custom groups that map
+  /// to no drawn muscle.
   final Map<String, double> groups;
 
   double loadOf(Muscle muscle) => (load[muscle] ?? 0).clamp(0.0, 1.0);
