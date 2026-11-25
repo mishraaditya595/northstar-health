@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beyondrep.invalid/catalog/schema/catalog.schema.json",
+  "title": "BeyondRep training catalogue snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "minAppCatalogSchema",
+    "release",
+    "publishedAt",
+    "provenance",
+    "exercises",
+    "templates",
+    "programs"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "minAppCatalogSchema": { "type": "integer", "minimum": 1 },
+    "release": { "type": "integer", "minimum": 1 },
+    "publishedAt": { "type": "string", "minLength": 1, "maxLength": 40 },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "license", "attribution"],
+      "properties": {
+        "source": { "type": "string", "maxLength": 200 },
+        "license": { "type": "string", "maxLength": 80 },
+        "attribution": { "type": "string", "maxLength": 500 }
+      }
+    },
+    "exercises": { "type": "array", "items": { "$ref": "#/$defs/exercise" } },
+    "templates": { "type": "array", "items": { "$ref": "#/$defs/template" } },
+    "programs": { "type": "array", "items": { "$ref": "#/$defs/program" } }
+  },
+  "$defs": {
+    "muscle": {
+      "enum": [
+        "chest", "shoulders", "biceps", "forearms", "abs", "obliques",
+        "quads", "calves", "traps", "lats", "lowerBack", "triceps",
+        "glutes", "hamstrings"
+      ]
+    },
+    "muscleGroup": {
+      "enum": ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"]
+    },
+    "mode": { "enum": ["reps_load", "reps", "duration", "duration_load"] },
+    "equipment": {
+      "enum": [
+        "barbell", "dumbbell", "kettlebell", "machine", "cable", "band",
+        "bodyweight", "bench", "pull_up_bar", "ez_bar", "trap_bar", "plate",
+        "box", "rings", "other"
+      ]
+    },
+    "category": {
+      "enum": [
+        "squat", "hinge", "lunge", "push_horizontal", "push_vertical",
+        "pull_horizontal", "pull_vertical", "carry", "core", "isolation",
+        "calf", "conditioning", "mobility"
+      ]
+    },
+    "level": { "enum": ["beginner", "intermediate", "advanced"] },
+    "goal": { "enum": ["strength", "hypertrophy", "general", "endurance", "fat_loss"] },
+    "exercise": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "name", "aliases", "muscleGroup", "primaryMuscles",
+        "secondaryMuscles", "equipment", "category", "mode", "cues", "status"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "aliases": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "type": "string", "minLength": 1, "maxLength": 60 }
+        },
+        "muscleGroup": { "$ref": "#/$defs/muscleGroup" },
+        "primaryMuscles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/muscle" }
+        },
+        "secondaryMuscles": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/muscle" }
+        },
+        "equipment": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/equipment" }
+        },
+        "category": { "$ref": "#/$defs/category" },
+        "mode": { "$ref": "#/$defs/mode" },
+        "cues": {
+          "type": "array",
+          "maxItems": 6,
+          "items": { "type": "string", "minLength": 1, "maxLength": 160 }
+        },
+        "status": { "enum": ["active", "retired"] }
+      }
+    },
+    "prescription": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exerciseId", "sets", "restSeconds"],
+      "properties": {
+        "exerciseId": { "type": "string" },
+        "sets": { "type": "integer" },
+        "repsMin": { "type": "integer" },
+        "repsMax": { "type": "integer" },
+        "durationSeconds": { "type": "integer" },
+        "restSeconds": { "type": "integer" },
+        "note": { "type": "string", "maxLength": 300 }
+      }
+    },
+    "template": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "name", "description", "tags", "estimatedMinutes", "exercises"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "tags": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["goal", "level", "equipment"],
+          "properties": {
+            "goal": { "type": "array", "items": { "$ref": "#/$defs/goal" } },
+            "level": { "$ref": "#/$defs/level" },
+            "equipment": { "type": "array", "items": { "$ref": "#/$defs/equipment" } }
+          }
+        },
+        "estimatedMinutes": { "type": "integer", "minimum": 1, "maximum": 240 },
+        "standalone": { "type": "boolean", "default": true },
+        "exercises": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/prescription" }
+        }
+      }
+    },
+    "program": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "name", "description", "goals", "level", "daysPerWeek",
+        "estimatedMinutes", "equipment", "week"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "goals": { "type": "array", "items": { "$ref": "#/$defs/goal" } },
+        "level": { "$ref": "#/$defs/level" },
+        "daysPerWeek": { "type": "integer", "minimum": 0, "maximum": 7 },
+        "estimatedMinutes": { "type": "integer", "minimum": 1, "maximum": 240 },
+        "equipment": { "type": "array", "items": { "$ref": "#/$defs/equipment" } },
+        "week": {
+          "type": "array",
+          "items": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}
