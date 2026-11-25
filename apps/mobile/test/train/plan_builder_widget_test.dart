@@ -49,6 +49,17 @@ class FakeLibrary implements WorkoutLibraryRepository {
   void archiveCustomExercise(String uuid) => throw UnimplementedError();
 
   @override
+  ExerciseRecord materializeCatalogExercise({
+    required String id,
+    required String name,
+    required String muscleGroup,
+    required String equipment,
+    required String category,
+    required String mode,
+    required int release,
+  }) => throw UnimplementedError();
+
+  @override
   WorkoutPlanRecord? getPlan(String uuid) {
     final plan = planRecords[uuid];
     return plan?.archivedAtMs == null ? plan : null;

@@ -413,4 +413,151 @@ void main() {
     library.archivePlan('plan-a', expectedUpdatedAtMs: edited.updatedAtMs);
     expect(library.getPlan('plan-a'), isNull);
   });
+
+  group('materializeCatalogExercise', () {
+    ExerciseRecord materialize({
+      String id = 'builtin.v1.row',
+      String name = 'Barbell row',
+      String muscleGroup = 'Back',
+      String equipment = 'Barbell',
+      String category = 'pull_horizontal',
+      String mode = 'reps_load',
+      int release = 1,
+    }) => library.materializeCatalogExercise(
+      id: id,
+      name: name,
+      muscleGroup: muscleGroup,
+      equipment: equipment,
+      category: category,
+      mode: mode,
+      release: release,
+    );
+
+    ExerciseDefinitionEntity stored(String id) => store
+        .box<ExerciseDefinitionEntity>()
+        .query(ExerciseDefinitionEntity_.uuid.equals(id))
+        .build()
+        .findFirst()!;
+
+    test('inserts a new catalogue exercise', () {
+      final record = materialize(release: 3);
+      expect(record.uuid, 'builtin.v1.row');
+      expect(record.name, 'Barbell row');
+      expect(record.muscleGroup, 'Back');
+      expect(record.equipment, 'Barbell');
+      expect(record.movementCategory, 'pull_horizontal');
+      expect(record.inputMode, 'reps_load');
+      expect(record.isBuiltIn, isTrue);
+      expect(stored('builtin.v1.row').catalogVersion, 3);
+      expect(library.listExercises().map((e) => e.uuid), contains(record.uuid));
+    });
+
+    test('is idempotent for the same release', () {
+      final first = materialize(release: 2);
+      final again = materialize(release: 2, name: 'Renamed but same release');
+      expect(again.updatedAtMs, first.updatedAtMs);
+      expect(again.name, 'Barbell row');
+      expect(store.box<ExerciseDefinitionEntity>().count(), 1);
+    });
+
+    test('updates display fields for a newer release', () {
+      final first = materialize(release: 1);
+      final next = materialize(
+        release: 2,
+        name: 'Bent-over row',
+        muscleGroup: 'Arms',
+        equipment: 'Cable',
+        category: 'isolation',
+      );
+      expect(next.name, 'Bent-over row');
+      expect(next.muscleGroup, 'Arms');
+      expect(next.equipment, 'Cable');
+      expect(next.movementCategory, 'isolation');
+      expect(next.updatedAtMs, greaterThanOrEqualTo(first.updatedAtMs));
+      expect(stored('builtin.v1.row').catalogVersion, 2);
+    });
+
+    test('ignores an older release', () {
+      materialize(release: 5);
+      final again = materialize(release: 4, name: 'Old name');
+      expect(again.name, 'Barbell row');
+      expect(stored('builtin.v1.row').catalogVersion, 5);
+    });
+
+    test('never changes mode', () {
+      materialize(release: 1);
+      expect(
+        () => materialize(release: 2, mode: 'duration', name: 'Changed'),
+        throwsStateError,
+      );
+      final after = stored('builtin.v1.row');
+      expect(after.inputMode, 'reps_load');
+      expect(after.name, 'Barbell row');
+      expect(after.catalogVersion, 1);
+    });
+
+    test('rejects a non-catalogue id', () {
+      expect(() => materialize(id: 'custom-1'), throwsArgumentError);
+      expect(() => materialize(id: 'builtin.v2.row'), throwsArgumentError);
+      expect(store.box<ExerciseDefinitionEntity>().count(), 0);
+    });
+
+    test('rejects a catalogue id held by a custom exercise', () {
+      store.box<ExerciseDefinitionEntity>().put(
+        ExerciseDefinitionEntity(
+          uuid: 'builtin.v1.row',
+          name: 'Mine',
+          createdAtMs: 1,
+          updatedAtMs: 1,
+        ),
+      );
+      expect(() => materialize(release: 2), throwsStateError);
+      expect(stored('builtin.v1.row').name, 'Mine');
+    });
+
+    test('legacy seeded squat is upgraded from catalogVersion 1 only by a '
+        'newer release', () {
+      library.ensureCatalogSeeded();
+      final seeded = library.listExercises().firstWhere(
+        (e) => e.uuid == 'builtin.v1.squat',
+      );
+      final same = materialize(
+        id: 'builtin.v1.squat',
+        name: 'Back squat',
+        muscleGroup: seeded.muscleGroup,
+        equipment: seeded.equipment,
+        category: seeded.movementCategory,
+        mode: seeded.inputMode,
+        release: 1,
+      );
+      expect(same.name, seeded.name);
+      final newer = materialize(
+        id: 'builtin.v1.squat',
+        name: 'Back squat',
+        muscleGroup: seeded.muscleGroup,
+        equipment: seeded.equipment,
+        category: seeded.movementCategory,
+        mode: seeded.inputMode,
+        release: 2,
+      );
+      expect(newer.name, 'Back squat');
+      expect(stored('builtin.v1.squat').catalogVersion, 2);
+      expect(library.listExercises(), hasLength(18));
+    });
+
+    test('plans referencing the exercise are untouched', () {
+      materialize(release: 1);
+      final plan = library.savePlan(
+        uuid: 'plan-a',
+        name: 'Pull',
+        description: '',
+        exercises: [part('part-1', 'builtin.v1.row', 0)],
+      );
+      materialize(release: 2, name: 'Bent-over row');
+      final after = library.getPlan('plan-a')!;
+      expect(after.updatedAtMs, plan.updatedAtMs);
+      expect(after.exercises.single.exerciseUuid, 'builtin.v1.row');
+      expect(after.exercises.single.targetSets, 3);
+    });
+  });
 }

@@ -189,6 +189,54 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
   }
 
   @override
+  ExerciseRecord materializeCatalogExercise({
+    required String id,
+    required String name,
+    required String muscleGroup,
+    required String equipment,
+    required String category,
+    required String mode,
+    required int release,
+  }) {
+    if (!id.startsWith('builtin.v1.')) {
+      throw ArgumentError('Not a catalogue exercise id');
+    }
+    return _store.runInTransaction(TxMode.write, () {
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      final existing = _byUuid(_catalog, ExerciseDefinitionEntity_.uuid, id);
+      if (existing == null) {
+        final created = ExerciseDefinitionEntity(
+          uuid: id,
+          name: name,
+          muscleGroup: muscleGroup,
+          equipment: equipment,
+          movementCategory: category,
+          inputMode: mode,
+          isBuiltIn: true,
+          catalogVersion: release,
+          createdAtMs: now,
+          updatedAtMs: now,
+        );
+        _catalog.put(created);
+        return _exercise(created);
+      }
+      if (!existing.isBuiltIn || existing.inputMode != mode) {
+        throw StateError('Catalogue exercise conflicts with stored data');
+      }
+      if (existing.catalogVersion >= release) return _exercise(existing);
+      existing
+        ..name = name
+        ..muscleGroup = muscleGroup
+        ..equipment = equipment
+        ..movementCategory = category
+        ..catalogVersion = release
+        ..updatedAtMs = now;
+      _catalog.put(existing);
+      return _exercise(existing);
+    });
+  }
+
+  @override
   List<WorkoutPlanRecord> listPlans() {
     return _store.runInTransaction(TxMode.read, () {
       final list = _plans.getAll()

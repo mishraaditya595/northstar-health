@@ -19,6 +19,20 @@ abstract interface class WorkoutLibraryRepository {
 
   void archiveCustomExercise(String uuid);
 
+  /// Copies a catalogue exercise into this account's library (idempotent).
+  /// Inserts when missing, refreshes display fields when the stored copy is
+  /// from an older release, and never changes the input mode. Touches no
+  /// plans or sessions.
+  ExerciseRecord materializeCatalogExercise({
+    required String id,
+    required String name,
+    required String muscleGroup,
+    required String equipment,
+    required String category,
+    required String mode,
+    required int release,
+  });
+
   List<WorkoutPlanRecord> listPlans();
 
   WorkoutPlanRecord? getPlan(String uuid);
