@@ -75,6 +75,7 @@ Optional: `muscle` (logged group text), `equipment` (text),
   snapshot has at least one primary muscle (a catalogue exercise). Workouts of
   custom exercises and workouts logged before muscles existed keep exactly the
   payload they always had, so older data and replays are unchanged.
+- The two arrays add up to roughly 300 bytes per exercise at most, counted toward the 64 KiB payload limit that the outbox size check and the server already enforce.
 - The restore parser applies the same rules and rejects the whole page with
   code `invalid_exercise_muscles`; the export passes the stored payload
   through unchanged.
