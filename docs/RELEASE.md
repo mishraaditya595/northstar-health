@@ -100,6 +100,20 @@ The catalogue cache and exercise pickers are implemented in source, **not releas
 | Rollback: roll back to a previous release on the test project, pull to refresh: the app switches to the rolled-back release and shows no error | not run | not run |
 | Pick a catalogue exercise in a plan and in an active workout: it is saved offline and logs sets | not run | not run |
 
+## Training library stage 3 device QA (ADR-0010, owner actions, none done)
+
+Specific muscles are implemented in source, **not deployed, released or device-verified**. Every row is not run.
+
+| Check | iOS | Android |
+| --- | --- | --- |
+| Deploy order: the `supabase-database` job has applied `20261126010000_workout_exercise_muscles.sql` to the project under test **before** this build is uploaded | not run | not run |
+| Update every TestFlight and Android install to this build: an older build rejects the new exercise fields when restoring | not run | not run |
+| Recovery after an RDL day: finish a Romanian deadlift workout, then Progress shades hamstrings and glutes fully, lower back about half, quads not at all, and Train names Hamstrings and Glutes instead of Legs for plans of those exercises | not run | not run |
+| Restore on a second device: sign in as the same account on a second device, the RDL workout restores and the body map shows the same muscles | not run | not run |
+| Existing plans of the 18 built-ins show specific muscles after the catalogue downloads, without picking the exercises again | not run | not run |
+| Exercise detail: open an exercise from the Exercises page, front and back body maps match the Primary and Secondary lists; a custom exercise shows the "Muscles aren't mapped yet" text | not run | not run |
+| A workout logged before this build still uploads, restores and counts toward recovery by its coarse group | not run | not run |
+
 ## Feature and privacy readiness
 
 - ObjectBox real sessions/sets with generated model UID fixture migration, durable offline writes and recovery through process death.
