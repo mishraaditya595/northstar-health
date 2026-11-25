@@ -250,6 +250,23 @@ class _RangeView extends ConsumerWidget {
     // While a reload (e.g. after an account switch) runs, the previous value
     // is not shown.
     final history = async.isLoading ? null : async.value;
+    if (!async.isLoading && async.hasError) {
+      return DetailPanel(
+        children: [
+          DetailUnavailable(
+            gap: MetricGap.failed,
+            metricName: 'Readiness',
+            platform: overview.platform,
+            // Its own reads are guarded: a failure comes from the sleep
+            // range providers it builds on.
+            onRetry: () => ref
+              ..invalidate(sleepRangeNightsProvider(range))
+              ..invalidate(sleepRangeHrProvider(range))
+              ..invalidate(readinessHistoryProvider(range)),
+          ),
+        ],
+      );
+    }
     if (history == null) return const DetailLoading();
     final theme = Theme.of(context);
     final days = range.nights;

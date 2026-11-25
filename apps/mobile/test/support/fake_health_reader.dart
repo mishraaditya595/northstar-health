@@ -43,6 +43,10 @@ class FakeHealthReader implements HealthReader {
   int _seriesInFlight = 0;
   int maxSeriesInFlight = 0;
 
+  /// When true, [readSeries] answers only samples overlapping [from, to], as
+  /// a platform does.
+  bool applyWindows = false;
+
   /// Holds every [readSleep] until completed.
   Completer<void>? sleepGate;
 
@@ -91,7 +95,16 @@ class FakeHealthReader implements HealthReader {
       _seriesInFlight--;
     }
     if (throwOnSeries.contains(type)) throw StateError('synthetic series bug');
-    return seriesResults[type] ?? SeriesData(series[type] ?? const []);
+    final samples = series[type] ?? const <HealthSample>[];
+    return seriesResults[type] ??
+        SeriesData(
+          applyWindows
+              ? [
+                  for (final s in samples)
+                    if (!s.to.isBefore(from) && !s.from.isAfter(to)) s,
+                ]
+              : samples,
+        );
   }
 
   @override

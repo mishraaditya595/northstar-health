@@ -462,6 +462,47 @@ void main() {
     });
   });
 
+  testWidgets('a failed history offers Try again', (tester) async {
+    final reader = FakeHealthReader()..sleep = _nights(-40);
+    _heartFrom(reader, -40);
+    // The history's own reads are guarded; a failure comes from the sleep
+    // range providers it awaits.
+    var builds = 0;
+    tester.view.physicalSize = const Size(390, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          fakeHealthOverview(
+            FakeHealthOverviewController(_overview(_nights(-40), reader)),
+          ),
+          healthReaderProvider.overrideWithValue(reader),
+          healthOwnerIdProvider.overrideWithValue(_owner),
+          healthClockProvider.overrideWithValue(() => _now),
+          sleepRangeHrProvider.overrideWith((ref, range) {
+            builds++;
+            throw StateError('synthetic history bug');
+          }),
+        ],
+        child: MaterialApp(
+          theme: BeyondRepTheme.build(Brightness.light),
+          home: const ReadinessDetailPage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _selectRange(tester, '7 days');
+
+    expect(find.text("Couldn't read · Try again"), findsOneWidget);
+    expect(find.byType(DetailLoading), findsNothing);
+    final before = builds;
+    await tester.tap(find.text("Couldn't read · Try again"));
+    await tester.pumpAndSettle();
+    expect(builds, greaterThan(before));
+  });
+
   test('history is dropped when the account changes', () async {
     final reader = FakeHealthReader()..sleep = _nights(-40);
     _heartFrom(reader, -40);
@@ -498,6 +539,44 @@ void main() {
       root.deleteSync(recursive: true);
     });
 
+    test("day -30's whole night counts on a windowed reader", () async {
+      final repo = ObjectBoxHealthConnectionRepository(store)
+        ..connect(_owner, DateTime(2026, 9, 1));
+      // HRV on 13 recent days plus one sample at 23:30 on day -31, inside
+      // the night ending day -30: the 14th baseline day only if both read it.
+      final reader = FakeHealthReader()
+        ..applyWindows = true
+        ..sleep = _nights(-70)
+        ..series[HealthSeriesType.hrv] = [
+          _sample(DateTime(2026, 10, 24, 23, 30), 40),
+          for (var i = -13; i < 0; i++)
+            _sample(_day(i).add(const Duration(hours: 3)), i.isEven ? 42 : 38),
+          _sample(DateTime(2026, 11, 24, 3), 50),
+        ];
+      final c = ProviderContainer(
+        overrides: [
+          healthReaderProvider.overrideWithValue(reader),
+          healthConnectionRepositoryProvider.overrideWithValue(repo),
+          healthOwnerIdProvider.overrideWithValue(_owner),
+          healthClockProvider.overrideWithValue(() => _now),
+        ],
+      );
+      addTearDown(c.dispose);
+      c.listen(healthOverviewProvider, (_, _) {});
+      final overview = (await c.read(healthOverviewProvider.future))!;
+      final r = (overview.readiness as SectionData<ReadinessOverview>).value;
+      expect(r.hrvBaseline!.days, 14);
+      final expected = r.result as ReadinessReady;
+
+      final provider = readinessHistoryProvider(SleepRange.week);
+      c.listen(provider, (_, _) {});
+      final today = (await c.read(provider.future))!.last.result;
+      expect(
+        (today as ReadinessReady).readiness.value,
+        expected.readiness.value,
+      );
+    });
+
     for (final range in [SleepRange.week, SleepRange.month]) {
       test('on the ${range.name} tab', () async {
         final repo = ObjectBoxHealthConnectionRepository(store)
@@ -509,6 +588,7 @@ void main() {
             _sample(DateTime(2026, 11, 24, 4), 54),
           ];
         _heartFrom(reader, -70);
+        reader.applyWindows = true;
         final c = ProviderContainer(
           overrides: [
             healthReaderProvider.overrideWithValue(reader),
@@ -520,17 +600,6 @@ void main() {
         addTearDown(c.dispose);
         c.listen(healthOverviewProvider, (_, _) {});
         final overview = (await c.read(healthOverviewProvider.future))!;
-        // The fake ignores windows; on a device the overview's baseline sees
-        // the 30 days before today only if it reads them.
-        for (final type in [
-          HealthSeriesType.hrv,
-          HealthSeriesType.restingHeartRate,
-        ]) {
-          expect(
-            reader.seriesCalls.firstWhere((c) => c.$1 == type).$2,
-            _day(-30),
-          );
-        }
         final expected =
             (overview.readiness as SectionData<ReadinessOverview>).value.result
                 as ReadinessReady;

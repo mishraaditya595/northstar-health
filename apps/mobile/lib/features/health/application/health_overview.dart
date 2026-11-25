@@ -445,10 +445,12 @@ Future<HealthOverview> _read(
   Future<SeriesResult<List<HealthSample>>> totals(HealthTotalType type) =>
       _guard(() => reader.readHourlyTotals(type, monthFrom, now));
 
-  final sleepF = _guard(() => reader.readSleep(daysAgo(31, 18), now));
-  // From 30 days back: readiness baselines use the 30 days before today.
+  final sleepFrom = daysAgo(31, 18);
+  final sleepF = _guard(() => reader.readSleep(sleepFrom, now));
+  // Readiness baselines use the 30 days before today. HRV starts with the
+  // sleep read so day -30 holds its whole night, as the detail history does.
   final rhrF = series(HealthSeriesType.restingHeartRate, daysAgo(30));
-  final hrvF = series(HealthSeriesType.hrv, daysAgo(30));
+  final hrvF = series(HealthSeriesType.hrv, sleepFrom);
   final weightF = series(HealthSeriesType.weight, monthFrom);
   final bodyFatF = series(HealthSeriesType.bodyFat, monthFrom);
   final vo2F = series(HealthSeriesType.vo2Max, daysAgo(89));
@@ -493,12 +495,12 @@ Future<HealthOverview> _read(
 
   final rhrAll = reduceDaily(_list(rhrResult), DailyReduction.latest);
   final hrvAll = hrvDailyOf(_list(hrvResult), nights);
-  List<DayValue> month(List<DayValue> all) => [
+  List<DayValue> since(DateTime day, List<DayValue> all) => [
     for (final d in all)
-      if (!d.day.isBefore(monthFrom)) d,
+      if (!d.day.isBefore(day)) d,
   ];
-  final rhrDaily = month(rhrAll);
-  final hrvDaily = month(hrvAll);
+  final rhrDaily = since(monthFrom, rhrAll);
+  final hrvDaily = since(monthFrom, hrvAll);
 
   final sleep = _section<SleepOverview>([sleepResult], () {
     if (lastNight == null) return null;
@@ -601,7 +603,14 @@ Future<HealthOverview> _read(
     );
   });
 
-  final readiness = _readiness(sleep, heart, hrvAll, rhrAll, today, platform);
+  final readiness = _readiness(
+    sleep,
+    heart,
+    since(daysAgo(30), hrvAll),
+    rhrAll,
+    today,
+    platform,
+  );
 
   return HealthOverview(
     ownerId: ownerId,
