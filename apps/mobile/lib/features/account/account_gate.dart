@@ -10,6 +10,7 @@ import '../../core/storage/account_store.dart';
 import '../../core/storage/objectbox_store_provider.dart';
 import '../../objectbox.g.dart';
 import '../catalog/application/catalog_providers.dart';
+import '../catalog/application/catalog_definition_sync.dart';
 import '../catalog/application/catalog_refresh_host.dart';
 import '../catalog/data/catalog_file_store.dart';
 import 'account_auth_controller.dart';
@@ -145,7 +146,9 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
             ),
           ],
           child: const AccountWorkoutUploadHost(
-            child: CatalogRefreshHost(child: BeyondRepApp()),
+            child: CatalogDefinitionSyncHost(
+              child: CatalogRefreshHost(child: BeyondRepApp()),
+            ),
           ),
         );
       }

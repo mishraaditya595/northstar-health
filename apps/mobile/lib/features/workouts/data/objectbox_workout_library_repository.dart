@@ -199,6 +199,8 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
     required String category,
     required String mode,
     required int release,
+    required List<String> primaryMuscles,
+    required List<String> secondaryMuscles,
   }) {
     if (!id.startsWith('builtin.v1.')) {
       throw ArgumentError('Not a catalogue exercise id');
@@ -218,6 +220,8 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
           catalogVersion: release,
           createdAtMs: now,
           updatedAtMs: now,
+          primaryMuscles: List.of(primaryMuscles),
+          secondaryMuscles: List.of(secondaryMuscles),
         );
         _catalog.put(created);
         return _exercise(created);
@@ -225,16 +229,94 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
       if (!existing.isBuiltIn || existing.inputMode != mode) {
         throw StateError('Catalogue exercise conflicts with stored data');
       }
-      if (existing.catalogVersion >= release) return _exercise(existing);
+      if (_needsUpdate(existing, release, primaryMuscles)) {
+        _applyCatalog(
+          existing,
+          release: release,
+          name: name,
+          muscleGroup: muscleGroup,
+          equipment: equipment,
+          category: category,
+          primaryMuscles: primaryMuscles,
+          secondaryMuscles: secondaryMuscles,
+          now: now,
+        );
+        _catalog.put(existing);
+      }
+      return _exercise(existing);
+    });
+  }
+
+  /// Older than the release, or built-in without muscles that the catalogue
+  /// now provides.
+  bool _needsUpdate(
+    ExerciseDefinitionEntity existing,
+    int release,
+    List<String> primaryMuscles,
+  ) =>
+      existing.catalogVersion < release ||
+      (existing.primaryMuscles.isEmpty && primaryMuscles.isNotEmpty);
+
+  /// A newer release refreshes every display field; a same-release muscle
+  /// fill leaves the display fields and version alone.
+  void _applyCatalog(
+    ExerciseDefinitionEntity existing, {
+    required int release,
+    required String name,
+    required String muscleGroup,
+    required String equipment,
+    required String category,
+    required List<String> primaryMuscles,
+    required List<String> secondaryMuscles,
+    required int now,
+  }) {
+    if (existing.catalogVersion < release) {
       existing
         ..name = name
         ..muscleGroup = muscleGroup
         ..equipment = equipment
         ..movementCategory = category
-        ..catalogVersion = release
-        ..updatedAtMs = now;
-      _catalog.put(existing);
-      return _exercise(existing);
+        ..catalogVersion = release;
+    }
+    existing
+      ..primaryMuscles = List.of(primaryMuscles)
+      ..secondaryMuscles = List.of(secondaryMuscles)
+      ..updatedAtMs = now;
+  }
+
+  @override
+  int syncCatalogDefinitions(List<CatalogDefinitionInput> items, int release) {
+    return _store.runInTransaction(TxMode.write, () {
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      var updated = 0;
+      for (final item in items) {
+        if (!item.id.startsWith('builtin.v1.')) continue;
+        final existing = _byUuid(
+          _catalog,
+          ExerciseDefinitionEntity_.uuid,
+          item.id,
+        );
+        if (existing == null ||
+            !existing.isBuiltIn ||
+            existing.inputMode != item.mode ||
+            !_needsUpdate(existing, release, item.primaryMuscles)) {
+          continue;
+        }
+        _applyCatalog(
+          existing,
+          release: release,
+          name: item.name,
+          muscleGroup: item.muscleGroup,
+          equipment: item.equipment,
+          category: item.category,
+          primaryMuscles: item.primaryMuscles,
+          secondaryMuscles: item.secondaryMuscles,
+          now: now,
+        );
+        _catalog.put(existing);
+        updated++;
+      }
+      return updated;
     });
   }
 

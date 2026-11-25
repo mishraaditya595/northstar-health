@@ -21,8 +21,8 @@ abstract interface class WorkoutLibraryRepository {
 
   /// Copies a catalogue exercise into this account's library (idempotent).
   /// Inserts when missing, refreshes display fields when the stored copy is
-  /// from an older release, and never changes the input mode. Touches no
-  /// plans or sessions.
+  /// from an older release, fills the muscles of a copy that has none, and
+  /// never changes the input mode. Touches no plans or sessions.
   ExerciseRecord materializeCatalogExercise({
     required String id,
     required String name,
@@ -31,7 +31,16 @@ abstract interface class WorkoutLibraryRepository {
     required String category,
     required String mode,
     required int release,
+    required List<String> primaryMuscles,
+    required List<String> secondaryMuscles,
   });
+
+  /// Brings already-stored built-in definitions up to date from the
+  /// catalogue (one transaction): only existing `builtin.v1.` rows that are
+  /// older than [release] or have no muscles yet. Never inserts, never
+  /// touches custom rows, never changes the input mode (a row whose mode
+  /// differs is skipped). Returns the number of rows updated.
+  int syncCatalogDefinitions(List<CatalogDefinitionInput> items, int release);
 
   List<WorkoutPlanRecord> listPlans();
 

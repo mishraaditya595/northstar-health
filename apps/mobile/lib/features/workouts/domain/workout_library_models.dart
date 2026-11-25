@@ -30,6 +30,18 @@ class ExerciseRecord {
   final List<String> secondaryMuscles;
 }
 
+/// One catalogue exercise as the local definitions backfill needs it.
+typedef CatalogDefinitionInput = ({
+  String id,
+  String name,
+  String muscleGroup,
+  String equipment,
+  String category,
+  String mode,
+  List<String> primaryMuscles,
+  List<String> secondaryMuscles,
+});
+
 class PlanExerciseRecord {
   const PlanExerciseRecord({
     required this.uuid,
