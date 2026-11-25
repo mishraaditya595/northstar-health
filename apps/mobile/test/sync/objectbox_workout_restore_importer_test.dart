@@ -162,6 +162,31 @@ void main() {
     expect(set.reps, isNull);
   });
 
+  test('a page with invalid seconds is refused and imports nothing', () {
+    final before = importer.readCursor();
+    expect(
+      () => importer.applyPage(
+        feed(setExtra: {'reps': null, 'duration_seconds': 0}),
+        afterSeq: 0,
+        requestedEpoch: null,
+      ),
+      throwsA(
+        isA<RestoreContractException>().having(
+          (e) => e.code,
+          'code',
+          'invalid_set_duration',
+        ),
+      ),
+    );
+    expect(store.box<WorkoutSessionEntity>().count(), 0);
+    expect(store.box<WorkoutExerciseEntity>().count(), 0);
+    expect(store.box<WorkoutSetEntity>().count(), 0);
+    expect(store.box<WorkoutRemoteStateEntity>().count(), 0);
+    expect(store.box<WorkoutSyncOutboxEntity>().count(), 0);
+    expect(importer.readCursor().nextCursor, before.nextCursor);
+    expect(importer.readCursor().epoch, before.epoch);
+  });
+
   test('restores exercise muscle snapshots', () {
     importer.applyPage(
       feed(
