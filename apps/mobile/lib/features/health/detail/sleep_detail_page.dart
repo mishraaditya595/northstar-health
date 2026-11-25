@@ -31,6 +31,13 @@ String _percent(Duration part, Duration whole) => whole == Duration.zero
     ? '—'
     : '${(100 * part.inSeconds / whole.inSeconds).round()}%';
 
+/// Asleep share of time in bed, or of the sleep span without an in-bed
+/// record. Never over 100%: an in-bed record can be shorter than the sleep.
+String _efficiency(SleepNight n) {
+  final inBed = n.inBed ?? n.span;
+  return _percent(n.asleep > inBed ? inBed : n.asleep, inBed);
+}
+
 /// Last night, or 7 / 30 nights, read fresh and held in memory only.
 class SleepDetailPage extends ConsumerStatefulWidget {
   const SleepDetailPage({super.key});
@@ -129,6 +136,7 @@ class _LastNight extends ConsumerWidget {
   Widget _summary(BuildContext context, SleepNight night, SleepScore? score) {
     final theme = Theme.of(context);
     final inBed = night.inBed ?? night.span;
+    final inBedName = night.inBed == null ? 'Sleep span' : 'In bed';
     return DetailPanel(
       children: [
         Row(
@@ -152,8 +160,8 @@ class _LastNight extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   HealthCaption(
-                    'In bed ${formatDuration(inBed)} · '
-                    '${_percent(night.asleep, inBed)} efficient',
+                    '$inBedName ${formatDuration(inBed)} · '
+                    '${_efficiency(night)} efficient',
                   ),
                   HealthCaption(
                     '${formatTimeRange(night.start, night.end)} · '
@@ -307,9 +315,7 @@ class _LastNight extends ConsumerWidget {
         'Short · ${formatDuration(night.asleep)} of ~'
             '${formatDuration(_reference)}',
       SleepContributor.timing => timing(),
-      SleepContributor.efficiency =>
-        '${rating(r)} · '
-            '${_percent(night.asleep, night.inBed ?? night.span)}',
+      SleepContributor.efficiency => '${rating(r)} · ${_efficiency(night)}',
       _ => rating(r),
     };
     const labels = {

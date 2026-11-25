@@ -181,7 +181,8 @@ void main() {
     await _pump(tester, _overview(_history(14)), reader);
 
     expect(find.text('6h 33m asleep'), findsOneWidget);
-    expect(find.text('In bed 6h 43m · 98% efficient'), findsOneWidget);
+    // No in-bed record from the source: the asleep span stands in for it.
+    expect(find.text('Sleep span 6h 43m · 98% efficient'), findsOneWidget);
     expect(find.text('11:48 PM – 6:31 AM · Synthetic watch'), findsOneWidget);
     expect(
       find.bySemanticsLabel(RegExp(r'^Sleep stages, 11:48 PM to 6:31 AM')),
@@ -200,6 +201,28 @@ void main() {
     expect(find.text('REM sleep'), findsOneWidget);
     expect(find.text('Efficiency'), findsOneWidget);
     semantics.dispose();
+  });
+
+  testWidgets('in bed from the source is labelled; efficiency caps at 100%', (
+    tester,
+  ) async {
+    // In-bed 00:00 -> 06:00 is shorter than the 6h 33m asleep.
+    await _pump(
+      tester,
+      _overview([
+        ..._history(14),
+        _seg(
+          DateTime(2026, 11, 24),
+          DateTime(2026, 11, 24, 6),
+          SleepStage.inBed,
+        ),
+      ]),
+      FakeHealthReader(),
+    );
+
+    expect(find.text('In bed 6h 00m · 100% efficient'), findsOneWidget);
+    expect(find.textContaining('Sleep span'), findsNothing);
+    expect(find.textContaining('109%'), findsNothing);
   });
 
   testWidgets('Android names light sleep Light', (tester) async {
