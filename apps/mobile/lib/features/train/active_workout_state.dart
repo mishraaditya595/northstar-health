@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/ids/uuid_factory.dart';
+import '../programs/domain/program_models.dart';
+import '../programs/domain/program_schedule.dart';
 import '../workouts/data/objectbox_live_workout_engine.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
 import '../workouts/data/objectbox_workout_repository.dart';
@@ -44,6 +46,13 @@ final activeWorkoutProvider = Provider<AsyncValue<ActiveWorkoutView?>>((ref) {
 abstract interface class WorkoutActions {
   WorkoutSessionRecord startQuick(String name);
   WorkoutSessionRecord startPlan(String planUuid);
+
+  /// Starts the workout scheduled for [localNow]'s date, recording which
+  /// program day it was for. A rest day throws [StateError].
+  WorkoutSessionRecord startProgramDay(
+    TrainingProgramRecord program,
+    DateTime localNow,
+  );
 
   /// Materializes the template's exercises, then starts an unsaved workout
   /// from its rows. Throws the usual "finish or discard" [StateError] and
@@ -120,6 +129,25 @@ class RepositoryWorkoutActions implements WorkoutActions {
       planUuid: planUuid,
       startedAtUtc: now.toUtc(),
       originalOffsetMinutes: now.timeZoneOffset.inMinutes,
+    );
+  }
+
+  @override
+  WorkoutSessionRecord startProgramDay(
+    TrainingProgramRecord program,
+    DateTime localNow,
+  ) {
+    final planUuid = dayFor(program, localNow).planUuid;
+    if (planUuid == null) throw StateError('Today is a rest day');
+    return engine.startWorkout(
+      sessionUuid: ids.newId(),
+      planUuid: planUuid,
+      programDay: (
+        programUuid: program.uuid,
+        localDate: localDateKey(localNow),
+      ),
+      startedAtUtc: localNow.toUtc(),
+      originalOffsetMinutes: localNow.timeZoneOffset.inMinutes,
     );
   }
 

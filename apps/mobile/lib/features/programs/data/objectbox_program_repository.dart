@@ -126,10 +126,7 @@ class ObjectBoxProgramRepository implements ProgramRepository {
         firstDayWeekday > 7) {
       throw ArgumentError('Invalid program import');
     }
-    final templateIds = <String>{
-      for (final id in program.week)
-        ?id,
-    }.toList();
+    final templateIds = <String>{for (final id in program.week) ?id}.toList();
     final items = <String, List<PlanExerciseRecord>>{};
     for (final id in templateIds) {
       final rows = templateRows[id];
