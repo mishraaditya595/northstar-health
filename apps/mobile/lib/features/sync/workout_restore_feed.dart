@@ -194,6 +194,7 @@ const _setRequired = <String>{'id', 'position', 'kind', 'status', 'input_unit'};
 const _setFields = <String>{
   ..._setRequired,
   'reps',
+  'duration_seconds',
   'load_grams',
   'rpe',
   'completed_at_utc',
@@ -467,8 +468,17 @@ class WorkoutRestorePage {
         if (completion != null && completion.isBefore(start)) {
           _invalid('invalid_set_time_order');
         }
+        final secondsRaw = row['duration_seconds'];
+        if (secondsRaw != null &&
+            (secondsRaw is! int ||
+                secondsRaw < 1 ||
+                secondsRaw > 86400 ||
+                row['reps'] != null)) {
+          _invalid('invalid_set_duration');
+        }
         if (status == WorkoutSetStatus.completed &&
-            (row['reps'] == null || completion == null)) {
+            ((row['reps'] == null && secondsRaw == null) ||
+                completion == null)) {
           _invalid('invalid_set_completion');
         }
         final workoutSet = WorkoutSetRecord(
@@ -478,6 +488,9 @@ class WorkoutRestorePage {
           kind: kind,
           status: status,
           reps: row['reps'] == null ? null : _integer(row['reps'], max: 10000),
+          durationSeconds: secondsRaw == null
+              ? null
+              : _integer(secondsRaw, min: 1, max: 86400),
           loadGrams: row['load_grams'] == null
               ? null
               : _integer(row['load_grams'], max: 100000000),
