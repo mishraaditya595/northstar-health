@@ -1,4 +1,9 @@
+import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
+import 'package:beyondrep/features/train/active_workout_state.dart';
+import 'package:beyondrep/features/train/train_library_state.dart';
+import 'package:beyondrep/features/train/train_page.dart';
+import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/features/health/domain/trend.dart';
@@ -63,8 +68,15 @@ class _Failing extends FakeHealthOverviewController {
 
 Future<void> _pump(
   WidgetTester tester,
-  FakeHealthOverviewController controller,
-) async {
+  FakeHealthOverviewController controller, {
+  double textScale = 1,
+  double width = 390,
+  Brightness brightness = Brightness.light,
+}) async {
+  tester.view.physicalSize = Size(width, 1600);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
   final router = GoRouter(
     routes: [
       GoRoute(
@@ -82,8 +94,13 @@ Future<void> _pump(
     ProviderScope(
       overrides: [fakeHealthOverview(controller)],
       child: MaterialApp.router(
-        theme: BeyondRepTheme.build(Brightness.light),
+        theme: BeyondRepTheme.build(brightness),
         routerConfig: router,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
       ),
     ),
   );
@@ -177,5 +194,56 @@ void main() {
         expect(all, isNot(contains(word)), reason: '$v: $word');
       }
     }
+  });
+
+  for (final v in [48, 64, 82]) {
+    for (final brightness in Brightness.values) {
+      testWidgets('readiness $v fits 2x text at 390 px, $brightness', (
+        tester,
+      ) async {
+        await _pump(
+          tester,
+          FakeHealthOverviewController(_with(_ready(v))),
+          textScale: 2,
+          brightness: brightness,
+        );
+        expect(tester.takeException(), isNull);
+        expect(find.text('See why'), findsOneWidget);
+      });
+    }
+  }
+
+  testWidgets('Train still renders when the health overview fails', (
+    tester,
+  ) async {
+    final router = GoRouter(
+      routes: [GoRoute(path: '/', builder: (_, _) => const TrainPage())],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          fakeHealthOverview(_Failing()),
+          localNowProvider.overrideWithValue(DateTime(2026, 11, 24, 9)),
+          trainLibraryProvider.overrideWith(
+            (ref) async =>
+                const WorkoutLibrarySnapshot(exercises: [], plans: []),
+          ),
+          activeWorkoutProvider.overrideWith(
+            (ref) => const AsyncData<ActiveWorkoutView?>(null),
+          ),
+        ],
+        child: MaterialApp.router(
+          theme: BeyondRepTheme.build(Brightness.light),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Start training'), findsOneWidget);
+    expect(find.text('Recovery is low today'), findsNothing);
+    expect(find.text('See why'), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.textContaining('Try again'), findsNothing);
   });
 }

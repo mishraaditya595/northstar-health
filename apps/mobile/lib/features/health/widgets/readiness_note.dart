@@ -79,10 +79,21 @@ class _LowCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final accent = dark
+        ? BeyondRepPalette.amberDark
+        : BeyondRepPalette.amberLight;
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Card(
         margin: EdgeInsets.zero,
+        color: dark
+            ? BeyondRepPalette.amberSoftDark
+            : BeyondRepPalette.amberSoftLight,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: accent.withValues(alpha: .4)),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -93,7 +104,7 @@ class _LowCard extends StatelessWidget {
                   NsScoreRing(
                     value: score,
                     size: 48,
-                    color: BeyondRepPalette.amberDark,
+                    color: accent,
                     caption: 'Readiness',
                   ),
                   const SizedBox(width: 12),
@@ -122,13 +133,14 @@ class _LowCard extends StatelessWidget {
               const SizedBox(height: 10),
               const Text(_advice),
               const SizedBox(height: 4),
-              Row(
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   TextButton(
                     onPressed: () => _seeWhy(context),
                     child: const Text('See why'),
                   ),
-                  const Spacer(),
                   Text(
                     'Your plans are not changed',
                     style: theme.textTheme.bodySmall?.copyWith(
