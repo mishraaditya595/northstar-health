@@ -274,7 +274,8 @@ class HostedReadAuditTests(unittest.TestCase):
         with self.assertRaisesRegex(AuditFailure, "hosted_https_url_required"):
             _requester("https://user:pass@test.supabase.co", "public")
 
-    def _request_with_fake_https(self, handler, method="GET", payload=None):
+    def _request_with_fake_https(self, handler, method="GET", payload=None,
+                                 headers=None):
         original_build_opener = urllib.request.build_opener
 
         def build_opener(*handlers):
@@ -289,7 +290,7 @@ class HostedReadAuditTests(unittest.TestCase):
         ):
             caller = _requester("https://test.supabase.co", "test-public-key")
             return caller(method, "/auth/v1/user", "test-private-token",
-                          payload=payload)
+                          payload=payload, headers=headers)
 
     def test_redirects_do_not_resend_credentials_to_other_host_or_http(self):
         # All redirect variants, including POST-preserving 307/308, are
@@ -322,6 +323,19 @@ class HostedReadAuditTests(unittest.TestCase):
                         request.get_header("Apikey"), "test-public-key",
                     )
 
+    def test_extra_headers_are_sent_but_cannot_replace_credentials(self):
+        handler = _FakeHttpsHandler(200)
+        self._request_with_fake_https(handler, headers={
+            "Accept-Profile": "northstar_private",
+            "Authorization": "Bearer attacker",
+            "apikey": "attacker",
+        })
+        request = handler.requests[0]
+        self.assertEqual(request.get_header("Accept-profile"), "northstar_private")
+        self.assertEqual(request.get_header("Authorization"),
+                         "Bearer test-private-token")
+        self.assertEqual(request.get_header("Apikey"), "test-public-key")
+
     def test_redirect_without_location_also_fails_closed(self):
         handler = _FakeHttpsHandler(302)
         with self.assertRaisesRegex(AuditFailure, "^unexpected_redirect$"):
@@ -342,12 +356,13 @@ class FakeCatalogApi:
     """Locked-down catalogue backend; each flag introduces exactly one fault."""
 
     def __init__(self, *, anonymous_manifest=False, table_rows=False,
-                 live_rows=False, stale_release=False, publish_reachable=False,
+                 live_rows=False, stale_release=False, private_exposed=False,
                  bad_sha=False, manifest_error=False):
         self.flags = dict(locals())
         del self.flags["self"]
 
-    def __call__(self, method, path, token=None, query=None, payload=None):
+    def __call__(self, method, path, token=None, query=None, payload=None,
+                 headers=None):
         f = self.flags
         if path == "/rest/v1/rpc/catalog_manifest":
             if token is None:
@@ -366,8 +381,11 @@ class FakeCatalogApi:
             return Reply(200, [{"release": 3}]) if f["table_rows"] else Reply(401, None)
         if path == "/rest/v1/catalog_live":
             return Reply(200, [{"release": 3}]) if f["live_rows"] else Reply(200, [])
-        if path == "/rest/v1/rpc/publish_catalog_release":
-            return Reply(200 if f["publish_reachable"] else 404, None)
+        if path == "/rest/v1/":
+            profile = (headers or {}).get("Accept-Profile")
+            if profile == "northstar_private":
+                return Reply(200 if f["private_exposed"] else 406, None)
+            return Reply(200, {})
         raise AssertionError("unexpected call " + path)
 
 
@@ -381,6 +399,7 @@ class CatalogAuditTest(unittest.TestCase):
         summary = run_catalog_audit(FakeCatalogApi(), "token")
         self.assertIsInstance(summary, str)
         self.assertIn("catalogue", summary)
+        self.assertIn("(7 checks)", summary)
 
     def test_catalog_anonymous_manifest_leak(self):
         self.assert_fails("catalog_anonymous_manifest_allowed",
@@ -393,8 +412,8 @@ class CatalogAuditTest(unittest.TestCase):
     def test_catalog_stale_release_served(self):
         self.assert_fails("catalog_stale_release_served", stale_release=True)
 
-    def test_catalog_publish_reachable(self):
-        self.assert_fails("catalog_publish_reachable", publish_reachable=True)
+    def test_catalog_private_schema_exposed(self):
+        self.assert_fails("catalog_private_schema_exposed", private_exposed=True)
 
     def test_catalog_manifest_malformed_sha(self):
         self.assert_fails("catalog_manifest_malformed", bad_sha=True)

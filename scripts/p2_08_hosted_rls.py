@@ -70,19 +70,25 @@ def _requester(url: str, key: str) -> Callable[..., Reply]:
 
     def call(method: str, path: str, token: str | None = None,
              query: dict[str, str] | None = None,
-             payload: dict[str, Any] | None = None) -> Reply:
+             payload: dict[str, Any] | None = None,
+             headers: dict[str, str] | None = None) -> Reply:
         target = base + path
         if query:
             target += "?" + urllib.parse.urlencode(query)
-        headers = {"apikey": key, "Accept": "application/json"}
+        # Caller headers (for example Accept-Profile) come first so they can
+        # never replace the credentials set below.
+        request_headers = dict(headers or {})
+        request_headers.update({"apikey": key, "Accept": "application/json"})
         if token:
-            headers["Authorization"] = "Bearer " + token
+            request_headers["Authorization"] = "Bearer " + token
+        else:
+            request_headers.pop("Authorization", None)
         body = None
         if payload is not None:
-            headers["Content-Type"] = "application/json"
+            request_headers["Content-Type"] = "application/json"
             body = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(target, data=body, headers=headers,
-                                     method=method)
+        req = urllib.request.Request(target, data=body,
+                                     headers=request_headers, method=method)
         try:
             with opener.open(req, timeout=20) as response:
                 return Reply(response.status, json.loads(
@@ -249,8 +255,10 @@ _DENIED = (401, 403, 404)
 def run_catalog_audit(call: Callable[..., Reply], token: str) -> str:
     """Prove the shared catalogue is readable only through the two RPCs.
 
-    Read-only: the publish probe sends an empty payload, so even a mis-exposed
-    function cannot match its signature and writes nothing.
+    Read-only. Needs the catalogue migrations applied to the hosted project
+    (an unmigrated project fails with catalog_manifest_unavailable). Each
+    response is read up to the requester's 2 MiB cap; a larger catalogue
+    snapshot fails as network_or_invalid_response.
     """
     _require(bool(token), "catalog_session_required")
 
@@ -282,9 +290,11 @@ def run_catalog_audit(call: Callable[..., Reply], token: str) -> str:
         _require(rows.status in _DENIED
                  or (rows.status == 200 and rows.data == []), code)
 
-    publish = call("POST", "/rest/v1/rpc/publish_catalog_release", token,
-                   None, {})
-    _require(not 200 <= publish.status < 300, "catalog_publish_reachable")
+    # The private schema (publish and rollback functions) must not be exposed
+    # through the API. Asking PostgREST for that profile is a read-only probe.
+    private = call("GET", "/rest/v1/", token, None, None,
+                   {"Accept-Profile": "northstar_private"})
+    _require(not 200 <= private.status < 300, "catalog_private_schema_exposed")
 
     return "PASS: catalogue read-only access audit (7 checks)"
 
