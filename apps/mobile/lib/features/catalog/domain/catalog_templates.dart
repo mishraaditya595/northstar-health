@@ -1,3 +1,4 @@
+import '../../workouts/domain/workout_library_models.dart';
 import '../../workouts/domain/durations.dart';
 import 'catalog_models.dart';
 import 'exercise_choices.dart';
@@ -35,3 +36,39 @@ String restLabel(int seconds) {
   if (seconds == 0) return 'No rest';
   return 'Rest ${seconds < 120 ? '$seconds s' : formatDurationSeconds(seconds)}';
 }
+
+/// The rows of [template] with the catalogue exercise each one names, ready
+/// for copying into a plan or starting a workout. Throws [StateError] when an
+/// exercise is missing from [snapshot] (browsable templates never are).
+List<TemplateRowInput> templateRowInputs(
+  CatalogTemplate template,
+  CatalogSnapshot snapshot,
+) {
+  final byId = {for (final e in snapshot.exercises) e.id: e};
+  return [
+    for (final row in template.exercises)
+      (
+        exercise: _definitionInput(
+          byId[row.exerciseId] ??
+              (throw StateError('Template exercise is missing')),
+        ),
+        sets: row.sets,
+        repsMin: row.repsMin,
+        repsMax: row.repsMax,
+        durationSeconds: row.durationSeconds,
+        restSeconds: row.restSeconds,
+        note: row.note,
+      ),
+  ];
+}
+
+CatalogDefinitionInput _definitionInput(CatalogExercise e) => (
+  id: e.id,
+  name: e.name,
+  muscleGroup: e.muscleGroup,
+  equipment: equipmentLabel(e.equipment),
+  category: categoryLabel(e.category),
+  mode: e.mode,
+  primaryMuscles: e.primaryMuscles,
+  secondaryMuscles: e.secondaryMuscles,
+);

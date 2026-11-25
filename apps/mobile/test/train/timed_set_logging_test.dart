@@ -147,6 +147,31 @@ void main() {
     expect(find.byTooltip('Start timer for set 1'), findsOneWidget);
   });
 
+  testWidgets('a session started from a template logs the plank in seconds', (
+    tester,
+  ) async {
+    ObjectBoxLiveWorkoutEngine(store).startTemplateWorkout(
+      sessionUuid: sessionId,
+      name: 'Template day',
+      rows: const [
+        PlanExerciseRecord(
+          uuid: 'row-plank',
+          exerciseUuid: 'builtin.v1.plank',
+          position: 0,
+          targetSets: 1,
+          targetDurationSeconds: 45,
+        ),
+      ],
+      startedAtUtc: DateTime.now().toUtc().subtract(const Duration(hours: 1)),
+      originalOffsetMinutes: 0,
+    );
+    await show(tester);
+    expect(find.text('SEC'), findsOneWidget);
+    expect(find.text('REPS'), findsNothing);
+    final set = store.box<WorkoutSetEntity>().getAll().single;
+    expect(find.byKey(ValueKey('seconds-${set.uuid}')), findsOneWidget);
+  });
+
   testWidgets('typing 45 and recording saves seconds and no reps', (
     tester,
   ) async {

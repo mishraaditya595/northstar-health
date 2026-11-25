@@ -921,4 +921,127 @@ void main() {
     );
     expect(sessions.getSession(session.uuid)!.status, WorkoutStatus.inProgress);
   });
+
+  group('startTemplateWorkout', () {
+    List<PlanExerciseRecord> rows() => const [
+      PlanExerciseRecord(
+        uuid: 'row-a',
+        exerciseUuid: 'builtin.v1.bench-press',
+        position: 0,
+        targetSets: 3,
+        targetRepsMin: 6,
+        targetRepsMax: 8,
+        restSeconds: 90,
+      ),
+      PlanExerciseRecord(
+        uuid: 'row-b',
+        exerciseUuid: 'builtin.v1.plank',
+        position: 1,
+        targetSets: 2,
+        targetDurationSeconds: 45,
+        restSeconds: 60,
+      ),
+    ];
+
+    WorkoutSessionRecord start({
+      String id = 'tpl-session',
+      String name = 'Push day',
+      List<PlanExerciseRecord>? items,
+    }) => engine.startTemplateWorkout(
+      sessionUuid: id,
+      name: name,
+      rows: items ?? rows(),
+      startedAtUtc: started,
+      originalOffsetMinutes: 330,
+    );
+
+    test('creates an unsaved session with ordered planned sets', () {
+      library.materializeCatalogExercise(
+        id: 'builtin.v1.bench-press',
+        name: 'Barbell bench press',
+        muscleGroup: 'Chest',
+        equipment: 'Barbell',
+        category: 'Push',
+        mode: 'reps_load',
+        release: 3,
+        primaryMuscles: const ['chest'],
+        secondaryMuscles: const ['triceps'],
+      );
+      final workout = start();
+      expect(workout.status, WorkoutStatus.inProgress);
+      expect(workout.name, 'Push day');
+      expect(workout.planUuid, isNull);
+      expect(workout.originalOffsetMinutes, 330);
+      expect(workout.exercises.map((e) => e.nameSnapshot), [
+        'Barbell bench press',
+        'Plank',
+      ]);
+      expect(workout.exercises.map((e) => e.position), [0, 1]);
+      expect(workout.exercises.first.primaryMusclesSnapshot, ['chest']);
+      expect(workout.exercises.first.secondaryMusclesSnapshot, ['triceps']);
+      expect(workout.sets, hasLength(5));
+      expect(
+        workout.sets.every(
+          (s) =>
+              s.status == WorkoutSetStatus.planned &&
+              s.reps == null &&
+              s.loadGrams == null &&
+              s.durationSeconds == null,
+        ),
+        isTrue,
+      );
+      expect(engine.readCheckpoint(workout.uuid)!.checkpointRevision, 1);
+      expect(store.box<WorkoutPlanEntity>().count(), 0);
+    });
+
+    test('a replay returns the committed session without duplicates', () {
+      final first = start();
+      final again = start();
+      expect(again.exercises.map((e) => e.uuid), [
+        for (final e in first.exercises) e.uuid,
+      ]);
+      expect(store.box<WorkoutSessionEntity>().count(), 1);
+      expect(store.box<WorkoutExerciseEntity>().count(), 2);
+      expect(store.box<WorkoutSetEntity>().count(), 5);
+      expect(() => start(name: 'Other'), throwsStateError);
+    });
+
+    test('an active workout blocks the start and nothing is written', () {
+      startQuick();
+      final before = store.box<WorkoutExerciseEntity>().count();
+      expect(
+        () => start(),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'Finish or discard the existing workout first',
+          ),
+        ),
+      );
+      expect(store.box<WorkoutSessionEntity>().count(), 1);
+      expect(store.box<WorkoutExerciseEntity>().count(), before);
+    });
+
+    test('a missing definition or bad name writes nothing', () {
+      expect(
+        () => start(
+          items: const [
+            PlanExerciseRecord(
+              uuid: 'x',
+              exerciseUuid: 'builtin.v1.not-there',
+              position: 0,
+              targetSets: 1,
+              targetRepsMin: 1,
+              targetRepsMax: 1,
+            ),
+          ],
+        ),
+        throwsStateError,
+      );
+      expect(() => start(name: '  '), throwsArgumentError);
+      expect(() => start(name: 'x' * 161), throwsArgumentError);
+      expect(store.box<WorkoutSessionEntity>().count(), 0);
+    });
+  });
 }
