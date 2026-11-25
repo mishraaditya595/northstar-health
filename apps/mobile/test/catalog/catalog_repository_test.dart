@@ -21,6 +21,29 @@ class _FailingWriteStore extends CatalogFileStore {
   }
 }
 
+class _FailingMetaStore extends CatalogFileStore {
+  _FailingMetaStore(super.directory);
+
+  @override
+  Future<void> writeLastCheckedAtMs(
+    int value, {
+    CatalogOutdatedMark? outdated,
+  }) async {
+    throw const FileSystemException('meta write failed');
+  }
+}
+
+/// Throws something that is not an Exception.
+class _ThrowingStore extends CatalogFileStore {
+  _ThrowingStore(super.directory);
+
+  @override
+  Future<void> prepare() async => throw TypeError();
+
+  @override
+  Future<int?> readLastCheckedAtMs() async => throw TypeError();
+}
+
 Future<CatalogSnapshot?> _parse(String text) async {
   try {
     return parseCatalogSnapshot(jsonDecode(text));
@@ -459,6 +482,249 @@ void main() {
       r.dispose();
       expect(await r.refresh(), CatalogRefreshOutcome.failed);
       expect(t.manifestCalls, 0);
+    });
+  });
+
+  group('invalid manifests back off', () {
+    FakeCatalogTransport mismatching() => FakeCatalogTransport(
+      manifest: () async => manifestFor(r2, sha256: 'c' * 64),
+      snapshot: (_) async => r2,
+    );
+
+    test(
+      'a rejected release is not downloaded again within 24 hours',
+      () async {
+        final t = mismatching();
+        final r = repo(t);
+        expect(await r.refresh(), CatalogRefreshOutcome.invalid);
+        expect(t.snapshotRequests, [2]);
+
+        now = now.add(const Duration(hours: 1));
+        expect(await r.refresh(), CatalogRefreshOutcome.invalid);
+        expect(t.manifestCalls, 2, reason: 'the manifest is still checked');
+        expect(t.snapshotRequests, [2], reason: 'no second download');
+      },
+    );
+
+    test('force ignores the backoff', () async {
+      final t = mismatching();
+      final r = repo(t);
+      await r.refresh();
+      expect(await r.refresh(force: true), CatalogRefreshOutcome.invalid);
+      expect(t.snapshotRequests, [2, 2]);
+    });
+
+    test('backoff ends after 24 hours', () async {
+      final t = mismatching();
+      final r = repo(t);
+      await r.refresh();
+      now = now.add(const Duration(hours: 24));
+      await r.refresh();
+      expect(t.snapshotRequests, [2, 2]);
+    });
+
+    test('a different checksum for the same release is tried', () async {
+      var sha = 'c' * 64;
+      final t = FakeCatalogTransport(
+        manifest: () async => manifestFor(r2, sha256: sha),
+        snapshot: (_) async => r2,
+      );
+      final r = repo(t);
+      await r.refresh();
+      sha = 'd' * 64;
+      await r.refresh();
+      expect(t.snapshotRequests, [2, 2]);
+    });
+
+    test('a good release after a rejected one downloads normally', () async {
+      var good = false;
+      final t = FakeCatalogTransport(
+        manifest: () async => manifestFor(r2, sha256: good ? null : 'c' * 64),
+        snapshot: (_) async => r2,
+      );
+      final r = repo(t);
+      await r.refresh();
+      good = true;
+      expect(await r.refresh(), CatalogRefreshOutcome.updated);
+    });
+  });
+
+  group('forced refresh coalescing', () {
+    test(
+      'a forced call joining a skipped fresh check runs a real check',
+      () async {
+        await seed(r1, checkedAtMs: now.millisecondsSinceEpoch);
+        final t = serving(r1);
+        final r = repo(t);
+        final plain = r.refresh();
+        final forced = r.refresh(force: true);
+        expect(await plain, CatalogRefreshOutcome.skippedFresh);
+        expect(await forced, CatalogRefreshOutcome.upToDate);
+        expect(t.manifestCalls, 1);
+      },
+    );
+  });
+
+  group('unexpected errors', () {
+    test('a TypeError from the transport is a failed refresh', () async {
+      final t = FakeCatalogTransport(manifest: () async => throw TypeError());
+      final r = repo(t);
+      expect(await r.refresh(), CatalogRefreshOutcome.failed);
+      expect(r.state.lastFailureKind, 'unexpected');
+      expect(await store.readLastCheckedAtMs(), isNull);
+    });
+
+    test('a TypeError from the parser is a failed refresh', () async {
+      final t = serving(r1);
+      final r = CatalogRepository(
+        transport: t,
+        store: store,
+        clock: () => now,
+        parseInBackground: (_) async => throw TypeError(),
+      );
+      expect(await r.refresh(), CatalogRefreshOutcome.failed);
+      expect(r.state.lastFailureKind, 'unexpected');
+    });
+
+    test('a non-Exception from the store is a failed refresh', () async {
+      final r = repo(serving(r1), withStore: _ThrowingStore(dir));
+      expect(await r.refresh(), CatalogRefreshOutcome.failed);
+      expect(r.state.lastFailureKind, 'unexpected');
+    });
+
+    test('load survives an unexpected store error', () async {
+      final r = repo(serving(r1), withStore: _ThrowingStore(dir));
+      await r.load();
+      expect(r.state.status, CatalogStatus.unavailable);
+    });
+  });
+
+  group('size limits', () {
+    test(
+      'a snapshot whose size differs from the manifest is invalid',
+      () async {
+        final t = FakeCatalogTransport(
+          manifest: () async => manifestFor(r1, sizeBytes: 5),
+          snapshot: (_) async => r1,
+        );
+        final r = repo(t);
+        expect(await r.refresh(), CatalogRefreshOutcome.invalid);
+        expect(snapshotFile().existsSync(), isFalse);
+      },
+    );
+
+    test('a manifest over 2 MiB is rejected without downloading', () async {
+      final t = FakeCatalogTransport(
+        manifest: () async => manifestFor(r1, sizeBytes: 2 * 1024 * 1024 + 1),
+        snapshot: (_) async => r1,
+      );
+      final r = repo(t);
+      expect(await r.refresh(), CatalogRefreshOutcome.invalid);
+      expect(t.snapshotRequests, isEmpty);
+    });
+
+    test(
+      'a snapshot over 2 MiB is invalid even if the manifest agrees',
+      () async {
+        final big = snapshotJson();
+        (big['provenance']! as Map<String, Object?>)['attribution'] =
+            'x' * (2 * 1024 * 1024);
+        final t = FakeCatalogTransport(
+          manifest: () async => manifestFor(big),
+          snapshot: (_) async => big,
+        );
+        final r = repo(t);
+        expect(await r.refresh(), CatalogRefreshOutcome.invalid);
+        expect(snapshotFile().existsSync(), isFalse);
+      },
+    );
+
+    test('a snapshot of exactly the manifest size is accepted', () async {
+      final r = repo(serving(r1));
+      expect(await r.refresh(), CatalogRefreshOutcome.updated);
+    });
+  });
+
+  group('persisted outdated state', () {
+    FakeCatalogTransport outdated() => FakeCatalogTransport(
+      manifest: () async => manifestFor(r2, minAppCatalogSchema: 2),
+    );
+
+    test('survives a restart and keeps the cached snapshot usable', () async {
+      await seed(r1);
+      final first = repo(outdated());
+      await first.load();
+      expect(await first.refresh(), CatalogRefreshOutcome.outdatedApp);
+
+      final restarted = repo(outdated());
+      await restarted.load();
+      expect(restarted.state.status, CatalogStatus.outdatedApp);
+      expect(restarted.state.snapshot?.release, 1);
+    });
+
+    test('shows outdated with no cache after a restart', () async {
+      final first = repo(outdated());
+      await first.refresh();
+      final restarted = repo(outdated());
+      await restarted.load();
+      expect(restarted.state.status, CatalogStatus.outdatedApp);
+      expect(restarted.state.snapshot, isNull);
+    });
+
+    test('a later successful check clears it', () async {
+      await seed(r1);
+      final first = repo(outdated());
+      await first.refresh();
+
+      final t = serving(r1);
+      final restarted = repo(t);
+      await restarted.load();
+      expect(
+        await restarted.refresh(force: true),
+        CatalogRefreshOutcome.upToDate,
+      );
+      expect(restarted.state.status, CatalogStatus.ready);
+      expect(await store.readOutdated(), isNull);
+
+      final again = repo(t);
+      await again.load();
+      expect(again.state.status, CatalogStatus.ready);
+    });
+
+    test('a mark from an older app schema is ignored and rechecked', () async {
+      await seed(r1);
+      await store.writeLastCheckedAtMs(
+        now.millisecondsSinceEpoch,
+        outdated: const CatalogOutdatedMark(release: 9, schema: 0),
+      );
+      final t = serving(r1);
+      final r = repo(t);
+      await r.load();
+      expect(r.state.status, CatalogStatus.ready);
+      expect(await r.refresh(), CatalogRefreshOutcome.upToDate);
+      expect(t.manifestCalls, 1, reason: 'not skipped as fresh');
+      expect(await store.readOutdated(), isNull);
+    });
+  });
+
+  group('activation order', () {
+    test('a meta write failure still leaves the new snapshot active', () async {
+      await seed(r1, checkedAtMs: 7);
+      var live = r1;
+      final t = FakeCatalogTransport(
+        manifest: () async => manifestFor(live),
+        snapshot: (_) async => live,
+      );
+      final r = repo(t, withStore: _FailingMetaStore(dir));
+      await r.load();
+      live = r2;
+
+      expect(await r.refresh(force: true), CatalogRefreshOutcome.failed);
+
+      expect(r.state.snapshot?.release, 2);
+      expect(r.state.status, CatalogStatus.ready);
+      expect(r.state.lastFailureKind, 'storage');
+      expect(snapshotFile().readAsStringSync(), _canonical(r2));
     });
   });
 }

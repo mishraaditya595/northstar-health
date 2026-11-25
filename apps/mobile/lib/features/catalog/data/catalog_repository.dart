@@ -41,6 +41,7 @@ class CatalogState {
 }
 
 const _freshWindow = Duration(hours: 24);
+const maxCatalogBytes = 2 * 1024 * 1024;
 
 Future<CatalogSnapshot?> _parseInIsolate(String text) => Isolate.run(() {
   try {
@@ -69,7 +70,10 @@ class CatalogRepository extends ChangeNotifier {
   CatalogState _state = const CatalogState();
   Future<void>? _loading;
   Future<CatalogRefreshOutcome>? _refreshing;
+  bool _refreshingForced = false;
   bool _disposed = false;
+  bool _recheckDespiteFresh = false;
+  ({int release, String sha256, DateTime at})? _rejected;
 
   CatalogState get state => _state;
 
@@ -77,6 +81,7 @@ class CatalogRepository extends ChangeNotifier {
 
   Future<void> _load() async {
     CatalogSnapshot? snapshot;
+    var outdated = false;
     try {
       await store.prepare();
       final text = await store.readSnapshotText();
@@ -84,13 +89,25 @@ class CatalogRepository extends ChangeNotifier {
         snapshot = await _parse(text);
         if (snapshot == null) await store.deleteSnapshot();
       }
-    } on FileSystemException {
+      final mark = await store.readOutdated();
+      if (mark != null) {
+        // A mark written by an app with another schema is stale: the app was
+        // updated, so look again even inside the freshness window.
+        if (mark.schema == supportedCatalogSchema) {
+          outdated = true;
+        } else {
+          _recheckDespiteFresh = true;
+        }
+      }
+    } on Object {
       snapshot = null;
     }
     _set(
       CatalogState(
         snapshot: snapshot,
-        status: snapshot == null
+        status: outdated
+            ? CatalogStatus.outdatedApp
+            : snapshot == null
             ? CatalogStatus.unavailable
             : CatalogStatus.ready,
       ),
@@ -100,24 +117,43 @@ class CatalogRepository extends ChangeNotifier {
   Future<CatalogRefreshOutcome> refresh({bool force = false}) {
     if (_disposed) return Future.value(CatalogRefreshOutcome.failed);
     final running = _refreshing;
-    if (running != null) return running;
+    if (running != null) {
+      if (!force || _refreshingForced) return running;
+      // A forced call must not be answered by a check that was skipped as
+      // fresh: run a real one once the shared check is done.
+      return running.then(
+        (outcome) => outcome == CatalogRefreshOutcome.skippedFresh
+            ? refresh(force: true)
+            : outcome,
+      );
+    }
+    _refreshingForced = force;
     final next = _refresh(force).whenComplete(() => _refreshing = null);
     return _refreshing = next;
   }
 
   Future<CatalogRefreshOutcome> _refresh(bool force) async {
     await load();
+    CatalogManifest? manifest;
     try {
-      if (!force && await _isFresh()) return CatalogRefreshOutcome.skippedFresh;
+      if (!force && !_recheckDespiteFresh && await _isFresh()) {
+        return CatalogRefreshOutcome.skippedFresh;
+      }
+      _recheckDespiteFresh = false;
 
-      final manifest = await transport.fetchManifest();
+      manifest = await transport.fetchManifest();
       if (manifest == null) {
         await _markChecked();
         _clearTransient();
         return CatalogRefreshOutcome.noLiveRelease;
       }
       if (manifest.minAppCatalogSchema > supportedCatalogSchema) {
-        await _markChecked();
+        await _markChecked(
+          outdated: CatalogOutdatedMark(
+            release: manifest.release,
+            schema: supportedCatalogSchema,
+          ),
+        );
         _set(
           CatalogState(
             snapshot: _state.snapshot,
@@ -134,18 +170,38 @@ class CatalogRepository extends ChangeNotifier {
         _clearTransient();
         return CatalogRefreshOutcome.upToDate;
       }
+      if (manifest.sizeBytes > maxCatalogBytes ||
+          _isBackedOff(manifest, force)) {
+        _reject(manifest);
+        return CatalogRefreshOutcome.invalid;
+      }
 
       final json = await transport.fetchSnapshot(manifest.release);
-      final text = utf8.decode(canonicalJsonBytes(json));
+      final String text;
+      try {
+        text = utf8.decode(canonicalJsonBytes(json));
+      } on ArgumentError {
+        _reject(manifest);
+        return CatalogRefreshOutcome.invalid;
+      }
+      final length = utf8.encode(text).length;
+      if (length > maxCatalogBytes || length != manifest.sizeBytes) {
+        _reject(manifest);
+        return CatalogRefreshOutcome.invalid;
+      }
       final parsed = await _parse(text);
       if (parsed == null ||
           parsed.sha256 != manifest.sha256 ||
           parsed.release != manifest.release) {
+        _reject(manifest);
         return CatalogRefreshOutcome.invalid;
       }
       await store.writeSnapshotText(text);
-      await _markChecked();
+      // Active as soon as the rename succeeded, even if the metadata write
+      // below fails; the next start loads the same file.
+      _rejected = null;
       _set(CatalogState(snapshot: parsed, status: CatalogStatus.ready));
+      await _markChecked();
       return CatalogRefreshOutcome.updated;
     } on CatalogUnauthorized {
       return CatalogRefreshOutcome.unauthorized;
@@ -153,16 +209,35 @@ class CatalogRepository extends ChangeNotifier {
       return CatalogRefreshOutcome.notLive;
     } on CatalogFormatException {
       return CatalogRefreshOutcome.invalid;
-    } on ArgumentError {
-      return CatalogRefreshOutcome.invalid;
     } on CatalogNetworkFailure catch (error) {
       _fail(error.kind);
       return CatalogRefreshOutcome.failed;
     } on FileSystemException {
       _fail('storage');
       return CatalogRefreshOutcome.failed;
+    } on Object {
+      // Nothing thrown from here may become an unhandled async error.
+      _fail('unexpected');
+      return CatalogRefreshOutcome.failed;
     }
   }
+
+  bool _isBackedOff(CatalogManifest manifest, bool force) {
+    final rejected = _rejected;
+    if (force || rejected == null) return false;
+    if (rejected.release != manifest.release ||
+        rejected.sha256 != manifest.sha256) {
+      return false;
+    }
+    final age = _clock().difference(rejected.at);
+    return !age.isNegative && age < _freshWindow;
+  }
+
+  void _reject(CatalogManifest manifest) => _rejected = (
+    release: manifest.release,
+    sha256: manifest.sha256,
+    at: _clock(),
+  );
 
   /// Fresh means checked less than 24 hours ago. A timestamp in the future
   /// (clock moved backwards) is never fresh.
@@ -173,8 +248,11 @@ class CatalogRepository extends ChangeNotifier {
     return last <= now && now - last < _freshWindow.inMilliseconds;
   }
 
-  Future<void> _markChecked() =>
-      store.writeLastCheckedAtMs(_clock().millisecondsSinceEpoch);
+  Future<void> _markChecked({CatalogOutdatedMark? outdated}) =>
+      store.writeLastCheckedAtMs(
+        _clock().millisecondsSinceEpoch,
+        outdated: outdated,
+      );
 
   /// A successful check ends an earlier outdated-app or failure display.
   void _clearTransient() {

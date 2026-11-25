@@ -42,6 +42,7 @@ CatalogManifest manifestFor(
   Map<String, Object?> json, {
   int? minAppCatalogSchema,
   String? sha256,
+  int? sizeBytes,
 }) => CatalogManifest(
   release: json['release']! as int,
   schemaVersion: json['schemaVersion']! as int,
@@ -49,7 +50,7 @@ CatalogManifest manifestFor(
       minAppCatalogSchema ?? json['minAppCatalogSchema']! as int,
   publishedAt: json['publishedAt']! as String,
   sha256: sha256 ?? sha256Hex(canonicalJsonBytes(json)),
-  sizeBytes: 1,
+  sizeBytes: sizeBytes ?? canonicalJsonBytes(json).length,
 );
 
 class FakeCatalogTransport implements CatalogTransport {

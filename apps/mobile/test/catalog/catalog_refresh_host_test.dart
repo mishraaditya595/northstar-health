@@ -75,7 +75,7 @@ void main() {
   // Real file IO does not progress inside the fake-async test zone: let it
   // run, then flush the microtasks that resume the awaiting code, repeatedly.
   Future<void> settle(WidgetTester tester) async {
-    for (var i = 0; i < 20; i++) {
+    for (var i = 0; i < 60; i++) {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 15)),
       );
