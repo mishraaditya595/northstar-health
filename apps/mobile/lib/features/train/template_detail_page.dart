@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -32,13 +34,16 @@ class _TemplateDetailPageState extends ConsumerState<TemplateDetailPage> {
   // returns the same plan) and a finished copy makes a fresh one.
   var _request = SecureUuidFactory().newId();
   var _busy = false;
-  ScaffoldMessengerState? _savedIn;
-  var _savedCount = 0;
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? _saved;
 
   @override
   void dispose() {
     // The Edit action needs this page; take it away with the page.
-    _savedIn?.clearSnackBars();
+    try {
+      _saved?.close();
+    } on StateError {
+      // Already gone (timed out or replaced).
+    }
     super.dispose();
   }
 
@@ -62,10 +67,7 @@ class _TemplateDetailPageState extends ConsumerState<TemplateDetailPage> {
       _request = SecureUuidFactory().newId();
       ref.invalidate(trainLibraryProvider);
       final router = GoRouter.of(context);
-      final messenger = ScaffoldMessenger.of(context);
-      _savedIn = messenger;
-      final mine = ++_savedCount;
-      showNsMessage(
+      final saved = showNsMessage(
         context,
         'Saved to My Plans as ${plan.name}',
         actionLabel: 'Edit',
@@ -74,9 +76,13 @@ class _TemplateDetailPageState extends ConsumerState<TemplateDetailPage> {
           await router.push<void>('/train/plans/${plan.uuid}/edit');
           if (mounted) ref.invalidate(trainLibraryProvider);
         },
-      ).closed.then((_) {
-        if (_savedCount == mine) _savedIn = null;
-      });
+      );
+      _saved = saved;
+      unawaited(
+        saved.closed.then((_) {
+          if (identical(_saved, saved)) _saved = null;
+        }),
+      );
     } on Object {
       showNsMessage(context, 'Could not copy this workout. Try again.');
     } finally {
