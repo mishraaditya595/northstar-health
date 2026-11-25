@@ -10,6 +10,7 @@ import '../../core/design/hero_frame.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 import '../account/account_auth_provider.dart';
+import '../health/widgets/readiness_note.dart';
 import '../health/widgets/today_health_row.dart';
 import '../progress/domain/progress_overview.dart';
 import '../progress/domain/workout_history_models.dart';
@@ -41,7 +42,8 @@ class _TodayPageState extends ConsumerState<TodayPage> {
     ref.invalidate(trainLibraryProvider);
   }
 
-  void _startPlan(String uuid) {
+  Future<void> _startPlan(String uuid) async {
+    if (!await confirmReadinessBeforeStart(context, ref) || !mounted) return;
     try {
       ref.read(workoutActionsProvider).startPlan(uuid);
       ref.invalidate(activeWorkoutProvider);

@@ -53,22 +53,33 @@ class TrainPage extends ConsumerWidget {
       showNsMessage(context, 'Enter a workout name first.');
       return;
     }
-    _start(
+    await _start(
       context,
       ref,
       () => ref.read(workoutActionsProvider).startQuick(chosen),
     );
   }
 
-  void _startPlan(BuildContext context, WidgetRef ref, String uuid) {
-    _start(
+  Future<void> _startPlan(
+    BuildContext context,
+    WidgetRef ref,
+    String uuid,
+  ) async {
+    await _start(
       context,
       ref,
       () => ref.read(workoutActionsProvider).startPlan(uuid),
     );
   }
 
-  void _start(BuildContext context, WidgetRef ref, void Function() action) {
+  Future<void> _start(
+    BuildContext context,
+    WidgetRef ref,
+    void Function() action,
+  ) async {
+    if (!await confirmReadinessBeforeStart(context, ref) || !context.mounted) {
+      return;
+    }
     try {
       action();
       ref.invalidate(activeWorkoutProvider);
