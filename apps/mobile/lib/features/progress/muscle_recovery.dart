@@ -102,8 +102,9 @@ class MuscleRecovery {
         ];
   }
 
-  /// Per completed working set: a reps weight (unknown or 5 and up 1.0,
-  /// 0 to 4 reps 0.7, so heavy low-rep work still counts) times an effort
+  /// Per completed working set: a reps weight (unknown, as for a timed set,
+  /// or 5 and up 1.0, 0 to 4 reps 0.7, so heavy low-rep work still counts)
+  /// times an effort
   /// weight (RPE 8+ 1.0, 6-8 0.75, below 6 0.5, unrated 0.8).
   static double _stimulus(WorkoutSetRecord set) {
     final reps = set.reps;

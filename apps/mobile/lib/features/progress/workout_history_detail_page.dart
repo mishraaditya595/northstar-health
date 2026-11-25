@@ -12,6 +12,7 @@ import 'domain/progress_overview.dart';
 import '../../core/units/load_units.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
 import '../sync/workout_upload_coordinator.dart';
+import '../workouts/domain/durations.dart';
 import '../workouts/domain/workout_models.dart';
 import 'domain/workout_history_models.dart';
 import 'workout_history_state.dart';
@@ -363,11 +364,13 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
     if (set.status != WorkoutSetStatus.completed) {
       return 'Unsupported set status';
     }
+    final effort = set.rpe == null ? '' : ' · RPE ${set.rpe}';
+    final seconds = set.durationSeconds;
+    if (seconds != null) return '${formatDurationSeconds(seconds)}$effort';
     final load = set.loadGrams == null
         ? 'bodyweight / no logged load'
         : '${_load(set.loadGrams!, set.inputUnit)} '
               '${set.inputUnit == LoadUnit.lb ? 'lb' : 'kg'}';
-    final effort = set.rpe == null ? '' : ' · RPE ${set.rpe}';
     return '${set.reps ?? '?'} reps × $load$effort';
   }
 

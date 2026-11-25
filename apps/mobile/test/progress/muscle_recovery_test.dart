@@ -11,6 +11,7 @@ WorkoutSessionRecord _session(
   String group, {
   int count = 10,
   int? reps = 10,
+  int? seconds,
   double? rpe = 8,
   WorkoutStatus status = WorkoutStatus.completed,
   WorkoutSetKind kind = WorkoutSetKind.working,
@@ -43,6 +44,7 @@ WorkoutSessionRecord _session(
           kind: kind,
           status: setStatus,
           reps: reps,
+          durationSeconds: seconds,
           rpe: rpe,
           completedAtUtc: at,
         ),
@@ -195,6 +197,24 @@ void main() {
             .loadOf(Muscle.chest),
         closeTo(.7, .001),
       );
+    });
+
+    test('a timed set counts like a set with no reps at the same RPE', () {
+      final timed = _recover([
+        _session(
+          'a',
+          Duration.zero,
+          'Chest',
+          count: 5,
+          reps: null,
+          seconds: 45,
+        ),
+      ]);
+      final unknown = _recover([
+        _session('a', Duration.zero, 'Chest', count: 5, reps: null),
+      ]);
+      expect(timed.loadOf(Muscle.chest), closeTo(.5, .001));
+      expect(timed.loadOf(Muscle.chest), unknown.loadOf(Muscle.chest));
     });
 
     test('RPE 6-7.9 weighs 0.75 and reps of 5 or more weigh the same', () {

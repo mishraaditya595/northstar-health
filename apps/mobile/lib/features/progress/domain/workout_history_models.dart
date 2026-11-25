@@ -152,10 +152,13 @@ WorkoutHistorySummary calculateWorkoutHistory(
     for (final set in session.sets) {
       if (set.status != WorkoutSetStatus.completed ||
           set.kind != WorkoutSetKind.working ||
-          set.reps == null) {
+          (set.reps == null && set.durationSeconds == null)) {
         continue;
       }
       workingSets++;
+      // Timed sets count as work done but carry no reps, so no loaded volume
+      // and no strength-trend point.
+      if (set.reps == null) continue;
       if (set.loadGrams == null) {
         unloadedWorking++;
         continue;
@@ -246,7 +249,7 @@ int countWorkingSets(WorkoutSessionRecord session) => session.sets
       (s) =>
           s.kind == WorkoutSetKind.working &&
           s.status == WorkoutSetStatus.completed &&
-          s.reps != null,
+          (s.reps != null || s.durationSeconds != null),
     )
     .length;
 

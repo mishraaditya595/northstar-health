@@ -84,6 +84,7 @@ void main() {
     bool pause = false,
     int? loadGrams = 62500,
     int? reps = 8,
+    int? seconds,
     DateTime? startedAtUtc,
   }) {
     final started =
@@ -128,8 +129,9 @@ void main() {
         position: 0,
         kind: WorkoutSetKind.working,
         status: WorkoutSetStatus.completed,
-        reps: reps,
-        loadGrams: loadGrams,
+        reps: seconds == null ? reps : null,
+        durationSeconds: seconds,
+        loadGrams: seconds == null ? loadGrams : null,
         completedAtUtc: started.add(const Duration(minutes: 5)),
       ),
     );
@@ -228,6 +230,24 @@ void main() {
     expect(find.text('1 exercise'), findsOneWidget);
     expect(find.text('Bench press'), findsOneWidget);
     expect(find.textContaining('8 reps'), findsOneWidget);
+  });
+
+  testWidgets('a timed set shows its seconds in the session detail', (
+    tester,
+  ) async {
+    tallView(tester);
+    writeWorkout(
+      'wk',
+      seconds: 45,
+      startedAtUtc: DateTime.utc(2026, 10, 22, 10),
+    );
+    await showProgressAt(tester, DateTime.utc(2026, 10, 24, 12));
+    await tester.ensureVisible(find.text('View details'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('View details'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('45 s'), findsOneWidget);
+    expect(find.textContaining('reps'), findsNothing);
   });
 
   testWidgets('unsynced and local-only workouts are tagged', (tester) async {

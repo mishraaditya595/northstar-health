@@ -9,6 +9,7 @@ WorkoutSetRecord set({
   required WorkoutSetStatus status,
   required WorkoutSetKind kind,
   int? reps,
+  int? seconds,
   int? grams,
 }) => WorkoutSetRecord(
   uuid: id,
@@ -17,6 +18,7 @@ WorkoutSetRecord set({
   status: status,
   kind: kind,
   reps: reps,
+  durationSeconds: seconds,
   loadGrams: grams,
   inputUnit: LoadUnit.kg,
   completedAtUtc: status == WorkoutSetStatus.completed
@@ -411,5 +413,37 @@ void main() {
       workoutsInPeriod(history, WorkoutHistoryPeriod.all, now),
       hasLength(3),
     );
+  });
+
+  test('a timed set counts as a working set but adds no volume or trend', () {
+    final summary = calculateWorkoutHistory([
+      workout(
+        id: 'timed',
+        status: WorkoutStatus.completed,
+        sets: [
+          set(
+            id: 'plank',
+            exercise: 'exercise-timed',
+            status: WorkoutSetStatus.completed,
+            kind: WorkoutSetKind.working,
+            seconds: 45,
+          ),
+          set(
+            id: 'squat',
+            exercise: 'exercise-timed',
+            status: WorkoutSetStatus.completed,
+            kind: WorkoutSetKind.working,
+            reps: 5,
+            grams: 100000,
+          ),
+        ],
+      ),
+    ]);
+    expect(summary.completedWorkingSets, 2);
+    expect(summary.loadedWorkingSets, 1);
+    expect(summary.unloadedWorkingSets, 0);
+    expect(summary.zeroLoadWorkingSets, 0);
+    expect(summary.loadedVolumeGramReps, 500000);
+    expect(summary.exerciseTrends, hasLength(1));
   });
 }
