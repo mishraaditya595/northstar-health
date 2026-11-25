@@ -34,19 +34,22 @@ WorkoutSessionRecord _workout(
           position: i,
         ),
     ],
+    // Ten hard sets of ten saturate a group, so loads equal the fade.
     sets: [
       for (var i = 0; i < groups.length; i++)
-        WorkoutSetRecord(
-          uuid: '$id-s$i',
-          exerciseUuid: '$id-e$i',
-          position: 0,
-          kind: kind,
-          status: muscles[groups[i]]!,
-          reps: muscles[groups[i]] == WorkoutSetStatus.completed ? 8 : null,
-          completedAtUtc: muscles[groups[i]] == WorkoutSetStatus.completed
-              ? at
-              : null,
-        ),
+        for (var n = 0; n < 10; n++)
+          WorkoutSetRecord(
+            uuid: '$id-s$i-$n',
+            exerciseUuid: '$id-e$i',
+            position: n,
+            kind: kind,
+            status: muscles[groups[i]]!,
+            reps: muscles[groups[i]] == WorkoutSetStatus.completed ? 10 : null,
+            rpe: muscles[groups[i]] == WorkoutSetStatus.completed ? 8 : null,
+            completedAtUtc: muscles[groups[i]] == WorkoutSetStatus.completed
+                ? at
+                : null,
+          ),
     ],
   );
 }
@@ -59,7 +62,7 @@ void main() {
   });
 
   group('fromWorkouts', () {
-    test('maps catalog muscle groups and fades over three days', () {
+    test('maps catalog muscle groups and fades over its window', () {
       final recovery = MuscleRecovery.fromWorkouts([
         _workout('legs', const Duration(hours: 18), {
           'Legs': WorkoutSetStatus.completed,
@@ -83,7 +86,7 @@ void main() {
       expect(recovery.groups['Legs'], closeTo(.75, .001));
     });
 
-    test('keeps the freshest load when a muscle was trained twice', () {
+    test('adds up a muscle trained twice, capped at 1', () {
       final recovery = MuscleRecovery.fromWorkouts([
         _workout('old', const Duration(hours: 60), {
           'Back': WorkoutSetStatus.completed,
@@ -92,7 +95,7 @@ void main() {
           'Back': WorkoutSetStatus.completed,
         }),
       ], _now);
-      expect(recovery.loadOf(Muscle.lats), closeTo(1 - 6 / 72, .001));
+      expect(recovery.loadOf(Muscle.lats), 1);
     });
 
     test('ignores old, unfinished, skipped and warm-up work', () {
@@ -145,7 +148,7 @@ void main() {
     expect(find.text('Muscle Recovery'), findsOneWidget);
     expect(find.text('Sample data'), findsNothing);
     expect(find.byType(MuscleMap), findsNWidgets(2));
-    expect(find.textContaining('last 3 days'), findsOneWidget);
+    expect(find.textContaining('48 to 72 hours'), findsOneWidget);
   });
 
   testWidgets('names recently trained muscles for screen readers', (

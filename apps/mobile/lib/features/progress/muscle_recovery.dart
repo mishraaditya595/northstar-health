@@ -51,8 +51,54 @@ class MuscleRecovery {
     'core': [Muscle.abs, Muscle.obliques],
   };
 
-  /// Exercises with a completed working set in a finished workout inside
-  /// [window] load their muscles, fading linearly from 1 at finish to 0.
+  /// Groups that recover in [_smallWindow]: the catalog's small groups and
+  /// custom groups named after a small drawn muscle.
+  static const _smallGroups = {
+    'shoulders',
+    'arms',
+    'core',
+    'calves',
+    'biceps',
+    'triceps',
+    'forearms',
+    'abs',
+    'obliques',
+  };
+  static const _smallWindow = Duration(hours: 48);
+
+  /// The drawn muscles a logged group covers: the catalog table, then a
+  /// custom group named after a drawn muscle. Empty when none is drawn.
+  static List<Muscle> musclesOf(String group) {
+    final key = group.trim().toLowerCase();
+    return _groups[key] ??
+        [
+          for (final m in Muscle.values)
+            if (m.name.toLowerCase() == key) m,
+        ];
+  }
+
+  /// Per completed working set: reps (null counts as 10) over 10, clamped
+  /// to 0.5..1.5, times an effort weight (RPE 8+ 1.0, 6-8 0.75, below 6
+  /// 0.5, unrated 0.8).
+  static double _stimulus(WorkoutSetRecord set) {
+    final reps = set.reps;
+    final repsFactor = reps == null ? 1.0 : (reps / 10).clamp(0.5, 1.5);
+    final rpe = set.rpe;
+    final effort = rpe == null
+        ? 0.8
+        : rpe >= 8
+        ? 1.0
+        : rpe >= 6
+        ? 0.75
+        : 0.5;
+    return repsFactor * effort;
+  }
+
+  /// A finished workout loads each group it worked with
+  /// `min(1, Σ stimulus / 10)`, fading linearly to 0 over the group's
+  /// window (48 h small groups, 72 h others). Sessions add up per group,
+  /// capped at 1; each drawn muscle takes its group's value (the highest if
+  /// two groups cover it).
   factory MuscleRecovery.fromWorkouts(
     Iterable<WorkoutSessionRecord> sessions,
     DateTime nowUtc,
@@ -66,30 +112,35 @@ class MuscleRecovery {
       }
       final age = nowUtc.difference(finished);
       if (age >= window) continue;
-      final value = age.isNegative ? 1.0 : 1 - age.inSeconds / window.inSeconds;
-      final worked = {
-        for (final set in session.sets)
-          if (set.status == WorkoutSetStatus.completed &&
-              set.kind == WorkoutSetKind.working)
-            set.exerciseUuid,
-      };
+      final stimulus = <String, double>{};
       for (final exercise in session.exercises) {
-        if (!worked.contains(exercise.uuid)) continue;
         final group = exercise.muscleSnapshot.trim().toLowerCase();
-        final muscles =
-            _groups[group] ??
-            [
-              for (final m in Muscle.values)
-                if (m.name.toLowerCase() == group) m,
-            ];
         if (group.isEmpty) continue;
+        for (final set in session.sets) {
+          if (set.exerciseUuid == exercise.uuid &&
+              set.status == WorkoutSetStatus.completed &&
+              set.kind == WorkoutSetKind.working) {
+            stimulus[group] = (stimulus[group] ?? 0) + _stimulus(set);
+          }
+        }
+      }
+      for (final entry in stimulus.entries) {
+        final group = entry.key;
+        // `legs` is a catalog group, so its calves keep the 72 h window.
+        final span = _smallGroups.contains(group) ? _smallWindow : window;
+        final fade = age.isNegative || age >= span
+            ? (age.isNegative ? 1.0 : 0.0)
+            : 1 - age.inSeconds / span.inSeconds;
+        final value = (entry.value / 10).clamp(0.0, 1.0) * fade;
         // Named even when no drawn muscle matches, so the card never says
         // nothing was trained after a workout of custom groups.
         final name = group[0].toUpperCase() + group.substring(1);
-        if (value > (groups[name] ?? 0)) groups[name] = value;
-        for (final m in muscles) {
-          if (value > (load[m] ?? 0)) load[m] = value;
-        }
+        groups[name] = ((groups[name] ?? 0) + value).clamp(0.0, 1.0);
+      }
+    }
+    for (final entry in groups.entries) {
+      for (final m in musclesOf(entry.key)) {
+        if (entry.value > (load[m] ?? 0)) load[m] = entry.value;
       }
     }
     return MuscleRecovery(load, groups: groups);

@@ -348,7 +348,7 @@ class MuscleRecoveryCard extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Shaded by muscle group from workouts finished in the last 3 days.',
+              'Shaded by sets, reps and effort; fades over 48 to 72 hours.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.mutedColor,
