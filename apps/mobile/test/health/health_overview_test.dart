@@ -521,6 +521,25 @@ void main() {
     expect((await c.read(healthOverviewProvider.future))!.readAt, now);
   });
 
+  test('the resume after Manage re-reads even within 5 minutes', () async {
+    final c = container();
+    await c.read(healthOverviewProvider.future);
+    final notifier = c.read(healthOverviewProvider.notifier);
+    expect(fake.sleepCalls, hasLength(1));
+
+    // Not allowed · Manage: the user may revoke access in the settings.
+    await c.read(healthSummaryProvider.notifier).manage();
+    now = now.add(const Duration(minutes: 1));
+    await notifier.refreshIfStale();
+    expect(fake.sleepCalls, hasLength(2));
+    expect((await c.read(healthOverviewProvider.future))!.readAt, now);
+
+    // Only the one resume is forced.
+    now = now.add(const Duration(minutes: 1));
+    await notifier.refreshIfStale();
+    expect(fake.sleepCalls, hasLength(2));
+  });
+
   test('disconnect clears the overview', () async {
     final c = container();
     expect(await c.read(healthOverviewProvider.future), isNotNull);

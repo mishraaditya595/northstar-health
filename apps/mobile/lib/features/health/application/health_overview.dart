@@ -208,9 +208,13 @@ class HealthOverviewController extends AsyncNotifier<HealthOverview?> {
     await future;
   }
 
-  /// Re-reads after an error, or when the overview is older than 5 minutes.
+  /// Re-reads after an error, after the user went to the permission
+  /// settings (Manage), or when the overview is older than 5 minutes.
   Future<void> refreshIfStale() async {
-    if (!state.hasError) {
+    final reread = ref.read(healthRereadOnResumeProvider.notifier);
+    if (ref.read(healthRereadOnResumeProvider)) {
+      reread.set(false);
+    } else if (!state.hasError) {
       final readAt = state.value?.readAt;
       if (readAt == null) return;
       final age = ref.read(healthClockProvider)().difference(readAt);

@@ -35,6 +35,20 @@ final healthClockProvider = Provider<DateTime Function()>(
   (ref) => DateTime.now,
 );
 
+/// Set when the user leaves for the platform's permission settings, where
+/// they may revoke access. The next resume then re-reads even when the
+/// overview is under 5 minutes old, so revoked values are not kept on
+/// screen.
+class HealthRereadOnResume extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void set(bool value) => state = value;
+}
+
+final healthRereadOnResumeProvider =
+    NotifierProvider<HealthRereadOnResume, bool>(HealthRereadOnResume.new);
+
 class HealthSummaryController extends AsyncNotifier<HealthSummaryState> {
   @override
   Future<HealthSummaryState> build() async {
@@ -93,8 +107,9 @@ class HealthSummaryController extends AsyncNotifier<HealthSummaryState> {
   }
 
   /// Opens the platform's permission settings (Not allowed · Manage). Never
-  /// throws; the resume refresh re-reads after the user returns.
+  /// throws; the next resume refresh re-reads, however fresh the overview.
   Future<void> manage() async {
+    ref.read(healthRereadOnResumeProvider.notifier).set(true);
     try {
       await ref.read(healthReaderProvider).openSettings();
     } catch (_) {}
