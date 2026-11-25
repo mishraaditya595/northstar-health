@@ -240,7 +240,7 @@
         "repsMin": 6,
         "repsMax": 10,
         "restSeconds": 150,
-        "note": "Use the band-assisted or machine-assisted pull-up if 5 clean reps are not possible yet."
+        "note": "Use the band-assisted or machine-assisted pull-up if 6 clean reps are not possible yet."
       },
       {
         "exerciseId": "builtin.v1.chest-supported-db-row",
@@ -567,7 +567,7 @@
         "repsMin": 5,
         "repsMax": 8,
         "restSeconds": 150,
-        "note": "Use the band-assisted or machine-assisted pull-up if 5 clean reps are not possible yet."
+        "note": "Use a band-assisted or machine-assisted variation if 5 clean reps are not possible yet."
       },
       {
         "exerciseId": "builtin.v1.push-up",
@@ -669,6 +669,364 @@
         "repsMax": 8,
         "restSeconds": 120,
         "note": "Reps per side. Rest after both sides."
+      }
+    ]
+  },
+  {
+    "id": "tpl.push-day-b",
+    "name": "Push day B",
+    "description": "A second pushing session with an incline barbell press, a dumbbell shoulder press and cable work. It pairs with Push day.",
+    "tags": {
+      "goal": [
+        "hypertrophy",
+        "strength"
+      ],
+      "level": "intermediate",
+      "equipment": [
+        "barbell",
+        "bench",
+        "cable",
+        "dumbbell"
+      ]
+    },
+    "estimatedMinutes": 40,
+    "standalone": false,
+    "exercises": [
+      {
+        "exerciseId": "builtin.v1.incline-bench-press",
+        "sets": 4,
+        "repsMin": 6,
+        "repsMax": 8,
+        "restSeconds": 150
+      },
+      {
+        "exerciseId": "builtin.v1.db-shoulder-press",
+        "sets": 3,
+        "repsMin": 8,
+        "repsMax": 10,
+        "restSeconds": 120
+      },
+      {
+        "exerciseId": "builtin.v1.cable-crossover",
+        "sets": 3,
+        "repsMin": 12,
+        "repsMax": 15,
+        "restSeconds": 60
+      },
+      {
+        "exerciseId": "builtin.v1.cable-lateral-raise",
+        "sets": 3,
+        "repsMin": 12,
+        "repsMax": 15,
+        "restSeconds": 60
+      },
+      {
+        "exerciseId": "builtin.v1.cable-overhead-triceps-extension",
+        "sets": 3,
+        "repsMin": 10,
+        "repsMax": 12,
+        "restSeconds": 60
+      }
+    ]
+  },
+  {
+    "id": "tpl.pull-day-b",
+    "name": "Pull day B",
+    "description": "A second pulling session built around the lat pulldown and a supported dumbbell row, with a cable row and a curl. It pairs with Pull day.",
+    "tags": {
+      "goal": [
+        "hypertrophy",
+        "strength"
+      ],
+      "level": "intermediate",
+      "equipment": [
+        "bench",
+        "cable",
+        "dumbbell",
+        "ez_bar"
+      ]
+    },
+    "estimatedMinutes": 40,
+    "standalone": false,
+    "exercises": [
+      {
+        "exerciseId": "builtin.v1.lat-pulldown",
+        "sets": 4,
+        "repsMin": 8,
+        "repsMax": 12,
+        "restSeconds": 120
+      },
+      {
+        "exerciseId": "builtin.v1.chest-supported-db-row",
+        "sets": 3,
+        "repsMin": 8,
+        "repsMax": 12,
+        "restSeconds": 120
+      },
+      {
+        "exerciseId": "builtin.v1.single-arm-cable-row",
+        "sets": 3,
+        "repsMin": 10,
+        "repsMax": 12,
+        "restSeconds": 90,
+        "note": "Reps per side. Rest after both sides."
+      },
+      {
+        "exerciseId": "builtin.v1.cable-rear-delt-fly",
+        "sets": 3,
+        "repsMin": 12,
+        "repsMax": 15,
+        "restSeconds": 60
+      },
+      {
+        "exerciseId": "builtin.v1.ez-bar-curl",
+        "sets": 3,
+        "repsMin": 8,
+        "repsMax": 12,
+        "restSeconds": 75
+      }
+    ]
+  },
+  {
+    "id": "tpl.glute-focus-b",
+    "name": "Glute focus B",
+    "description": "A second lower body session that puts the glutes first, with dumbbells, a bench and two machines. It pairs with Glute focus.",
+    "tags": {
+      "goal": [
+        "hypertrophy"
+      ],
+      "level": "intermediate",
+      "equipment": [
+        "bench",
+        "dumbbell",
+        "machine"
+      ]
+    },
+    "estimatedMinutes": 40,
+    "standalone": false,
+    "exercises": [
+      {
+        "exerciseId": "builtin.v1.db-hip-thrust",
+        "sets": 4,
+        "repsMin": 8,
+        "repsMax": 12,
+        "restSeconds": 120
+      },
+      {
+        "exerciseId": "builtin.v1.db-rdl",
+        "sets": 3,
+        "repsMin": 8,
+        "repsMax": 12,
+        "restSeconds": 120
+      },
+      {
+        "exerciseId": "builtin.v1.db-walking-lunge",
+        "sets": 3,
+        "repsMin": 8,
+        "repsMax": 10,
+        "restSeconds": 120,
+        "note": "Reps per side. Rest after both sides."
+      },
+      {
+        "exerciseId": "builtin.v1.hip-abduction-machine",
+        "sets": 3,
+        "repsMin": 12,
+        "repsMax": 15,
+        "restSeconds": 60
+      },
+      {
+        "exerciseId": "builtin.v1.leg-curl",
+        "sets": 3,
+        "repsMin": 10,
+        "repsMax": 12,
+        "restSeconds": 75
+      }
+    ]
+  },
+  {
+    "id": "tpl.bodyweight-full-body-b",
+    "name": "Bodyweight full body B",
+    "description": "A second beginner session that needs no equipment and covers legs, pushing, hips and the back of the body. It has no pulling exercise, so it does not replace rows or pull-ups.",
+    "tags": {
+      "goal": [
+        "general",
+        "endurance"
+      ],
+      "level": "beginner",
+      "equipment": [
+        "bodyweight"
+      ]
+    },
+    "estimatedMinutes": 30,
+    "standalone": false,
+    "exercises": [
+      {
+        "exerciseId": "builtin.v1.bodyweight-squat",
+        "sets": 3,
+        "repsMin": 10,
+        "repsMax": 15,
+        "restSeconds": 60
+      },
+      {
+        "exerciseId": "builtin.v1.push-up",
+        "sets": 3,
+        "repsMin": 6,
+        "repsMax": 12,
+        "restSeconds": 90,
+        "note": "If full push-ups are too hard, do them from your knees or with your hands on a stable surface."
+      },
+      {
+        "exerciseId": "builtin.v1.walking-lunge",
+        "sets": 3,
+        "repsMin": 8,
+        "repsMax": 10,
+        "restSeconds": 60,
+        "note": "Reps per side. Rest after both sides."
+      },
+      {
+        "exerciseId": "builtin.v1.single-leg-glute-bridge",
+        "sets": 3,
+        "repsMin": 8,
+        "repsMax": 10,
+        "restSeconds": 60,
+        "note": "Reps per side. Rest after both sides."
+      },
+      {
+        "exerciseId": "builtin.v1.superman-hold",
+        "sets": 2,
+        "durationSeconds": 20,
+        "restSeconds": 60
+      },
+      {
+        "exerciseId": "builtin.v1.side-plank",
+        "sets": 2,
+        "durationSeconds": 20,
+        "restSeconds": 60,
+        "note": "Seconds per side. Rest after both sides."
+      }
+    ]
+  },
+  {
+    "id": "tpl.band-full-body-b",
+    "name": "Resistance band full body B",
+    "description": "A second whole body session with a long resistance band and a door anchor or a secure post. Check the band for damage first, and use a lighter or heavier band for each movement as needed.",
+    "tags": {
+      "goal": [
+        "general"
+      ],
+      "level": "beginner",
+      "equipment": [
+        "band"
+      ]
+    },
+    "estimatedMinutes": 35,
+    "standalone": false,
+    "exercises": [
+      {
+        "exerciseId": "builtin.v1.band-lat-pulldown",
+        "sets": 3,
+        "repsMin": 10,
+        "repsMax": 15,
+        "restSeconds": 90
+      },
+      {
+        "exerciseId": "builtin.v1.band-good-morning",
+        "sets": 3,
+        "repsMin": 10,
+        "repsMax": 15,
+        "restSeconds": 90
+      },
+      {
+        "exerciseId": "builtin.v1.band-chest-fly",
+        "sets": 3,
+        "repsMin": 12,
+        "repsMax": 15,
+        "restSeconds": 60
+      },
+      {
+        "exerciseId": "builtin.v1.band-face-pull",
+        "sets": 3,
+        "repsMin": 12,
+        "repsMax": 15,
+        "restSeconds": 60
+      },
+      {
+        "exerciseId": "builtin.v1.band-biceps-curl",
+        "sets": 2,
+        "repsMin": 12,
+        "repsMax": 15,
+        "restSeconds": 60
+      },
+      {
+        "exerciseId": "builtin.v1.band-triceps-pushdown",
+        "sets": 2,
+        "repsMin": 12,
+        "repsMax": 15,
+        "restSeconds": 60
+      }
+    ]
+  },
+  {
+    "id": "tpl.hotel-room-starter",
+    "name": "Hotel room starter",
+    "description": "An easier travel session that needs only floor space and covers legs, pushing, hips and core. It has no pulling exercise, so it does not replace rows or pull-ups.",
+    "tags": {
+      "goal": [
+        "general",
+        "endurance"
+      ],
+      "level": "beginner",
+      "equipment": [
+        "bodyweight"
+      ]
+    },
+    "estimatedMinutes": 30,
+    "standalone": false,
+    "exercises": [
+      {
+        "exerciseId": "builtin.v1.bodyweight-squat",
+        "sets": 3,
+        "repsMin": 10,
+        "repsMax": 15,
+        "restSeconds": 60
+      },
+      {
+        "exerciseId": "builtin.v1.push-up",
+        "sets": 3,
+        "repsMin": 6,
+        "repsMax": 12,
+        "restSeconds": 90,
+        "note": "If full push-ups are too hard, do them from your knees or with your hands on a stable surface."
+      },
+      {
+        "exerciseId": "builtin.v1.reverse-lunge",
+        "sets": 2,
+        "repsMin": 8,
+        "repsMax": 10,
+        "restSeconds": 60,
+        "note": "Reps per side. Rest after both sides."
+      },
+      {
+        "exerciseId": "builtin.v1.glute-bridge",
+        "sets": 3,
+        "repsMin": 12,
+        "repsMax": 15,
+        "restSeconds": 60
+      },
+      {
+        "exerciseId": "builtin.v1.bird-dog",
+        "sets": 2,
+        "repsMin": 8,
+        "repsMax": 10,
+        "restSeconds": 60,
+        "note": "Reps per side. Rest after both sides."
+      },
+      {
+        "exerciseId": "builtin.v1.side-plank",
+        "sets": 2,
+        "durationSeconds": 20,
+        "restSeconds": 60,
+        "note": "Seconds per side. Rest after both sides."
       }
     ]
   }

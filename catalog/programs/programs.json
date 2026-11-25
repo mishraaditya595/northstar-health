@@ -28,7 +28,7 @@
   {
     "id": "prog.full-body-3-day",
     "name": "Full body, 3 days",
-    "description": "Three whole body sessions a week on alternate days, using Full body A and Full body B. Start the next week with the session you did not do last.",
+    "description": "Three whole body sessions a week on alternate days, using Full body A and Full body B.",
     "goals": [
       "general",
       "strength"
@@ -166,7 +166,7 @@
   {
     "id": "prog.strength-5x5",
     "name": "Strength 5x5, 3 days",
-    "description": "Three barbell sessions a week that alternate Strength 5x5 A and B, mostly sets of five on the main lifts. Start the next week with the session you did not do last.",
+    "description": "Three barbell sessions a week that alternate Strength 5x5 A and B, mostly sets of five on the main lifts.",
     "goals": [
       "strength"
     ],
@@ -191,7 +191,7 @@
   {
     "id": "prog.bodybuilding-5-day",
     "name": "Bodybuilding split, 5 days",
-    "description": "A five day split with a chest day, a back day, a leg day, a shoulders and arms day and a posterior lower body day. It has a rest day after the first three sessions.",
+    "description": "A five day split with a chest day, a back day, a leg day, a shoulders and arms day and a second lower body day. It has a rest day after the first three sessions.",
     "goals": [
       "hypertrophy"
     ],
@@ -316,6 +316,134 @@
       "tpl.kettlebell-full-body-b",
       null,
       "tpl.kettlebell-full-body",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.push-pull-4-day",
+    "name": "Push and pull, 4 days",
+    "description": "Four sessions a week that alternate push days and pull days, with a rest day after each pair. It uses Push day and Push day B, and Pull day and Pull day B.",
+    "goals": [
+      "hypertrophy",
+      "strength"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 4,
+    "estimatedMinutes": 42,
+    "equipment": [
+      "barbell",
+      "bench",
+      "cable",
+      "dumbbell",
+      "ez_bar",
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.push-day",
+      "tpl.pull-day",
+      null,
+      "tpl.push-day-b",
+      "tpl.pull-day-b",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.glute-focus-4-day",
+    "name": "Glute focus, 4 days",
+    "description": "Four sessions a week that pair two glute focused lower body days with two upper body days. It uses Glute focus and Glute focus B, and Upper body A and B.",
+    "goals": [
+      "hypertrophy"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 4,
+    "estimatedMinutes": 49,
+    "equipment": [
+      "barbell",
+      "bench",
+      "cable",
+      "dumbbell",
+      "machine",
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.glute-focus",
+      "tpl.upper-a",
+      null,
+      "tpl.glute-focus-b",
+      "tpl.upper-b",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.bodyweight-3-day",
+    "name": "Bodyweight, 3 days",
+    "description": "Three beginner sessions a week that need no equipment, alternating Bodyweight full body and Bodyweight full body B. There is no pulling exercise, so it does not replace rows or pull-ups.",
+    "goals": [
+      "general",
+      "endurance"
+    ],
+    "level": "beginner",
+    "daysPerWeek": 3,
+    "estimatedMinutes": 37,
+    "equipment": [
+      "bodyweight"
+    ],
+    "week": [
+      "tpl.bodyweight-full-body",
+      null,
+      "tpl.bodyweight-full-body-b",
+      null,
+      "tpl.bodyweight-full-body",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.band-3-day",
+    "name": "Resistance band, 3 days",
+    "description": "Three beginner whole body sessions a week with a resistance band, alternating Resistance band full body and Resistance band full body B. The band rows, pulldowns and face pulls cover pulling.",
+    "goals": [
+      "general"
+    ],
+    "level": "beginner",
+    "daysPerWeek": 3,
+    "estimatedMinutes": 38,
+    "equipment": [
+      "band"
+    ],
+    "week": [
+      "tpl.band-full-body",
+      null,
+      "tpl.band-full-body-b",
+      null,
+      "tpl.band-full-body",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.hotel-room-2-day",
+    "name": "Hotel room, 2 days",
+    "description": "Two short sessions a week for travel that need only floor space, Hotel room starter and Bodyweight full body. There is no pulling exercise, so it does not replace rows or pull-ups.",
+    "goals": [
+      "general",
+      "endurance"
+    ],
+    "level": "beginner",
+    "daysPerWeek": 2,
+    "estimatedMinutes": 35,
+    "equipment": [
+      "bodyweight"
+    ],
+    "week": [
+      "tpl.hotel-room-starter",
+      null,
+      null,
+      "tpl.bodyweight-full-body",
+      null,
       null,
       null
     ]

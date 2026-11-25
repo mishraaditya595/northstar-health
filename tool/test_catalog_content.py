@@ -259,6 +259,8 @@ def program_shape_errors(programs, templates_by_id):
         sentences = [x for x in re.split(r"(?<=[.!?])\s+", text) if x]
         if not text or len(sentences) > 2:
             errors.append(f"{pid}: description must be 1 or 2 sentences")
+        if re.search(r"next week|week \d|this week", text, re.I):
+            errors.append(f"{pid}: the schedule is a fixed repeating week")
         for value in (prog["name"], text):
             if OUTCOME_CLAIM.search(value):
                 errors.append(f"{pid}: outcome claim in {value!r}")
@@ -351,6 +353,35 @@ class ProgramContentTest(unittest.TestCase):
                     self.assertIs(tpl.get("standalone"), False)
                     self.assertIn(tpl["id"], used)
 
+    def test_pull_up_notes_match_the_rep_floor(self):
+        for tpl in self.templates:
+            for row in tpl["exercises"]:
+                if row["exerciseId"] not in (
+                    "builtin.v1.pull-up",
+                    "builtin.v1.chin-up",
+                ):
+                    continue
+                with self.subTest(msg=f"{tpl['id']} {row['exerciseId']}"):
+                    note = row.get("note", "")
+                    self.assertIn("assisted", note)
+                    self.assertIn(f"{row['repsMin']} clean reps", note)
+
+    def test_unilateral_rows_say_per_side(self):
+        side = {
+            "builtin.v1.reverse-lunge", "builtin.v1.walking-lunge",
+            "builtin.v1.db-reverse-lunge", "builtin.v1.db-walking-lunge",
+            "builtin.v1.single-leg-glute-bridge", "builtin.v1.bird-dog",
+            "builtin.v1.dead-bug", "builtin.v1.side-plank",
+            "builtin.v1.kb-single-leg-deadlift", "builtin.v1.kb-row",
+            "builtin.v1.kb-press", "builtin.v1.kb-push-press",
+            "builtin.v1.single-arm-cable-row", "builtin.v1.cable-glute-kickback",
+        }
+        for tpl in self.templates:
+            for row in tpl["exercises"]:
+                if row["exerciseId"] in side:
+                    with self.subTest(msg=f"{tpl['id']} {row['exerciseId']}"):
+                        self.assertIn("per side", row.get("note", ""))
+
     def test_checks_reject_bad_fixtures(self):
         tpl = {
             "id": "tpl.x",
@@ -375,6 +406,7 @@ class ProgramContentTest(unittest.TestCase):
             {"estimatedMinutes": 50},
             {"description": "One. Two. Three."},
             {"description": "Burns fat fast."},
+            {"description": "Start the next week with B."},
         ):
             with self.subTest(change=change):
                 self.assertNotEqual(
