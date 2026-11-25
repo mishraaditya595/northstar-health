@@ -59,6 +59,14 @@ void main() {
       expect(sleepAfterTraining(nights, training), isNull);
     });
 
+    test('exactly 20 minute difference is kept', () {
+      final nights = [
+        for (final x in [2, 4, 6, 8]) night(d(x), 440),
+        for (final x in [10, 11, 12]) night(d(x), 420),
+      ];
+      expect(sleepAfterTraining(nights, training), isNotNull);
+    });
+
     test('night after a no-workout day counts as other', () {
       final nights = [
         for (final x in [2, 4, 6]) night(d(x), 480),
@@ -123,6 +131,26 @@ void main() {
     test('hard day without next-morning value is dropped', () {
       final s = series()..removeAt(0);
       expect(restingHrAfterHardSessions(s, training), isNull);
+    });
+
+    test('exactly 2.0 bpm is kept', () {
+      expect(restingHrAfterHardSessions(series(hard: 57), training), isNotNull);
+    });
+
+    test('3 hard mornings remain when a fourth has no value', () {
+      final four = [
+        train(d(1), 20),
+        train(d(2), 20),
+        train(d(3), 20),
+        train(d(4), 20),
+        for (final x in [5, 6, 7, 8]) train(d(x), 5),
+      ];
+      final s = [
+        for (final x in [2, 3, 4]) rhr(d(x), 60),
+        for (final x in [6, 7, 8, 9]) rhr(d(x), 55),
+      ];
+      final r = restingHrAfterHardSessions(s, four)!;
+      expect(r.hardDays, 3);
     });
 
     test('ties at the cut are included', () {
