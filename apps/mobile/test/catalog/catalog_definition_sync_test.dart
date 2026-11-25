@@ -21,10 +21,19 @@ class CountingLibrary extends ObjectBoxWorkoutLibraryRepository {
   CountingLibrary(super.store);
 
   int syncCalls = 0;
+  bool failSync = false;
+  bool failSeed = false;
+
+  @override
+  void ensureCatalogSeeded() {
+    if (failSeed) throw StateError('seed failed');
+    super.ensureCatalogSeeded();
+  }
 
   @override
   int syncCatalogDefinitions(List<CatalogDefinitionInput> items, int release) {
     syncCalls++;
+    if (failSync) throw StateError('sync failed');
     return super.syncCatalogDefinitions(items, release);
   }
 }
@@ -115,6 +124,63 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(library.syncCalls, 0);
+    expect(find.text('deadlift /'), findsOneWidget);
+  });
+
+  testWidgets('a failing sync leaves the app rendering and retries later', (
+    tester,
+  ) async {
+    library.failSync = true;
+    final catalog = StubCatalogRepository(
+      ready(['hamstrings'], const [], 1),
+      Directory.systemTemp,
+    );
+    await tester.pumpWidget(harness(catalog));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('deadlift /'), findsOneWidget);
+    expect(library.syncCalls, 1);
+
+    library.failSync = false;
+    catalog.emit(ready(['hamstrings'], const [], 2));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('deadlift hamstrings/'), findsOneWidget);
+  });
+
+  testWidgets('a failing seed leaves the host child rendering', (tester) async {
+    final catalog = StubCatalogRepository(
+      ready(['hamstrings'], const [], 1),
+      Directory.systemTemp,
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          objectBoxStoreProvider.overrideWithValue(store),
+          workoutLibraryRepositoryProvider.overrideWithValue(
+            library..failSeed = true,
+          ),
+          catalogRepositoryProvider.overrideWithValue(catalog),
+        ],
+        child: const MaterialApp(
+          home: CatalogDefinitionSyncHost(child: Text('app shell')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('app shell'), findsOneWidget);
+  });
+
+  testWidgets('an unknown muscle in the catalogue stores empty lists', (
+    tester,
+  ) async {
+    final catalog = StubCatalogRepository(
+      ready(['adductors'], ['glutes'], 1),
+      Directory.systemTemp,
+    );
+    await tester.pumpWidget(harness(catalog));
+    await tester.pumpAndSettle();
     expect(find.text('deadlift /'), findsOneWidget);
   });
 

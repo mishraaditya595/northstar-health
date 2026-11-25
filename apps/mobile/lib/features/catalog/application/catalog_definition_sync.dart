@@ -15,22 +15,29 @@ final catalogDefinitionSyncProvider = Provider<void>((ref) {
   final snapshot = safeCatalogState(() => ref.watch(catalogStateProvider))
       .snapshot;
   if (snapshot == null) return;
-  final repository = ref.read(workoutLibraryRepositoryProvider);
-  // The library provider seeds lazily; the backfill needs the rows to exist.
-  repository.ensureCatalogSeeded();
-  final updated = repository.syncCatalogDefinitions([
-    for (final e in snapshot.activeExercises)
-      (
-        id: e.id,
-        name: e.name,
-        muscleGroup: e.muscleGroup,
-        equipment: equipmentLabel(e.equipment),
-        category: categoryLabel(e.category),
-        mode: e.mode,
-        primaryMuscles: e.primaryMuscles,
-        secondaryMuscles: e.secondaryMuscles,
-      ),
-  ], snapshot.release);
+  final int updated;
+  try {
+    final repository = ref.read(workoutLibraryRepositoryProvider);
+    // The library provider seeds lazily; the backfill needs the rows to exist.
+    repository.ensureCatalogSeeded();
+    updated = repository.syncCatalogDefinitions([
+      for (final e in snapshot.activeExercises)
+        (
+          id: e.id,
+          name: e.name,
+          muscleGroup: e.muscleGroup,
+          equipment: equipmentLabel(e.equipment),
+          category: categoryLabel(e.category),
+          mode: e.mode,
+          primaryMuscles: e.primaryMuscles,
+          secondaryMuscles: e.secondaryMuscles,
+        ),
+    ], snapshot.release);
+  } on Object {
+    // Best effort: a failed backfill must never take down the app shell. The
+    // next snapshot retries it.
+    return;
+  }
   if (updated > 0) {
     // Not inside provider build: refresh the library right after.
     Future.microtask(() {
