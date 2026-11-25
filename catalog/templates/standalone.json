@@ -846,7 +846,7 @@
         "bodyweight"
       ]
     },
-    "estimatedMinutes": 35,
+    "estimatedMinutes": 25,
     "exercises": [
       {
         "exerciseId": "builtin.v1.plank",
@@ -866,7 +866,8 @@
         "sets": 3,
         "repsMin": 8,
         "repsMax": 10,
-        "restSeconds": 60
+        "restSeconds": 60,
+        "note": "Reps per side."
       },
       {
         "exerciseId": "builtin.v1.hollow-body-hold",
