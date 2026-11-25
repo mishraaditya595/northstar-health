@@ -4,7 +4,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(37);
+select plan(40);
 
 -- Access surface.
 select is(has_function_privilege('anon', 'public.catalog_manifest()', 'EXECUTE'),
@@ -42,6 +42,19 @@ select is(
      'northstar_private.set_live_catalog_release(integer)', 'EXECUTE'))
      from unnest(array['anon','authenticated','public']) r),
   false, 'clients and PUBLIC cannot move the live catalogue pointer');
+
+-- Release 1 (the 18 starter exercises) is live after the migrations run.
+set local role authenticated;
+select set_config('request.jwt.claims',
+ '{"sub":"00000000-0000-4000-8000-0000000000c1","role":"authenticated","is_anonymous":false}', true);
+select is((public.catalog_manifest()->>'release')::int, 1,
+  'release 1 is live after migrations');
+select is(public.catalog_manifest()->>'sha256',
+  'a35713cc3e84253bacb0791cf6b04f05b80ff3ebf6f0e6e610958635588708f2',
+  'release 1 checksum matches catalog/releases.lock.json');
+select is(jsonb_array_length(public.catalog_snapshot(1)->'exercises'), 18,
+  'release 1 carries the 18 starter exercises');
+reset role;
 
 -- Publish two synthetic releases through the private function.
 select lives_ok($$select northstar_private.publish_catalog_release(

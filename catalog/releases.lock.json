@@ -1,1 +1,31 @@
-{"releases": []}
+{
+  "releases": [
+    {
+      "exercises": {
+        "builtin.v1.bench-press": "reps_load",
+        "builtin.v1.bicep-curl": "reps_load",
+        "builtin.v1.calf-raise": "reps_load",
+        "builtin.v1.db-shoulder-press": "reps_load",
+        "builtin.v1.deadlift": "reps_load",
+        "builtin.v1.lat-pulldown": "reps_load",
+        "builtin.v1.lateral-raise": "reps_load",
+        "builtin.v1.leg-curl": "reps_load",
+        "builtin.v1.leg-extension": "reps_load",
+        "builtin.v1.leg-press": "reps_load",
+        "builtin.v1.overhead-press": "reps_load",
+        "builtin.v1.plank": "duration",
+        "builtin.v1.pull-up": "reps_load",
+        "builtin.v1.push-up": "reps_load",
+        "builtin.v1.rdl": "reps_load",
+        "builtin.v1.seated-row": "reps_load",
+        "builtin.v1.squat": "reps_load",
+        "builtin.v1.triceps-pushdown": "reps_load"
+      },
+      "programs": [],
+      "release": 1,
+      "retired": [],
+      "sha256": "a35713cc3e84253bacb0791cf6b04f05b80ff3ebf6f0e6e610958635588708f2",
+      "templates": []
+    }
+  ]
+}
