@@ -199,6 +199,27 @@ void main() {
       expect(find.textContaining('4 × 6–8 reps'), findsNothing);
     });
 
+    testWidgets('shows how to use the program, also at 200% text', (
+      tester,
+    ) async {
+      await open(tester, '/train/programs/prog.three', textScale: 2);
+      final scroll = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.textContaining('How to use this program', findRichText: true),
+        300,
+        scrollable: scroll,
+      );
+      for (final text in [
+        'Warm up',
+        '2 reps in reserve',
+        'Add load only',
+        'Times are approximate',
+      ]) {
+        expect(find.textContaining(text, findRichText: true), findsOneWidget);
+      }
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('a program-only template is previewed', (tester) async {
       await open(tester, '/train/programs/prog.three');
       expect(find.textContaining('Synthetic hidden'), findsOneWidget);

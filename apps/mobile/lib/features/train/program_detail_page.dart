@@ -166,6 +166,30 @@ class _ProgramDetailPageState extends ConsumerState<ProgramDetailPage> {
         const SizedBox(height: 20),
         for (var i = 0; i < 7; i++)
           _day(context, i, program.week[i], snapshot, names),
+        const SizedBox(height: 6),
+        const InsightCard(
+          icon: Icons.tips_and_updates_outlined,
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: 'How to use this program',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              TextSpan(
+                text:
+                    '\nWarm up with lighter sets before the first heavy '
+                    'exercise; only working sets are listed.'
+                    '\nStop most sets with about 2 reps in reserve, and '
+                    'keep your form.'
+                    '\nAdd load only after every set of an exercise is '
+                    'clean at the top of its rep range.'
+                    '\nIf you miss reps or recover badly, repeat the same '
+                    'load or lower it, and use fewer sets.'
+                    '\nTimes are approximate and depend on your rest.',
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
