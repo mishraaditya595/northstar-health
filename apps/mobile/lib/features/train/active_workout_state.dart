@@ -133,6 +133,8 @@ class RepositoryWorkoutActions implements WorkoutActions {
         muscleSnapshot: definition.muscleGroup,
         equipmentSnapshot: definition.equipment,
         position: session.exercises.length,
+        primaryMusclesSnapshot: definition.primaryMuscles,
+        secondaryMusclesSnapshot: definition.secondaryMuscles,
       ),
     );
   }

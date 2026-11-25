@@ -293,6 +293,94 @@ void main() {
     expect(engine.readCheckpoint(s.uuid), isNotNull);
   });
 
+  group('muscle snapshots', () {
+    ExerciseDefinitionEntity definition(String uuid) => store
+        .box<ExerciseDefinitionEntity>()
+        .query(ExerciseDefinitionEntity_.uuid.equals(uuid))
+        .build()
+        .findFirst()!;
+
+    void giveBenchMuscles() {
+      final bench = definition('builtin.v1.bench-press')
+        ..primaryMuscles = ['chest']
+        ..secondaryMuscles = ['triceps', 'shoulders'];
+      store.box<ExerciseDefinitionEntity>().put(bench);
+    }
+
+    test('starting a plan snapshots the definition muscles', () {
+      giveBenchMuscles();
+      makePlan();
+      final s = engine.startWorkout(
+        sessionUuid: 'session-m',
+        planUuid: 'plan-a',
+        startedAtUtc: started,
+        originalOffsetMinutes: 330,
+      );
+      final bench = s.exercises.firstWhere(
+        (e) => e.definitionUuid == 'builtin.v1.bench-press',
+      );
+      expect(bench.primaryMusclesSnapshot, ['chest']);
+      expect(bench.secondaryMusclesSnapshot, ['triceps', 'shoulders']);
+      final row = s.exercises.firstWhere(
+        (e) => e.definitionUuid == 'builtin.v1.seated-row',
+      );
+      expect(row.primaryMusclesSnapshot, isEmpty);
+      expect(row.secondaryMusclesSnapshot, isEmpty);
+    });
+
+    test('a custom exercise snapshots empty lists', () {
+      final custom = library.saveCustomExercise(
+        uuid: 'custom-legs',
+        name: 'Sled push',
+        muscleGroup: 'Legs',
+        equipment: 'Other',
+      );
+      library.savePlan(
+        uuid: 'plan-c',
+        name: 'Custom',
+        description: '',
+        exercises: [
+          PlanExerciseRecord(
+            uuid: 'plan-item-c',
+            exerciseUuid: custom.uuid,
+            position: 0,
+            targetSets: 1,
+          ),
+        ],
+      );
+      final s = engine.startWorkout(
+        sessionUuid: 'session-c',
+        planUuid: 'plan-c',
+        startedAtUtc: started,
+        originalOffsetMinutes: 330,
+      );
+      expect(s.exercises.single.primaryMusclesSnapshot, isEmpty);
+      expect(s.exercises.single.secondaryMusclesSnapshot, isEmpty);
+    });
+
+    test('editing the definition later does not change the snapshot', () {
+      giveBenchMuscles();
+      makePlan();
+      final s = engine.startWorkout(
+        sessionUuid: 'session-m',
+        planUuid: 'plan-a',
+        startedAtUtc: started,
+        originalOffsetMinutes: 330,
+      );
+      store.box<ExerciseDefinitionEntity>().put(
+        definition('builtin.v1.bench-press')
+          ..primaryMuscles = ['lats']
+          ..secondaryMuscles = [],
+      );
+      final again = sessions.getSession(s.uuid)!;
+      final bench = again.exercises.firstWhere(
+        (e) => e.definitionUuid == 'builtin.v1.bench-press',
+      );
+      expect(bench.primaryMusclesSnapshot, ['chest']);
+      expect(bench.secondaryMusclesSnapshot, ['triceps', 'shoulders']);
+    });
+  });
+
   test('plan renames and soft archives cannot rewrite session snapshots', () {
     makePlan();
     final s = engine.startWorkout(
