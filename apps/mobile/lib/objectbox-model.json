@@ -86,7 +86,7 @@
     },
     {
       "id": "2:7705935106860643277",
-      "lastPropertyId": "10:5047439989011014786",
+      "lastPropertyId": "11:636142947796672784",
       "name": "PlanExerciseEntity",
       "properties": [
         {
@@ -143,6 +143,11 @@
           "id": "10:5047439989011014786",
           "name": "notes",
           "type": 9
+        },
+        {
+          "id": "11:636142947796672784",
+          "name": "targetDurationSeconds",
+          "type": 6
         }
       ],
       "relations": []
@@ -387,7 +392,7 @@
     },
     {
       "id": "7:8818928578441733620",
-      "lastPropertyId": "12:4817131852291113570",
+      "lastPropertyId": "13:3924655003473968995",
       "name": "WorkoutSetEntity",
       "properties": [
         {
@@ -453,6 +458,11 @@
         {
           "id": "12:4817131852291113570",
           "name": "updatedAtMs",
+          "type": 6
+        },
+        {
+          "id": "13:3924655003473968995",
+          "name": "durationSeconds",
           "type": 6
         }
       ],

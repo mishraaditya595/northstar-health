@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/design/dialogs.dart';
@@ -10,6 +12,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/units/load_units.dart';
+import '../workouts/domain/durations.dart';
+import '../workouts/domain/workout_library_models.dart';
 import '../workouts/domain/live_workout_engine.dart';
 import '../workouts/domain/workout_models.dart';
 import '../progress/workout_history_state.dart';
@@ -17,6 +21,8 @@ import '../workouts/domain/workout_repository.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
 import '../sync/workout_upload_coordinator.dart';
 import 'previous_sets.dart';
+import 'timed_sets.dart';
+import 'train_library_state.dart';
 import 'active_workout_state.dart';
 import 'rest_timer_card.dart';
 import 'exercise_picker_sheet.dart';
@@ -444,6 +450,14 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
     final previous = ref.watch(
       previousSetsProvider(widget.exercise.definitionUuid),
     );
+    final definitions = {
+      for (final e
+          in ref.watch(trainLibraryProvider).asData?.value.exercises ??
+              const <ExerciseRecord>[])
+        e.uuid: e,
+    };
+    final timed = isTimedExercise(widget.exercise, widget.sets, definitions);
+    final clock = ref.watch(timedSetClockProvider);
     final done = widget.sets
         .where((e) => e.status == WorkoutSetStatus.completed)
         .length;
@@ -519,13 +533,21 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
                     SizedBox(
                       width: SetEditorTile.loadWidth,
                       child: Center(
-                        child: Text(loadHeader, style: head(context)),
+                        child: Text(
+                          timed ? 'TIMER' : loadHeader,
+                          style: head(context),
+                        ),
                       ),
                     ),
                     const SizedBox(width: SetEditorTile.gap),
                     SizedBox(
                       width: SetEditorTile.repsWidth,
-                      child: Center(child: Text('REPS', style: head(context))),
+                      child: Center(
+                        child: Text(
+                          timed ? 'SEC' : 'REPS',
+                          style: head(context),
+                        ),
+                      ),
                     ),
                     const SizedBox(width: SetEditorTile.gap),
                     SizedBox(
@@ -542,6 +564,8 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
                 number: numbers[widget.sets[index].uuid]!,
                 previous: index < previous.length ? previous[index] : null,
                 enabled: widget.enabled,
+                timed: timed,
+                now: clock,
                 restSeconds: rest,
                 onSave: widget.onSave,
                 onRemove: () => widget.onRemove(widget.sets[index]),
@@ -570,6 +594,8 @@ class SetEditorTile extends StatefulWidget {
     this.number,
     this.previous,
     this.restSeconds = 90,
+    this.timed = false,
+    this.now = DateTime.now,
     super.key,
   });
 
@@ -596,17 +622,29 @@ class SetEditorTile extends StatefulWidget {
   /// Countdown started when a not-yet-recorded set is recorded. 0 = none.
   final int restSeconds;
 
+  /// A timed exercise logs seconds with a stopwatch instead of reps and load.
+  final bool timed;
+
+  /// Wall-clock source for the stopwatch.
+  final DateTime Function() now;
+
   @override
   State<SetEditorTile> createState() => _SetEditorTileState();
 }
 
 class _SetEditorTileState extends State<SetEditorTile> {
   late final TextEditingController reps;
+  late final TextEditingController seconds;
   late final TextEditingController weight;
   late final TextEditingController rpe;
   late LoadUnit unit;
   late WorkoutSetKind kind;
   String? error;
+
+  /// A running stopwatch is a draft, like typed values: it is never saved
+  /// until the set is recorded.
+  Timer? _ticker;
+  DateTime? _startedAt;
 
   @override
   void initState() {
@@ -615,6 +653,7 @@ class _SetEditorTileState extends State<SetEditorTile> {
     unit = s.inputUnit == LoadUnit.unknown ? LoadUnit.kg : s.inputUnit;
     kind = s.kind == WorkoutSetKind.unknown ? WorkoutSetKind.working : s.kind;
     reps = TextEditingController(text: s.reps?.toString() ?? '');
+    seconds = TextEditingController(text: s.durationSeconds?.toString() ?? '');
     weight = TextEditingController(text: _savedWeightText(s.loadGrams, unit));
     rpe = TextEditingController(text: s.rpe?.toString() ?? '');
   }
@@ -628,6 +667,7 @@ class _SetEditorTileState extends State<SetEditorTile> {
     final after = widget.record;
     final sameValues =
         before.reps == after.reps &&
+        before.durationSeconds == after.durationSeconds &&
         before.loadGrams == after.loadGrams &&
         before.rpe == after.rpe &&
         before.status == after.status &&
@@ -644,11 +684,17 @@ class _SetEditorTileState extends State<SetEditorTile> {
           : after.kind;
       return;
     }
+    // The committed set changed under a running stopwatch: stop it so a later
+    // tick cannot write into the new state.
+    _ticker?.cancel();
+    _ticker = null;
+    _startedAt = null;
     unit = after.inputUnit == LoadUnit.unknown ? LoadUnit.kg : after.inputUnit;
     kind = after.kind == WorkoutSetKind.unknown
         ? WorkoutSetKind.working
         : after.kind;
     reps.text = after.reps?.toString() ?? '';
+    seconds.text = after.durationSeconds?.toString() ?? '';
     weight.text = _savedWeightText(after.loadGrams, unit);
     rpe.text = after.rpe?.toString() ?? '';
     error = null;
@@ -680,13 +726,44 @@ class _SetEditorTileState extends State<SetEditorTile> {
 
   @override
   void dispose() {
+    _ticker?.cancel();
     reps.dispose();
+    seconds.dispose();
     weight.dispose();
     rpe.dispose();
     super.dispose();
   }
 
+  int _elapsedSeconds() {
+    final elapsed = widget.now().difference(_startedAt!).inSeconds;
+    return elapsed < 1 ? 1 : elapsed;
+  }
+
+  void _startTimer() {
+    _startedAt = widget.now();
+    seconds.clear();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => seconds.text = _elapsedSeconds().toString());
+    });
+    setState(() => error = null);
+  }
+
+  /// Keeps the elapsed value in the field; at least 1 s, never 0.
+  void _stopTimer() {
+    if (_startedAt == null) return;
+    _ticker?.cancel();
+    _ticker = null;
+    final value = _elapsedSeconds();
+    _startedAt = null;
+    setState(() => seconds.text = value.toString());
+  }
+
   void _record() {
+    if (widget.timed) {
+      _recordTimed();
+      return;
+    }
     final count = int.tryParse(reps.text.trim());
     final load = weight.text.trim().isEmpty
         ? null
@@ -727,7 +804,44 @@ class _SetEditorTileState extends State<SetEditorTile> {
     }
   }
 
+  void _recordTimed() {
+    _stopTimer();
+    final count = int.tryParse(seconds.text.trim());
+    final effort = rpe.text.trim().isEmpty
+        ? null
+        : double.tryParse(rpe.text.trim());
+    if (count == null || (rpe.text.trim().isNotEmpty && effort == null)) {
+      setState(() => error = 'Enter valid seconds and RPE.');
+      return;
+    }
+    try {
+      final s = widget.record;
+      final updated = WorkoutSetRecord(
+        uuid: s.uuid,
+        exerciseUuid: s.exerciseUuid,
+        position: s.position,
+        kind: kind,
+        status: WorkoutSetStatus.completed,
+        durationSeconds: count,
+        inputUnit: unit,
+        rpe: effort,
+        completedAtUtc: s.completedAtUtc ?? DateTime.now().toUtc(),
+      );
+      updated.validate();
+      widget.onSave(
+        updated,
+        s.status == WorkoutSetStatus.planned && widget.restSeconds > 0
+            ? widget.restSeconds
+            : null,
+      );
+    } catch (_) {
+      setState(() => error = 'Check that the values are in the valid range.');
+    }
+  }
+
   String _previousText(WorkoutSetRecord p) {
+    final secondsValue = p.durationSeconds;
+    if (secondsValue != null) return formatDurationSeconds(secondsValue);
     final count = p.reps?.toString() ?? '?';
     if (p.loadGrams == null) return '$count reps';
     final u = p.inputUnit == LoadUnit.lb ? 'lb' : 'kg';
@@ -739,7 +853,12 @@ class _SetEditorTileState extends State<SetEditorTile> {
   void _usePrevious(WorkoutSetRecord p) {
     setState(() {
       unit = p.inputUnit == LoadUnit.unknown ? LoadUnit.kg : p.inputUnit;
-      reps.text = p.reps?.toString() ?? '';
+      if (widget.timed) {
+        _stopTimer();
+        seconds.text = p.durationSeconds?.toString() ?? '';
+      } else {
+        reps.text = p.reps?.toString() ?? '';
+      }
       weight.text = _savedWeightText(p.loadGrams, unit);
       error = null;
     });
@@ -759,6 +878,7 @@ class _SetEditorTileState extends State<SetEditorTile> {
         kind: next,
         status: s.status,
         reps: s.reps,
+        durationSeconds: s.durationSeconds,
         loadGrams: s.loadGrams,
         inputUnit: s.inputUnit,
         rpe: s.rpe,
@@ -958,35 +1078,67 @@ class _SetEditorTileState extends State<SetEditorTile> {
                       ),
               ),
               const SizedBox(width: SetEditorTile.gap),
-              SizedBox(
-                width: SetEditorTile.loadWidth,
-                child: NsTextField(
-                  key: ValueKey('weight-${s.uuid}'),
-                  controller: weight,
-                  dense: true,
-                  textAlign: TextAlign.center,
-                  enabled: widget.enabled,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+              if (widget.timed) ...[
+                SizedBox(
+                  width: SetEditorTile.loadWidth,
+                  child: Center(
+                    child: IconButton.filledTonal(
+                      tooltip: _startedAt == null
+                          ? 'Start timer for set ${s.position + 1}'
+                          : 'Stop timer for set ${s.position + 1}',
+                      onPressed: widget.enabled
+                          ? (_startedAt == null ? _startTimer : _stopTimer)
+                          : null,
+                      icon: Icon(
+                        _startedAt == null ? Icons.play_arrow : Icons.stop,
+                      ),
+                    ),
                   ),
-                  hint: previous?.loadGrams == null
-                      ? null
-                      : _savedWeightText(previous!.loadGrams, unit),
                 ),
-              ),
-              const SizedBox(width: SetEditorTile.gap),
-              SizedBox(
-                width: SetEditorTile.repsWidth,
-                child: NsTextField(
-                  key: ValueKey('reps-${s.uuid}'),
-                  controller: reps,
-                  dense: true,
-                  textAlign: TextAlign.center,
-                  enabled: widget.enabled,
-                  keyboardType: TextInputType.number,
-                  hint: previous?.reps?.toString(),
+                const SizedBox(width: SetEditorTile.gap),
+                SizedBox(
+                  width: SetEditorTile.repsWidth,
+                  child: NsTextField(
+                    key: ValueKey('seconds-${s.uuid}'),
+                    controller: seconds,
+                    dense: true,
+                    textAlign: TextAlign.center,
+                    enabled: widget.enabled,
+                    keyboardType: TextInputType.number,
+                    hint: previous?.durationSeconds?.toString(),
+                  ),
                 ),
-              ),
+              ] else ...[
+                SizedBox(
+                  width: SetEditorTile.loadWidth,
+                  child: NsTextField(
+                    key: ValueKey('weight-${s.uuid}'),
+                    controller: weight,
+                    dense: true,
+                    textAlign: TextAlign.center,
+                    enabled: widget.enabled,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    hint: previous?.loadGrams == null
+                        ? null
+                        : _savedWeightText(previous!.loadGrams, unit),
+                  ),
+                ),
+                const SizedBox(width: SetEditorTile.gap),
+                SizedBox(
+                  width: SetEditorTile.repsWidth,
+                  child: NsTextField(
+                    key: ValueKey('reps-${s.uuid}'),
+                    controller: reps,
+                    dense: true,
+                    textAlign: TextAlign.center,
+                    enabled: widget.enabled,
+                    keyboardType: TextInputType.number,
+                    hint: previous?.reps?.toString(),
+                  ),
+                ),
+              ],
               const SizedBox(width: SetEditorTile.gap),
               SizedBox(
                 width: SetEditorTile.checkWidth,

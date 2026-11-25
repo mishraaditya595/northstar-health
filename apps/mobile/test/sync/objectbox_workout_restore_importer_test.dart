@@ -22,6 +22,7 @@ Map<String, dynamic> dto({
   String id = workout,
   String name = 'Rows',
   Map<String, Object?> exerciseExtra = const {},
+  Map<String, Object?> setExtra = const {},
 }) => {
   'schema_version': 1,
   'workout_id': id,
@@ -47,6 +48,7 @@ Map<String, dynamic> dto({
           'load_grams': 60000,
           'input_unit': 'kg',
           'completed_at_utc': '2026-10-25T05:30:00Z',
+          ...setExtra,
         },
       ],
     },
@@ -64,6 +66,7 @@ WorkoutRestorePage feed({
   bool tombstone = false,
   bool reset = false,
   Map<String, Object?> exerciseExtra = const {},
+  Map<String, Object?> setExtra = const {},
 }) => WorkoutRestorePage.decode(
   {
     'schema_version': 1,
@@ -81,7 +84,12 @@ WorkoutRestorePage feed({
               'deleted': tombstone,
               'payload': tombstone
                   ? null
-                  : dto(id: id, name: name!, exerciseExtra: exerciseExtra),
+                  : dto(
+                      id: id,
+                      name: name!,
+                      exerciseExtra: exerciseExtra,
+                      setExtra: setExtra,
+                    ),
             },
           ],
   },
@@ -141,6 +149,42 @@ void main() {
     expect(store.box<WorkoutSyncOutboxEntity>().count(), 0);
     expect(ObjectBoxWorkoutOutbox(store).backfillCompleted(), 0);
     expect(store.box<WorkoutSyncOutboxEntity>().count(), 0);
+  });
+
+  test('restores a timed set with seconds and no reps', () {
+    importer.applyPage(
+      feed(setExtra: {'reps': null, 'duration_seconds': 45}),
+      afterSeq: 0,
+      requestedEpoch: null,
+    );
+    final set = store.box<WorkoutSetEntity>().getAll().single;
+    expect(set.durationSeconds, 45);
+    expect(set.reps, isNull);
+  });
+
+  test('a page with invalid seconds is refused and imports nothing', () {
+    final before = importer.readCursor();
+    expect(
+      () => importer.applyPage(
+        feed(setExtra: {'reps': null, 'duration_seconds': 0}),
+        afterSeq: 0,
+        requestedEpoch: null,
+      ),
+      throwsA(
+        isA<RestoreContractException>().having(
+          (e) => e.code,
+          'code',
+          'invalid_set_duration',
+        ),
+      ),
+    );
+    expect(store.box<WorkoutSessionEntity>().count(), 0);
+    expect(store.box<WorkoutExerciseEntity>().count(), 0);
+    expect(store.box<WorkoutSetEntity>().count(), 0);
+    expect(store.box<WorkoutRemoteStateEntity>().count(), 0);
+    expect(store.box<WorkoutSyncOutboxEntity>().count(), 0);
+    expect(importer.readCursor().nextCursor, before.nextCursor);
+    expect(importer.readCursor().epoch, before.epoch);
   });
 
   test('restores exercise muscle snapshots', () {

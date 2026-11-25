@@ -355,6 +355,10 @@ class ObjectBoxWorkoutOutbox {
             !const ['planned', 'completed', 'skipped'].contains(set.status) ||
             !const ['kg', 'lb'].contains(set.inputUnit) ||
             (set.reps != null && (set.reps! < 0 || set.reps! > 10000)) ||
+            (set.durationSeconds != null &&
+                (set.durationSeconds! < 1 ||
+                    set.durationSeconds! > 86400 ||
+                    set.reps != null)) ||
             (set.loadGrams != null &&
                 (set.loadGrams! < 0 || set.loadGrams! > 100000000)) ||
             (set.rpe != null &&
@@ -363,7 +367,8 @@ class ObjectBoxWorkoutOutbox {
                     set.rpe! > 10 ||
                     (set.rpe! * 2) % 1 != 0)) ||
             (set.status == 'completed' &&
-                (set.reps == null || set.completedAtMs == null)) ||
+                ((set.reps == null && set.durationSeconds == null) ||
+                    set.completedAtMs == null)) ||
             (set.completedAtMs != null &&
                 set.completedAtMs! < workout.startedAtMs)) {
           throw StateError('Invalid set for cloud backup');
@@ -374,6 +379,9 @@ class ObjectBoxWorkoutOutbox {
           'kind': set.kind,
           'status': set.status,
           'reps': set.reps,
+          // Sent only for timed sets so rep workouts keep their exact payload.
+          if (set.durationSeconds != null)
+            'duration_seconds': set.durationSeconds,
           'load_grams': set.loadGrams,
           'input_unit': set.inputUnit,
           'rpe': set.rpe,

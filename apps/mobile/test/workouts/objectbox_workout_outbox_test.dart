@@ -695,4 +695,72 @@ void main() {
       upgradeDir.deleteSync(recursive: true);
     }
   });
+
+  test(
+    'an all-rep workout payload is byte-identical to the pre-seconds one',
+    () {
+      final active = withSet();
+      engine.pauseWorkout(active.uuid, expectedRevision: active.revision);
+      final paused = repository.getSession(active.uuid)!;
+      engine.finishWorkout(
+        workoutId,
+        expectedRevision: paused.revision,
+        finishedAtUtc: DateTime.utc(2026, 10, 25, 10),
+      );
+      final golden = File('test/workouts/fixtures/rep_workout_payload.json')
+          .readAsStringSync();
+      expect(outbox.pending().single.payloadJson, golden);
+      expect(golden, isNot(contains('duration_seconds')));
+    },
+  );
+
+  test('a completed timed set sends duration_seconds and no reps value', () {
+    store.box<ExerciseDefinitionEntity>().put(
+      ExerciseDefinitionEntity(
+        uuid: 'builtin.v1.plank',
+        name: 'Plank',
+        inputMode: 'duration',
+        createdAtMs: 1,
+        updatedAtMs: 1,
+      ),
+    );
+    final active = engine.startWorkout(
+      sessionUuid: workoutId,
+      quickName: 'Core',
+      startedAtUtc: DateTime.utc(2026, 10, 25, 9),
+      originalOffsetMinutes: 0,
+    );
+    repository.addExercise(
+      WorkoutExerciseRecord(
+        uuid: exerciseId,
+        sessionUuid: workoutId,
+        definitionUuid: 'builtin.v1.plank',
+        nameSnapshot: 'Plank',
+        position: 0,
+      ),
+    );
+    repository.saveSet(
+      sessionUuid: workoutId,
+      expectedRevision: repository.getSession(active.uuid)!.revision,
+      set: WorkoutSetRecord(
+        uuid: setId,
+        exerciseUuid: exerciseId,
+        position: 0,
+        kind: WorkoutSetKind.working,
+        status: WorkoutSetStatus.completed,
+        durationSeconds: 45,
+        completedAtUtc: DateTime.utc(2026, 10, 25, 9, 15),
+      ),
+    );
+    engine.finishWorkout(
+      workoutId,
+      expectedRevision: repository.getSession(workoutId)!.revision,
+      finishedAtUtc: DateTime.utc(2026, 10, 25, 10),
+    );
+    final dto = jsonDecode(outbox.pending().single.payloadJson) as Map;
+    final set =
+        ((dto['exercises'] as List).single as Map)['sets'].single as Map;
+    expect(set['duration_seconds'], 45);
+    expect(set['reps'], isNull);
+  });
 }

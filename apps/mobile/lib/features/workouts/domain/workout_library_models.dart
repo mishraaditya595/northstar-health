@@ -50,6 +50,7 @@ class PlanExerciseRecord {
     required this.targetSets,
     this.targetRepsMin,
     this.targetRepsMax,
+    this.targetDurationSeconds,
     this.restSeconds,
     this.notes = '',
   });
@@ -60,6 +61,7 @@ class PlanExerciseRecord {
   final int targetSets;
   final int? targetRepsMin;
   final int? targetRepsMax;
+  final int? targetDurationSeconds;
   final int? restSeconds;
   final String notes;
 
@@ -70,6 +72,7 @@ class PlanExerciseRecord {
     targetSets: targetSets,
     targetRepsMin: targetRepsMin,
     targetRepsMax: targetRepsMax,
+    targetDurationSeconds: targetDurationSeconds,
     restSeconds: restSeconds,
     notes: notes,
   );
@@ -87,6 +90,11 @@ class PlanExerciseRecord {
         (targetRepsMin != null &&
             targetRepsMax != null &&
             targetRepsMax! < targetRepsMin!) ||
+        (targetDurationSeconds != null &&
+            (targetDurationSeconds! < 1 ||
+                targetDurationSeconds! > 3600 ||
+                targetRepsMin != null ||
+                targetRepsMax != null)) ||
         (restSeconds != null && (restSeconds! < 0 || restSeconds! > 3600)) ||
         notes.length > 1000) {
       throw ArgumentError('Invalid plan exercise or prescription');

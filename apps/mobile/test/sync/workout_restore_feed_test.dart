@@ -866,4 +866,63 @@ void main() {
       ),
     );
   });
+
+  group('timed sets', () {
+    WorkoutRestorePage decodeSet(Map<String, Object?> changes) {
+      final raw = mutableSnapshot();
+      final ex = (raw['exercises'] as List).single as Map<String, dynamic>;
+      final set = (ex['sets'] as List).single as Map<String, dynamic>;
+      set.addAll(changes);
+      return decode(page(changes: [change()..['payload'] = raw]));
+    }
+
+    test('a completed timed set restores its seconds and no reps', () {
+      final restored = decodeSet({'reps': null, 'duration_seconds': 45})
+          .changes
+          .single
+          .snapshot!
+          .sets
+          .single;
+      expect(restored.durationSeconds, 45);
+      expect(restored.reps, isNull);
+    });
+
+    test('conflict review decodes the cloud copy of a timed workout', () {
+      final raw = mutableSnapshot();
+      final ex = (raw['exercises'] as List).single as Map<String, dynamic>;
+      (ex['sets'] as List).single
+        ..['reps'] = null
+        ..['duration_seconds'] = 45;
+      final review = WorkoutRemoteReview.decode({
+        'schema_version': 1,
+        'cursor_epoch': epochA,
+        'change': change()..['payload'] = raw,
+      }, workoutId);
+      final sets = review.change!.snapshot!.sets;
+      expect(sets, hasLength(1));
+      expect(sets.single.durationSeconds, 45);
+    });
+
+    test('invalid seconds are rejected with invalid_set_duration', () {
+      for (final bad in <Map<String, Object?>>[
+        {'reps': null, 'duration_seconds': 0},
+        {'reps': null, 'duration_seconds': 86401},
+        {'reps': null, 'duration_seconds': 45.5},
+        {'reps': null, 'duration_seconds': '45'},
+        {'duration_seconds': 45},
+      ]) {
+        expect(
+          () => decodeSet(bad),
+          throwsA(
+            isA<RestoreContractException>().having(
+              (e) => e.code,
+              'code',
+              'invalid_set_duration',
+            ),
+          ),
+          reason: '$bad',
+        );
+      }
+    });
+  });
 }

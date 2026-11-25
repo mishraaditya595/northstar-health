@@ -1023,6 +1023,7 @@ class ObjectBoxWorkoutRestoreImporter {
           kind: set.kind.name,
           status: set.status.name,
           reps: set.reps,
+          durationSeconds: set.durationSeconds,
           loadGrams: set.loadGrams,
           inputUnit: set.inputUnit.name,
           rpe: set.rpe,

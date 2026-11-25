@@ -753,4 +753,199 @@ void main() {
     );
     expect(fake.planRecords, isEmpty);
   });
+
+  group('timed plan rows', () {
+    const plank = ExerciseRecord(
+      uuid: 'builtin.v1.plank',
+      name: 'Plank',
+      muscleGroup: 'Core',
+      equipment: 'Bodyweight',
+      movementCategory: 'Core',
+      inputMode: 'duration',
+      isBuiltIn: true,
+      updatedAtMs: 1,
+    );
+
+    Future<FakeLibrary> openEditor(
+      WidgetTester tester, {
+      bool withPlankRow = true,
+      PlanExerciseRecord plankRow = const PlanExerciseRecord(
+        uuid: 'item-plank',
+        exerciseUuid: 'builtin.v1.plank',
+        position: 0,
+        targetSets: 3,
+        targetDurationSeconds: 30,
+      ),
+    }) async {
+      final fake = FakeLibrary()..extraExercises.add(plank);
+      fake.planRecords['existing'] = WorkoutPlanRecord(
+        uuid: 'existing',
+        name: 'Core A',
+        description: '',
+        updatedAtMs: 7,
+        exercises: [
+          if (withPlankRow) plankRow,
+          PlanExerciseRecord(
+            uuid: 'item-bench',
+            exerciseUuid: 'builtin.v1.bench-press',
+            position: withPlankRow ? 1 : 0,
+            targetSets: 3,
+            targetRepsMin: 8,
+            targetRepsMax: 12,
+          ),
+        ],
+      );
+      final router = GoRouter(
+        initialLocation: '/train/plans/existing/edit',
+        routes: [
+          GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+          GoRoute(
+            path: '/train/plans/:id/edit',
+            builder: (_, _) => const PlanEditorPage(planUuid: 'existing'),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      tester.view.physicalSize = const Size(800, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ...catalogTestOverrides(),
+            workoutLibraryRepositoryProvider.overrideWithValue(fake),
+            activeWorkoutProvider.overrideWith(
+              (ref) => const AsyncData<ActiveWorkoutView?>(null),
+            ),
+          ],
+          child: MaterialApp.router(
+            theme: BeyondRepTheme.build(Brightness.light),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return fake;
+    }
+
+    testWidgets('a plank row reads in seconds and edits to 45 s', (
+      tester,
+    ) async {
+      final fake = await openEditor(tester);
+      expect(find.textContaining('3 sets · 30 s'), findsOneWidget);
+      await tester.tap(find.text('Targets').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Seconds per set (1–3600)'), findsOneWidget);
+      expect(find.text('Minimum reps (optional)'), findsNothing);
+      expect(find.text('Maximum reps (optional)'), findsNothing);
+      final seconds = find.widgetWithText(
+        TextField,
+        'Seconds per set (1–3600)',
+      );
+      await tester.enterText(seconds, '45');
+      await tester.tap(find.text('Apply'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('3 sets · 45 s'), findsOneWidget);
+      await tester.ensureVisible(find.text('Save plan offline'));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(ListView).last, const Offset(0, -160));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save plan offline'));
+      await tester.pumpAndSettle();
+      final row = fake.planRecords['existing']!.exercises.first;
+      expect(row.targetDurationSeconds, 45);
+      expect(row.targetRepsMin, isNull);
+    });
+
+    testWidgets('empty or zero seconds shows the validation error', (
+      tester,
+    ) async {
+      await openEditor(tester);
+      for (final bad in ['', '0']) {
+        await tester.tap(find.text('Targets').first);
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.widgetWithText(TextField, 'Seconds per set (1–3600)'),
+          bad,
+        );
+        await tester.tap(find.text('Apply'));
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Check your sets, seconds and rest time.'),
+          findsOneWidget,
+        );
+        expect(
+          find.text('Check your sets, rep range and rest time.'),
+          findsNothing,
+        );
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+      }
+      expect(find.textContaining('3 sets · 30 s'), findsOneWidget);
+    });
+
+    testWidgets('an old plank row with rep targets opens, renames and saves', (
+      tester,
+    ) async {
+      final fake = await openEditor(
+        tester,
+        plankRow: const PlanExerciseRecord(
+          uuid: 'item-plank',
+          exerciseUuid: 'builtin.v1.plank',
+          position: 0,
+          targetSets: 3,
+          targetRepsMin: 8,
+          targetRepsMax: 12,
+        ),
+      );
+      expect(find.textContaining('reps'), findsOneWidget); // the bench row
+      expect(find.textContaining('3 sets · 30 s'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).first, 'Core B');
+      await tester.ensureVisible(find.text('Save plan offline'));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(ListView).last, const Offset(0, -160));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save plan offline'));
+      await tester.pumpAndSettle();
+      final saved = fake.planRecords['existing']!;
+      expect(saved.name, 'Core B');
+      final row = saved.exercises.first;
+      expect(row.targetRepsMin, isNull);
+      expect(row.targetRepsMax, isNull);
+      expect(row.targetDurationSeconds, 30);
+      expect(saved.exercises.last.targetRepsMax, 12);
+    });
+
+    testWidgets('a squat row still edits reps', (tester) async {
+      await openEditor(tester);
+      await tester.tap(find.text('Targets').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Minimum reps (optional)'), findsOneWidget);
+      expect(find.text('Seconds per set (1–3600)'), findsNothing);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('adding a plank sets a 30 s target and no reps', (
+      tester,
+    ) async {
+      final fake = await openEditor(tester, withPlankRow: false);
+      await tester.tap(find.text('Add'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Plank').last);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('3 sets · 30 s'), findsOneWidget);
+      await tester.ensureVisible(find.text('Save plan offline'));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(ListView).last, const Offset(0, -160));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save plan offline'));
+      await tester.pumpAndSettle();
+      final added = fake.planRecords['existing']!.exercises.last;
+      expect(added.exerciseUuid, 'builtin.v1.plank');
+      expect(added.targetDurationSeconds, 30);
+      expect(added.targetRepsMin, isNull);
+      expect(added.targetRepsMax, isNull);
+    });
+  });
 }

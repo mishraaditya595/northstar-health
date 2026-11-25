@@ -440,4 +440,110 @@ void main() {
       expect(repository.getSession(session.uuid)!.sets, hasLength(3));
     });
   });
+
+  group('timed exercises', () {
+    WorkoutSessionRecord startWith(String definitionUuid, String inputMode) {
+      store.box<ExerciseDefinitionEntity>().put(
+        ExerciseDefinitionEntity(
+          uuid: definitionUuid,
+          name: 'Definition',
+          inputMode: inputMode,
+          createdAtMs: 1,
+          updatedAtMs: 1,
+        ),
+      );
+      repository.createSession(
+        uuid: 'session-1',
+        name: 'Timed',
+        startedAtUtc: DateTime.utc(2026, 10, 24, 9),
+        originalOffsetMinutes: 0,
+      );
+      repository.addExercise(
+        WorkoutExerciseRecord(
+          uuid: 'exercise-1',
+          sessionUuid: 'session-1',
+          definitionUuid: definitionUuid,
+          nameSnapshot: 'Definition',
+          position: 0,
+        ),
+      );
+      return repository.getSession('session-1')!;
+    }
+
+    WorkoutSetRecord timedSet({int? reps, int? seconds}) => WorkoutSetRecord(
+      uuid: 'set-1',
+      exerciseUuid: 'exercise-1',
+      position: 0,
+      kind: WorkoutSetKind.working,
+      status: WorkoutSetStatus.completed,
+      reps: reps,
+      durationSeconds: seconds,
+      completedAtUtc: DateTime.utc(2026, 10, 24, 10),
+    );
+
+    test('a plank set with seconds saves and reads back', () {
+      final active = startWith('builtin.v1.plank', 'duration');
+      repository.saveSet(
+        sessionUuid: 'session-1',
+        set: timedSet(seconds: 45),
+        expectedRevision: active.revision,
+      );
+      final set = repository.getSession('session-1')!.sets.single;
+      expect(set.durationSeconds, 45);
+      expect(set.reps, isNull);
+    });
+
+    test('a plank set with reps throws and changes nothing', () {
+      final active = startWith('builtin.v1.plank', 'duration');
+      expect(
+        () => repository.saveSet(
+          sessionUuid: 'session-1',
+          set: timedSet(reps: 5),
+          expectedRevision: active.revision,
+        ),
+        throwsArgumentError,
+      );
+      final after = repository.getSession('session-1')!;
+      expect(after.revision, active.revision);
+      expect(after.sets, isEmpty);
+    });
+
+    test('a squat set with seconds throws', () {
+      final active = startWith('builtin.v1.squat', 'reps_load');
+      expect(
+        () => repository.saveSet(
+          sessionUuid: 'session-1',
+          set: timedSet(seconds: 45),
+          expectedRevision: active.revision,
+        ),
+        throwsArgumentError,
+      );
+      expect(repository.getSession('session-1')!.sets, isEmpty);
+    });
+
+    test('a custom exercise set with seconds throws', () {
+      final active = startWith('custom-1', 'reps_load');
+      expect(
+        () => repository.saveSet(
+          sessionUuid: 'session-1',
+          set: timedSet(seconds: 45),
+          expectedRevision: active.revision,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('a missing definition allows seconds or reps', () {
+      final active = start();
+      repository.saveSet(
+        sessionUuid: 'session-1',
+        set: timedSet(seconds: 45),
+        expectedRevision: active.revision,
+      );
+      expect(
+        repository.getSession('session-1')!.sets.single.durationSeconds,
+        45,
+      );
+    });
+  });
 }

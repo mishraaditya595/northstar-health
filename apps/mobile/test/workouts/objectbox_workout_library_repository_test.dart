@@ -758,4 +758,60 @@ void main() {
       expect(row.catalogVersion, 2);
     });
   });
+
+  group('timed plan rows', () {
+    PlanExerciseRecord row(String exerciseId, {int? seconds, int? reps}) =>
+        PlanExerciseRecord(
+          uuid: 'item-a',
+          exerciseUuid: exerciseId,
+          position: 0,
+          targetSets: 3,
+          targetRepsMin: reps,
+          targetRepsMax: reps,
+          targetDurationSeconds: seconds,
+        );
+
+    test('a plank row targeting seconds saves', () {
+      library.ensureCatalogSeeded();
+      final plan = library.savePlan(
+        uuid: 'plan-a',
+        name: 'Core',
+        description: '',
+        exercises: [row('builtin.v1.plank', seconds: 45)],
+      );
+      expect(plan.exercises.single.targetDurationSeconds, 45);
+      expect(
+        library.getPlan('plan-a')!.exercises.single.targetDurationSeconds,
+        45,
+      );
+    });
+
+    test('a plank row with reps targets throws and writes nothing', () {
+      library.ensureCatalogSeeded();
+      expect(
+        () => library.savePlan(
+          uuid: 'plan-a',
+          name: 'Core',
+          description: '',
+          exercises: [row('builtin.v1.plank', reps: 8)],
+        ),
+        throwsArgumentError,
+      );
+      expect(library.getPlan('plan-a'), isNull);
+    });
+
+    test('a squat row with seconds throws', () {
+      library.ensureCatalogSeeded();
+      expect(
+        () => library.savePlan(
+          uuid: 'plan-a',
+          name: 'Legs',
+          description: '',
+          exercises: [row('builtin.v1.squat', seconds: 45)],
+        ),
+        throwsArgumentError,
+      );
+      expect(library.getPlan('plan-a'), isNull);
+    });
+  });
 }

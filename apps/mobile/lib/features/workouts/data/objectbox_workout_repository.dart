@@ -23,6 +23,7 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
     : _sessions = _store.box<WorkoutSessionEntity>(),
       _exercises = _store.box<WorkoutExerciseEntity>(),
       _sets = _store.box<WorkoutSetEntity>(),
+      _definitions = _store.box<ExerciseDefinitionEntity>(),
       _checkpoints = _store.box<WorkoutSessionStateEntity>();
 
   final Store _store;
@@ -30,6 +31,7 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
   final Box<WorkoutSessionEntity> _sessions;
   final Box<WorkoutExerciseEntity> _exercises;
   final Box<WorkoutSetEntity> _sets;
+  final Box<ExerciseDefinitionEntity> _definitions;
   final Box<WorkoutSessionStateEntity> _checkpoints;
 
   T? _one<T>(Box<T> box, QueryStringProperty<T> property, String value) {
@@ -153,6 +155,7 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
               kind: workoutSetKindFromStorage(entry.kind),
               status: workoutSetStatusFromStorage(entry.status),
               reps: entry.reps,
+              durationSeconds: entry.durationSeconds,
               loadGrams: entry.loadGrams,
               inputUnit: loadUnitFromStorage(entry.inputUnit),
               rpe: entry.rpe,
@@ -291,6 +294,19 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
       if (exercise == null || exercise.sessionUuid != sessionUuid) {
         throw StateError('Set exercise does not belong to session');
       }
+      final definitionUuid = exercise.definitionUuid;
+      final definition = definitionUuid == null
+          ? null
+          : _one(_definitions, ExerciseDefinitionEntity_.uuid, definitionUuid);
+      if (definition != null) {
+        final timed = definition.inputMode == 'duration';
+        if (timed && set.reps != null) {
+          throw ArgumentError('Timed exercise takes seconds, not reps');
+        }
+        if (!timed && set.durationSeconds != null) {
+          throw ArgumentError('Rep exercise takes reps, not seconds');
+        }
+      }
       final prior = _one(_sets, WorkoutSetEntity_.uuid, set.uuid);
       if (prior != null && prior.exerciseUuid != set.exerciseUuid) {
         throw StateError('Set UUID already belongs to another exercise');
@@ -301,6 +317,7 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
           prior.kind == set.kind.name &&
           prior.status == set.status.name &&
           prior.reps == set.reps &&
+          prior.durationSeconds == set.durationSeconds &&
           prior.loadGrams == set.loadGrams &&
           prior.inputUnit == set.inputUnit.name &&
           prior.rpe == set.rpe &&
@@ -330,6 +347,7 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
           kind: set.kind.name,
           status: set.status.name,
           reps: set.reps,
+          durationSeconds: set.durationSeconds,
           loadGrams: set.loadGrams,
           inputUnit: set.inputUnit.name,
           rpe: set.rpe,
