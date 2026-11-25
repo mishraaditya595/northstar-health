@@ -126,25 +126,27 @@ class TrainPage extends ConsumerWidget {
               eyebrow: 'PLAN AND PERFORM TRAINING',
             ),
             const SizedBox(height: 24),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.end,
+              spacing: 12,
+              runSpacing: 12,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        longDayLabel(now),
-                        style: TextStyle(color: colors.muted, fontSize: 12),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Your training week',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                    ],
-                  ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      longDayLabel(now),
+                      style: TextStyle(color: colors.muted, fontSize: 12),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Your training week',
+                      style: Theme.of(context).textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                  ],
                 ),
                 OutlinedButton.icon(
                   onPressed: () => _open(context, ref, '/train/plans/new'),
