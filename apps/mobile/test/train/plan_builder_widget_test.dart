@@ -769,6 +769,13 @@ void main() {
     Future<FakeLibrary> openEditor(
       WidgetTester tester, {
       bool withPlankRow = true,
+      PlanExerciseRecord plankRow = const PlanExerciseRecord(
+        uuid: 'item-plank',
+        exerciseUuid: 'builtin.v1.plank',
+        position: 0,
+        targetSets: 3,
+        targetDurationSeconds: 30,
+      ),
     }) async {
       final fake = FakeLibrary()..extraExercises.add(plank);
       fake.planRecords['existing'] = WorkoutPlanRecord(
@@ -777,14 +784,7 @@ void main() {
         description: '',
         updatedAtMs: 7,
         exercises: [
-          if (withPlankRow)
-            const PlanExerciseRecord(
-              uuid: 'item-plank',
-              exerciseUuid: 'builtin.v1.plank',
-              position: 0,
-              targetSets: 3,
-              targetDurationSeconds: 30,
-            ),
+          if (withPlankRow) plankRow,
           PlanExerciseRecord(
             uuid: 'item-bench',
             exerciseUuid: 'builtin.v1.bench-press',
@@ -871,13 +871,49 @@ void main() {
         await tester.tap(find.text('Apply'));
         await tester.pumpAndSettle();
         expect(
-          find.text('Check your sets, rep range and rest time.'),
+          find.text('Check your sets, seconds and rest time.'),
           findsOneWidget,
+        );
+        expect(
+          find.text('Check your sets, rep range and rest time.'),
+          findsNothing,
         );
         await tester.tap(find.text('Cancel'));
         await tester.pumpAndSettle();
       }
       expect(find.textContaining('3 sets · 30 s'), findsOneWidget);
+    });
+
+    testWidgets('an old plank row with rep targets opens, renames and saves', (
+      tester,
+    ) async {
+      final fake = await openEditor(
+        tester,
+        plankRow: const PlanExerciseRecord(
+          uuid: 'item-plank',
+          exerciseUuid: 'builtin.v1.plank',
+          position: 0,
+          targetSets: 3,
+          targetRepsMin: 8,
+          targetRepsMax: 12,
+        ),
+      );
+      expect(find.textContaining('reps'), findsOneWidget); // the bench row
+      expect(find.textContaining('3 sets · 30 s'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).first, 'Core B');
+      await tester.ensureVisible(find.text('Save plan offline'));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(ListView).last, const Offset(0, -160));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save plan offline'));
+      await tester.pumpAndSettle();
+      final saved = fake.planRecords['existing']!;
+      expect(saved.name, 'Core B');
+      final row = saved.exercises.first;
+      expect(row.targetRepsMin, isNull);
+      expect(row.targetRepsMax, isNull);
+      expect(row.targetDurationSeconds, 30);
+      expect(saved.exercises.last.targetRepsMax, 12);
     });
 
     testWidgets('a squat row still edits reps', (tester) async {

@@ -114,7 +114,30 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
           expectedUpdatedAtMs = existing.updatedAtMs;
           name.text = existing.name;
           description.text = existing.description;
-          items.addAll(existing.exercises);
+          // Plank rows saved before timed sets carry rep targets, which a
+          // timed exercise may not have. Convert them to the 30 s default
+          // so the plan can be saved.
+          final timedIds = {
+            for (final e in repository.listExercises(includeArchived: true))
+              if (e.inputMode == 'duration') e.uuid,
+          };
+          items.addAll(
+            existing.exercises.map(
+              (row) =>
+                  timedIds.contains(row.exerciseUuid) &&
+                      row.targetDurationSeconds == null
+                  ? PlanExerciseRecord(
+                      uuid: row.uuid,
+                      exerciseUuid: row.exerciseUuid,
+                      position: row.position,
+                      targetSets: row.targetSets,
+                      targetDurationSeconds: 30,
+                      restSeconds: row.restSeconds,
+                      notes: row.notes,
+                    )
+                  : row,
+            ),
+          );
         }
       }
     } catch (_) {
@@ -274,7 +297,9 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
                     Navigator.pop(dialogContext);
                   } catch (_) {
                     updateDialog(
-                      () => error = 'Check your sets, rep range and rest time.',
+                      () => error = timed
+                          ? 'Check your sets, seconds and rest time.'
+                          : 'Check your sets, rep range and rest time.',
                     );
                   }
                 },
@@ -285,7 +310,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
         ),
       );
     } finally {
-      disposeAfterDialog([sets, min, max, rest, note]);
+      disposeAfterDialog([sets, seconds, min, max, rest, note]);
     }
   }
 
