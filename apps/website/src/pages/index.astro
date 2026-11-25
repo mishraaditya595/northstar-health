@@ -1,0 +1,206 @@
+---
+import Base from '../layouts/Base.astro';
+import GetApp from '../components/GetApp.astro';
+import { SITE } from '../site';
+
+const faqs = [
+  {
+    q: 'Does BeyondRep work without internet?',
+    a: 'Yes. Once you have signed in, you can plan, log and finish workouts with no signal. Everything is saved on your phone first, and finished workouts back up the next time you are online.',
+  },
+  {
+    q: 'Why do I need an account?',
+    a: 'Your account is how your finished workouts are backed up and restored on a new phone. Sign-in uses a one-time code sent to your email. There are no passwords and no social logins.',
+  },
+  {
+    q: 'What gets backed up to the cloud?',
+    a: 'Only workouts you have finished, with their exercises and sets. Unfinished sessions, your plans and templates, and any Apple Health or Health Connect data stay on your phone.',
+  },
+  {
+    q: 'Does BeyondRep read my health data?',
+    a: 'Only if you tap Connect. It then reads last night’s sleep, today’s steps, your resting heart rate and your weight to show a daily summary. Those values are never saved to disk or sent anywhere.',
+  },
+  {
+    q: 'Can I take my data with me or delete it?',
+    a: 'Yes. You can export your backed-up workouts as a JSON file, delete single workouts, or delete your whole account from inside the app.',
+  },
+  {
+    q: 'Is BeyondRep available yet?',
+    a: 'Not yet. It is in private testing on iPhone. Use the button above to get an email when it launches on iPhone, iPad and Android.',
+  },
+];
+
+const jsonLd = [
+  {
+    '@type': 'WebSite',
+    name: SITE.name,
+    url: SITE.url,
+  },
+  {
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a },
+    })),
+  },
+];
+---
+<Base
+  title="BeyondRep"
+  description="BeyondRep is a strength-training log for iPhone and Android that works offline, backs up only your finished workouts, and shows your sleep and recovery beside your training."
+  jsonLd={jsonLd}
+>
+  <div class="wrap">
+    <div class="hero">
+      <div class="hero-grid">
+        <div>
+          <p class="eyebrow">Strength training log</p>
+          <h1>Log every rep. Even offline.</h1>
+          <p class="lede">
+            BeyondRep is a workout tracker for lifters that saves every set on your phone first, backs up only the
+            workouts you finish, and puts last night’s sleep beside today’s session.
+          </p>
+          <GetApp />
+        </div>
+        <figure style="margin:0">
+          <img
+            src="/concept-phones.svg"
+            width="1440"
+            height="816"
+            alt="Three BeyondRep phone screens: Today with a workout plan and health snapshot, Train with a plan's exercises, and Health with last night's sleep and daily metrics."
+            fetchpriority="high"
+          />
+          <figcaption class="note">Design preview with sample data.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+
+  <section aria-labelledby="offline">
+    <div class="wrap">
+      <h2 class="section-title" id="offline">Built for the gym, not for signal bars</h2>
+      <p class="section-lede">
+        Basements, garages and hotel gyms rarely have good coverage. BeyondRep never waits on the network to save a
+        set.
+      </p>
+      <div class="cards cards-3">
+        <div class="card">
+          <span class="tag">Saved locally first</span>
+          <h3>Nothing to lose mid-workout</h3>
+          <p>Each set is written to your phone the moment you tick it, so a dead zone or a crash costs you nothing.</p>
+        </div>
+        <div class="card">
+          <span class="tag">Backs up later</span>
+          <h3>Syncs when you’re back online</h3>
+          <p>Finished workouts queue up and back up when you reconnect. You can see what is still waiting to back up.</p>
+        </div>
+        <div class="card">
+          <span class="tag">Multi-device</span>
+          <h3>New phone, same history</h3>
+          <p>Sign in on another phone and your finished workouts come back. If two phones disagree, you choose which version to keep.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="train">
+    <div class="wrap">
+      <h2 class="section-title" id="train">Plan it, lift it, see it add up</h2>
+      <p class="section-lede">The tools you reach for every session, without the clutter.</p>
+      <div class="cards">
+        <div class="card">
+          <h3>Plans and an exercise library</h3>
+          <p>Build your own routines from an exercise catalog you can search by name, muscle or equipment, or add your own.</p>
+        </div>
+        <div class="card">
+          <h3>Fast set logging</h3>
+          <p>Log weight, reps and RPE in kg or lb, with last session’s numbers shown next to each set.</p>
+        </div>
+        <div class="card">
+          <h3>Rest timer</h3>
+          <p>Finish a set and the rest timer starts, so you know when to go again.</p>
+        </div>
+        <div class="card">
+          <h3>Progress and recovery map</h3>
+          <p>Workout history and weekly volume and training-time trends, plus a body map of which muscle groups you have trained in the last 72 hours.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="health">
+    <div class="wrap">
+      <h2 class="section-title" id="health">Your recovery, next to your training</h2>
+      <p class="section-lede">
+        Connect Apple Health or Health Connect and BeyondRep shows a daily summary on your phone. It reads; it never
+        writes or uploads.
+      </p>
+      <div class="cards">
+        <div class="card">
+          <span class="tag tag-sleep">Sleep</span>
+          <h3>Last night’s sleep</h3>
+          <p>How long you slept, so you can decide whether to push or hold back today.</p>
+        </div>
+        <div class="card">
+          <span class="tag">Daily signals</span>
+          <h3>Steps, resting heart rate and weight</h3>
+          <p>Today’s steps, your latest resting heart rate and your latest weight, each with its date. Missing data is shown as missing, never as zero.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="privacy">
+    <div class="wrap">
+      <h2 class="section-title" id="privacy">Your data stays yours</h2>
+      <p class="section-lede">We back up the minimum needed to keep your training safe, and we say exactly what that is.</p>
+      <div class="cards">
+        <div class="panel">
+          <h3>Stored with your account</h3>
+          <ul class="checklist">
+            <li>Your email address, for sign-in codes</li>
+            <li>Workouts you have finished, with their exercises and sets</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>Never leaves your phone</h3>
+          <ul class="checklist no">
+            <li>Apple Health and Health Connect data</li>
+            <li>Unfinished workouts, plans and templates</li>
+          </ul>
+        </div>
+      </div>
+      <p class="muted">
+        No ads, no analytics, no tracking and no selling of data. Export your backed-up workouts as a file or delete your account from inside the app at any time.{' '}
+        <a href="/privacy">Read the privacy policy</a>.
+      </p>
+    </div>
+  </section>
+
+  <section aria-labelledby="faq">
+    <div class="wrap narrow">
+      <h2 class="section-title" id="faq">Questions</h2>
+      {faqs.map((f) => (
+        <details>
+          <summary>{f.q}</summary>
+          <p>{f.a}</p>
+        </details>
+      ))}
+    </div>
+  </section>
+
+  <section aria-labelledby="cta">
+    <div class="wrap">
+      <div class="hero">
+        <div class="hero-grid" style="grid-template-columns:1fr">
+          <div>
+            <h2 class="section-title" id="cta" style="text-transform:uppercase">Show up. Get strong.</h2>
+            <p class="lede">Be first to know when BeyondRep is out.</p>
+            <GetApp />
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>

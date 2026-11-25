@@ -1,0 +1,51 @@
+---
+import Legal from '../layouts/Legal.astro';
+import { SITE } from '../site';
+const subject = encodeURIComponent('Delete my BeyondRep account');
+---
+<Legal
+  title="Delete your BeyondRep account"
+  description="How to permanently delete your BeyondRep account and backed-up workouts, from the app or by email, and what is deleted."
+>
+  <h2>Delete from the app</h2>
+  <p>You need an internet connection. If you want a copy of your workouts, first tap <strong>Export cloud workout history (JSON)</strong> on the same screen.</p>
+  <p><strong>The export contains only backed-up workouts.</strong> Workouts not yet backed up, unfinished sessions and your plans are erased from this phone and can’t be recovered.</p>
+  <ol>
+    <li>Open BeyondRep and, on the <strong>Today</strong> tab, tap the account icon at the top right (<em>Account and backup</em>).</li>
+    <li>Tap <strong>Permanently delete account</strong>, read the warning and tap <strong>Send deletion code</strong>.</li>
+    <li>Enter the six-digit code we email you and tap <strong>Verify and permanently delete</strong>.</li>
+    <li>Tap <strong>Delete permanently</strong> to confirm.</li>
+  </ol>
+  <p>
+    Your account and backed-up workouts are deleted straight away, and the app erases this account’s data from your
+    phone. If the app can’t confirm the deletion finished (for example, the connection drops), it locks that data instead
+    of erasing it, and you can try again.
+  </p>
+
+  <h2>Can’t use the app?</h2>
+  <p>
+    Email <a href={`mailto:${SITE.privacyEmail}?subject=${subject}`}>{SITE.privacyEmail}</a> from the address you signed
+    up with. We will send a code to that address to confirm the request, then delete the account within 30 days and
+    reply when it is done.
+  </p>
+
+  <h2>What is deleted</h2>
+  <ul>
+    <li>Your account: email address, account ID, sessions and sign-in tokens</li>
+    <li>All backed-up workouts, with their exercises and sets</li>
+    <li>Records of deleted workouts and upload receipts</li>
+    <li>BeyondRep data for this account on the phone you delete from, including workouts not yet backed up, unfinished sessions and plans</li>
+  </ul>
+
+  <h2>What may remain for a limited time</h2>
+  <ul>
+    <li>Security logs held by our authentication provider, which include your email address and IP address, and our email provider’s delivery logs and contact record for your address. How long these are kept is <em>to be confirmed</em>.</li>
+    <li>Database backups held by our hosting provider, until they roll off its backup window (period <em>to be confirmed</em>).</li>
+    <li>BeyondRep data stored on other phones you signed in on. Remove it by uninstalling the app on those phones. On iOS, the sign-in token in the Keychain can survive an uninstall.</li>
+    <li>Any export files you saved yourself.</li>
+  </ul>
+  <p>
+    Deleting your BeyondRep account does not change anything in Apple Health or Health Connect, because BeyondRep never
+    writes there. See the <a href="/privacy">privacy policy</a> for more.
+  </p>
+</Legal>

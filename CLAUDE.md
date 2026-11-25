@@ -48,6 +48,9 @@ python3 -m unittest tool.test_protocol_contract    # single module
 # Wear OS (JDK 17, Android SDK 35)
 cd apps/wear_os && ./gradlew :app:assembleDebug
 
+# website (apps/website, Node 22.23.4+; CI: .github/workflows/website_ci.yml)
+cd apps/website && npm ci && npm test && npm run build && npm run check-links
+
 # watchOS proof target (macOS)
 cd apps/watch_os && xcodegen generate --spec project.yml
 xcodebuild -project BeyondRepWatch.xcodeproj -scheme BeyondRepWatch -configuration Debug \
@@ -60,6 +63,7 @@ xcodebuild -project BeyondRepWatch.xcodeproj -scheme BeyondRepWatch -configurati
 
 - `apps/mobile/lib/`: `app/` (app shell, router, theme controller), `core/design/` (shared component kit and Performance V2 tokens), `core/storage/` (account-bound ObjectBox), `features/` feature-first modules (`account`, `sync`, `workouts`, `train`, `progress`, `today`, `health`). UI renders Riverpod state; platform/storage/network access goes through repositories, never widgets.
 - `apps/watch_os/` (SwiftUI + XcodeGen) and `apps/wear_os/` (Kotlin/Compose, Gradle) are independent native apps, not Flutter. Watch Swift sources live only in `apps/watch_os/Sources`, not in `apps/mobile/ios`.
+- `apps/website/`: static Astro site for beyondrep.in (marketing, draft privacy/account-deletion/terms pages, deployed by Cloudflare Pages). Shares no code with the apps; rules in its `AGENTS.md`.
 - `contracts/workout_sync/v1/`: language-neutral JSON Schema envelope + fixtures; the only shared wire contract between phone and watches (no shared Dart models).
 - `prototypes/performance-v2/`: original HTML prototype, visual authority alongside `docs/DESIGN_SYSTEM.md`. Do not modify. Run: `cd prototypes/performance-v2 && python3 -m http.server 4173`.
 - `supabase/`: migrations (sync RPC, RLS, progress, restore feed) and pgTAP tests; CI replays all migrations. `packages/`, `experiments/`: placeholders/isolation boundaries.

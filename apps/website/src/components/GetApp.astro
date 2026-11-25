@@ -1,0 +1,25 @@
+---
+import { SITE } from '../site';
+
+interface Props {
+  tone?: 'hero' | 'plain';
+}
+
+const { tone = 'hero' } = Astro.props;
+const live = Boolean(SITE.appStoreUrl || SITE.playStoreUrl);
+const notify = `mailto:${SITE.contactEmail}?subject=${encodeURIComponent('Tell me when BeyondRep launches')}`;
+---
+<div class="cta-row">
+  {live ? (
+    <>
+      {SITE.appStoreUrl && <a class="button button-primary" href={SITE.appStoreUrl}>Download for iPhone</a>}
+      {SITE.playStoreUrl && <a class="button button-primary" href={SITE.playStoreUrl}>Get it on Android</a>}
+    </>
+  ) : (
+    <>
+      <a class="button button-primary" href={notify}>Tell me when it launches</a>
+      <a class={tone === 'hero' ? 'button button-secondary' : 'button button-outline'} href="/features">See what it does</a>
+    </>
+  )}
+</div>
+{!live && <p class={tone === 'hero' ? 'note' : 'muted small'}>Coming to iPhone, iPad and Android. BeyondRep is in private testing now.</p>}

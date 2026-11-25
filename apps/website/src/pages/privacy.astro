@@ -1,0 +1,148 @@
+---
+import Legal from '../layouts/Legal.astro';
+import { SITE } from '../site';
+// Source of every statement below: docs/PRIVACY_POLICY_INPUTS.md.
+// Items marked "To be confirmed" map to its section 10 open questions.
+---
+<Legal
+  title="Privacy policy"
+  description="How BeyondRep handles your data: what is stored on your phone, what is backed up to your account, how Apple Health and Health Connect data is used, and how to export or delete it."
+>
+  <h2>The short version</h2>
+  <ul>
+    <li>Your workouts are stored on your phone. Only workouts you finish are backed up to your account.</li>
+    <li>We collect your email address so you can sign in. We do not ask for your name, phone number, location or contacts.</li>
+    <li>If you connect Apple Health or Health Connect, BeyondRep reads a few values to show you a daily summary. They never leave your phone and are never saved.</li>
+    <li>There are no ads, no analytics, no tracking across apps or websites, and we do not sell or share your data.</li>
+    <li>You can export your workouts or delete your account at any time from inside the app.</li>
+  </ul>
+
+  <h2>Who we are</h2>
+  <p>
+    BeyondRep (app ID <code>{SITE.appId}</code>) is responsible for the personal data described here.
+    The legal name and postal country of the data controller are <em>to be confirmed</em>.
+    Contact us about privacy at <a href={`mailto:${SITE.privacyEmail}`}>{SITE.privacyEmail}</a>.
+  </p>
+
+  <h2>What we collect and why</h2>
+  <h3>Your account</h3>
+  <table>
+    <thead><tr><th>Data</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Email address</td><td>To create your account and send you one-time sign-in codes. Never used for marketing.</td></tr>
+      <tr><td>Account ID (a random identifier)</td><td>To tie your backed-up workouts to your account.</td></tr>
+      <tr><td>One-time sign-in codes</td><td>To confirm it’s you. Stored only in hashed form by our authentication provider and valid for 10 minutes.</td></tr>
+      <tr><td>Session tokens</td><td>To keep you signed in securely. Kept in your phone’s secure storage (Keychain on iOS, Keystore on Android).</td></tr>
+      <tr><td>Sign-in times, IP address and device type of sign-in requests</td><td>Recorded by our authentication provider to keep accounts secure and prevent abuse.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Workouts you finish</h3>
+  <p>
+    When you finish a workout, BeyondRep backs it up so you can restore it on another phone. A backed-up workout contains
+    its name, start and finish times, your time zone offset, and each exercise (name, muscle group, equipment) and set
+    (type, reps, weight, unit, RPE, completion time). We also keep totals such as working sets and volume, and a short
+    record that a workout was deleted so your other phones remove it too.
+  </p>
+  <p>
+    Workout and exercise names are free text. Please don’t put sensitive information in them.
+  </p>
+  <p>
+    To stop the same upload being saved twice, we keep a receipt of each upload for 90 days. It contains identifiers and a
+    one-way hash of the upload, not the workout itself.
+  </p>
+
+  <h3>What is never backed up</h3>
+  <ul>
+    <li>Workouts in progress, paused or discarded, and rest-timer state</li>
+    <li>Your plans, templates and their notes, and custom exercises in the catalog</li>
+    <li>Any Apple Health or Health Connect data</li>
+  </ul>
+  <p>These stay on your phone. Your phone’s local BeyondRep data is excluded from iCloud, iTunes and Android backups.</p>
+
+  <h2>Apple Health and Health Connect</h2>
+  <p>
+    Connecting is optional and only happens when you tap Connect. BeyondRep then asks your phone for permission to read
+    last night’s sleep, today’s steps, your most recent resting heart rate (last 7 days) and your most recent weight
+    (last 30 days). It does not write or change anything in Apple Health or Health Connect.
+  </p>
+  <ul>
+    <li>These values are used only to show you a daily summary in the app.</li>
+    <li>They are held in memory while the app is open. They are never written to disk, backed up to your account, included in exports, logged or sent to anyone.</li>
+    <li>The only thing stored is a note that you connected, which is removed when you disconnect or delete your account.</li>
+    <li>Health data is never used for advertising, marketing or data mining, and is never sold or shared.</li>
+    <li>To stop access, tap Disconnect in the app and revoke access in the Health app (iOS) or Health Connect settings (Android).</li>
+  </ul>
+  <p>
+    BeyondRep’s use of information received from Health Connect follows the Health Connect Permissions policy, including
+    the Limited Use requirements. The daily summary is for your information only. It is not medical advice or a diagnosis.
+  </p>
+
+  <h2>Service providers</h2>
+  <table>
+    <thead><tr><th>Provider</th><th>What it does</th><th>Data it handles</th></tr></thead>
+    <tbody>
+      <tr><td><a href="https://supabase.com/privacy">Supabase</a></td><td>Sign-in, database and account deletion, hosted in Mumbai, India (AWS ap-south-1)</td><td>Email, account ID, tokens, sign-in IP and device type, finished workouts, upload receipts</td></tr>
+      <tr><td><a href="https://www.brevo.com/legal/privacypolicy/">Brevo</a></td><td>Sends sign-in code emails</td><td>Email address, the code email, and delivery and open logs</td></tr>
+      <tr><td><a href="https://www.cloudflare.com/privacypolicy/">Cloudflare</a></td><td>Hosts this website and receives email sent to our addresses</td><td>Website visitors’ IP addresses and browser details in request logs; emails you send us, which it forwards</td></tr>
+      <tr><td>Our email mailbox provider (<em>to be confirmed</em>)</td><td>Stores emails you send us and our replies</td><td>Your email address and what you write to us</td></tr>
+      <tr><td>Apple and Google</td><td>App distribution, and Apple Health or Health Connect on your phone</td><td>Handled under their own privacy policies. Health data stays on your phone.</td></tr>
+    </tbody>
+  </table>
+  <p>These providers act on our behalf. We do not sell or share your personal data with anyone else.</p>
+
+  <h2>How long we keep data</h2>
+  <table>
+    <thead><tr><th>Data</th><th>Kept until</th></tr></thead>
+    <tbody>
+      <tr><td>Finished workouts</td><td>You delete the workout or your account</td></tr>
+      <tr><td>Records of deleted workouts</td><td>You delete your account</td></tr>
+      <tr><td>Upload receipts</td><td>90 days, removed daily after that</td></tr>
+      <tr><td>Account, sessions and tokens</td><td>You delete your account</td></tr>
+      <tr><td>Security logs held by our authentication provider (these include your email address and IP address), and Brevo’s delivery logs and contact record</td><td><em>To be confirmed</em></td></tr>
+      <tr><td>Database backups held by our hosting provider</td><td>Until they roll off the provider’s backup window (period <em>to be confirmed</em>)</td></tr>
+      <tr><td>Data on your phone</td><td>You delete your account or uninstall the app. On iOS, the sign-in token in the Keychain can survive an uninstall.</td></tr>
+      <tr><td>Apple Health and Health Connect values</td><td>Not kept</td></tr>
+    </tbody>
+  </table>
+
+  <h2>This website and emails you send us</h2>
+  <p>
+    This website uses no cookies, analytics or tracking. Our host, Cloudflare, processes visitors’ IP addresses and browser
+    details to serve pages and protect against abuse.
+  </p>
+  <p>
+    If you email us, including to ask to be told when BeyondRep launches, we use your address only to reply or send that
+    one launch email. Launch-notification addresses are deleted after the launch email is sent, or sooner if you ask.
+  </p>
+
+  <h2>Where data is processed</h2>
+  <p>
+    Account and workout data is stored in India. Our email provider, Brevo, is based in the European Union. Which other
+    countries’ rules apply is <em>to be confirmed</em>.
+  </p>
+
+  <h2>Your choices and rights</h2>
+  <ul>
+    <li><strong>Get a copy:</strong> In Account, <strong>Export cloud workout history (JSON)</strong> saves your backed-up workouts as a JSON file to a place you choose.</li>
+    <li><strong>Delete a workout:</strong> open it from history and tap Delete workout. It is removed from your backup too.</li>
+    <li><strong>Delete your account:</strong> see <a href="/delete-account">Delete your account</a>.</li>
+    <li><strong>Withdraw health access:</strong> Disconnect in the app, then revoke access in your phone’s health settings.</li>
+    <li><strong>Ask a question or complain:</strong> email <a href={`mailto:${SITE.privacyEmail}`}>{SITE.privacyEmail}</a>. You can also contact your local data protection authority.</li>
+  </ul>
+
+  <h2>Security</h2>
+  <p>
+    Data travels over encrypted HTTPS connections. Each account can only read its own workouts, enforced by the database.
+    Sign-in tokens are kept in your phone’s secure storage, and server keys never ship in the app.
+  </p>
+
+  <h2>Children</h2>
+  <p>BeyondRep is not intended for children. The minimum age is <em>to be confirmed</em>.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>
+    If we change how BeyondRep handles your data, we will update this page and its date first, and tell you in the app
+    or by email before a significant change takes effect.
+  </p>
+</Legal>

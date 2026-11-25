@@ -1,0 +1,108 @@
+---
+import Base from '../layouts/Base.astro';
+import GetApp from '../components/GetApp.astro';
+import { SITE } from '../site';
+
+const groups = [
+  {
+    id: 'logging',
+    title: 'Offline workout logging',
+    items: [
+      ['Saved on your phone first', 'Every set is stored on the device the moment you tick it. No signal, no problem.'],
+      ['Weight, reps and RPE', 'Log in kg or lb, with your previous numbers for the same exercise shown alongside.'],
+      ['Rest timer', 'Starts when you finish a set, or pick a duration yourself.'],
+      ['Pause and resume', 'Leave a session and pick it up where you left off.'],
+    ],
+  },
+  {
+    id: 'plans',
+    title: 'Plans and exercises',
+    items: [
+      ['Plan editor', 'Build routines with the exercises, sets and order you want.'],
+      ['Exercise catalog', 'Search exercises by name, muscle group or equipment.'],
+      ['Custom exercises', 'Add the movements your gym has that the catalog does not.'],
+    ],
+  },
+  {
+    id: 'progress',
+    title: 'Progress',
+    items: [
+      ['Workout history', 'Every finished session with its exercises and sets.'],
+      ['Weekly trends', 'Training volume and time compared with the week before.'],
+      ['Recovery map', 'A body map of the muscle groups you trained in the last 72 hours, fading as they recover.'],
+    ],
+  },
+  {
+    id: 'health',
+    title: 'Daily health summary',
+    items: [
+      ['Apple Health and Health Connect', 'Optional. Reads last night’s sleep, today’s steps, resting heart rate and weight.'],
+      ['Read only, on device', 'Values are shown and then forgotten. They are never saved to disk, backed up or shared.'],
+      ['Honest gaps', 'If there is no reading, BeyondRep says so instead of showing zero.'],
+    ],
+  },
+  {
+    id: 'account',
+    title: 'Account, backup and your data',
+    items: [
+      ['Email code sign-in', 'No passwords. A six-digit code arrives by email.'],
+      ['Finished-workout backup', 'Completed workouts back up to your account and restore on a new phone.'],
+      ['Conflict review', 'If two phones changed the same workout, you pick the version to keep.'],
+      ['Export and delete', 'Download your workouts as a JSON file, or delete your account from the app.'],
+    ],
+  },
+];
+
+const later = [
+  'Apple Watch and Wear OS apps for logging from your wrist',
+  'Saving finished workouts to Apple Health and Health Connect, if you choose to',
+];
+---
+<Base
+  title="Features"
+  description="What BeyondRep does today: offline set logging with RPE and a rest timer, workout plans, progress trends and a recovery map, an optional Apple Health or Health Connect summary, and finished-workout backup."
+  jsonLd={[
+    {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: SITE.url },
+        { '@type': 'ListItem', position: 2, name: 'Features', item: `${SITE.url}/features` },
+      ],
+    },
+  ]}
+>
+  <div class="wrap prose">
+    <h1>Features</h1>
+    <p class="section-lede">Everything below is in the app today. Things we are still building are listed at the end.</p>
+  </div>
+
+  {groups.map((g) => (
+    <section aria-labelledby={g.id}>
+      <div class="wrap">
+        <h2 class="section-title" id={g.id}>{g.title}</h2>
+        <div class="cards">
+          {g.items.map(([title, body]) => (
+            <div class="card">
+              <h3>{title}</h3>
+              <p>{body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  ))}
+
+  <section aria-labelledby="later">
+    <div class="wrap">
+      <h2 class="section-title" id="later">Coming later</h2>
+      <div class="panel">
+        <ul>
+          {later.map((item) => <li>{item}</li>)}
+        </ul>
+      </div>
+      <div style="margin-top:32px">
+        <GetApp tone="plain" />
+      </div>
+    </div>
+  </section>
+</Base>

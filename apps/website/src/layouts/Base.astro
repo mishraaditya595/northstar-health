@@ -1,0 +1,82 @@
+---
+import Seo from '../components/Seo.astro';
+import '../styles/global.css';
+import { SITE } from '../site';
+
+interface Props {
+  title: string;
+  description: string;
+  jsonLd?: Record<string, unknown>[];
+  noindex?: boolean;
+}
+
+const props = Astro.props;
+const path = Astro.url.pathname.replace(/\.html$/, '');
+const nav = [
+  { href: '/features', label: 'Features' },
+  { href: '/privacy', label: 'Privacy' },
+  { href: '/support', label: 'Support' },
+];
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0B0F13" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#F2F5F1" media="(prefers-color-scheme: light)" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <Seo {...props} />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="wrap header-row">
+        <a class="brand" href="/" aria-label="BeyondRep home">
+          <img src="/favicon.svg" alt="" width="28" height="28" />
+          <span>BeyondRep</span>
+        </a>
+        <nav aria-label="Main">
+          <ul>
+            {nav.map((item) => (
+              <li><a href={item.href} aria-current={path === item.href ? 'page' : undefined}>{item.label}</a></li>
+            ))}
+          </ul>
+        </nav>
+      </div>
+    </header>
+    <main id="main">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <div class="wrap footer-grid">
+        <div>
+          <p class="brand-line"><strong>BeyondRep</strong></p>
+          <p class="muted">{SITE.tagline}</p>
+        </div>
+        <nav aria-label="Product">
+          <h2>Product</h2>
+          <ul>
+            <li><a href="/features">Features</a></li>
+            <li><a href="https://github.com/mishraaditya595/BeyondRep-Health" rel="noopener">Source code</a></li>
+          </ul>
+        </nav>
+        <nav aria-label="Help and legal">
+          <h2>Help and legal</h2>
+          <ul>
+            <li><a href="/support">Support</a></li>
+            <li><a href="/privacy">Privacy policy</a></li>
+            <li><a href="/delete-account">Delete your account</a></li>
+            <li><a href="/terms">Terms of use</a></li>
+          </ul>
+        </nav>
+      </div>
+      <div class="wrap">
+        <p class="muted small">BeyondRep is not a medical device and does not give medical advice.</p>
+      </div>
+    </footer>
+  </body>
+</html>
