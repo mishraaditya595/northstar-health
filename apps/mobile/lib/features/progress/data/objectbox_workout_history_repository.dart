@@ -109,6 +109,7 @@ class ObjectBoxWorkoutHistoryRepository implements WorkoutHistoryRepository {
                 kind: workoutSetKindFromStorage(set.kind),
                 status: workoutSetStatusFromStorage(set.status),
                 reps: set.reps,
+                durationSeconds: set.durationSeconds,
                 loadGrams: set.loadGrams,
                 inputUnit: loadUnitFromStorage(set.inputUnit),
                 rpe: set.rpe,

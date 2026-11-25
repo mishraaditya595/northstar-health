@@ -15,6 +15,7 @@ class WorkoutSetRecord {
     required this.kind,
     required this.status,
     this.reps,
+    this.durationSeconds,
     this.loadGrams,
     this.inputUnit = LoadUnit.kg,
     this.rpe,
@@ -27,6 +28,9 @@ class WorkoutSetRecord {
   final WorkoutSetKind kind;
   final WorkoutSetStatus status;
   final int? reps;
+
+  /// Seconds for a timed exercise. A set carries reps or seconds, never both.
+  final int? durationSeconds;
   final int? loadGrams;
   final LoadUnit inputUnit;
   final double? rpe;
@@ -40,6 +44,13 @@ class WorkoutSetRecord {
     }
     if (reps != null && (reps! < 0 || reps! > 10000)) {
       throw ArgumentError.value(reps, 'reps');
+    }
+    if (durationSeconds != null &&
+        (durationSeconds! < 1 || durationSeconds! > 86400)) {
+      throw ArgumentError.value(durationSeconds, 'durationSeconds');
+    }
+    if (reps != null && durationSeconds != null) {
+      throw ArgumentError('Set cannot have both reps and seconds');
     }
     if (loadGrams != null && (loadGrams! < 0 || loadGrams! > 100000000)) {
       throw ArgumentError.value(loadGrams, 'loadGrams');
@@ -57,8 +68,10 @@ class WorkoutSetRecord {
       );
     }
     if (status == WorkoutSetStatus.completed &&
-        (reps == null || completedAtUtc == null)) {
-      throw ArgumentError('Completed set requires reps and timestamp');
+        ((reps == null && durationSeconds == null) || completedAtUtc == null)) {
+      throw ArgumentError(
+        'Completed set requires reps or seconds and timestamp',
+      );
     }
   }
 }

@@ -153,6 +153,7 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
               kind: workoutSetKindFromStorage(entry.kind),
               status: workoutSetStatusFromStorage(entry.status),
               reps: entry.reps,
+              durationSeconds: entry.durationSeconds,
               loadGrams: entry.loadGrams,
               inputUnit: loadUnitFromStorage(entry.inputUnit),
               rpe: entry.rpe,
@@ -301,6 +302,7 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
           prior.kind == set.kind.name &&
           prior.status == set.status.name &&
           prior.reps == set.reps &&
+          prior.durationSeconds == set.durationSeconds &&
           prior.loadGrams == set.loadGrams &&
           prior.inputUnit == set.inputUnit.name &&
           prior.rpe == set.rpe &&
@@ -330,6 +332,7 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
           kind: set.kind.name,
           status: set.status.name,
           reps: set.reps,
+          durationSeconds: set.durationSeconds,
           loadGrams: set.loadGrams,
           inputUnit: set.inputUnit.name,
           rpe: set.rpe,

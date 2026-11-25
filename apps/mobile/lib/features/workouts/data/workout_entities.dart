@@ -75,6 +75,7 @@ class PlanExerciseEntity {
   int targetSets;
   int? targetRepsMin;
   int? targetRepsMax;
+  int? targetDurationSeconds;
   int? restSeconds;
   String notes;
 
@@ -87,6 +88,7 @@ class PlanExerciseEntity {
     this.targetSets = 3,
     this.targetRepsMin,
     this.targetRepsMax,
+    this.targetDurationSeconds,
     this.restSeconds,
     this.notes = '',
   });
@@ -168,6 +170,7 @@ class WorkoutSetEntity {
   String kind;
   String status;
   int? reps;
+  int? durationSeconds;
   int? loadGrams;
   String inputUnit;
   double? rpe;
@@ -182,6 +185,7 @@ class WorkoutSetEntity {
     this.kind = 'working',
     this.status = 'planned',
     this.reps,
+    this.durationSeconds,
     this.loadGrams,
     this.inputUnit = 'kg',
     this.rpe,

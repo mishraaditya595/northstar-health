@@ -118,7 +118,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
     id: const obx_int.IdUid(2, 7705935106860643277),
     name: 'PlanExerciseEntity',
-    lastPropertyId: const obx_int.IdUid(10, 5047439989011014786),
+    lastPropertyId: const obx_int.IdUid(11, 636142947796672784),
     flags: 0,
     properties: <obx_int.ModelProperty>[
       obx_int.ModelProperty(
@@ -181,6 +181,12 @@ final _entities = <obx_int.ModelEntity>[
         id: const obx_int.IdUid(10, 5047439989011014786),
         name: 'notes',
         type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(11, 636142947796672784),
+        name: 'targetDurationSeconds',
+        type: 6,
         flags: 0,
       ),
     ],
@@ -464,7 +470,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
     id: const obx_int.IdUid(7, 8818928578441733620),
     name: 'WorkoutSetEntity',
-    lastPropertyId: const obx_int.IdUid(12, 4817131852291113570),
+    lastPropertyId: const obx_int.IdUid(13, 3924655003473968995),
     flags: 0,
     properties: <obx_int.ModelProperty>[
       obx_int.ModelProperty(
@@ -538,6 +544,12 @@ final _entities = <obx_int.ModelEntity>[
       obx_int.ModelProperty(
         id: const obx_int.IdUid(12, 4817131852291113570),
         name: 'updatedAtMs',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(13, 3924655003473968995),
+        name: 'durationSeconds',
         type: 6,
         flags: 0,
       ),
@@ -1030,7 +1042,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
         final planUuidOffset = fbb.writeString(object.planUuid);
         final exerciseUuidOffset = fbb.writeString(object.exerciseUuid);
         final notesOffset = fbb.writeString(object.notes);
-        fbb.startTable(11);
+        fbb.startTable(12);
         fbb.addInt64(0, object.id);
         fbb.addOffset(1, uuidOffset);
         fbb.addOffset(2, planUuidOffset);
@@ -1041,6 +1053,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
         fbb.addInt64(7, object.targetRepsMax);
         fbb.addInt64(8, object.restSeconds);
         fbb.addOffset(9, notesOffset);
+        fbb.addInt64(10, object.targetDurationSeconds);
         fbb.finish(fbb.endTable());
         return object.id;
       },
@@ -1081,6 +1094,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
           rootOffset,
           18,
         );
+        final targetDurationSecondsParam = const fb.Int64Reader()
+            .vTableGetNullable(buffer, rootOffset, 24);
         final restSecondsParam = const fb.Int64Reader().vTableGetNullable(
           buffer,
           rootOffset,
@@ -1097,6 +1112,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
           targetSets: targetSetsParam,
           targetRepsMin: targetRepsMinParam,
           targetRepsMax: targetRepsMaxParam,
+          targetDurationSeconds: targetDurationSecondsParam,
           restSeconds: restSecondsParam,
           notes: notesParam,
         );
@@ -1470,7 +1486,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
         final kindOffset = fbb.writeString(object.kind);
         final statusOffset = fbb.writeString(object.status);
         final inputUnitOffset = fbb.writeString(object.inputUnit);
-        fbb.startTable(13);
+        fbb.startTable(14);
         fbb.addInt64(0, object.id);
         fbb.addOffset(1, uuidOffset);
         fbb.addOffset(2, exerciseUuidOffset);
@@ -1483,6 +1499,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
         fbb.addFloat64(9, object.rpe);
         fbb.addInt64(10, object.completedAtMs);
         fbb.addInt64(11, object.updatedAtMs);
+        fbb.addInt64(12, object.durationSeconds);
         fbb.finish(fbb.endTable());
         return object.id;
       },
@@ -1513,6 +1530,11 @@ obx_int.ModelDefinition getObjectBoxModel() {
           buffer,
           rootOffset,
           16,
+        );
+        final durationSecondsParam = const fb.Int64Reader().vTableGetNullable(
+          buffer,
+          rootOffset,
+          28,
         );
         final loadGramsParam = const fb.Int64Reader().vTableGetNullable(
           buffer,
@@ -1545,6 +1567,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
           kind: kindParam,
           status: statusParam,
           reps: repsParam,
+          durationSeconds: durationSecondsParam,
           loadGrams: loadGramsParam,
           inputUnit: inputUnitParam,
           rpe: rpeParam,
@@ -2071,6 +2094,10 @@ class PlanExerciseEntity_ {
   static final notes = obx.QueryStringProperty<PlanExerciseEntity>(
     _entities[1].properties[9],
   );
+
+  /// See [PlanExerciseEntity.targetDurationSeconds].
+  static final targetDurationSeconds =
+      obx.QueryIntegerProperty<PlanExerciseEntity>(_entities[1].properties[10]);
 }
 
 /// [WorkoutExerciseEntity] entity fields to define ObjectBox queries.
@@ -2344,6 +2371,11 @@ class WorkoutSetEntity_ {
   /// See [WorkoutSetEntity.updatedAtMs].
   static final updatedAtMs = obx.QueryIntegerProperty<WorkoutSetEntity>(
     _entities[6].properties[11],
+  );
+
+  /// See [WorkoutSetEntity.durationSeconds].
+  static final durationSeconds = obx.QueryIntegerProperty<WorkoutSetEntity>(
+    _entities[6].properties[12],
   );
 }
 
