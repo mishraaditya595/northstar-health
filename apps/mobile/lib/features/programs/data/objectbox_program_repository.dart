@@ -282,6 +282,16 @@ class ObjectBoxProgramRepository implements ProgramRepository {
   }
 
   @override
+  List<WorkoutPlanRecord> programPlans(String programUuid) {
+    return _store.runInTransaction(TxMode.read, () {
+      final plans = _plansOf(programUuid)
+        ..removeWhere((p) => p.archivedAtMs != null)
+        ..sort((a, b) => a.id.compareTo(b.id));
+      return [for (final plan in plans) ?_library.getPlan(plan.uuid)];
+    });
+  }
+
+  @override
   void archiveProgram(String programUuid, int nowMs) {
     _store.runInTransaction(TxMode.write, () {
       final program = _byUuid(programUuid);

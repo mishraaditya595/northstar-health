@@ -29,6 +29,10 @@ abstract interface class ProgramRepository {
   /// program, otherwise [ArgumentError].
   void setDayPlan(String programUuid, int dayIndex, String? planUuid);
 
+  /// The program's non-archived plans (the ones [setDayPlan] accepts), in
+  /// import order, whether or not a day uses them.
+  List<WorkoutPlanRecord> programPlans(String programUuid);
+
   /// Archives the program and its plans and deactivates it. Sessions are
   /// never touched.
   void archiveProgram(String programUuid, int nowMs);

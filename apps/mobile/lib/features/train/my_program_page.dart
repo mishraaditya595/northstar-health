@@ -103,7 +103,9 @@ class _MyProgramPageState extends ConsumerState<MyProgramPage> {
     TrainingProgramRecord program,
     ({int weekday, ProgramDayRecord day}) entry,
   ) async {
-    final plans = <String>{for (final d in program.days) ?d.planUuid}.toList();
+    final plans = ref
+        .read(programRepositoryProvider)
+        .programPlans(program.uuid);
     final current = entry.day.planUuid ?? _rest;
     final result = await showNsSheet<(String, String)>(
       context,
@@ -138,7 +140,7 @@ class _MyProgramPageState extends ConsumerState<MyProgramPage> {
             label: 'Change to…',
             value: current,
             options: [
-              for (final uuid in plans) NsOption(uuid, _planName(uuid)),
+              for (final plan in plans) NsOption(plan.uuid, plan.name),
               const NsOption(_rest, 'Rest'),
             ],
             onChanged: (value) {

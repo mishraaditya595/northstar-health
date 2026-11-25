@@ -345,6 +345,29 @@ void main() {
       expect(find.text('Thursday · Synthetic pull'), findsOneWidget);
     });
 
+    testWidgets('a single-use day set to Rest can be pointed back', (
+      tester,
+    ) async {
+      final uuid = seed('prog.three');
+      await open(tester, '/train/program/$uuid', now: wednesday);
+      // Friday (day 2) is the only day using Synthetic pull.
+      await tester.tap(find.text('Friday · Synthetic pull'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Synthetic pull').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rest').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Friday · Rest'), findsOneWidget);
+      await tester.tap(find.text('Friday · Rest'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rest').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Synthetic pull'), findsOneWidget);
+      await tester.tap(find.text('Synthetic pull'));
+      await tester.pumpAndSettle();
+      expect(find.text('Friday · Synthetic pull'), findsOneWidget);
+    });
+
     testWidgets('Edit workout opens that plan in the editor', (tester) async {
       final uuid = seed('prog.three');
       final visited = await open(

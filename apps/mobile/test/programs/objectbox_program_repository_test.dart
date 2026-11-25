@@ -242,6 +242,21 @@ void main() {
       expect(programs.getProgram('a')!.days[4].planUuid, isNull);
     });
 
+    test('programPlans lists the program plans even when no day uses them', () {
+      final p = import('a');
+      final planB = p.days[1].planUuid!;
+      programs.setDayPlan('a', 1, null);
+      final plans = programs.programPlans('a');
+      expect(plans.map((e) => e.name), ['Day A', 'Day B']);
+      expect(plans.map((e) => e.uuid), contains(planB));
+      programs.setDayPlan('a', 1, planB);
+      expect(programs.getProgram('a')!.days[1].planUuid, planB);
+      import('b');
+      expect(programs.programPlans('a'), hasLength(2));
+      programs.archiveProgram('a', 5);
+      expect(programs.programPlans('a'), isEmpty);
+    });
+
     test('a week with no training day is allowed', () {
       final p = import(
         'a',
