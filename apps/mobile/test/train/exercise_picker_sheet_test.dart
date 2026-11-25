@@ -15,37 +15,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../catalog/catalog_fixtures.dart';
 
-CatalogExercise cat(
-  String id,
-  String name, {
-  List<String> aliases = const [],
-}) => CatalogExercise(
-  id: id,
-  name: name,
-  aliases: aliases,
-  muscleGroup: 'Legs',
-  primaryMuscles: const ['glutes'],
-  secondaryMuscles: const [],
-  equipment: const ['barbell', 'bench'],
-  category: 'hinge',
-  mode: 'reps_load',
-  cues: const [],
-  retired: false,
-);
-
-CatalogSnapshot snapshot() => CatalogSnapshot(
-  release: 4,
-  schemaVersion: 1,
-  minAppCatalogSchema: 1,
-  publishedAt: '2026-11-26T00:00:00Z',
-  sha256: 'a' * 64,
-  exercises: [
-    cat('builtin.v1.hip-thrust', 'Hip thrust', aliases: ['Hip bridge']),
-    cat('builtin.v1.squat', 'Back squat'),
-  ],
-  templates: const [],
-  programs: const [],
-);
+CatalogSnapshot snapshot() => catalogSnapshotOf([
+  catalogExercise(
+    'builtin.v1.hip-thrust',
+    'Hip thrust',
+    aliases: ['Hip bridge'],
+  ),
+  catalogExercise('builtin.v1.squat', 'Back squat'),
+]);
 
 void main() {
   late Directory directory;
@@ -67,10 +44,13 @@ void main() {
 
   Future<StubCatalogRepository> open(
     WidgetTester tester,
-    CatalogState state,
-  ) async {
+    CatalogState state, {
+    Brightness brightness = Brightness.light,
+    double textScale = 1,
+    Size size = const Size(800, 4000),
+  }) async {
     // Tall enough that the lazy list builds every row.
-    tester.view.physicalSize = const Size(800, 4000);
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final repository = StubCatalogRepository(state, directory);
@@ -81,7 +61,12 @@ void main() {
           catalogRepositoryProvider.overrideWithValue(repository),
         ],
         child: MaterialApp(
-          theme: BeyondRepTheme.build(Brightness.light),
+          theme: BeyondRepTheme.build(brightness),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!,
+          ),
           home: Scaffold(
             body: Consumer(
               builder: (context, ref, _) => TextButton(
@@ -151,29 +136,122 @@ void main() {
     expect(entity.isBuiltIn, isTrue);
   });
 
-  testWidgets('picking a local exercise does not write', (tester) async {
+  ExerciseDefinitionEntity entity(String id) => store
+      .box<ExerciseDefinitionEntity>()
+      .query(ExerciseDefinitionEntity_.uuid.equals(id))
+      .build()
+      .findFirst()!;
+
+  testWidgets('an exercise already copied from this release is not written', (
+    tester,
+  ) async {
     await open(tester, ready());
+    final seeded = entity('builtin.v1.squat')
+      ..name = 'Back squat'
+      ..muscleGroup = 'Legs'
+      ..equipment = 'Barbell, Bench'
+      ..movementCategory = 'Hinge'
+      ..catalogVersion = 4
+      ..updatedAtMs = 42;
+    store.box<ExerciseDefinitionEntity>().put(seeded);
     final before = definitions();
-    final updatedBefore = store
-        .box<ExerciseDefinitionEntity>()
-        .query(ExerciseDefinitionEntity_.uuid.equals('builtin.v1.squat'))
-        .build()
-        .findFirst()!
-        .updatedAtMs;
 
     await tester.tap(find.text('Back squat'));
     await tester.pumpAndSettle();
 
     expect(picked?.uuid, 'builtin.v1.squat');
     expect(definitions(), before);
-    final after = store
-        .box<ExerciseDefinitionEntity>()
-        .query(ExerciseDefinitionEntity_.uuid.equals('builtin.v1.squat'))
-        .build()
-        .findFirst()!;
-    expect(after.updatedAtMs, updatedBefore);
-    expect(after.catalogVersion, 1);
+    expect(entity('builtin.v1.squat').updatedAtMs, 42);
   });
+
+  testWidgets('a renamed exercise in a newer release updates the local name', (
+    tester,
+  ) async {
+    await open(tester, ready());
+    expect(entity('builtin.v1.squat').name, 'Barbell back squat');
+    expect(entity('builtin.v1.squat').catalogVersion, 1);
+
+    await tester.tap(find.text('Back squat'));
+    await tester.pumpAndSettle();
+
+    expect(picked?.name, 'Back squat');
+    expect(entity('builtin.v1.squat').name, 'Back squat');
+    expect(entity('builtin.v1.squat').catalogVersion, 4);
+    expect(entity('builtin.v1.squat').inputMode, 'reps_load');
+  });
+
+  testWidgets('a refresh while the sheet is open does not stamp a newer '
+      'release on older data', (tester) async {
+    final repository = await open(tester, ready());
+
+    await tester.tap(find.text('Hip thrust'));
+    await tester.pump();
+    repository.emit(
+      CatalogState(
+        snapshot: catalogSnapshotOf([
+          catalogExercise('builtin.v1.hip-thrust', 'Hip thrust v5'),
+        ], release: 5),
+        status: CatalogStatus.ready,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(picked?.name, 'Hip thrust', reason: 'the data the user saw');
+    expect(entity('builtin.v1.hip-thrust').catalogVersion, 4);
+  });
+
+  testWidgets('picking a local-only exercise writes nothing', (tester) async {
+    await open(tester, ready());
+    final box = store.box<ExerciseDefinitionEntity>();
+    box.put(
+      ExerciseDefinitionEntity(
+        uuid: 'custom-1',
+        name: 'Sled push',
+        createdAtMs: 1,
+        updatedAtMs: 7,
+      ),
+    );
+    // Reopen so the new custom exercise is listed.
+    await tester.pumpWidget(const SizedBox());
+    await open(tester, ready());
+    final before = definitions();
+    final bench = entity('builtin.v1.bench-press').updatedAtMs;
+
+    await tester.tap(find.text('Sled push'));
+    await tester.pumpAndSettle();
+    expect(picked?.uuid, 'custom-1');
+    expect(entity('custom-1').updatedAtMs, 7);
+
+    await tester.tap(find.text('Open picker'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Barbell bench press'));
+    await tester.pumpAndSettle();
+    expect(picked?.uuid, 'builtin.v1.bench-press');
+    expect(entity('builtin.v1.bench-press').updatedAtMs, bench);
+    expect(definitions(), before);
+  });
+
+  for (final brightness in Brightness.values) {
+    testWidgets('no overflow at text scale 2.0 in ${brightness.name}', (
+      tester,
+    ) async {
+      await open(
+        tester,
+        const CatalogState(status: CatalogStatus.unavailable),
+        brightness: brightness,
+        textScale: 2,
+        size: const Size(390, 844),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.scrollUntilVisible(
+        find.text('Retry'),
+        100,
+        scrollable: find.byType(Scrollable).last,
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.text('Retry'), findsOneWidget);
+    });
+  }
 
   testWidgets('dismissing the sheet returns null and writes nothing', (
     tester,

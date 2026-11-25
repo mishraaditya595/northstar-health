@@ -199,4 +199,60 @@ void main() {
       expect(equipmentLabel([entry.key]), entry.value);
     }
   });
+
+  test('catalogue choices carry the snapshot release', () {
+    final choices = buildExerciseChoices(
+      local: [local('custom-1', 'Sled push', builtIn: false)],
+      catalog: snapshotOf([cat('builtin.v1.row', 'Barbell row')]),
+    );
+    expect(choices.firstWhere((c) => c.id == 'builtin.v1.row').release, 4);
+    expect(choices.firstWhere((c) => c.id == 'custom-1').release, isNull);
+  });
+
+  test('only loggable modes are offered from the catalogue', () {
+    expect(loggableModes, {'reps_load', 'duration'});
+    final choices = buildExerciseChoices(
+      local: const [],
+      catalog: snapshotOf([
+        cat('builtin.v1.a', 'A load'),
+        cat('builtin.v1.b', 'B timed', mode: 'duration'),
+        cat('builtin.v1.c', 'C reps only', mode: 'reps'),
+        cat('builtin.v1.d', 'D timed load', mode: 'duration_load'),
+      ]),
+    );
+    expect(choices.map((c) => c.id), ['builtin.v1.a', 'builtin.v1.b']);
+  });
+
+  test(
+    'a non-loggable catalogue exercise stays when a local record exists',
+    () {
+      final choices = buildExerciseChoices(
+        local: [local('builtin.v1.c', 'C reps only', mode: 'reps')],
+        catalog: snapshotOf([cat('builtin.v1.c', 'C reps only', mode: 'reps')]),
+      );
+      expect(choices.single.id, 'builtin.v1.c');
+    },
+  );
+
+  test('category labels', () {
+    const expected = {
+      'squat': 'Squat',
+      'hinge': 'Hinge',
+      'lunge': 'Lunge',
+      'push_horizontal': 'Push',
+      'push_vertical': 'Push',
+      'pull_horizontal': 'Pull',
+      'pull_vertical': 'Pull',
+      'carry': 'Carry',
+      'core': 'Core',
+      'isolation': 'Isolation',
+      'calf': 'Calf',
+      'conditioning': 'Conditioning',
+      'mobility': 'Mobility',
+    };
+    for (final entry in expected.entries) {
+      expect(categoryLabel(entry.key), entry.value);
+    }
+    expect(categoryLabel('something_new'), 'something_new');
+  });
 }

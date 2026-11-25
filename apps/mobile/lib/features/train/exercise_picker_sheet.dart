@@ -39,12 +39,13 @@ Future<ExerciseRecord?> showExercisePicker(
     builder: (_) => _ExercisePickerBody(title: title),
   );
   if (choice == null || !context.mounted) return null;
-  final existing = choice.local;
-  if (existing != null) return existing;
   final catalog = choice.catalog;
-  final snapshot = safeCatalogState(() => ref.read(catalogStateProvider))
-      .snapshot;
-  if (catalog == null || snapshot == null) return null;
+  final release = choice.release;
+  // Local-only exercises (custom, or built-ins the catalogue no longer lists)
+  // are used as they are. A catalogue exercise is always passed through the
+  // idempotent copy, using the release the user saw, so an older local copy
+  // is refreshed and an up-to-date one is not written.
+  if (catalog == null || release == null) return choice.local;
   try {
     final record = ref
         .read(workoutLibraryRepositoryProvider)
@@ -53,9 +54,9 @@ Future<ExerciseRecord?> showExercisePicker(
           name: catalog.name,
           muscleGroup: catalog.muscleGroup,
           equipment: choice.equipment,
-          category: catalog.category,
+          category: categoryLabel(catalog.category),
           mode: catalog.mode,
-          release: snapshot.release,
+          release: release,
         );
     ref.invalidate(trainLibraryProvider);
     return record;
@@ -104,17 +105,6 @@ class _ExercisePickerBodyState extends ConsumerState<_ExercisePickerBody> {
                 prefixIcon: Icons.search,
                 hint: 'Search exercises',
               ),
-              if (status == CatalogStatus.unavailable) ...[
-                const SizedBox(height: 8),
-                Text(catalogUnavailableCopy, style: TextStyle(color: muted)),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton(
-                    onPressed: () => retryCatalogDownload(ref),
-                    child: const Text('Retry'),
-                  ),
-                ),
-              ],
             ],
           ),
         ),
@@ -127,28 +117,46 @@ class _ExercisePickerBodyState extends ConsumerState<_ExercisePickerBody> {
               final visible = all
                   .where((choice) => matchesExerciseQuery(choice, query))
                   .toList();
-              if (visible.isEmpty) {
-                return const Center(child: Text('No matching exercises.'));
-              }
-              return ListView.separated(
+              // The status note scrolls with the list so large text never
+              // squeezes the list out of a short sheet.
+              return ListView(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                itemCount: visible.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (context, index) {
-                  final choice = visible[index];
-                  return NsListCard(
-                    icon: choice.isCustom
-                        ? Icons.edit_note
-                        : Icons.fitness_center,
-                    title: choice.name,
-                    subtitle: [
-                      choice.muscleGroup,
-                      choice.equipment,
-                    ].where((s) => s.isNotEmpty).join(' · '),
-                    trailing: const Icon(Icons.add_circle_outline),
-                    onTap: () => Navigator.pop(context, choice),
-                  );
-                },
+                children: [
+                  if (status == CatalogStatus.unavailable) ...[
+                    Text(
+                      catalogUnavailableCopy,
+                      style: TextStyle(color: muted),
+                    ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        onPressed: () => retryCatalogDownload(ref),
+                        child: const Text('Retry'),
+                      ),
+                    ),
+                  ],
+                  if (visible.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Center(child: Text('No matching exercises.')),
+                    ),
+                  for (final choice in visible)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: NsListCard(
+                        icon: choice.isCustom
+                            ? Icons.edit_note
+                            : Icons.fitness_center,
+                        title: choice.name,
+                        subtitle: [
+                          choice.muscleGroup,
+                          choice.equipment,
+                        ].where((s) => s.isNotEmpty).join(' · '),
+                        trailing: const Icon(Icons.add_circle_outline),
+                        onTap: () => Navigator.pop(context, choice),
+                      ),
+                    ),
+                ],
               );
             },
           ),

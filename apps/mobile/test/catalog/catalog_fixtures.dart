@@ -1,5 +1,8 @@
 import 'dart:io';
 
+import 'package:flutter_riverpod/misc.dart' show Override;
+
+import 'package:beyondrep/features/catalog/application/catalog_providers.dart';
 import 'package:beyondrep/features/catalog/data/catalog_file_store.dart';
 import 'package:beyondrep/features/catalog/data/catalog_repository.dart';
 import 'package:beyondrep/features/catalog/data/catalog_transport.dart';
@@ -86,12 +89,18 @@ class StubCatalogRepository extends CatalogRepository {
          store: CatalogFileStore(directory),
        );
 
-  final CatalogState fixed;
+  CatalogState fixed;
   CatalogRefreshOutcome outcome;
   final forceCalls = <bool>[];
 
   @override
   CatalogState get state => fixed;
+
+  /// Simulates a refresh landing while a screen is open.
+  void emit(CatalogState next) {
+    fixed = next;
+    notifyListeners();
+  }
 
   @override
   Future<CatalogRefreshOutcome> refresh({bool force = false}) async {
@@ -99,3 +108,47 @@ class StubCatalogRepository extends CatalogRepository {
     return outcome;
   }
 }
+
+/// For widget tests that open pickers without caring about the catalogue:
+/// the catalogue is simply not downloaded.
+List<Override> catalogTestOverrides({
+  CatalogState state = const CatalogState(status: CatalogStatus.unavailable),
+}) => [
+  catalogRepositoryProvider.overrideWithValue(
+    StubCatalogRepository(state, Directory.systemTemp),
+  ),
+];
+
+CatalogExercise catalogExercise(
+  String id,
+  String name, {
+  List<String> aliases = const [],
+  String mode = 'reps_load',
+  String category = 'hinge',
+}) => CatalogExercise(
+  id: id,
+  name: name,
+  aliases: aliases,
+  muscleGroup: 'Legs',
+  primaryMuscles: const ['glutes'],
+  secondaryMuscles: const [],
+  equipment: const ['barbell', 'bench'],
+  category: category,
+  mode: mode,
+  cues: const [],
+  retired: false,
+);
+
+CatalogSnapshot catalogSnapshotOf(
+  List<CatalogExercise> exercises, {
+  int release = 4,
+}) => CatalogSnapshot(
+  release: release,
+  schemaVersion: 1,
+  minAppCatalogSchema: 1,
+  publishedAt: '2026-11-26T00:00:00Z',
+  sha256: 'a' * 64,
+  exercises: exercises,
+  templates: const [],
+  programs: const [],
+);

@@ -19,6 +19,31 @@ const _equipmentLabels = {
   'other': 'Other',
 };
 
+const _categoryLabels = {
+  'squat': 'Squat',
+  'hinge': 'Hinge',
+  'lunge': 'Lunge',
+  'push_horizontal': 'Push',
+  'push_vertical': 'Push',
+  'pull_horizontal': 'Pull',
+  'pull_vertical': 'Pull',
+  'carry': 'Carry',
+  'core': 'Core',
+  'isolation': 'Isolation',
+  'calf': 'Calf',
+  'conditioning': 'Conditioning',
+  'mobility': 'Mobility',
+};
+
+/// Display label stored as the local movement category, matching the labels
+/// of the seeded exercises.
+String categoryLabel(String category) => _categoryLabels[category] ?? category;
+
+/// Input modes the logger can record today. Catalogue exercises in other
+/// modes (`reps`, `duration_load`) are not offered until timed sets and
+/// bodyweight logging exist, unless the account already has them locally.
+const loggableModes = {'reps_load', 'duration'};
+
 String equipmentLabel(List<String> equipment) =>
     equipment.map((id) => _equipmentLabels[id] ?? id).join(', ');
 
@@ -34,6 +59,7 @@ class ExerciseChoice {
     required this.mode,
     required this.isCustom,
     this.catalog,
+    this.release,
     this.local,
   });
 
@@ -45,6 +71,11 @@ class ExerciseChoice {
   final String mode;
   final bool isCustom;
   final CatalogExercise? catalog;
+
+  /// Release of the snapshot [catalog] came from; null without a catalogue
+  /// entry. Used when copying, so a refresh landing meanwhile cannot stamp a
+  /// newer release on older data.
+  final int? release;
   final ExerciseRecord? local;
 }
 
@@ -61,6 +92,8 @@ List<ExerciseChoice> buildExerciseChoices({
   for (final exercise
       in catalog?.activeExercises ?? const <CatalogExercise>[]) {
     fromCatalog.add(exercise.id);
+    final record = localById[exercise.id];
+    if (record == null && !loggableModes.contains(exercise.mode)) continue;
     choices.add(
       ExerciseChoice(
         id: exercise.id,
@@ -71,7 +104,8 @@ List<ExerciseChoice> buildExerciseChoices({
         mode: exercise.mode,
         isCustom: false,
         catalog: exercise,
-        local: localById[exercise.id],
+        release: catalog!.release,
+        local: record,
       ),
     );
   }
