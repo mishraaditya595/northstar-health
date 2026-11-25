@@ -1,0 +1,797 @@
+[
+  {
+    "id": "builtin.v1.chest-press-machine",
+    "name": "Seated chest press machine",
+    "aliases": [
+      "Machine chest press"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "shoulders"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Set the seat so the handles line up with mid chest",
+      "Keep your back against the pad",
+      "Press out without locking your elbows hard",
+      "Return slowly until you feel a chest stretch"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.incline-chest-press-machine",
+    "name": "Incline chest press machine",
+    "aliases": [],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Adjust the seat so the handles start at upper chest height",
+      "Keep your shoulder blades back against the pad",
+      "Press up and forward",
+      "Lower under control"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.pec-deck",
+    "name": "Pec deck fly",
+    "aliases": [
+      "Machine fly",
+      "Pec fly machine"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "shoulders"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Set the seat so your arms are level with your chest",
+      "Keep a slight bend in your elbows",
+      "Bring the handles together in front of you",
+      "Open slowly until you feel a stretch"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.dip-machine",
+    "name": "Seated dip machine",
+    "aliases": [
+      "Machine dip"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [
+      "chest",
+      "shoulders"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "push_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Set the seat so the handles are at your sides",
+      "Keep your shoulders down",
+      "Press the handles down until your arms are straight",
+      "Return slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.machine-shoulder-press",
+    "name": "Machine shoulder press",
+    "aliases": [
+      "Seated shoulder press machine"
+    ],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "triceps"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "push_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Set the seat so the handles start near shoulder height",
+      "Keep your back against the pad",
+      "Press up without shrugging",
+      "Lower slowly to the start"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.machine-lateral-raise",
+    "name": "Machine lateral raise",
+    "aliases": [
+      "Lateral raise machine"
+    ],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "machine"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Set the seat so the pads sit just above your elbows",
+      "Lead with your elbows, not your hands",
+      "Raise to shoulder height",
+      "Lower slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.reverse-pec-deck",
+    "name": "Reverse pec deck",
+    "aliases": [
+      "Rear delt machine",
+      "Reverse fly machine"
+    ],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "traps"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Sit facing the pad with your chest supported",
+      "Hold the handles with a soft bend in your elbows",
+      "Open your arms out to the sides",
+      "Return slowly without letting the weights touch down"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.chest-supported-row-machine",
+    "name": "Chest-supported row machine",
+    "aliases": [
+      "Machine row"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "shoulders"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "pull_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Set the chest pad so you can reach the handles with straight arms",
+      "Pull your elbows back past your torso",
+      "Squeeze your shoulder blades together",
+      "Return slowly until your arms are straight"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.assisted-pull-up-machine",
+    "name": "Assisted pull-up machine",
+    "aliases": [
+      "Assisted chin-up machine"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "traps"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "pull_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Choose a counterweight that lets you control the rep",
+      "Kneel or stand on the platform",
+      "Pull your chest toward the bar",
+      "Lower until your arms are straight"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.pullover-machine",
+    "name": "Machine pullover",
+    "aliases": [],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "chest"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Set the seat so your shoulders line up with the machine axis",
+      "Rest your elbows on the pads",
+      "Pull the bar down toward your hips",
+      "Return slowly to a full stretch"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.hack-squat-machine",
+    "name": "Hack squat machine",
+    "aliases": [
+      "Hack squat"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "squat",
+    "mode": "reps_load",
+    "cues": [
+      "Place your back flat on the pad and feet shoulder width",
+      "Lower until your thighs are near parallel",
+      "Keep your heels down",
+      "Push the sled away without locking out hard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.smith-machine-squat",
+    "name": "Smith machine squat",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "lowerBack"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "squat",
+    "mode": "reps_load",
+    "cues": [
+      "Place your feet slightly in front of the bar",
+      "Brace and sit down between your hips",
+      "Keep your heels flat",
+      "Stand up along the bar path"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.smith-machine-bench-press",
+    "name": "Smith machine bench press",
+    "aliases": [],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "shoulders"
+    ],
+    "equipment": [
+      "machine",
+      "bench"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Line the bar up with your mid chest",
+      "Shoulder blades pinched and down",
+      "Lower the bar to your chest",
+      "Press up and rack it when finished"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.smith-machine-incline-press",
+    "name": "Smith machine incline press",
+    "aliases": [],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": [
+      "machine",
+      "bench"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Set the bench to a low to medium incline",
+      "Line the bar up with your upper chest",
+      "Lower with control",
+      "Press up and rack the bar when finished"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.smith-machine-shoulder-press",
+    "name": "Smith machine shoulder press",
+    "aliases": [],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "triceps"
+    ],
+    "equipment": [
+      "machine",
+      "bench"
+    ],
+    "category": "push_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Set the bench upright under the bar",
+      "Lower the bar to about chin height",
+      "Press straight up",
+      "Rack the bar when finished"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.pendulum-squat",
+    "name": "Pendulum squat",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "glutes"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "squat",
+    "mode": "reps_load",
+    "cues": [
+      "Stand on the platform with your back against the pad",
+      "Lower until your thighs are below parallel if comfortable",
+      "Keep your heels down",
+      "Press up smoothly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.belt-squat",
+    "name": "Belt squat",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "squat",
+    "mode": "reps_load",
+    "cues": [
+      "Attach the belt around your hips",
+      "Stand tall and brace",
+      "Sit down between your feet",
+      "Stand by pushing the floor away"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.seated-leg-curl",
+    "name": "Seated leg curl",
+    "aliases": [
+      "Seated hamstring curl"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "calves"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Adjust the pad so it sits just above your heels",
+      "Lock your thighs under the pad",
+      "Curl your heels under you",
+      "Return slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.hip-abduction-machine",
+    "name": "Hip abduction machine",
+    "aliases": [
+      "Seated abduction"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "machine"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Sit upright with the pads on the outside of your knees",
+      "Push your knees apart",
+      "Pause at the widest point",
+      "Return slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.seated-calf-raise-machine",
+    "name": "Seated calf raise machine",
+    "aliases": [
+      "Seated calf raise"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "calves"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "machine"
+    ],
+    "category": "calf",
+    "mode": "reps_load",
+    "cues": [
+      "Set the pad on your lower thighs",
+      "Lower your heels to a full stretch",
+      "Rise onto the balls of your feet",
+      "Pause at the top"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.leg-press-calf-raise",
+    "name": "Leg press calf raise",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "calves"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "machine"
+    ],
+    "category": "calf",
+    "mode": "reps_load",
+    "cues": [
+      "Sit with the balls of your feet on the platform edge",
+      "Keep your knees nearly straight",
+      "Push the platform away with your toes",
+      "Lower to a full stretch without letting the weights slam"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.glute-kickback-machine",
+    "name": "Glute kickback machine",
+    "aliases": [
+      "Machine kickback"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Brace your chest against the pad",
+      "Place your foot on the plate",
+      "Push back and up with your glute",
+      "Return slowly without swinging"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.hip-thrust-machine",
+    "name": "Hip thrust machine",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "quads"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Set the pad across your hips and fasten the belt",
+      "Place your feet flat and shoulder width",
+      "Drive your hips up and squeeze",
+      "Lower slowly"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.back-extension",
+    "name": "Back extension",
+    "aliases": [
+      "45-degree back extension",
+      "Hyperextension"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lowerBack",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Set the pad just below your hip bones",
+      "Keep your back neutral",
+      "Hinge down then lift until your body is in a straight line",
+      "Do not hyperextend at the top"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.reverse-hyperextension",
+    "name": "Reverse hyperextension",
+    "aliases": [
+      "Reverse hyper"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "glutes",
+      "lowerBack"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Lie face down with your hips at the pad edge",
+      "Hold the handles and keep your torso still",
+      "Swing your legs up to hip height",
+      "Lower under control"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.glute-ham-raise",
+    "name": "Glute-ham raise",
+    "aliases": [
+      "GHR",
+      "GHD hamstring curl"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "hamstrings",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "lowerBack",
+      "calves"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Lock your feet in and set your knees just behind the pad",
+      "Lower your torso with your body in one line",
+      "Curl up using your hamstrings",
+      "Keep your hips extended throughout"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.ab-crunch-machine",
+    "name": "Ab crunch machine",
+    "aliases": [],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "machine"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Set the seat so the pads sit at your upper chest",
+      "Curl your trunk down and in",
+      "Exhale at the bottom",
+      "Return slowly without letting the weights drop"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.torso-rotation-machine",
+    "name": "Torso rotation machine",
+    "aliases": [
+      "Rotary torso machine"
+    ],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "obliques"
+    ],
+    "secondaryMuscles": [
+      "abs"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Sit upright and fix your hips",
+      "Rotate your torso from your trunk, not your arms",
+      "Pause at the end of the turn",
+      "Return slowly and do both sides"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.biceps-curl-machine",
+    "name": "Machine biceps curl",
+    "aliases": [
+      "Biceps curl machine"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Set the seat so your upper arms rest on the pad",
+      "Curl up without lifting your elbows",
+      "Squeeze at the top",
+      "Lower to nearly straight arms"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.triceps-extension-machine",
+    "name": "Machine triceps extension",
+    "aliases": [
+      "Triceps extension machine"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "machine"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Set the seat so your upper arms rest on the pad",
+      "Keep your elbows pointing forward",
+      "Extend your arms fully",
+      "Return slowly to a deep bend"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.machine-shrug",
+    "name": "Machine shrug",
+    "aliases": [],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Stand or sit tall with your arms straight",
+      "Lift your shoulders straight up",
+      "Pause at the top",
+      "Lower without leaning forward"
+    ],
+    "status": "active"
+  }
+]
