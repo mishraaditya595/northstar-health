@@ -32,6 +32,15 @@ class _TemplateDetailPageState extends ConsumerState<TemplateDetailPage> {
   // returns the same plan) and a finished copy makes a fresh one.
   var _request = SecureUuidFactory().newId();
   var _busy = false;
+  ScaffoldMessengerState? _savedIn;
+  var _savedCount = 0;
+
+  @override
+  void dispose() {
+    // The Edit action needs this page; take it away with the page.
+    _savedIn?.clearSnackBars();
+    super.dispose();
+  }
 
   Future<void> _copy(CatalogTemplate template, CatalogSnapshot snapshot) async {
     if (_busy) return;
@@ -52,15 +61,22 @@ class _TemplateDetailPageState extends ConsumerState<TemplateDetailPage> {
           );
       _request = SecureUuidFactory().newId();
       ref.invalidate(trainLibraryProvider);
+      final router = GoRouter.of(context);
+      final messenger = ScaffoldMessenger.of(context);
+      _savedIn = messenger;
+      final mine = ++_savedCount;
       showNsMessage(
         context,
         'Saved to My Plans as ${plan.name}',
         actionLabel: 'Edit',
         onAction: () async {
-          await context.push<void>('/train/plans/${plan.uuid}/edit');
-          ref.invalidate(trainLibraryProvider);
+          if (!mounted) return;
+          await router.push<void>('/train/plans/${plan.uuid}/edit');
+          if (mounted) ref.invalidate(trainLibraryProvider);
         },
-      );
+      ).closed.then((_) {
+        if (_savedCount == mine) _savedIn = null;
+      });
     } on Object {
       showNsMessage(context, 'Could not copy this workout. Try again.');
     } finally {

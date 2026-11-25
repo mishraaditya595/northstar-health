@@ -20,6 +20,7 @@ import 'template_test_support.dart';
 void main() {
   late Directory directory;
   late Store store;
+  late GoRouter currentRouter;
 
   setUp(() {
     directory = Directory.systemTemp.createTempSync('beyondrep-tpl-detail-');
@@ -52,6 +53,10 @@ void main() {
           builder: (_, _) => TemplateDetailPage(templateId: id),
         ),
         GoRoute(
+          path: '/away',
+          builder: (_, _) => const Scaffold(body: Text('AWAY')),
+        ),
+        GoRoute(
           path: '/train/workout',
           builder: (_, _) {
             visited.add('logger');
@@ -74,6 +79,7 @@ void main() {
         ),
       ],
     );
+    currentRouter = router;
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
@@ -157,6 +163,20 @@ void main() {
     await tester.pumpAndSettle();
     final second = store.box<WorkoutPlanEntity>().getAll().last;
     expect(visited, ['edit ${second.uuid}']);
+  });
+
+  testWidgets('leaving the page takes its Saved snackbar away', (tester) async {
+    final visited = await open(tester);
+    await tester.tap(copyButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Saved to My Plans as Synthetic push'), findsOneWidget);
+    currentRouter.go('/away');
+    await tester.pumpAndSettle();
+    expect(find.text('AWAY'), findsOneWidget);
+    expect(find.text('Saved to My Plans as Synthetic push'), findsNothing);
+    expect(find.text('Edit'), findsNothing);
+    expect(tester.takeException(), isNull);
+    expect(visited, isEmpty);
   });
 
   testWidgets('Start now opens the logger with a timed exercise in seconds', (

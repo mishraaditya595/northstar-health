@@ -45,4 +45,18 @@ void main() {
     await tester.pump();
     expect(taps, 1);
   });
+
+  testWidgets('a message with an action still times out', (tester) async {
+    await open(
+      tester,
+      (c) => showNsMessage(c, 'Saved', actionLabel: 'Edit', onAction: () {}),
+    );
+    await tester.tap(find.text('go'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 750));
+    expect(find.text('Saved'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 8));
+    await tester.pumpAndSettle();
+    expect(find.text('Saved'), findsNothing);
+  });
 }
