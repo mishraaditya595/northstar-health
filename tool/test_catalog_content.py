@@ -172,6 +172,62 @@ class ExerciseStyleTest(unittest.TestCase):
         self.assertEqual(hashlib.sha256(data).hexdigest(), LEGACY_SHA256)
 
 
+def source_templates():
+    items = []
+    for path in sorted((ROOT / "catalog/templates").glob("*.json")):
+        items.extend(json.loads(path.read_text(encoding="utf-8")))
+    return items
+
+
+class TemplateContentTest(unittest.TestCase):
+    """Shape and safety rules for every source workout template (stage 6)."""
+
+    def setUp(self):
+        self.exercises = {e["id"]: e for e in source_exercises()}
+
+    def test_templates_reference_loggable_active_exercises(self):
+        for tpl in source_templates():
+            for row in tpl["exercises"]:
+                with self.subTest(msg=f"{tpl['id']} {row['exerciseId']}"):
+                    ex = self.exercises[row["exerciseId"]]
+                    self.assertEqual(ex["status"], "active")
+                    self.assertIn(ex["mode"], LOGGABLE_MODES)
+
+    def test_template_shape(self):
+        for tpl in source_templates():
+            with self.subTest(tpl["id"]):
+                ids = [r["exerciseId"] for r in tpl["exercises"]]
+                self.assertTrue(4 <= len(ids) <= 7, "4 to 7 exercises")
+                self.assertEqual(len(ids), len(set(ids)), "exercise repeated")
+                self.assertTrue(20 <= tpl["estimatedMinutes"] <= 75)
+                text = tpl["description"].strip()
+                self.assertTrue(text, "description is empty")
+                sentences = [x for x in re.split(r"(?<=[.!?])\s+", text) if x]
+                self.assertLessEqual(len(sentences), 2)
+                for value in (tpl["name"], text, *(r.get("note", "") for r in tpl["exercises"])):
+                    self.assertIsNone(OUTCOME_CLAIM.search(value), value)
+
+    def test_template_prescriptions_are_conservative(self):
+        for tpl in source_templates():
+            with self.subTest(tpl["id"]):
+                total = sum(r["sets"] for r in tpl["exercises"])
+                limit = 18 if tpl["tags"]["level"] == "beginner" else 24
+                self.assertLessEqual(total, limit)
+                for row in tpl["exercises"]:
+                    if row.get("repsMax", 99) <= 8:
+                        self.assertGreaterEqual(row["restSeconds"], 60)
+
+    def test_template_equipment_tag_matches_exercises(self):
+        for tpl in source_templates():
+            with self.subTest(tpl["id"]):
+                used = set()
+                for row in tpl["exercises"]:
+                    used |= set(self.exercises[row["exerciseId"]]["equipment"])
+                if len(used) > 1:
+                    used.discard("bodyweight")
+                self.assertEqual(set(tpl["tags"]["equipment"]), used)
+
+
 class PublishedReleaseTest(unittest.TestCase):
     """Each committed release migration must be exactly what the lock records."""
 
