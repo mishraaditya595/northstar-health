@@ -9,6 +9,7 @@ import '../../../core/design/charts/sleep_stages.dart';
 import '../../../core/design/charts/trend_label.dart';
 import '../application/health_details.dart';
 import '../application/health_overview.dart';
+import '../application/training_insights.dart';
 import '../domain/daily_series.dart';
 import '../domain/health_types.dart';
 import '../domain/sleep_nights.dart';
@@ -18,6 +19,7 @@ import '../health_format.dart';
 import '../widgets/detail_layout.dart';
 import '../widgets/health_card_frame.dart';
 import '../widgets/metric_unavailable.dart';
+import '../widgets/training_insight_line.dart';
 
 const _reference = Duration(hours: 7, minutes: 30);
 const _noStages = 'Stages need a watch or ring that records them.';
@@ -409,6 +411,8 @@ class _RangeView extends ConsumerWidget {
           const DetailPanel(title: 'Averages', children: [DetailLoading()])
         else
           _averages(stats, hr.gap),
+        if (ref.watch(trainingInsightsProvider)?.sleep case final sleep?)
+          TrainingInsightLine.sleep(sleep),
       ],
     );
   }

@@ -5,6 +5,7 @@ import '../../../core/design/charts/line_chart.dart';
 import '../../../core/design/charts/trend_label.dart';
 import '../application/health_details.dart';
 import '../application/health_overview.dart';
+import '../application/training_insights.dart';
 import '../data/health_reader.dart';
 import '../domain/daily_series.dart';
 import '../domain/health_types.dart';
@@ -13,6 +14,7 @@ import '../domain/trend.dart';
 import '../health_format.dart';
 import '../widgets/detail_layout.dart';
 import '../widgets/health_card_frame.dart';
+import '../widgets/training_insight_line.dart';
 
 const _vo2Name = 'Cardio fitness (VO₂ max)';
 const _walkingName = 'Walking heart rate';
@@ -101,7 +103,13 @@ class _HeartView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [_restingHr(ref), _hrv(ref), _tiles(ref)],
+      children: [
+        _restingHr(ref),
+        _hrv(ref),
+        _tiles(ref),
+        if (ref.watch(trainingInsightsProvider)?.restingHr case final rhr?)
+          TrainingInsightLine.restingHr(rhr),
+      ],
     );
   }
 
