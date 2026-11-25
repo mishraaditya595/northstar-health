@@ -57,6 +57,13 @@ class ContentTest(unittest.TestCase):
         members = {m.strip() for m in body.split(",") if m.strip()}
         self.assertEqual(members, set(MUSCLES))
 
+    def test_aliases_do_not_name_a_different_movement(self):
+        by_id = {e["id"]: e for e in source_exercises()}
+        # A chin-up is a different (supinated) lift than the pull-up, and a
+        # stiff-leg deadlift differs from the Romanian deadlift.
+        self.assertNotIn("Chin-up", by_id["builtin.v1.pull-up"]["aliases"])
+        self.assertNotIn("Stiff-leg deadlift", by_id["builtin.v1.rdl"]["aliases"])
+
     def test_no_media_or_url_fields(self):
         bad_key = re.compile(r"image|video|gif|url|media", re.I)
 

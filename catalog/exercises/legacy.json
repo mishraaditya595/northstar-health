@@ -86,8 +86,7 @@
     "id": "builtin.v1.rdl",
     "name": "Romanian deadlift",
     "aliases": [
-      "RDL",
-      "Stiff-leg deadlift"
+      "RDL"
     ],
     "muscleGroup": "Legs",
     "primaryMuscles": [
@@ -217,9 +216,7 @@
   {
     "id": "builtin.v1.pull-up",
     "name": "Pull-up",
-    "aliases": [
-      "Chin-up"
-    ],
+    "aliases": [],
     "muscleGroup": "Back",
     "primaryMuscles": [
       "lats"

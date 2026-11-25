@@ -82,7 +82,7 @@ select is(public.catalog_manifest()->>'sha256', current_setting('catalog.livesha
   'the manifest checksum is the live release row checksum');
 reset role;
 select is((select sha256 from public.catalog_releases where release = 1),
-  'a35713cc3e84253bacb0791cf6b04f05b80ff3ebf6f0e6e610958635588708f2',
+  '97c93550a7ef47e61ef5395b612863c56ca246f906b54d146eac45f9e6b5f8eb',
   'release 1 checksum matches catalog/releases.lock.json');
 select is((select jsonb_array_length(content->'exercises')
             from public.catalog_releases where release = 1), 18,
