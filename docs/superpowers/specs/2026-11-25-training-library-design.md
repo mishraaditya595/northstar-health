@@ -42,6 +42,7 @@ Listed in the issue's section 6 and not built here: exercise alternatives, readi
 | Content format | Plain JSON in the repo, validated in CI. |
 | Content review | The owner reviews every workout template and program prescription before it is published. |
 | Schedule | Today shows today's scheduled workout or rest day, plus a "Missed <day>: <workout>" line. A day counts as done only when a workout started from that program day is finished. |
+| Old plank sets | Left as logged (reps). No migration or backfill; TestFlight data may be wiped instead. |
 | Server storage | Approach A: one immutable snapshot row per release plus a live pointer (section 3). |
 | Phone cache | Approach A: a validated snapshot file swapped in atomically, searched in memory (section 3). |
 
@@ -216,6 +217,7 @@ Two additions, each in its own stage (8), each deployed to the server before any
 - **Set:** optional `duration_seconds` (integer 1 to 86,400). A completed set needs `reps` or `duration_seconds` (or both for `duration_load`, builder's call on whether reps are allowed alongside). Server validation, progress aggregation (`completed_working_sets` counts timed sets; `loaded_volume_gram_reps` stays reps times load only), restore feed, JSON export and the conflict review all carry the field.
 - **Exercise:** optional `primary_muscles` and `secondary_muscles` (arrays of the fixed muscle vocabulary, each at most 14 entries). Needed so restoring history on a second device keeps specific-muscle recovery.
 - Update the outbox builder and its tests, the restore and export parsers, `docs/SYNC_PROTOCOL.md` and pgTAP tests.
+- Plank sets logged before timed sets (stored as reps) are left unchanged: no phone migration and no server backfill. There are no real users yet, only the owner's TestFlight data, which the owner is happy to wipe if it looks odd (owner's decision, 2026-11-25).
 - Older internal builds: an older app restoring a workout that contains `duration_seconds` may reject it. Nothing is publicly released, so the release note for the stage says to update every TestFlight install; the builder checks the old restore parser's behaviour and records it.
 
 ## 6. App
