@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
-import '../../core/design/section.dart';
+import 'application/health_overview.dart';
 import 'application/health_summary_controller.dart';
 import 'data/health_reader.dart';
 import 'health_format.dart';
+import 'widgets/activity_card.dart';
+import 'widgets/body_card.dart';
 import 'widgets/health_actions_mixin.dart';
+import 'widgets/health_card_frame.dart';
 import 'widgets/health_connect_card.dart';
-import 'widgets/health_metric_card.dart';
+import 'widgets/heart_card.dart';
+import 'widgets/sleep_card.dart';
 
 const _iosHint =
     "Missing something? Check BeyondRep's access in the Health app.";
@@ -34,7 +39,16 @@ class _HealthPageState extends ConsumerState<HealthPage>
     final state = async.value;
     final loading = async.isLoading;
     return RefreshIndicator(
-      onRefresh: () => ref.read(healthSummaryProvider.notifier).refresh(),
+      onRefresh: () async {
+        try {
+          await Future.wait([
+            ref.read(healthSummaryProvider.notifier).refresh(),
+            ref.read(healthOverviewProvider.notifier).refresh(),
+          ]);
+        } catch (_) {
+          // The failure shows as the overview's error state (Try again).
+        }
+      },
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
@@ -73,6 +87,11 @@ class _HealthPageState extends ConsumerState<HealthPage>
     );
   }
 
+  @override
+  void onShownOrResumed() {
+    ref.read(healthOverviewProvider.notifier).refreshIfStale();
+  }
+
   List<Widget> _connected(
     BuildContext context,
     HealthConnected state,
@@ -80,39 +99,148 @@ class _HealthPageState extends ConsumerState<HealthPage>
     Color muted,
   ) {
     final theme = Theme.of(context);
-    final anyNoData = HealthMetric.values.any(
-      (m) => isHealthNoData(
-        m,
-        state.readings[m] ?? const HealthNoData(),
-        state.platform,
-      ),
-    );
+    final async = ref.watch(healthOverviewProvider);
+    final overview = async.value;
+    final busy = loading || async.isLoading;
+    final sections = overview == null
+        ? const <Section<Object>>[]
+        : <Section<Object>>[
+            overview.sleep,
+            overview.heart,
+            overview.activity,
+            overview.body,
+          ];
+    bool hasGap(MetricGap gap) =>
+        sections.any((s) => s is SectionGap<Object> && s.gap == gap);
+    final allowMore = guardedOverview(busy, (c) => c.requestMoreAccess());
+
+    /// Data opens the detail; Not allowed -> Manage, Couldn't read -> Try
+    /// again; nothing for other gaps.
+    VoidCallback? tapFor(Section<Object> section, String detail) =>
+        switch (section) {
+          SectionData() => () => context.push(detail),
+          SectionGap(gap: MetricGap.notAllowed) => guarded(
+            busy,
+            (c) => c.manage(),
+          ),
+          SectionGap(gap: MetricGap.failed) => guardedOverview(
+            busy,
+            (c) => c.refresh(),
+          ),
+          SectionGap() => null,
+        };
+
+    final List<Widget> cards;
+    if (overview != null) {
+      final platform = overview.platform;
+      // The overview's own day, as on the detail pages and the Today row.
+      final readAt = overview.readAt;
+      final today = DateTime(readAt.year, readAt.month, readAt.day);
+      cards = [
+        SleepCard(
+          section: overview.sleep,
+          platform: platform,
+          today: today,
+          onTap: tapFor(overview.sleep, '/health/sleep'),
+          onAllowMore: allowMore,
+        ),
+        HeartCard(
+          section: overview.heart,
+          platform: platform,
+          today: today,
+          onTap: tapFor(overview.heart, '/health/heart'),
+          onAllowMore: allowMore,
+        ),
+        ActivityCard(
+          section: overview.activity,
+          platform: platform,
+          today: today,
+          onTap: tapFor(overview.activity, '/health/activity'),
+          onAllowMore: allowMore,
+        ),
+        BodyCard(
+          section: overview.body,
+          platform: platform,
+          today: today,
+          onTap: tapFor(overview.body, '/health/body'),
+          onAllowMore: allowMore,
+        ),
+      ];
+    } else {
+      cards = const [
+        HealthCardPlaceholder(
+          title: 'Sleep',
+          icon: Icons.bedtime_outlined,
+          sleepTint: true,
+        ),
+        HealthCardPlaceholder(title: 'Heart', icon: Icons.favorite_border),
+        HealthCardPlaceholder(title: 'Activity', icon: Icons.directions_walk),
+        HealthCardPlaceholder(
+          title: 'Body',
+          icon: Icons.monitor_weight_outlined,
+        ),
+      ];
+    }
+
     return [
-      const SectionHeading('Today'),
-      LayoutBuilder(
-        builder: (context, box) {
-          final columns = box.maxWidth >= 560 ? 2 : 1;
-          final width = (box.maxWidth - 10 * (columns - 1)) / columns;
-          return Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              for (final metric in HealthMetric.values)
-                SizedBox(
-                  width: width,
-                  child: HealthMetricCard(
-                    metric: metric,
-                    reading: state.readings[metric] ?? const HealthNoData(),
-                    platform: state.platform,
-                    now: state.readAt,
-                    onAction: actionForReading(state.readings[metric], loading),
-                  ),
-                ),
-            ],
-          );
-        },
-      ),
-      if (anyNoData && state.platform == HealthPlatformKind.appleHealth) ...[
+      if (overview != null) ...[
+        Text(
+          formatOverviewDateLine(overview.readAt, overview.platform),
+          style: theme.textTheme.bodySmall?.copyWith(color: muted),
+        ),
+        const SizedBox(height: 14),
+      ],
+      if (overview == null && async.hasError) ...[
+        InsightCard(
+          icon: Icons.favorite_border,
+          text: const TextSpan(text: "Couldn't read health data."),
+          actionLabel: 'Try again',
+          onAction: guardedOverview(busy, (c) => c.refresh()),
+        ),
+        const SizedBox(height: 14),
+      ],
+      if (overview != null &&
+          overview.needsMoreAccess &&
+          !hasGap(MetricGap.needsAccess)) ...[
+        InsightCard(
+          icon: Icons.lock_open,
+          text: const TextSpan(
+            text: 'Some cards can show more once BeyondRep may read it.',
+          ),
+          actionLabel: 'Allow more data',
+          onAction: allowMore,
+        ),
+        const SizedBox(height: 14),
+      ],
+      if (overview != null || !async.hasError)
+        LayoutBuilder(
+          builder: (context, box) {
+            final wide = box.maxWidth >= 560;
+            // Activity and Body pair up on phones too, unless large text
+            // leaves each half too narrow.
+            final pairSmall =
+                box.maxWidth >= MediaQuery.textScalerOf(context).scale(300);
+            Widget pair(Widget a, Widget b, bool side) => side
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: a),
+                      const SizedBox(width: 10),
+                      Expanded(child: b),
+                    ],
+                  )
+                : Column(children: [a, const SizedBox(height: 10), b]);
+            return Column(
+              children: [
+                pair(cards[0], cards[1], wide),
+                const SizedBox(height: 10),
+                pair(cards[2], cards[3], wide || pairSmall),
+              ],
+            );
+          },
+        ),
+      if (state.platform == HealthPlatformKind.appleHealth &&
+          hasGap(MetricGap.noData)) ...[
         const SizedBox(height: 12),
         Text(
           _iosHint,

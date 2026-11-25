@@ -19,13 +19,10 @@ final class HealthNotConnected extends HealthSummaryState {
 }
 
 final class HealthConnected extends HealthSummaryState {
-  const HealthConnected({
-    required this.readings,
-    required this.readAt,
-    required this.platform,
-  });
+  const HealthConnected({required this.readAt, required this.platform});
 
-  final Map<HealthMetric, HealthReading> readings;
+  /// When the connection state was built; the values themselves come from
+  /// the overview.
   final DateTime readAt;
   final HealthPlatformKind platform;
 }
@@ -37,6 +34,20 @@ final healthOwnerIdProvider = Provider<String?>(
 final healthClockProvider = Provider<DateTime Function()>(
   (ref) => DateTime.now,
 );
+
+/// Set when the user leaves for the platform's permission settings, where
+/// they may revoke access. The next resume then re-reads even when the
+/// overview is under 5 minutes old, so revoked values are not kept on
+/// screen.
+class HealthRereadOnResume extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void set(bool value) => state = value;
+}
+
+final healthRereadOnResumeProvider =
+    NotifierProvider<HealthRereadOnResume, bool>(HealthRereadOnResume.new);
 
 class HealthSummaryController extends AsyncNotifier<HealthSummaryState> {
   @override
@@ -50,30 +61,10 @@ class HealthSummaryController extends AsyncNotifier<HealthSummaryState> {
         platform: reader.platform,
       );
     }
-    final now = ref.read(healthClockProvider)();
-    final results = await Future.wait(
-      HealthMetric.values.map((metric) => _safeRead(reader, metric, now)),
-    );
     return HealthConnected(
-      readings: {
-        for (var i = 0; i < HealthMetric.values.length; i++)
-          HealthMetric.values[i]: results[i],
-      },
-      readAt: now,
+      readAt: ref.read(healthClockProvider)(),
       platform: reader.platform,
     );
-  }
-
-  Future<HealthReading> _safeRead(
-    HealthReader reader,
-    HealthMetric metric,
-    DateTime now,
-  ) async {
-    try {
-      return await reader.read(metric, now);
-    } catch (_) {
-      return const HealthReadFailed();
-    }
   }
 
   Future<void> refresh() async {
@@ -116,8 +107,9 @@ class HealthSummaryController extends AsyncNotifier<HealthSummaryState> {
   }
 
   /// Opens the platform's permission settings (Not allowed · Manage). Never
-  /// throws; the resume refresh re-reads after the user returns.
+  /// throws; the next resume refresh re-reads, however fresh the overview.
   Future<void> manage() async {
+    ref.read(healthRereadOnResumeProvider.notifier).set(true);
     try {
       await ref.read(healthReaderProvider).openSettings();
     } catch (_) {}

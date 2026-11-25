@@ -42,6 +42,10 @@ class IosPrivacyStringsTest(unittest.TestCase):
         value = self.info.get("NSHealthUpdateUsageDescription", "")
         self.assertIn("write", value.lower())
 
+    def test_share_string_mentions_trends(self):
+        value = self.info.get("NSHealthShareUsageDescription", "")
+        self.assertIn("trends", value)
+
     def test_clinical_records_string_present_when_entitled(self):
         access = self.entitlements.get("com.apple.developer.healthkit.access", [])
         if "health-records" in access:

@@ -1,49 +1,61 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-enum HealthMetric { sleep, steps, restingHeartRate, weight }
+import '../domain/health_types.dart';
 
 enum HealthPlatformKind { appleHealth, healthConnect }
 
 enum HealthAvailability { available, needsInstall, unsupported }
 
-sealed class HealthReading {
-  const HealthReading();
+enum HealthSeriesType {
+  heartRate,
+  restingHeartRate,
+  hrv,
+  respiratoryRate,
+  bloodOxygen,
+  vo2Max,
+  walkingHeartRate,
+  sleepingWristTemperature,
+  skinTemperature,
+  weight,
+  bodyFat,
+  leanMass,
 }
 
-/// sleep: minutes asleep; steps: count; restingHeartRate: bpm; weight: kg.
-final class HealthMeasured extends HealthReading {
-  const HealthMeasured({
-    required this.value,
-    required this.measuredAt,
-    required this.source,
-  });
+enum HealthTotalType { steps, activeEnergy }
 
-  final double value;
-  final DateTime measuredAt;
-  final String source;
+sealed class SeriesResult<T> {
+  const SeriesResult();
 }
 
-final class HealthNoData extends HealthReading {
-  const HealthNoData();
+final class SeriesData<T> extends SeriesResult<T> {
+  const SeriesData(this.data);
+  final T data;
 }
 
-final class HealthNotAllowed extends HealthReading {
-  const HealthNotAllowed();
+final class SeriesNotAllowed<T> extends SeriesResult<T> {
+  const SeriesNotAllowed();
 }
 
-final class HealthReadFailed extends HealthReading {
-  const HealthReadFailed();
+/// The type was never requested.
+final class SeriesNeedsAccess<T> extends SeriesResult<T> {
+  const SeriesNeedsAccess();
 }
 
-final class HealthUnsupported extends HealthReading {
-  const HealthUnsupported();
+final class SeriesFailed<T> extends SeriesResult<T> {
+  const SeriesFailed();
+}
+
+final class SeriesUnsupported<T> extends SeriesResult<T> {
+  const SeriesUnsupported();
 }
 
 abstract interface class HealthReader {
   HealthPlatformKind get platform;
   Future<HealthAvailability> availability();
 
-  /// One permission sheet for all four metric types.
+  /// One permission sheet for every read type (the Phase 3 metrics plus the
+  /// [HealthSeriesType] and [HealthTotalType] reads, plus history where
+  /// Health Connect offers it).
   Future<void> requestAccess();
 
   /// Android: opens the Health Connect install flow.
@@ -53,8 +65,33 @@ abstract interface class HealthReader {
   /// a denied read is indistinguishable from no data.
   Future<void> openSettings();
 
-  /// Never throws; failures map to a [HealthReading] variant.
-  Future<HealthReading> read(HealthMetric metric, DateTime now);
+  /// The range reads below never throw.
+  Future<SeriesResult<List<SleepSegment>>> readSleep(
+    DateTime from,
+    DateTime to,
+  );
+
+  Future<SeriesResult<List<HealthSample>>> readSeries(
+    HealthSeriesType type,
+    DateTime from,
+    DateTime to,
+  );
+
+  /// Hourly buckets from [from] (a local midnight) to [to].
+  Future<SeriesResult<List<HealthSample>>> readHourlyTotals(
+    HealthTotalType type,
+    DateTime from,
+    DateTime to,
+  );
+
+  /// Some current types were never requested or are not granted.
+  Future<bool> needsMoreAccess();
+
+  /// Requests the full current type list (+ history where available).
+  Future<void> requestMoreAccess();
+
+  /// Android: isHealthDataHistoryAuthorized; iOS: true.
+  Future<bool> hasHistoryAccess();
 }
 
 final healthReaderProvider = Provider<HealthReader>(

@@ -53,6 +53,10 @@ All of these live in `apps/mobile/lib/core/design/`. Look comes from `BeyondRepT
 | Month grid with trained days and today | `NsMonthCalendar` | `stats.dart` |
 | Check control for a logged row | `NsCheckButton` | `inputs.dart` |
 | Floating bottom nav | `FloatingNavBar` | `app/floating_nav_bar.dart` |
+| Trend arrow + words | `NsTrendLabel` | `charts/trend_label.dart` |
+| Score ring | `NsScoreRing` | `charts/score_ring.dart` |
+| Bars / lines / sparkline | `NsBarChart`, `NsLineChart`, `NsSparkline` | `charts/bar_series.dart`, `charts/line_chart.dart` |
+| Sleep stages | `NsStageBar`, `NsStageTimeline` | `charts/sleep_stages.dart` |
 
 Feature-level (not kit) widgets: `MuscleMap` / `MuscleRecoveryCard` in `features/progress/muscle_map.dart` draw the body map from a `MuscleRecovery`. Its values come from `muscleRecoveryProvider`, derived from finished workouts in the last 72 hours (catalog muscle group per exercise with a completed working set, fading linearly); custom groups that don't name a drawn muscle are not drawn but are still named on the card. The card names the logged groups ("Legs"), never individual muscles the log cannot support.
 

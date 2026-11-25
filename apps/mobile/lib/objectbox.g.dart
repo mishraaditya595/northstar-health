@@ -774,7 +774,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
     id: const obx_int.IdUid(12, 7621003638056886597),
     name: 'HealthConnectionEntity',
-    lastPropertyId: const obx_int.IdUid(3, 6501660462108541938),
+    lastPropertyId: const obx_int.IdUid(4, 2075953249978434367),
     flags: 0,
     properties: <obx_int.ModelProperty>[
       obx_int.ModelProperty(
@@ -793,6 +793,12 @@ final _entities = <obx_int.ModelEntity>[
       obx_int.ModelProperty(
         id: const obx_int.IdUid(3, 6501660462108541938),
         name: 'connectedAtMs',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 2075953249978434367),
+        name: 'accessScope',
         type: 6,
         flags: 0,
       ),
@@ -1821,10 +1827,11 @@ obx_int.ModelDefinition getObjectBoxModel() {
       },
       objectToFB: (HealthConnectionEntity object, fb.Builder fbb) {
         final ownerAccountIdOffset = fbb.writeString(object.ownerAccountId);
-        fbb.startTable(4);
+        fbb.startTable(5);
         fbb.addInt64(0, object.id);
         fbb.addOffset(1, ownerAccountIdOffset);
         fbb.addInt64(2, object.connectedAtMs);
+        fbb.addInt64(3, object.accessScope);
         fbb.finish(fbb.endTable());
         return object.id;
       },
@@ -1846,10 +1853,17 @@ obx_int.ModelDefinition getObjectBoxModel() {
           8,
           0,
         );
+        final accessScopeParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          10,
+          0,
+        );
         final object = HealthConnectionEntity(
           id: idParam,
           ownerAccountId: ownerAccountIdParam,
           connectedAtMs: connectedAtMsParam,
+          accessScope: accessScopeParam,
         );
 
         return object;
@@ -2453,5 +2467,10 @@ class HealthConnectionEntity_ {
   /// See [HealthConnectionEntity.connectedAtMs].
   static final connectedAtMs = obx.QueryIntegerProperty<HealthConnectionEntity>(
     _entities[11].properties[2],
+  );
+
+  /// See [HealthConnectionEntity.accessScope].
+  static final accessScope = obx.QueryIntegerProperty<HealthConnectionEntity>(
+    _entities[11].properties[3],
   );
 }

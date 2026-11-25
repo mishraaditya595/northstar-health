@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
+import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/health/health_page.dart';
@@ -8,7 +9,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/fake_health_overview.dart';
 import '../support/fake_health_summary.dart';
+import '../support/health_overview_fixtures.dart';
 
 const connectBody =
     "See today's sleep, steps, resting heart rate and weight. "
@@ -21,21 +24,11 @@ const disconnectHint =
 
 final now = DateTime(2026, 11, 24, 18, 20);
 
-HealthConnected connected(
-  Map<HealthMetric, HealthReading> readings, {
+HealthConnected connected({
   HealthPlatformKind platform = HealthPlatformKind.appleHealth,
-}) => HealthConnected(readings: readings, readAt: now, platform: platform);
+}) => HealthConnected(readAt: now, platform: platform);
 
-final mixed = connected({
-  HealthMetric.sleep: HealthMeasured(
-    value: 378,
-    measuredAt: DateTime(2026, 11, 24, 6, 52),
-    source: 'Apple Watch',
-  ),
-  HealthMetric.steps: const HealthNoData(),
-  HealthMetric.restingHeartRate: const HealthNotAllowed(),
-  HealthMetric.weight: const HealthReadFailed(),
-}, platform: HealthPlatformKind.healthConnect);
+final mixed = connected(platform: HealthPlatformKind.healthConnect);
 
 Future<void> pumpPage(
   WidgetTester tester,
@@ -45,6 +38,7 @@ Future<void> pumpPage(
   double textScale = 1,
   bool settle = true,
   DateTime? clock,
+  FakeHealthOverviewController? overviewController,
 }) async {
   tester.view.physicalSize = Size(width, 1600);
   tester.view.devicePixelRatio = 1;
@@ -52,8 +46,13 @@ Future<void> pumpPage(
   addTearDown(tester.view.resetDevicePixelRatio);
   await tester.pumpWidget(
     ProviderScope(
+      // Fresh scope per pump so a second pump uses its own fakes.
+      key: UniqueKey(),
       overrides: [
         fakeHealthSummary(controller),
+        fakeHealthOverview(
+          overviewController ?? FakeHealthOverviewController(overview()),
+        ),
         healthClockProvider.overrideWithValue(() => clock ?? now),
       ],
       child: MaterialApp(
@@ -144,86 +143,39 @@ void main() {
     expect(find.byType(TextButton), findsNothing);
   });
 
-  testWidgets('connected mixed states render four cards, never 0', (
-    tester,
-  ) async {
-    final c = FakeHealthSummaryController(mixed);
-    await pumpPage(tester, c);
-    expect(find.text('Sleep'), findsOneWidget);
-    expect(find.text('Steps'), findsOneWidget);
-    expect(find.text('Resting heart rate'), findsOneWidget);
-    expect(find.text('Weight'), findsOneWidget);
-    expect(find.text('6h 18m'), findsOneWidget);
-    expect(find.text('Apple Watch · ended 6:52 AM'), findsOneWidget);
-    expect(find.text('No steps yet today'), findsOneWidget);
-    expect(find.text('Not allowed · Manage'), findsOneWidget);
-    expect(find.text("Couldn't read · Try again"), findsOneWidget);
-    expect(find.text('—'), findsNWidgets(3));
-    expect(find.text('0'), findsNothing);
-    expect(find.textContaining(iosHint), findsNothing, reason: 'Android');
+  testWidgets('connected renders the overview', (tester) async {
+    await pumpPage(tester, FakeHealthSummaryController(mixed));
+    expect(find.text('6h 12m'), findsOneWidget);
+    expect(find.text('Resting heart rate'), findsNothing);
   });
 
-  testWidgets('Not allowed taps manage, Try again taps refresh', (
-    tester,
-  ) async {
-    final c = FakeHealthSummaryController(mixed);
-    await pumpPage(tester, c);
-    await tester.tap(find.text('Not allowed · Manage'));
-    await tester.pumpAndSettle();
-    expect(c.manageCalls, 1);
-    expect(c.connectCalls, 0);
-    await tester.tap(find.text("Couldn't read · Try again"));
-    await tester.pumpAndSettle();
-    expect(c.refreshCalls, 1);
-  });
-
-  testWidgets('iOS hint appears once when any metric has no data', (
-    tester,
-  ) async {
-    final c = FakeHealthSummaryController(
-      connected({for (final m in HealthMetric.values) m: const HealthNoData()}),
+  testWidgets('iOS hint appears once when a card has no data', (tester) async {
+    await pumpPage(
+      tester,
+      FakeHealthSummaryController(connected()),
+      overviewController: FakeHealthOverviewController(phoneOnly()),
     );
-    await pumpPage(tester, c);
     expect(find.textContaining(iosHint), findsOneWidget);
   });
 
-  testWidgets('iOS steps of 0 show as no data', (tester) async {
-    final c = FakeHealthSummaryController(
-      connected({
-        HealthMetric.steps: HealthMeasured(
-          value: 0,
-          measuredAt: now,
-          source: 'x',
-        ),
-      }),
+  testWidgets('no iOS hint on Android or when every card has data', (
+    tester,
+  ) async {
+    await pumpPage(tester, FakeHealthSummaryController(connected()));
+    expect(find.textContaining(iosHint), findsNothing);
+    await pumpPage(
+      tester,
+      FakeHealthSummaryController(mixed),
+      overviewController: FakeHealthOverviewController(
+        phoneOnly(platform: HealthPlatformKind.healthConnect),
+      ),
     );
-    await pumpPage(tester, c);
-    expect(find.text('No steps yet today'), findsOneWidget);
-    expect(find.text('0'), findsNothing);
-  });
-
-  testWidgets('iOS steps of 0 alone still shows the hint once', (tester) async {
-    final c = FakeHealthSummaryController(
-      connected({
-        for (final m in HealthMetric.values)
-          m: HealthMeasured(value: 0 + 70, measuredAt: now, source: 'x'),
-        HealthMetric.steps: HealthMeasured(
-          value: 0,
-          measuredAt: now,
-          source: 'x',
-        ),
-      }),
-    );
-    await pumpPage(tester, c);
-    expect(find.textContaining(iosHint), findsOneWidget);
+    expect(find.textContaining(iosHint), findsNothing);
   });
 
   group('refresh when shown', () {
-    HealthConnected readAt(DateTime at) => HealthConnected(
-      readings: mixed.readings,
-      readAt: at,
-      platform: mixed.platform,
-    );
+    HealthConnected readAt(DateTime at) =>
+        HealthConnected(readAt: at, platform: mixed.platform);
 
     testWidgets('a reading older than 5 minutes is re-read', (tester) async {
       final c = FakeHealthSummaryController(
@@ -252,14 +204,19 @@ void main() {
     });
   });
 
-  testWidgets('app resume rebuilds the summary', (tester) async {
+  testWidgets('app resume rebuilds the summary and refreshes a stale '
+      'overview', (tester) async {
     final c = FakeHealthSummaryController(mixed);
-    await pumpPage(tester, c);
+    final o = FakeHealthOverviewController(overview());
+    await pumpPage(tester, c, overviewController: o);
+    expect(o.refreshIfStaleCalls, 1, reason: 'first show');
     final before = c.buildCalls;
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpAndSettle();
     expect(c.buildCalls, before + 1);
+    expect(o.refreshIfStaleCalls, 2);
+    expect(o.refreshCalls, 0);
   });
 
   testWidgets('Disconnect calls the controller and shows the hint', (
@@ -274,12 +231,27 @@ void main() {
     expect(c.disconnectCalls, 1);
   });
 
-  testWidgets('pull to refresh refreshes', (tester) async {
+  testWidgets('pull to refresh refreshes summary and overview', (tester) async {
     final c = FakeHealthSummaryController(mixed);
-    await pumpPage(tester, c);
+    final o = FakeHealthOverviewController(overview());
+    await pumpPage(tester, c, overviewController: o);
     await tester.fling(find.byType(ListView), const Offset(0, 400), 1000);
     await tester.pumpAndSettle();
     expect(c.refreshCalls, 1);
+    expect(o.refreshCalls, 1);
+  });
+
+  testWidgets('a failed overview refresh does not escape pull to refresh', (
+    tester,
+  ) async {
+    final c = FakeHealthSummaryController(mixed);
+    final o = _FailingRefresh(overview());
+    await pumpPage(tester, c, overviewController: o);
+    await tester.fling(find.byType(ListView), const Offset(0, 400), 1000);
+    await tester.pumpAndSettle();
+    expect(o.refreshCalls, 1);
+    expect(c.refreshCalls, 1);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('double tap on Connect fires once while in flight', (
@@ -307,21 +279,26 @@ void main() {
     tester,
   ) async {
     final c = FakeHealthSummaryController(mixed);
-    await pumpPage(tester, c);
+    final o = FakeHealthOverviewController(
+      overview(
+        sleep: const SectionGap(MetricGap.notAllowed),
+        body: const SectionGap(MetricGap.failed),
+      ),
+    );
+    await pumpPage(tester, c, overviewController: o);
     final container = ProviderScope.containerOf(
       tester.element(find.byType(HealthPage)),
     );
-    // Reload keeps the previous value; the cards must still render from it.
+    // Reload keeps the previous value; the cards must still render.
     c.buildGate = Completer<void>();
     container.invalidate(healthSummaryProvider);
     await tester.pump();
     expect(container.read(healthSummaryProvider).isLoading, isTrue);
-    expect(find.text('6h 18m'), findsOneWidget);
+    expect(find.text('Not allowed · Manage'), findsOneWidget);
     await tester.tap(find.text("Couldn't read · Try again"));
     await tester.tap(find.text('Not allowed · Manage'));
     await tester.pump();
-    expect(c.refreshCalls, 0);
-    expect(c.connectCalls, 0);
+    expect(o.refreshCalls, 0);
     expect(c.manageCalls, 0);
     c.buildGate!.complete();
     await tester.pumpAndSettle();
@@ -333,17 +310,6 @@ void main() {
     await pumpPage(tester, FakeHealthSummaryController(null), settle: false);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(find.text('6h 18m'), findsNothing);
-  });
-
-  testWidgets('tablet width lays cards out in two columns', (tester) async {
-    await pumpPage(tester, FakeHealthSummaryController(mixed), width: 900);
-    final sleep = tester.getTopLeft(find.text('Sleep'));
-    final steps = tester.getTopLeft(find.text('Steps'));
-    final hr = tester.getTopLeft(find.text('Resting heart rate'));
-    expect(steps.dx, greaterThan(sleep.dx));
-    expect(steps.dy, sleep.dy);
-    expect(hr.dx, sleep.dx);
-    expect(hr.dy, greaterThan(sleep.dy));
   });
 
   testWidgets('dark theme at 2x text scale renders without overflow', (
@@ -358,4 +324,51 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Sleep'), findsOneWidget);
   });
+
+  testWidgets('connected while the overview loads shows placeholders only', (
+    tester,
+  ) async {
+    await pumpPage(
+      tester,
+      FakeHealthSummaryController(mixed),
+      overviewController: FakeHealthOverviewController(null, pending: true),
+      settle: false,
+    );
+    await tester.pump();
+    expect(find.bySemanticsLabel('Heart loading'), findsOneWidget);
+    expect(find.text('6h 12m'), findsNothing);
+    expect(find.text('6h 18m'), findsNothing);
+    expect(find.text('Disconnect'), findsOneWidget);
+  });
+
+  testWidgets('an overview error offers Try again', (tester) async {
+    final o = _ThrowingOverview();
+    await pumpPage(
+      tester,
+      FakeHealthSummaryController(mixed),
+      overviewController: o,
+    );
+    expect(find.text("Couldn't read health data."), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('loading')), findsNothing);
+    await tester.tap(find.text('Try again'));
+    await tester.pumpAndSettle();
+    expect(o.refreshCalls, 1);
+  });
+}
+
+class _FailingRefresh extends FakeHealthOverviewController {
+  _FailingRefresh(super.initial);
+
+  @override
+  Future<void> refresh() async {
+    await super.refresh();
+    throw StateError('read failed');
+  }
+}
+
+class _ThrowingOverview extends FakeHealthOverviewController {
+  _ThrowingOverview() : super(null);
+
+  @override
+  Future<HealthOverview?> build() async => throw StateError('read failed');
 }
