@@ -6,6 +6,7 @@ import '../../core/clock.dart';
 import '../../core/date_labels.dart';
 import '../../core/design/dialogs.dart';
 import '../../core/design/beyondrep_theme.dart';
+import '../../core/design/hero_frame.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 import '../account/account_auth_provider.dart';
@@ -92,21 +93,21 @@ class _TodayPageState extends ConsumerState<TodayPage> {
         ),
         const SizedBox(height: 24),
         if (unfinished != null)
-          _HeroFrame(
+          NsHeroFrame(
             eyebrow: 'UNFINISHED WORKOUT',
             title: unfinished.session.name,
             subtitle: 'Saved on this device. Pick up where you left off.',
             actions: [
-              _HeroButton('Resume', () => context.push('/train/workout')),
+              NsHeroAction('Resume', () => context.push('/train/workout')),
             ],
           )
         // Starting would fail while an unfinished workout can't be recovered.
         else if (active.hasError)
-          _HeroFrame(
+          NsHeroFrame(
             eyebrow: 'UNFINISHED WORKOUT',
             title: 'Workout recovery needs attention',
             subtitle: 'No local data has been deleted.',
-            actions: [_HeroButton('Open Train', () => context.go('/train'))],
+            actions: [NsHeroAction('Open Train', () => context.go('/train'))],
           )
         // A reload keeps showing the last value instead of a spinner.
         else if (library.hasValue && history.hasValue)
@@ -117,19 +118,19 @@ class _TodayPageState extends ConsumerState<TodayPage> {
             onTrain: () => context.go('/train'),
           )
         else if (library.hasError || history.hasError)
-          _HeroFrame(
+          NsHeroFrame(
             eyebrow: 'NEXT UP',
             title: 'Could not load your plans',
             subtitle: 'Your local plans and workouts were not changed.',
             actions: [
-              _HeroButton('Retry', () {
+              NsHeroAction('Retry', () {
                 ref.invalidate(trainLibraryProvider);
                 ref.invalidate(completedWorkoutHistoryProvider);
               }),
             ],
           )
         else
-          const _HeroFrame(
+          const NsHeroFrame(
             eyebrow: 'NEXT UP',
             title: null,
             subtitle: null,
@@ -217,12 +218,6 @@ class _WeekCard extends StatelessWidget {
   }
 }
 
-class _HeroButton {
-  const _HeroButton(this.label, this.onPressed);
-  final String label;
-  final VoidCallback onPressed;
-}
-
 /// Suggests the next saved plan; there is no schedule, see [nextPlan].
 class _Hero extends StatelessWidget {
   const _Hero({
@@ -241,189 +236,31 @@ class _Hero extends StatelessWidget {
   Widget build(BuildContext context) {
     final suggestion = next;
     if (suggestion == null) {
-      return _HeroFrame(
+      return NsHeroFrame(
         eyebrow: 'GET STARTED',
         title: 'No plans yet',
         subtitle:
             'Create a plan, or go to Train for a quick workout and add '
             'exercises as you go.',
         actions: [
-          _HeroButton('Create a plan', () => onOpen('/train/plans/new')),
-          _HeroButton('Go to Train', onTrain),
+          NsHeroAction('Create a plan', () => onOpen('/train/plans/new')),
+          NsHeroAction('Go to Train', onTrain),
         ],
       );
     }
     final plan = suggestion.plan;
     final count = plan.exercises.length;
     final last = suggestion.lastDone;
-    return _HeroFrame(
+    return NsHeroFrame(
       eyebrow: 'NEXT UP',
       title: plan.name,
       subtitle:
           '$count ${count == 1 ? 'exercise' : 'exercises'} · '
           '${last == null ? 'Not done yet' : 'Last done ${formatWorkoutDay(originalLocalDay(last))}'}',
       actions: [
-        _HeroButton('Start workout', () => onStart(plan.uuid)),
-        _HeroButton('Edit', () => onOpen('/train/plans/${plan.uuid}/edit')),
+        NsHeroAction('Start workout', () => onStart(plan.uuid)),
+        NsHeroAction('Edit', () => onOpen('/train/plans/${plan.uuid}/edit')),
       ],
-    );
-  }
-}
-
-class _HeroFrame extends StatelessWidget {
-  const _HeroFrame({
-    required this.eyebrow,
-    required this.title,
-    required this.subtitle,
-    required this.actions,
-  });
-
-  final String eyebrow;
-
-  /// Null while loading: a spinner replaces title, subtitle and actions.
-  final String? title;
-  final String? subtitle;
-
-  /// The first action is the filled primary button.
-  final List<_HeroButton> actions;
-
-  @override
-  Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    const subtle = Color(0xFFBCCFC1);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(25),
-      child: Container(
-        decoration: BoxDecoration(
-          color: dark ? BeyondRepPalette.heroDark : BeyondRepPalette.heroLight,
-          border: Border.all(color: BeyondRepPalette.heroBorder),
-          borderRadius: BorderRadius.circular(25),
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              right: -32,
-              bottom: -55,
-              child: IgnorePointer(
-                child: Container(
-                  width: 150,
-                  height: 150,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: BeyondRepPalette.lime.withValues(alpha: .25),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: BeyondRepPalette.lime.withValues(alpha: .04),
-                        spreadRadius: 22,
-                      ),
-                      BoxShadow(
-                        color: BeyondRepPalette.lime.withValues(alpha: .03),
-                        spreadRadius: 44,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    eyebrow,
-                    style: const TextStyle(
-                      color: Color(0xFFB7DBC1),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.6,
-                    ),
-                  ),
-                  const SizedBox(height: 9),
-                  if (title == null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 24),
-                      child: Center(
-                        child: Semantics(
-                          label: 'Loading your plans',
-                          child: const CircularProgressIndicator(),
-                        ),
-                      ),
-                    )
-                  else ...[
-                    Semantics(
-                      header: true,
-                      child: Text(
-                        title!,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -1.8,
-                        ),
-                      ),
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        subtitle!,
-                        style: const TextStyle(
-                          color: subtle,
-                          fontSize: 13,
-                          height: 1.5,
-                        ),
-                      ),
-                    ],
-                    if (actions.isNotEmpty) ...[
-                      const SizedBox(height: 17),
-                      Wrap(
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 6,
-                        children: [
-                          FilledButton(
-                            onPressed: actions.first.onPressed,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: BeyondRepPalette.lime,
-                              foregroundColor: const Color(0xFF111A10),
-                              minimumSize: const Size(0, 46),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 17,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              textStyle: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            child: Text(actions.first.label),
-                          ),
-                          for (final action in actions.skip(1))
-                            TextButton(
-                              onPressed: action.onPressed,
-                              style: TextButton.styleFrom(
-                                foregroundColor: const Color(0xFFCFE4D3),
-                                minimumSize: const Size(44, 44),
-                                textStyle: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              child: Text(action.label),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
