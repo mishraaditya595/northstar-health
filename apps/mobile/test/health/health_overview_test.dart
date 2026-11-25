@@ -602,6 +602,36 @@ void main() {
       expect(r.hasHrv && r.hasRestingHr, true);
     });
 
+    test('a failed sleep read makes readiness a failed gap', () async {
+      readinessWeek();
+      fake.throwOnSleep = true;
+      final c = container();
+      final o = (await c.read(healthOverviewProvider.future))!;
+      expect((o.readiness as SectionGap).gap, MetricGap.failed);
+    });
+
+    test(
+      'failed resting HR and HRV reads make readiness a failed gap',
+      () async {
+        readinessWeek();
+        fake.throwOnSeries = {
+          HealthSeriesType.restingHeartRate,
+          HealthSeriesType.hrv,
+        };
+        final c = container();
+        final o = (await c.read(healthOverviewProvider.future))!;
+        expect((o.readiness as SectionGap).gap, MetricGap.failed);
+      },
+    );
+
+    test('one failed heart input still scores from the other', () async {
+      readinessWeek();
+      fake.throwOnSeries = {HealthSeriesType.hrv};
+      final c = container();
+      final o = (await c.read(healthOverviewProvider.future))!;
+      expect(o.readiness, isA<SectionData<ReadinessOverview>>());
+    });
+
     test('two gaps with different reasons stay NotReady data', () async {
       fake.seriesResults[HealthSeriesType.restingHeartRate] =
           const SeriesNotAllowed();
@@ -745,6 +775,27 @@ void main() {
     expect(fake.totalsCalls, hasLength(4));
     expect((await c.read(healthOverviewProvider.future))!.readAt, now);
   });
+
+  test('refreshIfStale re-reads on a new local day within 5 minutes', () async {
+    now = DateTime(2026, 11, 24, 23, 58);
+    final c = container();
+    await c.read(healthOverviewProvider.future);
+    final notifier = c.read(healthOverviewProvider.notifier);
+    now = DateTime(2026, 11, 25, 0, 1);
+    await notifier.refreshIfStale();
+    expect(fake.sleepCalls, hasLength(2));
+  });
+
+  test(
+    'todaysReadiness is absent for an overview read on another day',
+    () async {
+      readinessWeek();
+      final c = container();
+      final o = (await c.read(healthOverviewProvider.future))!;
+      expect(todaysReadiness(o, DateTime(2026, 11, 24, 23, 59)), isNotNull);
+      expect(todaysReadiness(o, DateTime(2026, 11, 25, 0, 1)), isNull);
+    },
+  );
 
   test('the resume after Manage re-reads even within 5 minutes', () async {
     final c = container();

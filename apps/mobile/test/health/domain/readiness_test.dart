@@ -93,6 +93,63 @@ void main() {
       )!;
       expect(r.sd, 1.5);
     });
+
+    test('ignores NaN, infinite and non-positive values', () {
+      final daily = [
+        for (var i = 1; i <= 13; i++) (day: daysAgo(i), value: 45.0),
+        (day: daysAgo(14), value: double.nan),
+        (day: daysAgo(15), value: 0.0),
+        (day: daysAgo(16), value: double.infinity),
+        (day: daysAgo(17), value: -3.0),
+      ];
+      expect(baselineOf(daily, today, sdFloor: hrvSdFloor), isNull);
+      final b = baselineOf(
+        [...daily, (day: daysAgo(18), value: 45.0)],
+        today,
+        sdFloor: hrvSdFloor,
+      )!;
+      expect(b.days, 14);
+      expect(b.mean, 45);
+    });
+
+    test('keeps one value per calendar day across a DST change', () {
+      // 29 Mar 2026 is 23 h long in the EU; the window counts local days.
+      final dst = DateTime(2026, 3, 30);
+      DateTime before(int n) => DateTime(2026, 3, 30 - n);
+      final daily = [
+        for (var i = 1; i <= 30; i++) (day: before(i), value: 50.0),
+        (day: before(31), value: 2000.0),
+        (day: dst, value: 1000.0),
+      ];
+      final b = baselineOf(daily, dst, sdFloor: hrvSdFloor)!;
+      expect(b.days, 30);
+      expect(b.mean, 50);
+    });
+  });
+
+  test('a NaN or zero measure today is not a measure', () {
+    final r = score(
+      lastNight: nightOn(today, asleep: 450),
+      hrv: series(alternating(20, 40, 2), todayValue: double.nan),
+      rhr: series(alternating(20, 58, 1), todayValue: 0),
+    );
+    expect(r, isA<ReadinessNotReady>());
+    expect((r as ReadinessNotReady).noHrvOrRhrToday, true);
+  });
+
+  test('a zero or NaN measure gives no part beside a valid one', () {
+    final r = ready(
+      score(
+        lastNight: nightOn(today, asleep: 450),
+        hrv: series(alternating(20, 40, 2), todayValue: 40),
+        rhr: series(alternating(20, 58, 1), todayValue: 0),
+      ),
+    );
+    expect(
+      r.parts.map((p) => p.input),
+      isNot(contains(ReadinessInput.restingHr)),
+    );
+    expect(r.parts.map((p) => p.input), contains(ReadinessInput.hrv));
   });
 
   test('normal day scores Good', () {

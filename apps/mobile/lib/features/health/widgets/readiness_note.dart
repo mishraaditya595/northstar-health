@@ -39,10 +39,10 @@ Future<bool> confirmReadinessBeforeStart(
   WidgetRef ref,
 ) async {
   final owner = ref.read(healthOwnerIdProvider);
-  final readiness = switch (ref.read(healthOverviewProvider).value?.readiness) {
-    SectionData(:final value) => value.result,
-    _ => null,
-  };
+  final overview = ref.read(healthOverviewProvider).value;
+  final readiness = overview == null
+      ? null
+      : todaysReadiness(overview, ref.read(localNowProvider))?.result;
   if (owner == null ||
       readiness is! ReadinessReady ||
       readiness.readiness.band != ReadinessBand.low) {
@@ -73,10 +73,7 @@ class ReadinessNote extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final overview = ref.watch(healthOverviewProvider).value;
     if (overview == null) return const SizedBox.shrink();
-    final readiness = switch (overview.readiness) {
-      SectionData(:final value) => value,
-      SectionGap() => null,
-    };
+    final readiness = todaysReadiness(overview, ref.watch(localNowProvider));
     if (readiness == null) return const SizedBox.shrink();
     return switch (readiness.result) {
       ReadinessReady(readiness: final r) when r.band == ReadinessBand.low =>

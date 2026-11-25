@@ -22,6 +22,7 @@ class FakeHealthReader implements HealthReader {
   final Map<HealthSeriesType, List<HealthSample>> series = {};
   final Map<HealthTotalType, List<HealthSample>> totals = {};
   Set<HealthSeriesType> throwOnSeries = {};
+  bool throwOnSleep = false;
   bool needsMore = false;
   bool history = true;
   int requestMoreAccessCalls = 0;
@@ -76,6 +77,7 @@ class FakeHealthReader implements HealthReader {
   ) async {
     sleepCalls.add((from, to));
     await sleepGate?.future;
+    if (throwOnSleep) throw StateError('synthetic sleep bug');
     return SeriesData(sleep);
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/clock.dart';
 import '../../../core/design/page_header.dart';
 import '../../../core/design/stats.dart';
 import '../application/health_overview.dart';
@@ -99,20 +100,18 @@ _Tile _restingHr(HealthOverview o) => switch (o.heart) {
 };
 
 /// Only a ready readiness earns a slot; any other state keeps stage 1's row.
-_Tile? _readiness(HealthOverview o) => switch (o.readiness) {
-  SectionData(
-    value: ReadinessOverview(result: ReadinessReady(:final readiness)),
-  ) =>
-    (
-      label: 'Readiness',
-      value: '${readiness.value}',
-      unit: null,
-      caption: readinessBandWords(readiness.band),
-      gap: null,
-      route: '/health/readiness',
-    ),
-  _ => null,
-};
+_Tile? _readiness(HealthOverview o, DateTime now) =>
+    switch (todaysReadiness(o, now)?.result) {
+      ReadinessReady(:final readiness) => (
+        label: 'Readiness',
+        value: '${readiness.value}',
+        unit: null,
+        caption: readinessBandWords(readiness.band),
+        gap: null,
+        route: '/health/readiness',
+      ),
+      _ => null,
+    };
 
 /// Today tab "Recent health": a Connect card, or sleep, steps and resting HR
 /// from the Health overview (no reads of its own).
@@ -173,7 +172,7 @@ class _TodayHealthRowState extends ConsumerState<TodayHealthRow>
       }
       return const _Loading();
     }
-    final readiness = _readiness(overview);
+    final readiness = _readiness(overview, ref.watch(localNowProvider));
     final tiles = [
       ?readiness,
       _sleep(overview),

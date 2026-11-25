@@ -198,6 +198,17 @@ class HealthOverview {
   final Section<ReadinessOverview> readiness;
 }
 
+/// Readiness only means something on the day it was read: the same-owner
+/// value survives a re-read, so an overview read yesterday must not score
+/// today. Null for an overview from another day or a readiness gap.
+ReadinessOverview? todaysReadiness(HealthOverview o, DateTime now) {
+  if (dayOf(o.readAt) != dayOf(now)) return null;
+  return switch (o.readiness) {
+    SectionData(:final value) => value,
+    SectionGap() => null,
+  };
+}
+
 const _staleAfter = Duration(minutes: 5);
 
 class HealthOverviewController extends AsyncNotifier<HealthOverview?> {
@@ -245,8 +256,11 @@ class HealthOverviewController extends AsyncNotifier<HealthOverview?> {
     } else if (!state.hasError) {
       final readAt = state.value?.readAt;
       if (readAt == null) return;
-      final age = ref.read(healthClockProvider)().difference(readAt);
-      if (age <= _staleAfter) return;
+      final now = ref.read(healthClockProvider)();
+      if (dayOf(now) == dayOf(readAt) &&
+          now.difference(readAt) <= _staleAfter) {
+        return;
+      }
     }
     await refresh();
   }
@@ -381,8 +395,11 @@ Section<ReadinessOverview> _readiness(
   List<DayValue> hrvDaily,
   List<DayValue> rhrDaily,
   DateTime today,
-  HealthPlatformKind platform,
-) {
+  HealthPlatformKind platform, {
+  required bool inputFailed,
+}) {
+  // A read that failed is not a missing wearable; ask to try again.
+  if (inputFailed) return const SectionGap(MetricGap.failed);
   if (sleepSection is SectionGap<SleepOverview> &&
       heartSection is SectionGap<HeartOverview> &&
       sleepSection.gap == heartSection.gap) {
@@ -610,6 +627,10 @@ Future<HealthOverview> _read(
     rhrAll,
     today,
     platform,
+    inputFailed:
+        metricGapOf(sleepResult) == MetricGap.failed ||
+        (metricGapOf(rhrResult) == MetricGap.failed &&
+            metricGapOf(hrvResult) == MetricGap.failed),
   );
 
   return HealthOverview(

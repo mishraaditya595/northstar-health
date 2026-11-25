@@ -92,7 +92,10 @@ Future<void> _pump(
   addTearDown(router.dispose);
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [fakeHealthOverview(controller)],
+      overrides: [
+        fakeHealthOverview(controller),
+        localNowProvider.overrideWithValue(DateTime(2026, 11, 24, 9)),
+      ],
       child: MaterialApp.router(
         theme: BeyondRepTheme.build(brightness),
         routerConfig: router,
@@ -107,7 +110,8 @@ Future<void> _pump(
   await tester.pumpAndSettle();
 }
 
-HealthOverview? _with(Section<ReadinessOverview> r) => overview(readiness: r);
+HealthOverview? _with(Section<ReadinessOverview> r, {DateTime? readAt}) =>
+    overview(readiness: r, readAt: readAt);
 
 List<String> _texts(WidgetTester tester) => [
   for (final t in tester.widgetList<Text>(find.byType(Text)))
@@ -169,6 +173,19 @@ void main() {
       expect(_texts(tester), isEmpty);
     });
   }
+
+  testWidgets('renders nothing when the overview was read yesterday', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      FakeHealthOverviewController(
+        _with(_ready(48), readAt: DateTime(2026, 11, 23, 22)),
+      ),
+    );
+    expect(find.byType(Card), findsNothing);
+    expect(_texts(tester), isEmpty);
+  });
 
   testWidgets('See why opens the readiness detail', (tester) async {
     await _pump(tester, FakeHealthOverviewController(_with(_ready(48))));

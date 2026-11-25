@@ -1,3 +1,4 @@
+import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
@@ -55,6 +56,7 @@ Future<void> pumpRow(
         ),
         healthReaderProvider.overrideWithValue(reader ?? FakeHealthReader()),
         healthClockProvider.overrideWithValue(() => now),
+        localNowProvider.overrideWithValue(now),
       ],
       child: MaterialApp.router(
         routerConfig: router,
@@ -312,6 +314,20 @@ void main() {
     await tester.tap(find.text('82'));
     await tester.pumpAndSettle();
     expect(pushed, ['/health/readiness']);
+  });
+
+  testWidgets('a readiness read yesterday keeps the stage-1 slots', (
+    tester,
+  ) async {
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      overviewController: FakeHealthOverviewController(
+        overview(readiness: _ready(82), readAt: DateTime(2026, 11, 23, 22)),
+      ),
+    );
+    expect(find.text('Readiness'), findsNothing);
+    expect(find.text('Resting HR'), findsOneWidget);
   });
 
   testWidgets('a gap or not-ready readiness keeps sleep, steps, resting HR', (

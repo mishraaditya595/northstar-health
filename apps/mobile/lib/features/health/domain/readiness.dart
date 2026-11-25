@@ -29,7 +29,10 @@ List<double> _baselineValues(List<DayValue> daily, DateTime today) {
   final start = _daysBefore(end, _baselineWindowDays);
   return [
     for (final d in daily)
-      if (!dayOf(d.day).isBefore(start) && dayOf(d.day).isBefore(end)) d.value,
+      if (_usable(d.value) &&
+          !dayOf(d.day).isBefore(start) &&
+          dayOf(d.day).isBefore(end))
+        d.value,
   ];
 }
 
@@ -128,9 +131,12 @@ const _baseWeights = {
 
 double _clamp100(double v) => v.clamp(0.0, 100.0).toDouble();
 
+/// NaN would clamp to 100 and a zero reading is a sensor gap, not a value.
+bool _usable(double v) => v.isFinite && v > 0;
+
 double? _todayValue(List<DayValue> daily, DateTime today) {
   for (final d in daily) {
-    if (dayOf(d.day) == today) return d.value;
+    if (dayOf(d.day) == today && _usable(d.value)) return d.value;
   }
   return null;
 }

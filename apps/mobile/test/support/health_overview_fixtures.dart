@@ -98,9 +98,10 @@ HealthOverview overview({
   Section<ActivityOverview>? activity,
   Section<BodyOverview>? body,
   Section<ReadinessOverview>? readiness,
+  DateTime? readAt,
 }) => HealthOverview(
   ownerId: ownerId,
-  readAt: overviewReadAt,
+  readAt: readAt ?? overviewReadAt,
   platform: platform,
   readableFrom: null,
   needsMoreAccess: needsMoreAccess,
