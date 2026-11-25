@@ -20,10 +20,12 @@ CatalogSnapshot parseCatalogSnapshot(Object? json, {String? expectedSha256}) {
   }
 
   final schemaVersion = _int(root, 'schemaVersion');
-  if (schemaVersion > supportedCatalogSchema) {
+  final minAppCatalogSchema = _int(root, 'minAppCatalogSchema');
+  // minAppCatalogSchema is the only compatibility gate (spec 4.5): publishers
+  // raise it for breaking changes. Unknown keys are ignored at every level.
+  if (minAppCatalogSchema > supportedCatalogSchema) {
     throw const CatalogFormatException('schema');
   }
-  final minAppCatalogSchema = _int(root, 'minAppCatalogSchema');
   final release = _int(root, 'release');
   final publishedAt = _string(root, 'publishedAt');
 

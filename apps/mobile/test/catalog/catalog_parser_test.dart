@@ -147,9 +147,32 @@ void main() {
       expectCode(validSnapshot(), 'checksum', expectedSha256: 'a' * 64);
     });
 
-    test('unsupported schema', () {
-      final json = validSnapshot()..['schemaVersion'] = 2;
+    test('min app schema above the supported one is a schema error', () {
+      final json = validSnapshot()
+        ..['schemaVersion'] = 2
+        ..['minAppCatalogSchema'] = 2;
       expectCode(json, 'schema');
+    });
+
+    test('newer schemaVersion with min 1 is accepted and extras ignored', () {
+      final json = validSnapshot()
+        ..['schemaVersion'] = 2
+        ..['minAppCatalogSchema'] = 1
+        ..['futureTopLevel'] = {
+          'anything': [1, 2],
+        };
+      ((json['exercises']! as List).first
+              as Map<String, Object?>)['futureKey'] =
+          'x';
+      ((json['templates']! as List).first
+              as Map<String, Object?>)['futureKey'] =
+          1;
+      firstPrescription(json)['futureKey'] = true;
+      ((json['programs']! as List).first as Map<String, Object?>)['futureKey'] =
+          0;
+      final snapshot = parseCatalogSnapshot(json);
+      expect(snapshot.schemaVersion, 2);
+      expect(snapshot.exercises, hasLength(2));
     });
 
     test('shape: missing field', () {
