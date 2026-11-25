@@ -10,9 +10,20 @@ import '../data/catalog_repository.dart';
 import '../data/catalog_transport.dart';
 import '../domain/catalog_models.dart';
 
+/// The catalogue layer has no directory or bound account yet. Screens treat
+/// this, and only this, as "catalogue unavailable".
+class CatalogNotInitialized implements Exception {
+  const CatalogNotInitialized(this.reason);
+
+  final String reason;
+
+  @override
+  String toString() => 'CatalogNotInitialized($reason)';
+}
+
 /// Overridden by the account gate with the per-host shared cache directory.
 final catalogDirectoryProvider = Provider<Directory>(
-  (ref) => throw StateError('Catalogue directory not initialized'),
+  (ref) => throw const CatalogNotInitialized('directory'),
 );
 
 /// Test seams; production uses the real clock and the isolate parser.
@@ -25,7 +36,7 @@ final catalogParserProvider =
 final catalogTransportProvider = Provider<CatalogTransport>((ref) {
   final owner = ref.watch(accountAuthControllerProvider)?.userId;
   if (owner == null) {
-    throw StateError('Catalogue downloads require a bound account');
+    throw const CatalogNotInitialized('account');
   }
   return SupabaseCatalogTransport.fromClient(Supabase.instance.client, owner);
 });

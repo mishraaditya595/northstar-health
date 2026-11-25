@@ -13,7 +13,10 @@ import 'package:beyondrep/features/workouts/data/objectbox_live_workout_engine.d
 import 'package:beyondrep/features/workouts/data/objectbox_workout_repository.dart';
 import 'package:beyondrep/features/workouts/data/workout_entities.dart';
 import 'package:beyondrep/features/workouts/domain/workout_models.dart';
+import 'package:beyondrep/features/catalog/data/catalog_repository.dart';
 import 'package:beyondrep/objectbox.g.dart';
+
+import '../catalog/catalog_fixtures.dart';
 
 /// The options sheet scrolls above its pinned Done button; bring the Remove
 /// action into view the way a user would, then tap it.
@@ -52,10 +55,17 @@ void main() {
     directory.deleteSync(recursive: true);
   });
 
-  Future<void> showApp(WidgetTester tester) async {
+  Future<void> showApp(WidgetTester tester, {CatalogState? catalog}) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [objectBoxStoreProvider.overrideWithValue(store)],
+        overrides: [
+          objectBoxStoreProvider.overrideWithValue(store),
+          ...catalogTestOverrides(
+            state:
+                catalog ??
+                const CatalogState(status: CatalogStatus.unavailable),
+          ),
+        ],
         child: MaterialApp.router(
           theme: BeyondRepTheme.build(Brightness.light),
           routerConfig: router,
@@ -64,6 +74,44 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('picking a catalogue-only exercise adds it to the workout', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 3000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await showApp(
+      tester,
+      catalog: CatalogState(
+        snapshot: catalogSnapshotOf([
+          catalogExercise('builtin.v1.hip-thrust', 'Hip thrust'),
+        ]),
+        status: CatalogStatus.ready,
+      ),
+    );
+    await tester.tap(find.text('Quick workout'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start workout'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add exercise'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hip thrust'));
+    await tester.pumpAndSettle();
+
+    expect(store.box<WorkoutExerciseEntity>().count(), 1);
+    final added = store.box<WorkoutExerciseEntity>().getAll().single;
+    expect(added.definitionUuid, 'builtin.v1.hip-thrust');
+    expect(added.nameSnapshot, 'Hip thrust');
+    expect(find.text('Hip thrust'), findsOneWidget);
+    expect(find.text('Add set'), findsOneWidget);
+    final definition = store
+        .box<ExerciseDefinitionEntity>()
+        .query(ExerciseDefinitionEntity_.uuid.equals('builtin.v1.hip-thrust'))
+        .build()
+        .findFirst();
+    expect(definition?.catalogVersion, 4);
+  });
 
   testWidgets('user removes planned and recorded sets from a workout', (
     tester,
