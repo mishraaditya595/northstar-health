@@ -10,6 +10,7 @@ import '../../core/ids/uuid_factory.dart';
 import '../../core/ui/dispose_after_dialog.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
 import '../workouts/domain/workout_library_models.dart';
+import 'exercise_picker_sheet.dart';
 import 'train_library_state.dart';
 
 class PlanEditorPage extends ConsumerStatefulWidget {
@@ -130,86 +131,10 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
 
   Future<void> _addExercise() async {
     if (_unavailable) return;
-    final WorkoutLibrarySnapshot snapshot;
-    try {
-      snapshot = await ref.read(trainLibraryProvider.future);
-    } catch (_) {
-      if (mounted) {
-        setState(
-          () => pageError =
-              'Exercise library could not load. Retry adding an exercise.',
-        );
-      }
-      return;
-    }
-    if (!mounted) return;
-    final definitions = snapshot.exercises
-        .where((e) => e.archivedAtMs == null)
-        .toList();
-    var search = '';
-    final selected = await showNsSheet<ExerciseRecord>(
+    final selected = await showExercisePicker(
       context,
-      heightFactor: 0.75,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          final visible = definitions
-              .where(
-                (e) =>
-                    e.archivedAtMs == null &&
-                    (search.isEmpty ||
-                        e.name.toLowerCase().contains(search) ||
-                        e.muscleGroup.toLowerCase().contains(search) ||
-                        e.equipment.toLowerCase().contains(search)),
-              )
-              .toList();
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'ADD EXERCISE',
-                      style: Theme.of(context).textTheme.titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w900),
-                    ),
-                    const SizedBox(height: 12),
-                    NsTextField(
-                      onChanged: (text) => setSheetState(
-                        () => search = text.trim().toLowerCase(),
-                      ),
-                      prefixIcon: Icons.search,
-                      hint: 'Search exercises',
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: visible.isEmpty
-                    ? const Center(child: Text('No matching exercises.'))
-                    : ListView.builder(
-                        itemCount: visible.length,
-                        itemBuilder: (_, index) {
-                          final e = visible[index];
-                          return ListTile(
-                            title: Text(e.name),
-                            subtitle: Text(
-                              [
-                                e.muscleGroup,
-                                e.equipment,
-                              ].where((s) => s.isNotEmpty).join(' · '),
-                            ),
-                            trailing: const Icon(Icons.add_circle_outline),
-                            onTap: () => Navigator.pop(sheetContext, e),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          );
-        },
-      ),
+      ref,
+      title: 'ADD EXERCISE',
     );
     if (selected == null || !mounted) return;
     setState(() {
