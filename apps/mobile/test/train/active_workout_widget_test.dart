@@ -17,6 +17,7 @@ import 'package:beyondrep/features/catalog/data/catalog_repository.dart';
 import 'package:beyondrep/objectbox.g.dart';
 
 import '../catalog/catalog_fixtures.dart';
+import '../support/fake_health_overview.dart';
 
 /// The options sheet scrolls above its pinned Done button; bring the Remove
 /// action into view the way a user would, then tap it.
@@ -60,6 +61,7 @@ void main() {
       ProviderScope(
         overrides: [
           objectBoxStoreProvider.overrideWithValue(store),
+          fakeHealthOverview(FakeHealthOverviewController(null)),
           ...catalogTestOverrides(
             state:
                 catalog ??
@@ -74,6 +76,12 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('Train offers the ready-made Workouts entry', (tester) async {
+    await showApp(tester);
+    await tester.scrollUntilVisible(find.text('Workouts'), 200);
+    expect(find.text('Ready-made sessions to start or copy'), findsOneWidget);
+  });
 
   testWidgets('picking a catalogue-only exercise adds it to the workout', (
     tester,
