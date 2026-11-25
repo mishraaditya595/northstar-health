@@ -1,0 +1,464 @@
+[
+  {
+    "id": "builtin.v1.squat",
+    "name": "Barbell back squat",
+    "aliases": [
+      "Back squat"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings",
+      "lowerBack",
+      "abs"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "squat",
+    "mode": "reps_load",
+    "cues": [
+      "Brace your trunk before you descend",
+      "Knees track over your toes",
+      "Drive the floor away to stand"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.bench-press",
+    "name": "Barbell bench press",
+    "aliases": [
+      "Flat bench"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "shoulders"
+    ],
+    "equipment": [
+      "barbell",
+      "bench"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Shoulder blades pinched and down",
+      "Lower the bar to mid chest",
+      "Press back over your shoulders"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.deadlift",
+    "name": "Conventional deadlift",
+    "aliases": [],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "glutes",
+      "hamstrings",
+      "lowerBack"
+    ],
+    "secondaryMuscles": [
+      "quads",
+      "lats",
+      "traps",
+      "forearms"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Bar over mid foot",
+      "Pull the slack out before you lift",
+      "Stand tall without leaning back"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.rdl",
+    "name": "Romanian deadlift",
+    "aliases": [
+      "RDL",
+      "Stiff-leg deadlift"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "hamstrings",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "lowerBack"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "hinge",
+    "mode": "reps_load",
+    "cues": [
+      "Soft knees, push your hips back",
+      "Keep the bar close to your legs",
+      "Stop when your hips stop moving back"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.overhead-press",
+    "name": "Standing overhead press",
+    "aliases": [
+      "Military press",
+      "OHP"
+    ],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "traps",
+      "abs"
+    ],
+    "equipment": [
+      "barbell"
+    ],
+    "category": "push_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Squeeze glutes and ribs down",
+      "Press in a straight line past your face",
+      "Finish with the bar over your mid foot"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.db-shoulder-press",
+    "name": "Dumbbell shoulder press",
+    "aliases": [],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "triceps"
+    ],
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "category": "push_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Forearms stay vertical",
+      "Press up and slightly inward",
+      "Lower under control to ear level"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.seated-row",
+    "name": "Seated cable row",
+    "aliases": [
+      "Cable row"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats",
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "forearms",
+      "lowerBack"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "pull_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Chest tall, ribs down",
+      "Pull your elbows to your sides",
+      "Pause, then let your shoulders reach forward"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.lat-pulldown",
+    "name": "Lat pulldown",
+    "aliases": [],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "traps",
+      "forearms"
+    ],
+    "equipment": [
+      "cable"
+    ],
+    "category": "pull_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Lean back slightly and keep your chest up",
+      "Drive elbows down toward your ribs",
+      "Control the bar back up"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.pull-up",
+    "name": "Pull-up",
+    "aliases": [
+      "Chin-up"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lats"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "traps",
+      "forearms",
+      "abs"
+    ],
+    "equipment": [
+      "bodyweight",
+      "pull_up_bar"
+    ],
+    "category": "pull_vertical",
+    "mode": "reps_load",
+    "cues": [
+      "Start from a full hang",
+      "Pull your chest toward the bar",
+      "Lower until your arms are straight"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.push-up",
+    "name": "Push-up",
+    "aliases": [
+      "Press-up"
+    ],
+    "muscleGroup": "Chest",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "shoulders",
+      "abs"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "push_horizontal",
+    "mode": "reps_load",
+    "cues": [
+      "Body in one straight line",
+      "Elbows about 45 degrees from your sides",
+      "Chest touches or nears the floor"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.leg-press",
+    "name": "Leg press",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "squat",
+    "mode": "reps_load",
+    "cues": [
+      "Feet flat, whole foot pressing",
+      "Lower until your hips stay on the pad",
+      "Do not lock your knees hard at the top"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.leg-curl",
+    "name": "Lying leg curl",
+    "aliases": [
+      "Hamstring curl"
+    ],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "calves"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Hips stay down on the pad",
+      "Curl smoothly without jerking",
+      "Lower slowly to full stretch"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.leg-extension",
+    "name": "Leg extension",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "machine"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Align your knees with the machine pivot",
+      "Squeeze at the top for a beat",
+      "Lower under control"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.lateral-raise",
+    "name": "Dumbbell lateral raise",
+    "aliases": [
+      "Side raise"
+    ],
+    "muscleGroup": "Shoulders",
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "traps"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Lead with your elbows",
+      "Raise to about shoulder height",
+      "Keep a slight bend in your elbows"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.bicep-curl",
+    "name": "Dumbbell biceps curl",
+    "aliases": [
+      "Biceps curl"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "equipment": [
+      "dumbbell"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Elbows stay beside your ribs",
+      "Curl without swinging your torso",
+      "Lower all the way down"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.triceps-pushdown",
+    "name": "Cable triceps pushdown",
+    "aliases": [
+      "Pushdown"
+    ],
+    "muscleGroup": "Arms",
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "cable"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Pin your elbows to your sides",
+      "Straighten fully at the bottom",
+      "Let the handle rise under control"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.calf-raise",
+    "name": "Standing calf raise",
+    "aliases": [],
+    "muscleGroup": "Legs",
+    "primaryMuscles": [
+      "calves"
+    ],
+    "secondaryMuscles": [],
+    "equipment": [
+      "machine"
+    ],
+    "category": "calf",
+    "mode": "reps_load",
+    "cues": [
+      "Pause in the stretched position",
+      "Rise high onto the balls of your feet",
+      "Keep your knees nearly straight"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.plank",
+    "name": "Plank",
+    "aliases": [
+      "Front plank"
+    ],
+    "muscleGroup": "Core",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [
+      "obliques",
+      "shoulders",
+      "glutes"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "core",
+    "mode": "duration",
+    "cues": [
+      "Ribs down, glutes tight",
+      "Elbows under your shoulders",
+      "Hold a straight line from head to heels"
+    ],
+    "status": "active"
+  }
+]
