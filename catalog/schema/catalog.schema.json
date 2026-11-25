@@ -18,7 +18,11 @@
     "schemaVersion": { "type": "integer", "minimum": 1 },
     "minAppCatalogSchema": { "type": "integer", "minimum": 1 },
     "release": { "type": "integer", "minimum": 1 },
-    "publishedAt": { "type": "string", "minLength": 1, "maxLength": 40 },
+    "publishedAt": {
+      "type": "string",
+      "maxLength": 40,
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+    },
     "provenance": {
       "type": "object",
       "additionalProperties": false,
@@ -69,7 +73,7 @@
         "secondaryMuscles", "equipment", "category", "mode", "cues", "status"
       ],
       "properties": {
-        "id": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "id": { "type": "string", "maxLength": 120, "pattern": "^builtin\\.v1\\.[a-z0-9]+(-[a-z0-9]+)*$" },
         "name": { "type": "string", "minLength": 1, "maxLength": 80 },
         "aliases": {
           "type": "array",
@@ -125,7 +129,7 @@
         "id", "name", "description", "tags", "estimatedMinutes", "exercises"
       ],
       "properties": {
-        "id": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "id": { "type": "string", "maxLength": 120, "pattern": "^tpl\\.[a-z0-9]+(-[a-z0-9]+)*$" },
         "name": { "type": "string", "minLength": 1, "maxLength": 80 },
         "description": { "type": "string", "maxLength": 1000 },
         "tags": {
@@ -155,7 +159,7 @@
         "estimatedMinutes", "equipment", "week"
       ],
       "properties": {
-        "id": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "id": { "type": "string", "maxLength": 120, "pattern": "^prog\\.[a-z0-9]+(-[a-z0-9]+)*$" },
         "name": { "type": "string", "minLength": 1, "maxLength": 80 },
         "description": { "type": "string", "maxLength": 1000 },
         "goals": { "type": "array", "items": { "$ref": "#/$defs/goal" } },

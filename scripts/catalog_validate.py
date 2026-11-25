@@ -1,6 +1,7 @@
 """Validate one assembled catalogue snapshot against the schema and the lock."""
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
@@ -24,6 +25,8 @@ CATEGORIES = frozenset(
     "pull_vertical carry core isolation calf conditioning mobility".split()
 )
 EMPTY_LOCK = {"releases": []}
+MAX_SNAPSHOT_BYTES = 2 * 1024 * 1024
+_CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 
 _DURATION_MODES = frozenset(["duration", "duration_load"])
 _SLUG = r"[a-z0-9]+(-[a-z0-9]+)*"
@@ -43,6 +46,18 @@ def _floats(node, path="$"):
     elif isinstance(node, list):
         for i, value in enumerate(node):
             yield from _floats(value, f"{path}[{i}]")
+
+
+def _control_chars(node, path="$"):
+    if isinstance(node, str):
+        if _CONTROL.search(node):
+            yield path
+    elif isinstance(node, dict):
+        for key, value in node.items():
+            yield from _control_chars(value, f"{path}.{key}")
+    elif isinstance(node, list):
+        for i, value in enumerate(node):
+            yield from _control_chars(value, f"{path}[{i}]")
 
 
 def _in_range(value, low, high):
@@ -135,6 +150,29 @@ def validate_snapshot(snapshot, lock):
         ]
 
     errors = [f"float value at {p}; use integers only" for p in _floats(snapshot)]
+    errors += [
+        f"control character in string at {p}" for p in _control_chars(snapshot)
+    ]
+    try:
+        datetime.fromisoformat(snapshot["publishedAt"])
+    except ValueError:
+        errors.append(f"publishedAt {snapshot['publishedAt']!r} is not a valid UTC time")
+    size = len(
+        json.dumps(
+            snapshot, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
+    )
+    if size > MAX_SNAPSHOT_BYTES:
+        errors.append(
+            f"snapshot size {size} bytes exceeds the {MAX_SNAPSHOT_BYTES} byte limit"
+        )
+    for ex in snapshot["exercises"]:
+        both = sorted(set(ex["primaryMuscles"]) & set(ex["secondaryMuscles"]))
+        if both:
+            errors.append(
+                f"{ex['id']}: muscle listed as both primary and secondary: "
+                + ", ".join(both)
+            )
 
     kinds = {}
     for kind, key in (("exercise", "exercises"), ("template", "templates"), ("program", "programs")):

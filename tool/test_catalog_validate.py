@@ -2,6 +2,7 @@
 import copy
 import unittest
 
+from scripts import catalog_validate
 from scripts.catalog_validate import EMPTY_LOCK, validate_snapshot
 
 
@@ -129,10 +130,57 @@ class ValidatorTest(unittest.TestCase):
         errors = validate_snapshot(snap, EMPTY_LOCK)
         self.assertTrue(has_error(errors, "float"))
 
-    def test_duplicate_id_across_kinds(self):
-        snap = mutated(lambda s: s["templates"][0].update(id="builtin.v1.squat"))
-        errors = validate_snapshot(snap, EMPTY_LOCK)
+    def test_duplicate_id_within_validator(self):
+        def f(s):
+            s["exercises"].append(copy.deepcopy(s["exercises"][0]))
+
+        errors = validate_snapshot(mutated(f), EMPTY_LOCK)
         self.assertTrue(has_error(errors, "duplicate id builtin.v1.squat"))
+
+    def test_duplicate_id_across_kinds_rejected(self):
+        snap = mutated(lambda s: s["templates"][0].update(id="builtin.v1.squat"))
+        self.assertTrue(validate_snapshot(snap, EMPTY_LOCK))
+
+    def test_schema_enforces_id_patterns(self):
+        for key, bad in (("exercises", "builtin.v1.Bad"), ("templates", "tpl-x"),
+                         ("programs", "prog_x")):
+            with self.subTest(key):
+                snap = mutated(lambda s: s[key][0].update(id=bad))
+                errors = validate_snapshot(snap, EMPTY_LOCK)
+                self.assertTrue(has_error(errors, "schema:"), errors)
+
+    def test_published_at_must_be_utc_rfc3339(self):
+        for bad in ("2026-11-26", "2026-11-26T00:00:00+01:00",
+                    "2026-11-26 00:00:00Z", "2026-13-40T00:00:00Z"):
+            with self.subTest(bad):
+                snap = mutated(lambda s: s.update(publishedAt=bad))
+                self.assertTrue(validate_snapshot(snap, EMPTY_LOCK))
+        snap = mutated(lambda s: s.update(publishedAt="2026-11-26T00:00:00.5Z"))
+        self.assertEqual(validate_snapshot(snap, EMPTY_LOCK), [])
+
+    def test_muscle_both_primary_and_secondary(self):
+        snap = mutated(lambda s: s["exercises"][0].update(
+            primaryMuscles=["quads"], secondaryMuscles=["quads", "glutes"]))
+        errors = validate_snapshot(snap, EMPTY_LOCK)
+        self.assertTrue(has_error(errors, "builtin.v1.squat"))
+        self.assertTrue(has_error(errors, "primary and secondary"))
+
+    def test_control_characters_rejected(self):
+        for bad in ("Squat\nrow", "Tab\there", "Nul\u0000", "Del\u007f"):
+            with self.subTest(repr(bad)):
+                snap = mutated(lambda s: s["exercises"][0].update(name=bad))
+                errors = validate_snapshot(snap, EMPTY_LOCK)
+                self.assertTrue(has_error(errors, "control character"), errors)
+
+    def test_snapshot_size_limit(self):
+        self.assertEqual(catalog_validate.MAX_SNAPSHOT_BYTES, 2 * 1024 * 1024)
+        old = catalog_validate.MAX_SNAPSHOT_BYTES
+        catalog_validate.MAX_SNAPSHOT_BYTES = 100
+        try:
+            errors = validate_snapshot(valid_snapshot(), EMPTY_LOCK)
+        finally:
+            catalog_validate.MAX_SNAPSHOT_BYTES = old
+        self.assertTrue(has_error(errors, "snapshot size"))
 
     def test_bad_id_prefix_or_slug(self):
         snap = mutated(lambda s: s["exercises"][0].update(id="builtin.v1.Bad_Slug"))
