@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(19);
+select plan(22);
 
 insert into auth.users(id,email) values
  ('00000000-0000-4000-8000-0000000000a1','northstar-timed@example.invalid');
@@ -134,6 +134,22 @@ select is(pg_temp.try_sync('00000000-0000-4000-8000-000000000015',
 select is((select loaded_volume_gram_reps from public.workout_records
  where workout_id='00000000-0000-4000-8000-000000000105'),
  500000::bigint,'timed set load adds no volume');
+
+-- The progress RPC reads the same stored counters.
+create function pg_temp.recent(wid uuid) returns jsonb language sql as $$
+ select r from jsonb_array_elements(
+   public.get_workout_progress('2026-11-26','2026-11-26')->'recent_workouts') as r
+  where r->>'workout_id' = wid::text
+$$;
+select is((pg_temp.recent('00000000-0000-4000-8000-000000000104')
+  ->>'completed_working_sets')::integer,
+ 2,'progress RPC counts the timed set as a completed working set');
+select is((pg_temp.recent('00000000-0000-4000-8000-000000000104')
+  ->>'loaded_volume_gram_reps')::bigint,
+ 500000::bigint,'progress RPC volume is only the rep set');
+select is((pg_temp.recent('00000000-0000-4000-8000-000000000105')
+  ->>'loaded_working_sets')::integer,
+ 1,'progress RPC does not count a timed set with a load as loaded');
 
 select is(has_function_privilege('authenticated','northstar_private.validate_workout_v1(uuid,jsonb)','EXECUTE'),
  false,'authenticated cannot execute the private validator');
