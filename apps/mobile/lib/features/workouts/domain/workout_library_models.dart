@@ -11,6 +11,8 @@ class ExerciseRecord {
     required this.isBuiltIn,
     required this.updatedAtMs,
     this.archivedAtMs,
+    this.primaryMuscles = const [],
+    this.secondaryMuscles = const [],
   });
 
   final String uuid;
@@ -22,6 +24,10 @@ class ExerciseRecord {
   final bool isBuiltIn;
   final int updatedAtMs;
   final int? archivedAtMs;
+
+  /// Specific muscles from the catalogue; empty for custom exercises.
+  final List<String> primaryMuscles;
+  final List<String> secondaryMuscles;
 }
 
 class PlanExerciseRecord {

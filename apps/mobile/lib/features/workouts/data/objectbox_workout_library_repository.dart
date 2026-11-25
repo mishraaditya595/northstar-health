@@ -82,6 +82,8 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
     isBuiltIn: e.isBuiltIn,
     updatedAtMs: e.updatedAtMs,
     archivedAtMs: e.archivedAtMs,
+    primaryMuscles: List.unmodifiable(e.primaryMuscles),
+    secondaryMuscles: List.unmodifiable(e.secondaryMuscles),
   );
 
   @override

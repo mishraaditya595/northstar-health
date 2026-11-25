@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/storage/objectbox_store_provider.dart';
@@ -127,6 +128,12 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
               muscleSnapshot: e.muscleSnapshot,
               equipmentSnapshot: e.equipmentSnapshot,
               position: e.position,
+              primaryMusclesSnapshot: List.unmodifiable(
+                e.primaryMusclesSnapshot,
+              ),
+              secondaryMusclesSnapshot: List.unmodifiable(
+                e.secondaryMusclesSnapshot,
+              ),
             ),
           )
           .toList(growable: false);
@@ -209,7 +216,15 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
             previous.definitionUuid == exercise.definitionUuid &&
             previous.position == exercise.position &&
             previous.muscleSnapshot == exercise.muscleSnapshot &&
-            previous.equipmentSnapshot == exercise.equipmentSnapshot) {
+            previous.equipmentSnapshot == exercise.equipmentSnapshot &&
+            listEquals(
+              previous.primaryMusclesSnapshot,
+              exercise.primaryMusclesSnapshot,
+            ) &&
+            listEquals(
+              previous.secondaryMusclesSnapshot,
+              exercise.secondaryMusclesSnapshot,
+            )) {
           return; // Exact retransmission.
         }
         throw StateError('Conflicting exercise UUID');
@@ -240,6 +255,8 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
           muscleSnapshot: exercise.muscleSnapshot,
           equipmentSnapshot: exercise.equipmentSnapshot,
           position: exercise.position,
+          primaryMusclesSnapshot: List.of(exercise.primaryMusclesSnapshot),
+          secondaryMusclesSnapshot: List.of(exercise.secondaryMusclesSnapshot),
         ),
       );
       _touch(session);

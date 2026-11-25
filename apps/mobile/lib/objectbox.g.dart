@@ -23,7 +23,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
     id: const obx_int.IdUid(1, 1785871154773577577),
     name: 'ExerciseDefinitionEntity',
-    lastPropertyId: const obx_int.IdUid(12, 7524072561778364915),
+    lastPropertyId: const obx_int.IdUid(14, 4856351347101796860),
     flags: 0,
     properties: <obx_int.ModelProperty>[
       obx_int.ModelProperty(
@@ -97,6 +97,18 @@ final _entities = <obx_int.ModelEntity>[
         id: const obx_int.IdUid(12, 7524072561778364915),
         name: 'archivedAtMs',
         type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(13, 6449177774496968743),
+        name: 'primaryMuscles',
+        type: 30,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(14, 4856351347101796860),
+        name: 'secondaryMuscles',
+        type: 30,
         flags: 0,
       ),
     ],
@@ -178,7 +190,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
     id: const obx_int.IdUid(3, 3017320090453043651),
     name: 'WorkoutExerciseEntity',
-    lastPropertyId: const obx_int.IdUid(8, 3304870629363982816),
+    lastPropertyId: const obx_int.IdUid(10, 5074623232287720617),
     flags: 0,
     properties: <obx_int.ModelProperty>[
       obx_int.ModelProperty(
@@ -229,6 +241,18 @@ final _entities = <obx_int.ModelEntity>[
         id: const obx_int.IdUid(8, 3304870629363982816),
         name: 'position',
         type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(9, 4472426474251822796),
+        name: 'primaryMusclesSnapshot',
+        type: 30,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(10, 5074623232287720617),
+        name: 'secondaryMusclesSnapshot',
+        type: 30,
         flags: 0,
       ),
     ],
@@ -883,7 +907,17 @@ obx_int.ModelDefinition getObjectBoxModel() {
               object.movementCategory,
             );
             final inputModeOffset = fbb.writeString(object.inputMode);
-            fbb.startTable(13);
+            final primaryMusclesOffset = fbb.writeList(
+              object.primaryMuscles
+                  .map(fbb.writeString)
+                  .toList(growable: false),
+            );
+            final secondaryMusclesOffset = fbb.writeList(
+              object.secondaryMuscles
+                  .map(fbb.writeString)
+                  .toList(growable: false),
+            );
+            fbb.startTable(15);
             fbb.addInt64(0, object.id);
             fbb.addOffset(1, uuidOffset);
             fbb.addOffset(2, nameOffset);
@@ -896,6 +930,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
             fbb.addInt64(9, object.createdAtMs);
             fbb.addInt64(10, object.updatedAtMs);
             fbb.addInt64(11, object.archivedAtMs);
+            fbb.addOffset(12, primaryMusclesOffset);
+            fbb.addOffset(13, secondaryMusclesOffset);
             fbb.finish(fbb.endTable());
             return object.id;
           },
@@ -953,6 +989,14 @@ obx_int.ModelDefinition getObjectBoxModel() {
               rootOffset,
               26,
             );
+            final primaryMusclesParam = const fb.ListReader<String>(
+              fb.StringReader(asciiOptimization: true),
+              lazy: false,
+            ).vTableGet(buffer, rootOffset, 28, []);
+            final secondaryMusclesParam = const fb.ListReader<String>(
+              fb.StringReader(asciiOptimization: true),
+              lazy: false,
+            ).vTableGet(buffer, rootOffset, 30, []);
             final object = ExerciseDefinitionEntity(
               id: idParam,
               uuid: uuidParam,
@@ -966,6 +1010,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
               createdAtMs: createdAtMsParam,
               updatedAtMs: updatedAtMsParam,
               archivedAtMs: archivedAtMsParam,
+              primaryMuscles: primaryMusclesParam,
+              secondaryMuscles: secondaryMusclesParam,
             );
 
             return object;
@@ -1077,7 +1123,17 @@ obx_int.ModelDefinition getObjectBoxModel() {
         final equipmentSnapshotOffset = fbb.writeString(
           object.equipmentSnapshot,
         );
-        fbb.startTable(9);
+        final primaryMusclesSnapshotOffset = fbb.writeList(
+          object.primaryMusclesSnapshot
+              .map(fbb.writeString)
+              .toList(growable: false),
+        );
+        final secondaryMusclesSnapshotOffset = fbb.writeList(
+          object.secondaryMusclesSnapshot
+              .map(fbb.writeString)
+              .toList(growable: false),
+        );
+        fbb.startTable(11);
         fbb.addInt64(0, object.id);
         fbb.addOffset(1, uuidOffset);
         fbb.addOffset(2, sessionUuidOffset);
@@ -1086,6 +1142,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
         fbb.addOffset(5, muscleSnapshotOffset);
         fbb.addOffset(6, equipmentSnapshotOffset);
         fbb.addInt64(7, object.position);
+        fbb.addOffset(8, primaryMusclesSnapshotOffset);
+        fbb.addOffset(9, secondaryMusclesSnapshotOffset);
         fbb.finish(fbb.endTable());
         return object.id;
       },
@@ -1119,6 +1177,14 @@ obx_int.ModelDefinition getObjectBoxModel() {
           18,
           0,
         );
+        final primaryMusclesSnapshotParam = const fb.ListReader<String>(
+          fb.StringReader(asciiOptimization: true),
+          lazy: false,
+        ).vTableGet(buffer, rootOffset, 20, []);
+        final secondaryMusclesSnapshotParam = const fb.ListReader<String>(
+          fb.StringReader(asciiOptimization: true),
+          lazy: false,
+        ).vTableGet(buffer, rootOffset, 22, []);
         final object = WorkoutExerciseEntity(
           id: idParam,
           uuid: uuidParam,
@@ -1128,6 +1194,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
           muscleSnapshot: muscleSnapshotParam,
           equipmentSnapshot: equipmentSnapshotParam,
           position: positionParam,
+          primaryMusclesSnapshot: primaryMusclesSnapshotParam,
+          secondaryMusclesSnapshot: secondaryMusclesSnapshotParam,
         );
 
         return object;
@@ -1938,6 +2006,18 @@ class ExerciseDefinitionEntity_ {
       obx.QueryIntegerProperty<ExerciseDefinitionEntity>(
         _entities[0].properties[11],
       );
+
+  /// See [ExerciseDefinitionEntity.primaryMuscles].
+  static final primaryMuscles =
+      obx.QueryStringVectorProperty<ExerciseDefinitionEntity>(
+        _entities[0].properties[12],
+      );
+
+  /// See [ExerciseDefinitionEntity.secondaryMuscles].
+  static final secondaryMuscles =
+      obx.QueryStringVectorProperty<ExerciseDefinitionEntity>(
+        _entities[0].properties[13],
+      );
 }
 
 /// [PlanExerciseEntity] entity fields to define ObjectBox queries.
@@ -2035,6 +2115,18 @@ class WorkoutExerciseEntity_ {
   static final position = obx.QueryIntegerProperty<WorkoutExerciseEntity>(
     _entities[2].properties[7],
   );
+
+  /// See [WorkoutExerciseEntity.primaryMusclesSnapshot].
+  static final primaryMusclesSnapshot =
+      obx.QueryStringVectorProperty<WorkoutExerciseEntity>(
+        _entities[2].properties[8],
+      );
+
+  /// See [WorkoutExerciseEntity.secondaryMusclesSnapshot].
+  static final secondaryMusclesSnapshot =
+      obx.QueryStringVectorProperty<WorkoutExerciseEntity>(
+        _entities[2].properties[9],
+      );
 }
 
 /// [WorkoutPlanEntity] entity fields to define ObjectBox queries.

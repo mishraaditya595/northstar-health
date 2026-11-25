@@ -18,6 +18,8 @@ class ExerciseDefinitionEntity {
   int createdAtMs;
   int updatedAtMs;
   int? archivedAtMs;
+  List<String> primaryMuscles;
+  List<String> secondaryMuscles;
 
   ExerciseDefinitionEntity({
     this.id = 0,
@@ -32,6 +34,8 @@ class ExerciseDefinitionEntity {
     required this.createdAtMs,
     required this.updatedAtMs,
     this.archivedAtMs,
+    this.primaryMuscles = const [],
+    this.secondaryMuscles = const [],
   });
 }
 
@@ -135,6 +139,8 @@ class WorkoutExerciseEntity {
   String muscleSnapshot;
   String equipmentSnapshot;
   int position;
+  List<String> primaryMusclesSnapshot;
+  List<String> secondaryMusclesSnapshot;
 
   WorkoutExerciseEntity({
     this.id = 0,
@@ -145,6 +151,8 @@ class WorkoutExerciseEntity {
     this.muscleSnapshot = '',
     this.equipmentSnapshot = '',
     required this.position,
+    this.primaryMusclesSnapshot = const [],
+    this.secondaryMusclesSnapshot = const [],
   });
 }
 

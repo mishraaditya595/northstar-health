@@ -21,6 +21,14 @@ enum Muscle {
   hamstrings,
 }
 
+/// The drawn muscle for a catalogue muscle name, or null for an unknown name.
+Muscle? muscleFromName(String name) {
+  for (final muscle in Muscle.values) {
+    if (muscle.name == name) return muscle;
+  }
+  return null;
+}
+
 /// A muscle group below this load counts as recovered: not shaded or listed
 /// on Progress, not recovering on Train.
 const recoveredBelow = 0.1;
