@@ -246,6 +246,31 @@ void main() {
     expect(find.byTooltip('Stop timer for set 1'), findsOneWidget);
   });
 
+  testWidgets('skipping a set while its timer runs stops the timer', (
+    tester,
+  ) async {
+    seed();
+    await show(tester);
+    await tester.tap(find.byTooltip('Start timer for set 1'));
+    await tester.pump();
+    await advance(tester, const Duration(seconds: 1));
+    await tester.tap(find.byTooltip('Set 1 options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Skip set'));
+    await tester.pumpAndSettle();
+    await advance(tester, const Duration(seconds: 3));
+    expect(saved('set-plank').status, 'skipped');
+    final field = tester.widget<TextField>(
+      find.descendant(
+        of: find.byKey(const ValueKey('seconds-set-plank')),
+        matching: find.byType(TextField),
+      ),
+    );
+    expect(field.controller!.text, isEmpty);
+    expect(find.byTooltip('Start timer for set 1'), findsOneWidget);
+    expect(find.byTooltip('Stop timer for set 1'), findsNothing);
+  });
+
   testWidgets('a squat card in the same session is unchanged', (tester) async {
     seed(squat: true);
     await show(tester);

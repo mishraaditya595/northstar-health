@@ -684,6 +684,11 @@ class _SetEditorTileState extends State<SetEditorTile> {
           : after.kind;
       return;
     }
+    // The committed set changed under a running stopwatch: stop it so a later
+    // tick cannot write into the new state.
+    _ticker?.cancel();
+    _ticker = null;
+    _startedAt = null;
     unit = after.inputUnit == LoadUnit.unknown ? LoadUnit.kg : after.inputUnit;
     kind = after.kind == WorkoutSetKind.unknown
         ? WorkoutSetKind.working
