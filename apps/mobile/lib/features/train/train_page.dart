@@ -250,7 +250,8 @@ class TrainPage extends ConsumerWidget {
               NsListCard(
                 icon: Icons.event_repeat_outlined,
                 title: card.program.name,
-                subtitle: 'Today: ${card.todayWorkout ?? 'Rest day'}',
+                subtitle:
+                    'Today: ${card.unavailable ? 'Workout unavailable' : card.todayWorkout ?? 'Rest day'}',
                 onTap: () =>
                     _open(context, ref, '/train/program/${card.program.uuid}'),
               ),

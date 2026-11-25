@@ -42,11 +42,19 @@ final localProgramProvider = Provider.autoDispose
 
 /// What the Train card for the active program shows.
 class ActiveProgramCard {
-  const ActiveProgramCard(this.program, this.todayWorkout);
+  const ActiveProgramCard(
+    this.program,
+    this.todayWorkout, {
+    this.unavailable = false,
+  });
   final TrainingProgramRecord program;
 
-  /// Name of today's workout, or null on a rest day.
+  /// Name of today's workout, or null on a rest day or when it is
+  /// [unavailable].
   final String? todayWorkout;
+
+  /// Today's day points at a plan that is missing or archived.
+  final bool unavailable;
 }
 
 final activeProgramCardProvider = Provider.autoDispose<ActiveProgramCard?>((
@@ -69,7 +77,11 @@ final activeProgramCardProvider = Provider.autoDispose<ActiveProgramCard?>((
       name = null;
     }
   }
-  return ActiveProgramCard(active, name);
+  return ActiveProgramCard(
+    active,
+    name,
+    unavailable: planUuid != null && name == null,
+  );
 });
 
 /// Refresh every screen that shows programs or program plans.

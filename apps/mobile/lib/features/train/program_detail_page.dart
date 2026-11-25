@@ -68,6 +68,9 @@ class _ProgramDetailPageState extends ConsumerState<ProgramDetailPage> {
             templateNames: {
               for (final e in templates.entries) e.key: e.value.name,
             },
+            templateDescriptions: {
+              for (final e in templates.entries) e.key: e.value.description,
+            },
             release: snapshot.release,
             firstDayWeekday: choice.weekday,
             makeActive: choice.makeActive,

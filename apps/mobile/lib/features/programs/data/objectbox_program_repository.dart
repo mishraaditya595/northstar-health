@@ -112,6 +112,7 @@ class ObjectBoxProgramRepository implements ProgramRepository {
     required CatalogProgram program,
     required Map<String, List<TemplateRowInput>> templateRows,
     required Map<String, String> templateNames,
+    Map<String, String> templateDescriptions = const {},
     required int release,
     required int firstDayWeekday,
     required bool makeActive,
@@ -157,6 +158,7 @@ class ObjectBoxProgramRepository implements ProgramRepository {
           WorkoutPlanEntity(
             uuid: planUuids[id]!,
             name: templateNames[id]!.trim(),
+            description: _clip(templateDescriptions[id] ?? ''),
             createdAtMs: now,
             updatedAtMs: now,
             programUuid: requestUuid,
@@ -223,6 +225,17 @@ class ObjectBoxProgramRepository implements ProgramRepository {
       debugImportHook?.call('days');
       return _record(entity);
     });
+  }
+
+  /// At most 1000 characters, never splitting a surrogate pair.
+  String _clip(String text) {
+    var cut = text.length > 1000 ? 1000 : text.length;
+    if (cut < text.length &&
+        cut > 0 &&
+        (text.codeUnitAt(cut - 1) & 0xFC00) == 0xD800) {
+      cut--;
+    }
+    return text.substring(0, cut).trim();
   }
 
   void _deactivateAll(int now, {String? except}) {

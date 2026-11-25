@@ -14,6 +14,7 @@ abstract interface class ProgramRepository {
     required CatalogProgram program,
     required Map<String, List<TemplateRowInput>> templateRows,
     required Map<String, String> templateNames,
+    Map<String, String> templateDescriptions = const {},
     required int release,
     required int firstDayWeekday,
     required bool makeActive,

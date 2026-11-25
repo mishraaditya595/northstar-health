@@ -238,6 +238,9 @@ class _MyProgramPageState extends ConsumerState<MyProgramPage> {
     final theme = Theme.of(context);
     final todayIndex = programDayIndex(now, program.firstDayWeekday);
     final todayPlan = dayFor(program, now).planUuid;
+    final todayAvailable =
+        todayPlan != null &&
+        ref.read(workoutLibraryRepositoryProvider).getPlan(todayPlan) != null;
     final week = calendarWeek(program);
     return ListView(
       padding: EdgeInsets.fromLTRB(
@@ -260,9 +263,9 @@ class _MyProgramPageState extends ConsumerState<MyProgramPage> {
           children: [NsTag(program.isActive ? 'Active' : 'Not active')],
         ),
         const SizedBox(height: 16),
-        if (todayPlan == null)
+        if (todayPlan == null || !todayAvailable)
           Text(
-            'Rest day today',
+            todayPlan == null ? 'Rest day today' : 'Workout unavailable',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
             ),

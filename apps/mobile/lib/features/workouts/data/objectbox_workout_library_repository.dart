@@ -463,7 +463,8 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
       debugCopyHook?.call('exercises');
       final taken = {
         for (final plan in _plans.getAll())
-          if (plan.archivedAtMs == null) plan.name.trim().toLowerCase(),
+          if (plan.archivedAtMs == null && plan.programUuid == null)
+            plan.name.trim().toLowerCase(),
       };
       var unique = label;
       for (var n = 2; taken.contains(unique.toLowerCase()); n++) {

@@ -428,6 +428,21 @@ void main() {
       );
     });
 
+    testWidgets('a day whose plan was archived shows unavailable, no start', (
+      tester,
+    ) async {
+      final uuid = seed('prog.three');
+      final plan = store.box<WorkoutPlanEntity>().getAll().firstWhere(
+        (p) => p.name == 'Synthetic push',
+      );
+      plan.archivedAtMs = 1;
+      store.box<WorkoutPlanEntity>().put(plan);
+      await open(tester, '/train/program/$uuid', now: wednesday);
+      expect(find.text('Workout unavailable'), findsOneWidget);
+      expect(find.text("Start today's workout"), findsNothing);
+      expect(find.text('Rest day today'), findsNothing);
+    });
+
     testWidgets('a week with no training day says so', (tester) async {
       final uuid = seed('prog.three');
       final repo = ObjectBoxProgramRepository(store);
@@ -474,6 +489,20 @@ void main() {
       seed('prog.three');
       await open(tester, '/train', now: DateTime(2026, 11, 26, 10));
       expect(find.text('Today: Rest day'), findsOneWidget);
+    });
+
+    testWidgets('an archived plan today reads Workout unavailable', (
+      tester,
+    ) async {
+      seed('prog.three');
+      final plan = store.box<WorkoutPlanEntity>().getAll().firstWhere(
+        (p) => p.name == 'Synthetic push',
+      );
+      plan.archivedAtMs = 1;
+      store.box<WorkoutPlanEntity>().put(plan);
+      await open(tester, '/train', now: DateTime(2026, 11, 25, 10));
+      expect(find.text('Today: Workout unavailable'), findsOneWidget);
+      expect(find.text('Today: Rest day'), findsNothing);
     });
 
     testWidgets('an inactive program has no card', (tester) async {
