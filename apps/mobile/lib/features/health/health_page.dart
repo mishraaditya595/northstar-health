@@ -14,6 +14,7 @@ import 'widgets/health_actions_mixin.dart';
 import 'widgets/health_card_frame.dart';
 import 'widgets/health_connect_card.dart';
 import 'widgets/heart_card.dart';
+import 'widgets/readiness_card.dart';
 import 'widgets/sleep_card.dart';
 
 const _iosHint =
@@ -212,7 +213,15 @@ class _HealthPageState extends ConsumerState<HealthPage>
         ),
         const SizedBox(height: 14),
       ],
-      if (overview != null || !async.hasError)
+      if (overview != null || !async.hasError) ...[
+        ReadinessCard(
+          overview: overview,
+          onTap: overview == null
+              ? null
+              : tapFor(overview.readiness, '/health/readiness'),
+          onAllowMore: allowMore,
+        ),
+        const SizedBox(height: 10),
         LayoutBuilder(
           builder: (context, box) {
             final wide = box.maxWidth >= 560;
@@ -239,6 +248,7 @@ class _HealthPageState extends ConsumerState<HealthPage>
             );
           },
         ),
+      ],
       if (state.platform == HealthPlatformKind.appleHealth &&
           hasGap(MetricGap.noData)) ...[
         const SizedBox(height: 12),

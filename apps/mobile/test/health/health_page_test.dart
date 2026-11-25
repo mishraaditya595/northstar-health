@@ -235,7 +235,9 @@ void main() {
     final c = FakeHealthSummaryController(mixed);
     final o = FakeHealthOverviewController(overview());
     await pumpPage(tester, c, overviewController: o);
-    await tester.fling(find.byType(ListView), const Offset(0, 400), 1000);
+    // Past the 400 px pull threshold even when the drag starts on a
+    // tappable card, whose tap recogniser takes the drag slop.
+    await tester.fling(find.byType(ListView), const Offset(0, 500), 1000);
     await tester.pumpAndSettle();
     expect(c.refreshCalls, 1);
     expect(o.refreshCalls, 1);
@@ -247,7 +249,9 @@ void main() {
     final c = FakeHealthSummaryController(mixed);
     final o = _FailingRefresh(overview());
     await pumpPage(tester, c, overviewController: o);
-    await tester.fling(find.byType(ListView), const Offset(0, 400), 1000);
+    // Past the 400 px pull threshold even when the drag starts on a
+    // tappable card, whose tap recogniser takes the drag slop.
+    await tester.fling(find.byType(ListView), const Offset(0, 500), 1000);
     await tester.pumpAndSettle();
     expect(o.refreshCalls, 1);
     expect(c.refreshCalls, 1);

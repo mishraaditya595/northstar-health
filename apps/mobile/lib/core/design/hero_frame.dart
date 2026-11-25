@@ -19,6 +19,7 @@ class NsHeroFrame extends StatelessWidget {
     this.actions = const [],
     this.leading,
     this.child,
+    this.loadingLabel = 'Loading your plans',
   });
 
   final String eyebrow;
@@ -35,6 +36,9 @@ class NsHeroFrame extends StatelessWidget {
 
   /// Under the subtitle and above the actions, for example chips.
   final Widget? child;
+
+  /// Screen reader label of the loading spinner.
+  final String loadingLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +130,7 @@ class NsHeroFrame extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 24),
                       child: Center(
                         child: Semantics(
-                          label: 'Loading your plans',
+                          label: loadingLabel,
                           child: const CircularProgressIndicator(),
                         ),
                       ),
