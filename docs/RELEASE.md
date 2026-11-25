@@ -123,7 +123,7 @@ Timed sets are implemented in source, **not deployed, released or device-verifie
 | Deploy order: the `supabase-database` job has applied `20261126020000_workout_set_duration.sql` to the project under test **before** this build is uploaded | not run | not run |
 | Update every TestFlight and Android install to this build: an older build rejects the new set field when restoring | not run | not run |
 | Log a plank with the timer: Start, wait, Stop, record; the set shows seconds, there is no reps field, and the workout uploads | not run | not run |
-| Background the app with a timer running, return after a minute: the stopwatch shows the real elapsed time | not run | not run |
+| Background the app with a timer running, return after a minute: the stopwatch shows the real elapsed time. Force-quit the app with a timer running: the running timer is lost by design (it is a draft, never saved) and the seconds can be typed and recorded | not run | not run |
 | Restore a timed workout on a second device: sign in as the same account, the plank set shows its seconds in history | not run | not run |
 | Plan a plank at 45 s: the row reads "3 sets · 45 s" and a workout started from the plan logs seconds | not run | not run |
 | A rep workout logged before this build still uploads, restores and counts as before | not run | not run |
