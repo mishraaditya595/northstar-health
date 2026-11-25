@@ -199,6 +199,7 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
           position: row.position,
           primaryMusclesSnapshot: List.of(definition.primaryMuscles),
           secondaryMusclesSnapshot: List.of(definition.secondaryMuscles),
+          restSeconds: row.restSeconds,
         ),
       );
       for (var position = 0; position < row.targetSets; position++) {
@@ -280,6 +281,7 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
             exerciseUuid: row.exerciseUuid,
             position: row.position,
             targetSets: row.targetSets,
+            restSeconds: row.restSeconds,
           ),
           definition,
         ));

@@ -154,7 +154,7 @@
     },
     {
       "id": "3:3017320090453043651",
-      "lastPropertyId": "10:5074623232287720617",
+      "lastPropertyId": "11:8925399544056309755",
       "name": "WorkoutExerciseEntity",
       "properties": [
         {
@@ -211,6 +211,11 @@
           "id": "10:5074623232287720617",
           "name": "secondaryMusclesSnapshot",
           "type": 30
+        },
+        {
+          "id": "11:8925399544056309755",
+          "name": "restSeconds",
+          "type": 6
         }
       ],
       "relations": []

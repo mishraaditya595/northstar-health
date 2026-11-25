@@ -128,3 +128,7 @@ repository's pinned CI version.
 Offline creation, mid-session crash recovery, atomic set + outbox write, schema rename/type migration, duplicate operation replay, account switch with unsynced edits, cache expiry and permission revocation, cloud restore without custom plans, export receipt crash recovery, entry-level device profiling. Separate watch storage must be native/verified; do **not** assume mobile ObjectBox works in FlutterWatch.
 
 References: https://docs.objectbox.io/advanced/data-model-updates and https://docs.objectbox.io/advanced/meta-model-ids-and-uids
+
+## Session exercise planned rest
+
+`WorkoutExerciseEntity.restSeconds` (nullable, additive, existing UIDs kept) holds the rest planned by the plan or template row the exercise came from. The logger's rest chip starts there (null means 90 s, 0 means off). It is local only: never in the sync outbox payload, cloud snapshot, export or restore. Old databases read it as null (`test/workouts/objectbox_exercise_rest_migration_test.dart`, frozen `objectbox_pre_exercise_rest.g.dart`).

@@ -144,6 +144,10 @@ class WorkoutExerciseEntity {
   List<String> primaryMusclesSnapshot;
   List<String> secondaryMusclesSnapshot;
 
+  /// Planned rest copied from the plan or template row. Local only: never
+  /// part of the cloud payload, export or restore.
+  int? restSeconds;
+
   WorkoutExerciseEntity({
     this.id = 0,
     required this.uuid,
@@ -155,6 +159,7 @@ class WorkoutExerciseEntity {
     required this.position,
     this.primaryMusclesSnapshot = const [],
     this.secondaryMusclesSnapshot = const [],
+    this.restSeconds,
   });
 }
 

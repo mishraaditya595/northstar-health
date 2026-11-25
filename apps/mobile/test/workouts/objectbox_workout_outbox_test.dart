@@ -7,9 +7,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:beyondrep/core/ids/uuid_factory.dart';
 import 'package:beyondrep/core/units/load_units.dart';
 import 'package:beyondrep/features/workouts/data/objectbox_live_workout_engine.dart';
+import 'package:beyondrep/features/workouts/data/objectbox_workout_library_repository.dart';
 import 'package:beyondrep/features/workouts/data/objectbox_workout_outbox.dart';
 import 'package:beyondrep/features/workouts/data/objectbox_workout_repository.dart';
 import 'package:beyondrep/features/workouts/data/workout_entities.dart';
+import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
 import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 import 'package:beyondrep/objectbox.g.dart';
 
@@ -121,6 +123,62 @@ void main() {
         (exercises.single as Map<String, dynamic>)['sets'] as List<dynamic>;
     expect((sets.single as Map<String, dynamic>)['load_grams'], 60000);
     expect(op.payloadJson, isNot(contains('restDeadline')));
+  });
+
+  test('planned rest is local only and never in the cloud payload', () {
+    ObjectBoxWorkoutLibraryRepository(store).ensureCatalogSeeded();
+    final active = engine.startTemplateWorkout(
+      sessionUuid: workoutId,
+      name: 'Template day',
+      rows: const [
+        PlanExerciseRecord(
+          uuid: 'row-1',
+          exerciseUuid: 'builtin.v1.squat',
+          position: 0,
+          targetSets: 1,
+          targetRepsMin: 5,
+          targetRepsMax: 5,
+          restSeconds: 75,
+        ),
+      ],
+      startedAtUtc: DateTime.utc(2026, 10, 25, 9),
+      originalOffsetMinutes: 330,
+    );
+    expect(active.exercises.single.restSeconds, 75);
+    final set = active.sets.first;
+    repository.saveSet(
+      sessionUuid: active.uuid,
+      expectedRevision: active.revision,
+      set: WorkoutSetRecord(
+        uuid: set.uuid,
+        exerciseUuid: set.exerciseUuid,
+        position: 0,
+        kind: WorkoutSetKind.working,
+        status: WorkoutSetStatus.completed,
+        reps: 5,
+        loadGrams: 100000,
+        inputUnit: LoadUnit.kg,
+        completedAtUtc: DateTime.utc(2026, 10, 25, 9, 15),
+      ),
+    );
+    final latest = repository.getSession(workoutId)!;
+    engine.finishWorkout(
+      workoutId,
+      expectedRevision: latest.revision,
+      finishedAtUtc: DateTime.utc(2026, 10, 25, 10),
+    );
+    final dto =
+        jsonDecode(outbox.pending().single.payloadJson) as Map<String, dynamic>;
+    final exercise =
+        (dto['exercises'] as List<dynamic>).single as Map<String, dynamic>;
+    expect(
+      exercise.keys.where((k) => k.toLowerCase().contains('rest')),
+      isEmpty,
+    );
+    expect(
+      outbox.pending().single.payloadJson.toLowerCase(),
+      isNot(contains('rest')),
+    );
   });
 
   group('muscle snapshots in the cloud payload', () {

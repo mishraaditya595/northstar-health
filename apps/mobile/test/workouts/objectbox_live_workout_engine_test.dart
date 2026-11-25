@@ -922,6 +922,65 @@ void main() {
     expect(sessions.getSession(session.uuid)!.status, WorkoutStatus.inProgress);
   });
 
+  group('planned rest on session exercises', () {
+    test('a plan start copies each row rest, null stays null', () {
+      makePlan();
+      final workout = engine.startWorkout(
+        sessionUuid: 'session-rest',
+        planUuid: 'plan-a',
+        startedAtUtc: started,
+        originalOffsetMinutes: 0,
+      );
+      expect(workout.exercises.map((e) => e.restSeconds), [90, null]);
+    });
+
+    test('a template start copies the rows rest, including zero', () {
+      final workout = engine.startTemplateWorkout(
+        sessionUuid: 'tpl-rest',
+        name: 'Template',
+        rows: const [
+          PlanExerciseRecord(
+            uuid: 'r1',
+            exerciseUuid: 'builtin.v1.bench-press',
+            position: 0,
+            targetSets: 1,
+            targetRepsMin: 5,
+            targetRepsMax: 5,
+            restSeconds: 150,
+          ),
+          PlanExerciseRecord(
+            uuid: 'r2',
+            exerciseUuid: 'builtin.v1.plank',
+            position: 1,
+            targetSets: 1,
+            targetDurationSeconds: 30,
+            restSeconds: 0,
+          ),
+        ],
+        startedAtUtc: started,
+        originalOffsetMinutes: 0,
+      );
+      expect(workout.exercises.map((e) => e.restSeconds), [150, 0]);
+    });
+
+    test('quick workouts and added exercises have no planned rest', () {
+      final quick = startQuick();
+      sessions.addExercise(
+        const WorkoutExerciseRecord(
+          uuid: 'added',
+          sessionUuid: 'quick-1',
+          nameSnapshot: 'Squat',
+          position: 0,
+        ),
+      );
+      expect(quick.exercises, isEmpty);
+      expect(
+        sessions.getSession('quick-1')!.exercises.single.restSeconds,
+        isNull,
+      );
+    });
+  });
+
   group('startTemplateWorkout', () {
     List<PlanExerciseRecord> rows() => const [
       PlanExerciseRecord(
