@@ -446,6 +446,21 @@ void main() {
       expect(n.inBed, const Duration(hours: 8));
     });
 
+    test('a session with only awake stages is not turned into sleep', () {
+      final session = seg(bed, wake, SleepStage.inBed, sourceKey: 'app');
+      final out = sessionsWithoutStagesAsSleep([
+        seg(
+          DateTime(2026, 11, 24, 2),
+          DateTime(2026, 11, 24, 3),
+          SleepStage.awake,
+          sourceKey: 'app',
+        ),
+        session,
+      ]);
+      expect(out.last, session);
+      expect(buildNights(out), isEmpty);
+    });
+
     test('stages from another source do not count', () {
       final out = sessionsWithoutStagesAsSleep([
         ...stagedNight(sourceKey: 'ring'),

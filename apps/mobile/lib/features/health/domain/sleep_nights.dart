@@ -137,14 +137,15 @@ bool _isMainSleepCandidate(_Session s) {
 
 /// Health Connect sources may write a sleep session without stages, which
 /// reads as an in-bed segment only. Each in-bed segment that overlaps no
-/// asleep stage from the same [SleepSegment.sourceKey] becomes unspecified
-/// sleep over the session (no stages, so no score). Other segments pass
-/// through unchanged.
+/// stage at all (asleep or awake) from the same [SleepSegment.sourceKey]
+/// becomes unspecified sleep over the session (no stages, so no score). A
+/// session with only awake stages is never turned into sleep. Other
+/// segments pass through unchanged.
 List<SleepSegment> sessionsWithoutStagesAsSleep(List<SleepSegment> segments) {
   bool hasStages(SleepSegment session) => segments.any(
     (s) =>
         s.sourceKey == session.sourceKey &&
-        _asleepStages.contains(s.stage) &&
+        s.stage != SleepStage.inBed &&
         s.from.isBefore(session.to) &&
         s.to.isAfter(session.from),
   );
