@@ -8,8 +8,10 @@ import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/features/account/account_auth_controller.dart';
 import 'package:beyondrep/features/account/account_auth_provider.dart';
+import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
+import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
 import 'package:beyondrep/features/progress/workout_history_state.dart';
 import 'package:beyondrep/features/today/today_page.dart';
@@ -20,7 +22,9 @@ import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
 import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 
 import '../support/fake_account_auth.dart';
+import '../support/fake_health_overview.dart';
 import '../support/fake_health_summary.dart';
+import '../support/health_overview_fixtures.dart';
 
 // Tuesday 24 Nov 2026, 23:02 local.
 final _now = DateTime(2026, 11, 24, 23, 2);
@@ -77,6 +81,7 @@ void main() {
     Future<List<WorkoutSessionRecord>>? sessions,
     AsyncValue<ActiveWorkoutView?> unfinished = const AsyncData(null),
     bool settle = true,
+    HealthOverview? health,
   }) async {
     actions = _FakeActions();
     tester.view.physicalSize = const Size(390, 1600);
@@ -134,13 +139,22 @@ void main() {
           ),
           fakeHealthSummary(
             FakeHealthSummaryController(
-              const HealthNotConnected(
-                availability: HealthAvailability.available,
-                platform: HealthPlatformKind.appleHealth,
-              ),
+              health == null
+                  ? const HealthNotConnected(
+                      availability: HealthAvailability.available,
+                      platform: HealthPlatformKind.appleHealth,
+                    )
+                  : HealthConnected(
+                      readAt: _now,
+                      platform: HealthPlatformKind.appleHealth,
+                    ),
             ),
           ),
           accountAuthControllerProvider.overrideWithValue(auth),
+          if (health != null) ...[
+            fakeHealthOverview(FakeHealthOverviewController(health)),
+            healthOwnerIdProvider.overrideWith((ref) => 'synthetic-owner'),
+          ],
         ],
         child: MaterialApp.router(
           theme: BeyondRepTheme.build(Brightness.dark),
@@ -183,6 +197,49 @@ void main() {
     await tester.pumpAndSettle();
     expect(actions.started, ['a']);
     expect(pushed, ['/train/workout']);
+  });
+
+  testWidgets('a Low readiness day asks before starting; Not now starts '
+      'nothing', (tester) async {
+    await show(
+      tester,
+      plans: Future.value([_plan('a', 'Push day', 2)]),
+      health: overview(
+        readiness: SectionData(
+          ReadinessOverview(
+            result: ReadinessReady(
+              Readiness(
+                value: 48,
+                band: readinessBandOf(48),
+                parts: const [
+                  ReadinessPart(
+                    input: ReadinessInput.sleep,
+                    score: 48,
+                    weight: 1,
+                  ),
+                ],
+              ),
+            ),
+            hasHrv: false,
+            hasRestingHr: false,
+            hasSleep: true,
+            hrvVsNormal: null,
+            restingHrVsNormal: null,
+            hrvBaseline: null,
+            restingHrBaseline: null,
+            hrvIsSdnn: true,
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Start workout'));
+    await tester.pumpAndSettle();
+    expect(find.text('Recovery is low today'), findsWidgets);
+    expect(find.text('Not now'), findsOneWidget);
+    await tester.tap(find.text('Not now'));
+    await tester.pumpAndSettle();
+    expect(actions.started, isEmpty);
+    expect(pushed, isEmpty);
   });
 
   testWidgets('an unfinished workout is offered for resume first', (

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/design/page_header.dart';
 import '../../../core/design/stats.dart';
 import '../application/health_overview.dart';
 import '../application/health_summary_controller.dart';
+import '../domain/readiness.dart';
 import '../health_format.dart';
 import 'health_actions_mixin.dart';
 import 'health_connect_card.dart';
+import 'readiness_card.dart';
 
 typedef _Tile = ({
   String label,
@@ -15,6 +18,7 @@ typedef _Tile = ({
   String? unit,
   String caption,
   MetricGap? gap,
+  String? route,
 });
 
 _Tile _gapTile(String label, MetricGap gap, String noData) => (
@@ -29,6 +33,7 @@ _Tile _gapTile(String label, MetricGap gap, String noData) => (
     MetricGap.unsupported => 'Not available on this device',
   },
   gap: gap,
+  route: null,
 );
 
 const _noSleep = 'No sleep recorded last night';
@@ -48,6 +53,7 @@ _Tile _sleep(HealthOverview o) => switch (o.sleep) {
                 '${value.lastNight.source} · ended '
                 '${formatClockTime(value.lastNight.end)}',
             gap: null,
+            route: null,
           )
         : _gapTile('Sleep', MetricGap.noData, _noSleep),
 };
@@ -62,6 +68,7 @@ _Tile _steps(HealthOverview o) => switch (o.activity) {
         '${healthPlatformName(o.platform)} · as of '
         '${formatClockTime(o.readAt)}',
     gap: null,
+    route: null,
   ),
   SectionData(value: ActivityOverview(stepsGap: final gap?)) => _gapTile(
     'Steps',
@@ -81,6 +88,7 @@ _Tile _restingHr(HealthOverview o) => switch (o.heart) {
         ? 'Today'
         : formatHealthDate(hr.day),
     gap: null,
+    route: null,
   ),
   SectionData(value: HeartOverview(restingHrGap: final gap?)) => _gapTile(
     'Resting HR',
@@ -88,6 +96,22 @@ _Tile _restingHr(HealthOverview o) => switch (o.heart) {
     _noRestingHr,
   ),
   SectionData() => _gapTile('Resting HR', MetricGap.noData, _noRestingHr),
+};
+
+/// Only a ready readiness earns a slot; any other state keeps stage 1's row.
+_Tile? _readiness(HealthOverview o) => switch (o.readiness) {
+  SectionData(
+    value: ReadinessOverview(result: ReadinessReady(:final readiness)),
+  ) =>
+    (
+      label: 'Readiness',
+      value: '${readiness.value}',
+      unit: null,
+      caption: readinessBandWords(readiness.band),
+      gap: null,
+      route: '/health/readiness',
+    ),
+  _ => null,
 };
 
 /// Today tab "Recent health": a Connect card, or sleep, steps and resting HR
@@ -149,7 +173,13 @@ class _TodayHealthRowState extends ConsumerState<TodayHealthRow>
       }
       return const _Loading();
     }
-    final tiles = [_sleep(overview), _steps(overview), _restingHr(overview)];
+    final readiness = _readiness(overview);
+    final tiles = [
+      ?readiness,
+      _sleep(overview),
+      _steps(overview),
+      if (readiness == null) _restingHr(overview),
+    ];
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -162,7 +192,9 @@ class _TodayHealthRowState extends ConsumerState<TodayHealthRow>
                 value: t.value ?? '—',
                 unit: t.value == null ? null : t.unit,
                 caption: t.caption,
-                onTap: _actionFor(t.gap, busy),
+                onTap: t.route != null
+                    ? () => context.push(t.route!)
+                    : _actionFor(t.gap, busy),
               ),
             ),
           ],
