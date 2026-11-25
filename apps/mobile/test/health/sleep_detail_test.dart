@@ -119,6 +119,7 @@ HealthOverview _overview(
     heart: SectionData(fullHeart),
     activity: SectionData(fullActivity),
     body: SectionData(fullBody),
+    readiness: const SectionGap(MetricGap.noData),
   );
 }
 

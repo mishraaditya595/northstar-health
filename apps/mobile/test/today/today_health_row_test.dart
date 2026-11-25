@@ -1,11 +1,14 @@
+import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
+import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/features/health/widgets/today_health_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import '../support/fake_health_overview.dart';
 import '../support/fake_health_reader.dart';
@@ -20,7 +23,26 @@ Future<void> pumpRow(
   double textScale = 1,
   FakeHealthReader? reader,
   FakeHealthOverviewController? overviewController,
+  List<String>? pushed,
 }) async {
+  final router = GoRouter(
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (_, _) => const Scaffold(
+          body: SingleChildScrollView(child: TodayHealthRow()),
+        ),
+      ),
+      GoRoute(
+        path: '/health/readiness',
+        builder: (_, state) {
+          pushed?.add(state.uri.path);
+          return const Scaffold(body: Text('Readiness route'));
+        },
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -34,16 +56,15 @@ Future<void> pumpRow(
         ),
         healthReaderProvider.overrideWithValue(reader ?? FakeHealthReader()),
         healthClockProvider.overrideWithValue(() => now),
+        localNowProvider.overrideWithValue(now),
       ],
-      child: MaterialApp(
+      child: MaterialApp.router(
+        routerConfig: router,
         theme: BeyondRepTheme.build(Brightness.dark),
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context)
               .copyWith(textScaler: TextScaler.linear(textScale)),
           child: child!,
-        ),
-        home: const Scaffold(
-          body: SingleChildScrollView(child: TodayHealthRow()),
         ),
       ),
     ),
@@ -53,6 +74,28 @@ Future<void> pumpRow(
 
 HealthConnected connectedAt(DateTime at) =>
     HealthConnected(readAt: at, platform: HealthPlatformKind.appleHealth);
+
+Section<ReadinessOverview> _ready(int value) => SectionData(
+  ReadinessOverview(
+    result: ReadinessReady(
+      Readiness(
+        value: value,
+        band: readinessBandOf(value),
+        parts: const [
+          ReadinessPart(input: ReadinessInput.sleep, score: 50, weight: 1),
+        ],
+      ),
+    ),
+    hasHrv: false,
+    hasRestingHr: false,
+    hasSleep: true,
+    hrvVsNormal: null,
+    restingHrVsNormal: null,
+    hrvBaseline: null,
+    restingHrBaseline: null,
+    hrvIsSdnn: true,
+  ),
+);
 
 void main() {
   testWidgets('a stale reading is re-read when the row is shown', (
@@ -243,5 +286,80 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpAndSettle();
     expect(c.buildCalls, before + 1);
+  });
+
+  testWidgets('a ready readiness leads the row and replaces resting HR', (
+    tester,
+  ) async {
+    final pushed = <String>[];
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      textScale: 2,
+      pushed: pushed,
+      overviewController: FakeHealthOverviewController(
+        overview(readiness: _ready(82)),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    expect(find.text('Readiness'), findsOneWidget);
+    expect(find.text('82'), findsOneWidget);
+    expect(find.text('Good to train'), findsOneWidget);
+    expect(find.text('Sleep'), findsOneWidget);
+    expect(find.text('Steps'), findsOneWidget);
+    expect(find.text('Resting HR'), findsNothing);
+    double x(String t) => tester.getTopLeft(find.text(t)).dx;
+    expect(x('Readiness') < x('Sleep') && x('Sleep') < x('Steps'), isTrue);
+
+    await tester.tap(find.text('82'));
+    await tester.pumpAndSettle();
+    expect(pushed, ['/health/readiness']);
+  });
+
+  testWidgets('a readiness read yesterday keeps the stage-1 slots', (
+    tester,
+  ) async {
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      overviewController: FakeHealthOverviewController(
+        overview(readiness: _ready(82), readAt: DateTime(2026, 11, 23, 22)),
+      ),
+    );
+    expect(find.text('Readiness'), findsNothing);
+    expect(find.text('Resting HR'), findsOneWidget);
+  });
+
+  testWidgets('a gap or not-ready readiness keeps sleep, steps, resting HR', (
+    tester,
+  ) async {
+    for (final r in <Section<ReadinessOverview>>[
+      const SectionGap(MetricGap.noData),
+      const SectionData(
+        ReadinessOverview(
+          result: ReadinessNotReady(noSleep: true),
+          hasHrv: false,
+          hasRestingHr: false,
+          hasSleep: false,
+          hrvVsNormal: null,
+          restingHrVsNormal: null,
+          hrvBaseline: null,
+          restingHrBaseline: null,
+          hrvIsSdnn: true,
+        ),
+      ),
+    ]) {
+      await pumpRow(
+        tester,
+        FakeHealthSummaryController(connectedAt(now)),
+        overviewController: FakeHealthOverviewController(
+          overview(readiness: r),
+        ),
+      );
+      expect(find.text('Readiness'), findsNothing);
+      expect(find.text('Sleep'), findsOneWidget);
+      expect(find.text('Steps'), findsOneWidget);
+      expect(find.text('Resting HR'), findsOneWidget);
+    }
   });
 }

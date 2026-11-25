@@ -97,9 +97,11 @@ HealthOverview overview({
   Section<HeartOverview>? heart,
   Section<ActivityOverview>? activity,
   Section<BodyOverview>? body,
+  Section<ReadinessOverview>? readiness,
+  DateTime? readAt,
 }) => HealthOverview(
   ownerId: ownerId,
-  readAt: overviewReadAt,
+  readAt: readAt ?? overviewReadAt,
   platform: platform,
   readableFrom: null,
   needsMoreAccess: needsMoreAccess,
@@ -107,6 +109,7 @@ HealthOverview overview({
   heart: heart ?? SectionData(fullHeart),
   activity: activity ?? SectionData(fullActivity),
   body: body ?? SectionData(fullBody),
+  readiness: readiness ?? const SectionGap(MetricGap.noData),
 );
 
 /// iPhone without a wearable: no sleep or heart data, steps and a manual

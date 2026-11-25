@@ -9,6 +9,7 @@ import '../../core/design/dialogs.dart';
 import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
+import '../health/widgets/readiness_note.dart';
 import '../progress/domain/progress_overview.dart';
 import '../workouts/domain/workout_library_models.dart';
 import 'active_workout_state.dart';
@@ -52,33 +53,55 @@ class TrainPage extends ConsumerWidget {
       showNsMessage(context, 'Enter a workout name first.');
       return;
     }
-    _start(
+    await _start(
       context,
       ref,
       () => ref.read(workoutActionsProvider).startQuick(chosen),
     );
   }
 
-  void _startPlan(BuildContext context, WidgetRef ref, String uuid) {
-    _start(
+  Future<void> _startPlan(
+    BuildContext context,
+    WidgetRef ref,
+    String uuid,
+  ) async {
+    await _start(
       context,
       ref,
       () => ref.read(workoutActionsProvider).startPlan(uuid),
     );
   }
 
-  void _start(BuildContext context, WidgetRef ref, void Function() action) {
+  Future<void> _start(
+    BuildContext context,
+    WidgetRef ref,
+    void Function() action,
+  ) async {
+    // The start would fail while a workout is unfinished or unrecoverable:
+    // say so before the readiness note, which only shows once a day.
+    final active = ref.read(activeWorkoutProvider);
+    if (active.value != null || active.hasError) {
+      _showStartFailed(context, ref);
+      return;
+    }
+    if (!await confirmReadinessBeforeStart(context, ref) || !context.mounted) {
+      return;
+    }
     try {
       action();
       ref.invalidate(activeWorkoutProvider);
       context.push('/train/workout');
     } catch (_) {
-      showNsMessage(
-        context,
-        'Could not start this workout. Check the plan and any unfinished workout.',
-      );
-      ref.invalidate(activeWorkoutProvider);
+      _showStartFailed(context, ref);
     }
+  }
+
+  void _showStartFailed(BuildContext context, WidgetRef ref) {
+    showNsMessage(
+      context,
+      'Could not start this workout. Check the plan and any unfinished workout.',
+    );
+    ref.invalidate(activeWorkoutProvider);
   }
 
   @override
@@ -133,6 +156,7 @@ class TrainPage extends ConsumerWidget {
             const SizedBox(height: 18),
             _WeekStrip(today: DateTime.utc(now.year, now.month, now.day)),
             const SizedBox(height: 27),
+            const ReadinessNote(),
             const SectionHeading('Start training'),
             Card(
               margin: EdgeInsets.zero,

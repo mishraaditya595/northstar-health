@@ -6,6 +6,7 @@ import 'package:beyondrep/features/health/application/health_summary_controller.
 import 'package:beyondrep/features/health/data/health_connection_repository.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/health/domain/health_types.dart';
+import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/objectbox.g.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -503,6 +504,248 @@ void main() {
     expect(b.ownerId, _ownerB);
   });
 
+  /// 20 prior days of HRV and resting HR plus today's values, on top of
+  /// [syntheticWeek]'s nights.
+  void readinessWeek() {
+    syntheticWeek();
+    fake.series[HealthSeriesType.restingHeartRate] = [
+      for (var i = -20; i < 0; i++)
+        _sample(
+          _day(i).add(const Duration(hours: 8)),
+          58 + (i.isEven ? 1 : -1),
+        ),
+      _sample(DateTime(2026, 11, 24, 7), 54),
+    ];
+    fake.series[HealthSeriesType.hrv] = [
+      for (var i = -20; i < 0; i++)
+        _sample(
+          _day(i).add(const Duration(hours: 14)),
+          40 + (i.isEven ? 2 : -2),
+        ),
+      _sample(DateTime(2026, 11, 24, 2), 50),
+    ];
+  }
+
+  group('readiness', () {
+    test('scores from the overview inputs like the domain does', () async {
+      readinessWeek();
+      final c = container();
+      final o = (await c.read(healthOverviewProvider.future))!;
+      final sleep = (o.sleep as SectionData<SleepOverview>).value;
+      final heart = (o.heart as SectionData<HeartOverview>).value;
+      final r = (o.readiness as SectionData<ReadinessOverview>).value;
+
+      final expected = scoreReadiness(
+        today: _day(0),
+        lastNight: sleep.lastNight,
+        sleepScore: sleep.score,
+        priorNights: sleep.nights.sublist(0, sleep.nights.length - 1),
+        hrvDaily: heart.hrvDaily,
+        restingHrDaily: heart.restingHrDaily,
+      );
+      expect(expected, isA<ReadinessReady>());
+      expect(
+        (r.result as ReadinessReady).readiness.value,
+        (expected as ReadinessReady).readiness.value,
+      );
+      expect(r.hasHrv && r.hasRestingHr && r.hasSleep, true);
+      expect(r.hrvIsSdnn, true);
+      expect(r.hrvBaseline!.days, 20);
+      expect(r.restingHrBaseline!.mean, closeTo(58, 0.01));
+      expect(r.hrvVsNormal!.delta, closeTo(10, 0.01));
+      expect(r.restingHrVsNormal!.delta, closeTo(-4, 0.01));
+    });
+
+    test('a phone-only person gets NotReady with nothing present', () async {
+      fake.totals[HealthTotalType.steps] = [
+        (
+          from: DateTime(2026, 11, 24, 7),
+          to: DateTime(2026, 11, 24, 7, 42),
+          value: 900,
+          source: 'Synthetic phone',
+        ),
+      ];
+      final c = container();
+      final o = (await c.read(healthOverviewProvider.future))!;
+      // Both sections gap for the same reason: readiness is that gap.
+      expect((o.readiness as SectionGap).gap, MetricGap.noData);
+    });
+
+    test('a heart gap still yields NotReady naming what is missing', () async {
+      syntheticWeek();
+      fake.seriesResults[HealthSeriesType.restingHeartRate] =
+          const SeriesNotAllowed();
+      fake.seriesResults[HealthSeriesType.hrv] = const SeriesNotAllowed();
+      fake.seriesResults[HealthSeriesType.vo2Max] = const SeriesNotAllowed();
+      final c = container();
+      final o = (await c.read(healthOverviewProvider.future))!;
+      expect((o.heart as SectionGap).gap, MetricGap.notAllowed);
+      final r = (o.readiness as SectionData<ReadinessOverview>).value;
+      final result = r.result as ReadinessNotReady;
+      expect(result.noHrvOrRhrToday, true);
+      expect(result.noSleep, false);
+      expect(r.hasHrv || r.hasRestingHr, false);
+      expect(r.hasSleep, true);
+      expect(r.hrvVsNormal, isNull);
+      expect(r.restingHrVsNormal, isNull);
+    });
+
+    test('a sleep gap with heart data is NotReady with noSleep', () async {
+      readinessWeek();
+      fake.sleep = [];
+      final c = container();
+      final o = (await c.read(healthOverviewProvider.future))!;
+      expect(o.sleep, isA<SectionGap<SleepOverview>>());
+      final r = (o.readiness as SectionData<ReadinessOverview>).value;
+      expect((r.result as ReadinessNotReady).noSleep, true);
+      expect(r.hasSleep, false);
+      expect(r.hasHrv && r.hasRestingHr, true);
+    });
+
+    test('denied sleep with heart data makes readiness Not allowed', () async {
+      readinessWeek();
+      fake.sleepResult = const SeriesNotAllowed();
+      final c = container();
+      final o = (await c.read(healthOverviewProvider.future))!;
+      expect((o.sleep as SectionGap).gap, MetricGap.notAllowed);
+      expect((o.readiness as SectionGap).gap, MetricGap.notAllowed);
+    });
+
+    test('a failed sleep read makes readiness a failed gap', () async {
+      readinessWeek();
+      fake.throwOnSleep = true;
+      final c = container();
+      final o = (await c.read(healthOverviewProvider.future))!;
+      expect((o.readiness as SectionGap).gap, MetricGap.failed);
+    });
+
+    test(
+      'failed resting HR and HRV reads make readiness a failed gap',
+      () async {
+        readinessWeek();
+        fake.throwOnSeries = {
+          HealthSeriesType.restingHeartRate,
+          HealthSeriesType.hrv,
+        };
+        final c = container();
+        final o = (await c.read(healthOverviewProvider.future))!;
+        expect((o.readiness as SectionGap).gap, MetricGap.failed);
+      },
+    );
+
+    test('one failed heart input still scores from the other', () async {
+      readinessWeek();
+      fake.throwOnSeries = {HealthSeriesType.hrv};
+      final c = container();
+      final o = (await c.read(healthOverviewProvider.future))!;
+      expect(o.readiness, isA<SectionData<ReadinessOverview>>());
+    });
+
+    test('two gaps with different reasons stay NotReady data', () async {
+      fake.seriesResults[HealthSeriesType.restingHeartRate] =
+          const SeriesNotAllowed();
+      fake.seriesResults[HealthSeriesType.hrv] = const SeriesNotAllowed();
+      fake.seriesResults[HealthSeriesType.vo2Max] = const SeriesNotAllowed();
+      final c = container();
+      final o = (await c.read(healthOverviewProvider.future))!;
+      expect((o.sleep as SectionGap).gap, MetricGap.noData);
+      expect((o.heart as SectionGap).gap, MetricGap.notAllowed);
+      expect(o.readiness, isA<SectionData<ReadinessOverview>>());
+    });
+
+    test('adds no reader calls', () async {
+      readinessWeek();
+      final c = container();
+      await c.read(healthOverviewProvider.future);
+
+      expect(fake.sleepCalls, [(DateTime(2026, 10, 24, 18), now)]);
+      expect(fake.seriesCalls, hasLength(6));
+      expect(fake.seriesCalls.map((c) => c.$1).toSet(), {
+        HealthSeriesType.restingHeartRate,
+        HealthSeriesType.hrv,
+        HealthSeriesType.weight,
+        HealthSeriesType.bodyFat,
+        HealthSeriesType.vo2Max,
+        HealthSeriesType.heartRate,
+      });
+      expect(fake.totalsCalls, hasLength(2));
+    });
+
+    test("account B never sees A's readiness", () async {
+      readinessWeek();
+      repo.connect(_ownerB, DateTime(2026, 11, 1));
+      final c = container();
+      final a = (await c.read(healthOverviewProvider.future))!;
+      final aReady =
+          (a.readiness as SectionData<ReadinessOverview>).value.result;
+      expect(aReady, isA<ReadinessReady>());
+
+      // B's device has sleep but no HRV or resting HR.
+      fake.series.remove(HealthSeriesType.hrv);
+      fake.series.remove(HealthSeriesType.restingHeartRate);
+      fake.sleepGate = Completer<void>();
+      c.read(_ownerProvider.notifier).set(_ownerB);
+      while (fake.sleepCalls.length < 2) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      final mid = c.read(healthOverviewProvider);
+      expect(mid.isLoading, true);
+      expect(mid.value, isNull);
+
+      fake.sleepGate!.complete();
+      final b = (await c.read(healthOverviewProvider.future))!;
+      expect(b.ownerId, _ownerB);
+      final r = (b.readiness as SectionData<ReadinessOverview>).value;
+      expect(r.result, isA<ReadinessNotReady>());
+      expect(identical(r.result, aReady), false);
+      expect(r.hasHrv || r.hasRestingHr, false);
+      expect(r.hasSleep, true);
+    });
+
+    test('HRV today without resting HR today', () async {
+      readinessWeek();
+      fake.series[HealthSeriesType.restingHeartRate] = [
+        for (var i = -20; i < 0; i++)
+          _sample(_day(i).add(const Duration(hours: 8)), 58),
+      ];
+      final c = container();
+      final o = (await c.read(healthOverviewProvider.future))!;
+      final r = (o.readiness as SectionData<ReadinessOverview>).value;
+      expect(r.hasHrv, true);
+      expect(r.hasRestingHr, false);
+      expect(r.hrvVsNormal, isNotNull);
+      expect(r.restingHrVsNormal, isNull);
+    });
+
+    test('fewer than 14 baseline days has no baseline', () async {
+      syntheticWeek();
+      fake.series[HealthSeriesType.hrv] = [
+        for (var i = -5; i < 0; i++)
+          _sample(_day(i).add(const Duration(hours: 14)), 40),
+        _sample(DateTime(2026, 11, 24, 2), 50),
+      ];
+      final c = container();
+      final o = (await c.read(healthOverviewProvider.future))!;
+      final r = (o.readiness as SectionData<ReadinessOverview>).value;
+      expect(r.hrvBaseline, isNull);
+      expect(r.hrvVsNormal, isNull);
+      expect(
+        (r.result as ReadinessNotReady).daysUntilBaseline,
+        5,
+        reason: 'the longer history (9 resting HR days) counts',
+      );
+    });
+
+    test('Android reports RMSSD, not SDNN', () async {
+      fake = FakeHealthReader(platform: HealthPlatformKind.healthConnect);
+      readinessWeek();
+      final c = container();
+      final o = (await c.read(healthOverviewProvider.future))!;
+      final r = (o.readiness as SectionData<ReadinessOverview>).value;
+      expect(r.hrvIsSdnn, false);
+    });
+  });
+
   test('refreshIfStale re-reads after an error', () async {
     final flaky = _FlakyRepo(repo)..fail = true;
     final c = ProviderContainer(
@@ -541,6 +784,27 @@ void main() {
     expect(fake.totalsCalls, hasLength(4));
     expect((await c.read(healthOverviewProvider.future))!.readAt, now);
   });
+
+  test('refreshIfStale re-reads on a new local day within 5 minutes', () async {
+    now = DateTime(2026, 11, 24, 23, 58);
+    final c = container();
+    await c.read(healthOverviewProvider.future);
+    final notifier = c.read(healthOverviewProvider.notifier);
+    now = DateTime(2026, 11, 25, 0, 1);
+    await notifier.refreshIfStale();
+    expect(fake.sleepCalls, hasLength(2));
+  });
+
+  test(
+    'todaysReadiness is absent for an overview read on another day',
+    () async {
+      readinessWeek();
+      final c = container();
+      final o = (await c.read(healthOverviewProvider.future))!;
+      expect(todaysReadiness(o, DateTime(2026, 11, 24, 23, 59)), isNotNull);
+      expect(todaysReadiness(o, DateTime(2026, 11, 25, 0, 1)), isNull);
+    },
+  );
 
   test('the resume after Manage re-reads even within 5 minutes', () async {
     final c = container();

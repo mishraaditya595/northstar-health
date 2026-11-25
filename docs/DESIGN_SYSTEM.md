@@ -51,6 +51,7 @@ All of these live in `apps/mobile/lib/core/design/`. Look comes from `BeyondRepT
 | Section title with right label | `SectionHeading` | `section.dart` |
 | Headline number card with optional trend | `StatTile` + `NsTrend` | `stats.dart` |
 | Month grid with trained days and today | `NsMonthCalendar` | `stats.dart` |
+| Dark hero card with eyebrow, title, optional leading widget, child and actions | `NsHeroFrame` + `NsHeroAction` | `hero_frame.dart` |
 | Check control for a logged row | `NsCheckButton` | `inputs.dart` |
 | Floating bottom nav | `FloatingNavBar` | `app/floating_nav_bar.dart` |
 | Trend arrow + words | `NsTrendLabel` | `charts/trend_label.dart` |

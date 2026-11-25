@@ -1,6 +1,6 @@
 # Health insights design: richer cards, trends, readiness and training tie-ins
 
-**Date:** 2026-11-24 · **Status:** approved; stage 1 implemented on branch, not device-verified · **Builds on:** Phase 3 (`2026-11-24-phase-3-health-reads-design.md`, ADR-0008) · **Before:** Phase 4 (write-back)
+**Date:** 2026-11-24 · **Status:** approved; stage 1 merged; stage 2 implemented, not device-verified · **Builds on:** Phase 3 (`2026-11-24-phase-3-health-reads-design.md`, ADR-0008) · **Before:** Phase 4 (write-back)
 
 Mockups (fictional values): five 390 px phone screens, source in `2026-11-24-health-insights-mockups/` next to this file (`Main` = Health tab with a watch, `Sleep`, `Heart`, `Train` on a low day, `NoWatch` = phone-only). They are HTML with inline styles; colours, sizes, radii and layout in them are the visual reference for the kit widgets and cards, alongside `docs/DESIGN_SYSTEM.md`. The 30-day bars there are not stacked by stage; the build stacks them. Rival research: `2026-11-24-health-insights-rival-research.md`.
 
@@ -91,7 +91,7 @@ All three are designed here so they fit together; stage 1 is built first and eac
 **Health tab** (connected), top to bottom:
 
 1. Date line: `Tue 24 Nov · Apple Health · updated 7:42 AM`.
-2. **Readiness hero** (dark green gradient hero from the design system): ring with score, one-line verdict, one sentence of reasons, three chips (HRV, resting HR, sleep) each with its arrow. Not enough data → dashed card "Not enough data for a score" listing which inputs are missing and what provides them. Baseline still building → "Readiness starts after N more nights with data."
+2. **Readiness hero** (dark green gradient hero from the design system): ring with score, one-line verdict, one sentence of reasons, three chips (HRV, resting HR, sleep) each with its arrow. Not enough data → dashed card "Not enough data for a score" listing which inputs are missing and what provides them. Baseline still building → "Readiness starts after N more days with data."
 3. **Sleep card:** score, time asleep, change vs 7-day average, a stage bar (deep/core/REM/awake proportions), four small stats (deep, core, REM, sleep HR), source and time range. Without stages: time asleep only, with "Stages need a watch or ring that records them."
 4. **Heart card:** resting HR and HRV side by side, each with 30-day sparkline and arrow + words; footer VO2 max when present.
 5. **Activity** and **Body** half-width cards: steps with 7-day mini bars and active kcal; weight with 30-day sparkline and body fat.

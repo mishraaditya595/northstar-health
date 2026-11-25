@@ -89,7 +89,7 @@ String formatTrend(TrendMetric metric, TrendResult trend, {DateTime? since}) {
     TrendMetric.activeEnergy => '${d.round()} kcal',
     TrendMetric.weight => '${d.toStringAsFixed(1)} kg',
     TrendMetric.bodyFat => '${d.toStringAsFixed(1)}%',
-    TrendMetric.sleepScore => '${d.round()}',
+    TrendMetric.sleepScore || TrendMetric.readiness => '${d.round()}',
   };
   final context = switch (metric) {
     _ when since != null => 'since ${_date(since)}',
