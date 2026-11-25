@@ -128,7 +128,7 @@ class ObjectBoxProgramRepository implements ProgramRepository {
     }
     final templateIds = <String>{
       for (final id in program.week)
-        if (id != null) id,
+        ?id,
     }.toList();
     final items = <String, List<PlanExerciseRecord>>{};
     for (final id in templateIds) {
