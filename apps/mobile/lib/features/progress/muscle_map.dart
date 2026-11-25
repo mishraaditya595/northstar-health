@@ -201,7 +201,7 @@ class _BodyPainter extends CustomPainter {
   void _muscle(Canvas canvas, Muscle muscle, List<Path> paths) {
     final load = recovery.loadOf(muscle);
     final fill = Paint()
-      ..color = load == 0
+      ..color = load < recoveredBelow
           ? idle
           : Color.lerp(worked.withValues(alpha: .4), worked, load)!;
     final edge = Paint()
@@ -261,8 +261,9 @@ class MuscleRecoveryCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final recovery = ref.watch(muscleRecoveryProvider);
     final theme = Theme.of(context);
-    final worked = recovery.groups.entries.where((e) => e.value > 0).toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final worked =
+        recovery.groups.entries.where((e) => e.value >= recoveredBelow).toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
     final workedText = worked.map((e) => e.key).join(' · ');
     Widget figure(BodySide side, String label) => Flexible(
       child: ConstrainedBox(
@@ -348,7 +349,7 @@ class MuscleRecoveryCard extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Shaded by muscle group from workouts finished in the last 3 days.',
+              'Shaded by sets, reps and effort; fades over 48 to 72 hours.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.mutedColor,

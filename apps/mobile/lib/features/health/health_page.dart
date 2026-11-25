@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../core/clock.dart';
 import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
+import '../../core/design/section.dart';
 import 'application/health_overview.dart';
 import 'application/health_summary_controller.dart';
+import 'application/training_insights.dart';
 import 'data/health_reader.dart';
 import 'health_format.dart';
 import 'widgets/activity_card.dart';
@@ -17,6 +19,7 @@ import 'widgets/health_connect_card.dart';
 import 'widgets/heart_card.dart';
 import 'widgets/readiness_card.dart';
 import 'widgets/sleep_card.dart';
+import 'widgets/training_insight_line.dart';
 
 const _iosHint =
     "Missing something? Check BeyondRep's access in the Health app.";
@@ -131,6 +134,13 @@ class _HealthPageState extends ConsumerState<HealthPage>
           ),
           SectionGap() => null,
         };
+
+    final insights = ref.watch(trainingInsightsProvider);
+    final insightLine = insights?.sleep != null
+        ? TrainingInsightLine.sleep(insights!.sleep!)
+        : insights?.restingHr != null
+        ? TrainingInsightLine.restingHr(insights!.restingHr!)
+        : null;
 
     final List<Widget> cards;
     if (overview != null) {
@@ -253,6 +263,11 @@ class _HealthPageState extends ConsumerState<HealthPage>
             );
           },
         ),
+      ],
+      if (insightLine != null) ...[
+        const SizedBox(height: 24),
+        const SectionHeading('From your training'),
+        insightLine,
       ],
       if (state.platform == HealthPlatformKind.appleHealth &&
           hasGap(MetricGap.noData)) ...[

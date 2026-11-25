@@ -73,6 +73,19 @@ Readiness is implemented in source, **not released or device-verified**. Every r
 | Baseline building (under 14 days): "not ready" with days remaining, no score | not run | not run |
 | Phone only, no watch or wearable: no score, no zero | not run | not run |
 
+## Health insights stage 3 device QA (ADR-0009, owner actions, none done)
+
+Training tie-ins are implemented in source, **not released or device-verified**. Every row is not run.
+
+| Check | iOS | Android |
+| --- | --- | --- |
+| Muscle recovery map after a heavy leg day and after an arm day: legs fade over 72 h, arms over 48 h | not run | not run |
+| Train "Better fit today" with real workout history: suggests the most recovered plan, never one hitting recovering muscles | not run | not run |
+| Low readiness day: suggestion is the lightest recovered plan | not run | not run |
+| Insights after 30 days of sleep, resting heart rate and workouts: "From your training" on Health, Sleep detail and Heart detail | not run | not run |
+| Fewer than the minimum nights or sessions: no insight line shown | not run | not run |
+| No wearable: Better fit and recovery lines still work, no insight lines | not run | not run |
+
 ## Feature and privacy readiness
 
 - ObjectBox real sessions/sets with generated model UID fixture migration, durable offline writes and recovery through process death.
