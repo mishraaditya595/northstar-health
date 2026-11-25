@@ -200,12 +200,14 @@ Compatibility: the manifest carries `minAppCatalogSchema`. The app knows the hig
 
 ### 5.3 Publishing, staging, rollback
 
-- **Build:** `python3 tool/catalog_build.py` assembles `catalog/` into `build/catalog/release-<n>.json` deterministically (sorted keys, stable ordering) and prints size and SHA-256.
-- **Validate:** the validator runs in CI on every PR touching `catalog/` and again inside the publish job.
-- **Stage:** run the migration and publish against a local Supabase (`supabase start`) and a debug app build pointed at it. This is the staging step; there is no draft row in the hosted database.
-- **Publish:** a new manual Codemagic workflow `supabase-catalog-publish`, following the existing manual Supabase jobs and reusing the `ns_supabase_deploy` group (no new credential groups, no automatic trigger). It builds, validates, inserts the release row and flips `catalog_live` in one transaction through a privileged SQL function callable only by the deploy role, then reads the manifest back as an authenticated test user to confirm. Changing `codemagic.yaml` needs the owner's approval of this design.
-- **Rollback:** the same job with an input `rollback_to=<release>` flips the pointer to an older, compatible release. Releases are never deleted. Because user copies are independent (section 6), rollback cannot damage user data.
-- **Record:** after a publish, a PR updates `catalog/releases.lock.json` and `catalog/CHANGELOG.md`.
+Publishing uses generated migrations instead of a new Codemagic job (decided by the owner with the stage 1 plan): no `codemagic.yaml` change or new credential path, every release is reviewed in a PR, and CI replays it against a clean database.
+
+- **Build:** `python3 scripts/catalog_build.py check` assembles `catalog/` deterministically (sorted keys, stable ordering, canonical bytes) and prints size and SHA-256.
+- **Validate:** the validator runs in `check` and `publish`, and the content tests run in CI on every PR (`tool/test_catalog_*.py`).
+- **Stage:** CI replays every migration, including the release, against a clean database and runs the pgTAP tests; locally, `supabase db reset` does the same. There is no draft row in the hosted database.
+- **Publish:** `python3 scripts/catalog_build.py publish --timestamp ... --published-at ...` writes `supabase/migrations/<ts>_catalog_release_<n>.sql`, which calls `northstar_private.publish_catalog_release(...)` (no client access) to insert the release and flip `catalog_live` in one transaction. The owner deploys it with the existing manual `supabase-database` job.
+- **Rollback:** `rollback --to <n>` writes a `<ts>_catalog_rollback_to_<n>.sql` migration that calls `northstar_private.set_live_catalog_release(n)`; only a published release is accepted. Releases are never deleted. Because user copies are independent (section 6), rollback cannot damage user data.
+- **Record:** `publish` also updates `catalog/releases.lock.json` and `catalog/CHANGELOG.md` in the same PR.
 - Documentation: `docs/CATALOG.md` (format, validation, publish, rollback, cache policy, licensing), plus updates to `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/SUPABASE_CODEMAGIC_DEPLOY.md`.
 
 ### 5.4 Sync payload changes (additive)

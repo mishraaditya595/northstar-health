@@ -8,6 +8,7 @@
 | `apps/watch_os/` | Swift/watch team | SwiftUI sources + XcodeGen watch **proof target**; future real embedded iPhone companion target |
 | `apps/wear_os/` | Kotlin/watch team | Gradle/Compose watch app artifact |
 | `apps/website/` | Site/agents | Static Astro marketing and legal site for beyondrep.in (privacy, account deletion, terms, support); deployed by Cloudflare Pages |
+| `catalog/` | Content reviewers | Shared training catalogue source (JSON), schema, release lock and changelog; see [CATALOG.md](CATALOG.md) |
 | `contracts/workout_sync/v1/` | Shared protocol reviewers | JSON Schema + fictional positive/negative fixtures |
 | `supabase/` | Cloud/data reviewers | Versioned sync/progress/restore/deletion migrations, RLS, workout-only backup and server-only Auth deletion function |
 | `packages/` | Dart domain team | Only actual reusable Dart packages; currently none |

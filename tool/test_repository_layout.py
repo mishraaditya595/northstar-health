@@ -49,6 +49,8 @@ class LayoutTest(unittest.TestCase):
             "apps/website/package.json",
             "apps/website/astro.config.mjs",
             "contracts/workout_sync/v1/envelope.schema.json",
+            "catalog/schema/catalog.schema.json",
+            "catalog/releases.lock.json",
         ]
         for entry in required:
             with self.subTest(entry=entry):

@@ -47,6 +47,8 @@
         +---- versioned dedup / ACK ----> phone ObjectBox
 ```
 
+**Training catalogue (stage 1, in source, not deployed, [ADR-0010](adr/0010-shared-training-catalogue.md)):** `catalog/` JSON -> `scripts/catalog_build.py` (validate, canonical snapshot, SHA-256) -> generated migration -> `northstar_private.publish_catalog_release` -> `catalog_releases` (immutable) + `catalog_live` -> `catalog_manifest()` / `catalog_snapshot(release)` for authenticated clients. Shared content only; the phone cache and client are stage 2. See [CATALOG.md](CATALOG.md).
+
 These pipelines have **separate triggers, IDs, receipts and permissions**. Do not recursively push platform health readings into Supabase, or re-export imported workouts.
 
 ## Structural rules
