@@ -132,10 +132,14 @@ void main() {
 
     test('stale temp file is removed on load', () async {
       await seed(r1);
-      File('${dir.path}/snapshot.json.tmp').writeAsStringSync('partial');
+      File('${dir.path}/snapshot.json.old.tmp')
+        ..writeAsStringSync('partial')
+        ..setLastModifiedSync(
+          DateTime.now().subtract(const Duration(minutes: 11)),
+        );
       final r = repo(serving(r1));
       await r.load();
-      expect(File('${dir.path}/snapshot.json.tmp').existsSync(), isFalse);
+      expect(File('${dir.path}/snapshot.json.old.tmp').existsSync(), isFalse);
       expect(r.state.status, CatalogStatus.ready);
     });
 
@@ -242,7 +246,7 @@ void main() {
       expect(r.state.snapshot?.release, 2);
       expect(r.state.snapshot?.exercises, hasLength(3));
       expect(snapshotFile().readAsStringSync(), _canonical(r2));
-      expect(File('${dir.path}/snapshot.json.tmp').existsSync(), isFalse);
+      expect(dir.listSync().where((e) => e.path.endsWith('.tmp')), isEmpty);
     });
 
     test('checksum mismatch keeps the old cache', () async {
