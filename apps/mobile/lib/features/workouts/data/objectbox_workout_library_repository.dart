@@ -388,9 +388,14 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
         rows.length > 100) {
       throw ArgumentError('Invalid template copy');
     }
-    final planDescription = description.length > 1000
-        ? description.substring(0, 1000)
-        : description;
+    var cut = description.length > 1000 ? 1000 : description.length;
+    // Never split a surrogate pair at the cut.
+    if (cut < description.length &&
+        cut > 0 &&
+        (description.codeUnitAt(cut - 1) & 0xFC00) == 0xD800) {
+      cut--;
+    }
+    final planDescription = description.substring(0, cut);
     final items = [
       for (var i = 0; i < rows.length; i++)
         PlanExerciseRecord(
@@ -436,7 +441,11 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
       };
       var unique = label;
       for (var n = 2; taken.contains(unique.toLowerCase()); n++) {
-        unique = '$label ($n)';
+        final suffix = ' ($n)';
+        // The plan name limit is 100 characters, suffix included.
+        final room = 100 - suffix.length;
+        unique =
+            '${label.length > room ? label.substring(0, room).trimRight() : label}$suffix';
       }
       final now = DateTime.now().toUtc().millisecondsSinceEpoch;
       final plan = WorkoutPlanEntity(

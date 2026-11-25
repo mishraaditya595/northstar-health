@@ -132,6 +132,10 @@ class RepositoryWorkoutActions implements WorkoutActions {
     if (engine.recoverActiveWorkout() != null) {
       throw StateError('Finish or discard the existing workout first');
     }
+    // Each exercise is copied in its own transaction before the session
+    // starts. That is safe: the rows are the catalogue's own definitions, the
+    // copy is idempotent, and an exercise left behind by a failed start is
+    // only an unused library entry, never a plan or a workout.
     for (final row in rows) {
       final e = row.exercise;
       library.materializeCatalogExercise(

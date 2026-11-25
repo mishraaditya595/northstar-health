@@ -956,6 +956,25 @@ void main() {
       expect(other.exercises.map((e) => e.uuid), ['row-x', 'row-y']);
     });
 
+    test('a numbered name stays within the plan name limit', () {
+      final long = 'n' * 100;
+      expect(copy('req-1', name: long).name, long);
+      final second = copy('req-2', name: long).name;
+      expect(second.length, lessThanOrEqualTo(100));
+      expect(second, endsWith(' (2)'));
+      expect(second, '${'n' * 96} (2)');
+      final third = copy('req-3', name: long).name;
+      expect(third, '${'n' * 96} (3)');
+    });
+
+    test('a description is cut by characters, not inside a pair', () {
+      final plan = copy('req-1', description: '${'x' * 999}😀tail');
+      // The limit is 1000 UTF-16 units; the pair would make it 1001.
+      expect(plan.description, 'x' * 999);
+      final kept = copy('req-2', description: '${'x' * 998}😀tail');
+      expect(kept.description, 'x' * 998 + '😀');
+    });
+
     test('a long description is cut to the plan limit', () {
       final plan = copy('req-1', description: 'x' * 1500);
       expect(plan.description, hasLength(1000));
