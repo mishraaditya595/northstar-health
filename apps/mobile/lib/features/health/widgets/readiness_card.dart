@@ -20,7 +20,7 @@ String readinessBandWords(ReadinessBand band) => switch (band) {
   ReadinessBand.low => 'Recovery low',
 };
 
-String _hrvName(bool sdnn) => sdnn ? 'HRV (SDNN)' : 'HRV (RMSSD)';
+String readinessHrvName(bool sdnn) => sdnn ? 'HRV (SDNN)' : 'HRV (RMSSD)';
 
 /// Readiness hero on the Health tab: the score with its reasons, or what is
 /// missing for one. [overview] is null while loading. [onTap] opens the
@@ -80,7 +80,7 @@ class ReadinessCard extends StatelessWidget {
     final heart = _heart(overview);
     final sleep = _sleep(overview);
     final inputs = {for (final p in readiness.parts) p.input};
-    final hrvName = _hrvName(value.hrvIsSdnn);
+    final hrvName = readinessHrvName(value.hrvIsSdnn);
     String vsNormal(TrendResult? t) => switch (t?.direction) {
       TrendDirection.up => 'above',
       TrendDirection.down => 'below',
@@ -177,7 +177,7 @@ class ReadinessCard extends StatelessWidget {
         'Readiness starts after $days more ${days == 1 ? 'day' : 'days'} '
         'with data.';
     final measures = [
-      if (value.hasHrv) _hrvName(value.hrvIsSdnn),
+      if (value.hasHrv) readinessHrvName(value.hrvIsSdnn),
       if (value.hasRestingHr) 'resting HR',
     ];
     final body = measures.isEmpty

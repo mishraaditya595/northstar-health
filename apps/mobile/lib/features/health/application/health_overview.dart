@@ -343,7 +343,7 @@ TrendResult? _vsPrior(TrendMetric metric, List<DayValue> daily, int min) {
 
 /// Per day the mean of samples inside that day's night, else the mean of the
 /// day's samples outside any night.
-List<DayValue> _hrvDaily(List<HealthSample> samples, List<SleepNight> nights) {
+List<DayValue> hrvDailyOf(List<HealthSample> samples, List<SleepNight> nights) {
   final overnight = <HealthSample>[];
   final daytime = <HealthSample>[];
   outer:
@@ -373,9 +373,13 @@ List<DayValue> _hrvDaily(List<HealthSample> samples, List<SleepNight> nights) {
 
 /// A gapped section counts as absent inputs; only two gaps for the same
 /// reason make the whole readiness a gap.
+/// [hrvDaily] and [rhrDaily] cover the 30 days before today, one more than
+/// the heart section shows, so the baseline sees all of them.
 Section<ReadinessOverview> _readiness(
   Section<SleepOverview> sleepSection,
   Section<HeartOverview> heartSection,
+  List<DayValue> hrvDaily,
+  List<DayValue> rhrDaily,
   DateTime today,
   HealthPlatformKind platform,
 ) {
@@ -388,12 +392,6 @@ Section<ReadinessOverview> _readiness(
     SectionData(:final value) => value,
     SectionGap() => null,
   };
-  final heart = switch (heartSection) {
-    SectionData(:final value) => value,
-    SectionGap() => null,
-  };
-  final hrvDaily = heart?.hrvDaily ?? const <DayValue>[];
-  final rhrDaily = heart?.restingHrDaily ?? const <DayValue>[];
   final hrvToday = _valueOn(hrvDaily, today);
   final rhrToday = _valueOn(rhrDaily, today);
   final hrvBaseline = baselineOf(hrvDaily, today, sdFloor: hrvSdFloor);
@@ -448,8 +446,9 @@ Future<HealthOverview> _read(
       _guard(() => reader.readHourlyTotals(type, monthFrom, now));
 
   final sleepF = _guard(() => reader.readSleep(daysAgo(31, 18), now));
-  final rhrF = series(HealthSeriesType.restingHeartRate, monthFrom);
-  final hrvF = series(HealthSeriesType.hrv, monthFrom);
+  // From 30 days back: readiness baselines use the 30 days before today.
+  final rhrF = series(HealthSeriesType.restingHeartRate, daysAgo(30));
+  final hrvF = series(HealthSeriesType.hrv, daysAgo(30));
   final weightF = series(HealthSeriesType.weight, monthFrom);
   final bodyFatF = series(HealthSeriesType.bodyFat, monthFrom);
   final vo2F = series(HealthSeriesType.vo2Max, daysAgo(89));
@@ -492,8 +491,14 @@ Future<HealthOverview> _read(
   final stepsResult = await stepsF;
   final energyResult = await energyF;
 
-  final rhrDaily = reduceDaily(_list(rhrResult), DailyReduction.latest);
-  final hrvDaily = _hrvDaily(_list(hrvResult), nights);
+  final rhrAll = reduceDaily(_list(rhrResult), DailyReduction.latest);
+  final hrvAll = hrvDailyOf(_list(hrvResult), nights);
+  List<DayValue> month(List<DayValue> all) => [
+    for (final d in all)
+      if (!d.day.isBefore(monthFrom)) d,
+  ];
+  final rhrDaily = month(rhrAll);
+  final hrvDaily = month(hrvAll);
 
   final sleep = _section<SleepOverview>([sleepResult], () {
     if (lastNight == null) return null;
@@ -596,7 +601,7 @@ Future<HealthOverview> _read(
     );
   });
 
-  final readiness = _readiness(sleep, heart, today, platform);
+  final readiness = _readiness(sleep, heart, hrvAll, rhrAll, today, platform);
 
   return HealthOverview(
     ownerId: ownerId,

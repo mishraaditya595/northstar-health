@@ -13,6 +13,7 @@ enum TrendMetric {
   activeEnergy,
   weight,
   bodyFat,
+  readiness,
 }
 
 enum TrendDirection { up, down, flat }
@@ -36,7 +37,7 @@ TrendResult trendOf(TrendMetric m, double current, double reference) {
   final delta = current - reference;
   final band = switch (m) {
     TrendMetric.sleepDuration => 10.0,
-    TrendMetric.sleepScore => 3.0,
+    TrendMetric.sleepScore || TrendMetric.readiness => 3.0,
     TrendMetric.deep || TrendMetric.rem => 5.0,
     TrendMetric.restingHr || TrendMetric.sleepHr => 1.0,
     TrendMetric.hrv => math.max(3.0, 0.05 * reference),

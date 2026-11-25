@@ -6,6 +6,7 @@ import '../core/design/beyondrep_theme.dart';
 import '../features/health/detail/activity_detail_page.dart';
 import '../features/health/detail/body_detail_page.dart';
 import '../features/health/detail/heart_detail_page.dart';
+import '../features/health/detail/readiness_detail_page.dart';
 import '../features/health/detail/sleep_detail_page.dart';
 import '../features/health/health_page.dart';
 import '../features/account/account_sync_page.dart';
@@ -102,6 +103,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/health',
             pageBuilder: (_, state) => _tabPage(state, const HealthPage()),
+          ),
+          GoRoute(
+            path: '/health/readiness',
+            builder: (_, _) => const ReadinessDetailPage(),
           ),
           GoRoute(
             path: '/health/sleep',

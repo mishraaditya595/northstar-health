@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/health_reader.dart';
 import '../domain/daily_series.dart';
 import '../domain/health_types.dart';
+import '../domain/readiness.dart';
 import '../domain/sleep_nights.dart';
 import '../domain/sleep_score.dart';
 import 'health_overview.dart';
@@ -362,18 +363,7 @@ SleepRangeStats sleepRangeStats({
   final staged = current.where((n) => n.hasStages);
   final scores = [
     for (final n in staged)
-      ?scoreSleep(
-        n,
-        priorNights: [
-          for (final p in nights)
-            if (p.date.isBefore(n.date)) p,
-        ],
-        sleepAvgHr: sleepHr[n.date],
-        restingHr: restingHr
-            .where((d) => !d.day.isAfter(n.date))
-            .lastOrNull
-            ?.value,
-      )?.value.toDouble(),
+      ?_nightScore(n, nights, sleepHr, restingHr)?.value.toDouble(),
   ];
   return SleepRangeStats(
     slots: slots,
@@ -391,5 +381,112 @@ SleepRangeStats sleepRangeStats({
     rem: _mean([for (final n in staged) n.rem.inMinutes.toDouble()]),
     sleepHr: _mean([for (final n in current) ?sleepHr[n.date]]),
     bedtime: usualBedtime(current),
+  );
+}
+
+/// A range night's sleep score, the same on the sleep and readiness tabs:
+/// earlier nights from [nights], its own window's heart rate and the latest
+/// resting HR up to its date.
+SleepScore? _nightScore(
+  SleepNight n,
+  List<SleepNight> nights,
+  Map<DateTime, double> sleepHr,
+  List<DayValue> restingHr,
+) => scoreSleep(
+  n,
+  priorNights: [
+    for (final p in nights)
+      if (p.date.isBefore(n.date)) p,
+  ],
+  sleepAvgHr: sleepHr[n.date],
+  restingHr: restingHr.where((d) => !d.day.isAfter(n.date)).lastOrNull?.value,
+);
+
+typedef ReadinessDay = ({DateTime day, ReadinessResult result});
+
+/// Readiness for each day of [range] and the same-length period before it,
+/// oldest first, each scored as the overview scores today. Uses the sleep
+/// tab's nights and night-window heart rate, plus one HRV and one resting HR
+/// read over the 60 days before the range end; held in memory only. Null
+/// without an overview for the signed-in account.
+final readinessHistoryProvider = FutureProvider.autoDispose
+    .family<List<ReadinessDay>?, SleepRange>((ref, range) async {
+      final overviewF = _overviewOf(ref);
+      final rangeNightsF = ref.watch(sleepRangeNightsProvider(range).future);
+      final hrF = ref.watch(sleepRangeHrProvider(range).future);
+      final overview = await overviewF;
+      if (overview == null) return null;
+      final today = dayOf(overview.readAt);
+      final reader = ref.read(healthReaderProvider);
+      Future<SeriesResult<List<HealthSample>>> read(HealthSeriesType type) =>
+          _readResult(
+            reader,
+            type,
+            DateTime(today.year, today.month, today.day - 60),
+            overview.readAt,
+          );
+      final hrvF = read(HealthSeriesType.hrv);
+      final rhrF = read(HealthSeriesType.restingHeartRate);
+      final rangeNights = await rangeNightsF;
+      final hr = await hrF;
+      final hrv = await hrvF;
+      final rhr = await rhrF;
+      if (!_stillOwner(ref, overview.ownerId)) return null;
+
+      final sleepNights = switch (overview.sleep) {
+        SectionData(:final value) => value.nights,
+        SectionGap() => const <SleepNight>[],
+      };
+      final restingHr = switch (overview.heart) {
+        SectionData(:final value) => value.restingHrDaily,
+        SectionGap() => const <DayValue>[],
+      };
+      // The overview's own nights win, so today matches its score.
+      final byDate = {
+        for (final n in [...?rangeNights, ...sleepNights]) n.date: n,
+      };
+      final nights = [for (final d in byDate.keys.toList()..sort()) byDate[d]!];
+      final hrvDaily = hrvDailyOf(_samples(hrv), nights);
+      final rhrDaily = reduceDaily(_samples(rhr), DailyReduction.latest);
+      final days = 2 * range.nights;
+      return [
+        for (var i = 0; i < days; i++)
+          _readinessOn(
+            DateTime(today.year, today.month, today.day - (days - 1) + i),
+            byDate,
+            nights,
+            hr.byNight,
+            restingHr,
+            hrvDaily,
+            rhrDaily,
+          ),
+      ];
+    });
+
+ReadinessDay _readinessOn(
+  DateTime day,
+  Map<DateTime, SleepNight> byDate,
+  List<SleepNight> nights,
+  Map<DateTime, double> sleepHr,
+  List<DayValue> restingHr,
+  List<DayValue> hrvDaily,
+  List<DayValue> rhrDaily,
+) {
+  final night = byDate[day];
+  return (
+    day: day,
+    result: scoreReadiness(
+      today: day,
+      lastNight: night,
+      sleepScore: night == null
+          ? null
+          : _nightScore(night, nights, sleepHr, restingHr),
+      priorNights: [
+        for (final n in nights)
+          if (n.date.isBefore(day)) n,
+      ],
+      hrvDaily: hrvDaily,
+      restingHrDaily: rhrDaily,
+    ),
   );
 }
