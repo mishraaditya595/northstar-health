@@ -156,6 +156,22 @@ Workout templates (release 3, 16 templates) are implemented in source, **not dep
 | Text size 200 percent on a 7-exercise template in light and dark: nothing overflows and both buttons can be reached | not run | not run |
 | Kill the app during a copy or a start, then reopen: either the whole plan or workout is there, or none of it | not run | not run |
 
+## Training library stage 7 device QA (ADR-0010, owner actions, none done)
+
+Programs (release 4, 12 programs) are implemented in source, **not deployed, released or device-verified**. Every row is not run.
+
+| Check | iOS | Android |
+| --- | --- | --- |
+| Deploy order: the owner has read the program review sheet, merged, and the `supabase-database` job has applied `20261126050000_catalog_release_4.sql` | not run | not run |
+| Add a program: Train, Programs, open one, pick the weekday and add it; Your program opens, its workouts are not under Your plans | not run | not run |
+| Switch the active program: add a second one as active; the first shows Not active and Train shows the second | not run | not run |
+| Edit the schedule: change a day to Rest, point a day at another workout, change the start day; the week updates and survives a restart | not run | not run |
+| Start today's workout from Your program: the logger opens, the finished workout syncs as a normal workout and nothing about the program reaches the cloud | not run | not run |
+| Edit a program workout in the plan editor: the changes stay, and there is no archive button | not run | not run |
+| Archive a program: its plans disappear and logged workouts stay in history | not run | not run |
+| Upgrade an install that has plans and workouts from the previous build: everything is still there and Programs opens | not run | not run |
+| Text size 200 percent on a 6-day program and on Your program in light and dark: nothing overflows and the buttons can be reached | not run | not run |
+
 ## Feature and privacy readiness
 
 - ObjectBox real sessions/sets with generated model UID fixture migration, durable offline writes and recovery through process death.

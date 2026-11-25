@@ -132,3 +132,7 @@ References: https://docs.objectbox.io/advanced/data-model-updates and https://do
 ## Session exercise planned rest
 
 `WorkoutExerciseEntity.restSeconds` (nullable, additive, existing UIDs kept) holds the rest planned by the plan or template row the exercise came from. The logger's rest chip starts there (null means 90 s, 0 means off). It is local only: never in the sync outbox payload, cloud snapshot, export or restore. Old databases read it as null (`test/workouts/objectbox_exercise_rest_migration_test.dart`, frozen `objectbox_pre_exercise_rest.g.dart`).
+
+## Local programs
+
+`TrainingProgramEntity` and `ProgramDayEntity` (new, uuid `@Unique`, `ProgramDayEntity.programUuid` indexed), `WorkoutPlanEntity.programUuid` (nullable, indexed), `WorkoutSessionEntity.programUuid` and `WorkoutSessionEntity.programDayLocalDate` (nullable, `yyyy-MM-dd`) are additive and keep every existing UID. They are local only: never in the sync outbox payload, cloud snapshot, export or restore (the upload payload test asserts no key contains "program"). Programs are archived, never deleted, and archiving never touches sessions. Old databases read the new fields as null (`test/workouts/objectbox_program_migration_test.dart`, frozen `objectbox_pre_programs.g.dart`).

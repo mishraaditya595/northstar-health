@@ -83,6 +83,21 @@ Phone behaviour (in source, not released): a template is shown only if every exe
 
 Release 3 is in source as `supabase/migrations/20261126040000_catalog_release_3.sql`, **not deployed**.
 
+## Programs (release 4, stage 7)
+
+Release 4 adds 12 programs in `catalog/programs/programs.json` (IDs `prog.<slug>`, never reused) and 12 program-only templates in `catalog/templates/program_sessions.json` (`"standalone": false`, so the Workouts list never shows them and the template routes never open them). Programs also reuse the standalone templates. Rules, enforced by `ProgramContentTest` in `tool/test_catalog_content.py` where a test can check them:
+
+- **Week.** Seven entries, index 0 is the program's first day (the user picks its weekday when adding it), `null` is a rest day, `daysPerWeek` is the number of training days (2 to 6). A template may appear on several days.
+- **Level and time.** The program level is at least as hard as its hardest template (beginner < intermediate < advanced), and `estimatedMinutes` is within 5 of the average of its training days.
+- **Equipment.** The union of its templates' equipment, without `bodyweight` when other equipment is present.
+- **Spacing.** A program with 4 or fewer training days never has 3 training days in a row, counting Sunday to Monday as consecutive. 5 and 6 day splits are exempt.
+- **Text.** One or two sentences, no outcome claims. Every program-only template is used by at least one program.
+- **Content.** The same conservative rules as templates. The 5x5 sessions use fixed sets of five with 3 minute rests on the main lifts. The low volume sessions use one or two hard sets per exercise with long rests. The calisthenics pull-up and chin-up rows carry the assisted-variation note.
+
+Phone behaviour (in source, not released): a program is shown only if every template its week uses is active and loggable in the cached snapshot (program-only templates count). **Add program** (`importProgram`) asks for the weekday of day 1 and whether to make the program active, then in one ObjectBox transaction materializes the exercises, creates one plan per distinct template (hidden from Your plans, edited in the normal plan editor, archived only with the program), the program and its seven days, and deactivates any other active program. The request UUID is the program UUID, so a repeated tap returns the same program and a deliberate second add is named " (2)". Any failure leaves nothing behind. Programs, their days, `programUuid` on plans and the session program fields are local only and never reach the sync payload, snapshot, export or restore. Starting today's workout from **Your program** records `programUuid` and `programDayLocalDate` on the session; the Today card and the done and missed days are stage 8. No catalogue schema bump: `minAppCatalogSchema` stays 1.
+
+Release 4 is in source as `supabase/migrations/20261126050000_catalog_release_4.sql`, **not deployed**. Owner review gate as for release 3: the owner reads a review sheet of every program and every new template before merging, and merging plus the `supabase-database` job publishes it. Rollback: `python3 scripts/catalog_build.py rollback --to 3`.
+
 ## Provenance and licence
 
 All text is original BeyondRep writing under MPL-2.0 (`catalog/PROVENANCE.md`). No third-party text or media. A checklist source may be used for coverage only after its licence is recorded there. Release 2 used the public-domain Free Exercise DB (github.com/yuhonas/free-exercise-db, Unlicense) only as a checklist of which movements exist; no text, wording or muscle tags were copied.

@@ -77,11 +77,12 @@ void main() {
       expect(p.week, ['tpl.a', null, 'tpl.a', null, 'tpl.a', null, null]);
     });
 
-    test('published releases 1 to 3 still parse', () {
+    test('published releases 1 to 4 parse, release 4 with its programs', () {
       for (final name in [
         '20261126000100_catalog_release_1',
         '20261126030000_catalog_release_2',
         '20261126040000_catalog_release_3',
+        '20261126050000_catalog_release_4',
       ]) {
         final sql = File('../../supabase/migrations/$name.sql')
             .readAsStringSync();
@@ -90,7 +91,11 @@ void main() {
         final snapshot = parseCatalogSnapshot(
           jsonDecode(sql.substring(start, end)),
         );
-        expect(snapshot.programs, isEmpty, reason: name);
+        expect(
+          snapshot.programs,
+          name.endsWith('4') ? hasLength(12) : isEmpty,
+          reason: name,
+        );
       }
     });
 
