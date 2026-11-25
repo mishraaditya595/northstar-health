@@ -9,6 +9,7 @@ import '../../core/design/page_header.dart';
 import '../../core/ids/uuid_factory.dart';
 import '../../core/ui/dispose_after_dialog.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
+import '../workouts/domain/durations.dart';
 import '../workouts/domain/workout_library_models.dart';
 import 'exercise_picker_sheet.dart';
 import 'train_library_state.dart';
@@ -146,6 +147,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
           targetSets: 3,
           targetRepsMin: selected.inputMode == 'duration' ? null : 8,
           targetRepsMax: selected.inputMode == 'duration' ? null : 12,
+          targetDurationSeconds: selected.inputMode == 'duration' ? 30 : null,
           restSeconds: 90,
         ),
       );
@@ -156,6 +158,19 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
 
   Future<void> _editTargets(int index) async {
     final old = items[index];
+    final definition = ref
+        .read(trainLibraryProvider)
+        .asData
+        ?.value
+        .exercises
+        .where((e) => e.uuid == old.exerciseUuid)
+        .firstOrNull;
+    final timed = definition != null
+        ? definition.inputMode == 'duration'
+        : old.targetDurationSeconds != null;
+    final seconds = TextEditingController(
+      text: old.targetDurationSeconds?.toString() ?? '',
+    );
     final sets = TextEditingController(text: old.targetSets.toString());
     final min = TextEditingController(
       text: old.targetRepsMin?.toString() ?? '',
@@ -186,17 +201,25 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
                       label: 'Sets (1–30)',
                     ),
                     const SizedBox(height: 10),
-                    NsTextField(
-                      controller: min,
-                      keyboardType: TextInputType.number,
-                      label: 'Minimum reps (optional)',
-                    ),
-                    const SizedBox(height: 10),
-                    NsTextField(
-                      controller: max,
-                      keyboardType: TextInputType.number,
-                      label: 'Maximum reps (optional)',
-                    ),
+                    if (timed)
+                      NsTextField(
+                        controller: seconds,
+                        keyboardType: TextInputType.number,
+                        label: 'Seconds per set (1–3600)',
+                      )
+                    else ...[
+                      NsTextField(
+                        controller: min,
+                        keyboardType: TextInputType.number,
+                        label: 'Minimum reps (optional)',
+                      ),
+                      const SizedBox(height: 10),
+                      NsTextField(
+                        controller: max,
+                        keyboardType: TextInputType.number,
+                        label: 'Maximum reps (optional)',
+                      ),
+                    ],
                     const SizedBox(height: 10),
                     NsTextField(
                       controller: rest,
@@ -234,8 +257,11 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
                     exerciseUuid: old.exerciseUuid,
                     position: old.position,
                     targetSets: int.tryParse(sets.text.trim()) ?? -1,
-                    targetRepsMin: optional(min.text),
-                    targetRepsMax: optional(max.text),
+                    targetRepsMin: timed ? null : optional(min.text),
+                    targetRepsMax: timed ? null : optional(max.text),
+                    targetDurationSeconds: timed
+                        ? int.tryParse(seconds.text.trim()) ?? -1
+                        : null,
                     restSeconds: optional(rest.text),
                     notes: note.text,
                   );
@@ -569,6 +595,8 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
 
 /// Human-readable prescription: an upper-only bound must remain visible.
 String formatPlanRepTarget(PlanExerciseRecord item) {
+  final seconds = item.targetDurationSeconds;
+  if (seconds != null) return ' · ${formatDurationSeconds(seconds)}';
   if (item.targetRepsMin == null && item.targetRepsMax == null) return '';
   if (item.targetRepsMin == null) return ' · up to ${item.targetRepsMax} reps';
   if (item.targetRepsMax == null) return ' · ${item.targetRepsMin} reps';
