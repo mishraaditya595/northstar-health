@@ -1,70 +1,33 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { revealBelowFold } from '../src/scripts/home-motion.mjs';
+import { cinematicFrame, progressForScroll } from '../src/scripts/home-motion.mjs';
 
-function fixture({ reduced = false, supported = true } = {}) {
-  const observed = new Set();
-  const active = {};
-  const target = (top, focused = false) => ({
-    getBoundingClientRect: () => ({ top }),
-    contains: (element) => focused && element === active,
-    classes: [],
-    classList: { add(name) { this.owner.classes.push(name); } },
-  });
-  const targets = [target(20), target(800), target(900, true), target(1000)];
-  for (const item of targets) item.classList.owner = item;
-  let callback;
-  const doc = { querySelectorAll: () => targets, activeElement: active };
-  const win = {
-    innerHeight: 700,
-    matchMedia: () => ({ matches: reduced }),
-    IntersectionObserver: supported ? class {
-      constructor(fn) { callback = fn; }
-      observe(item) { observed.add(item); }
-      unobserve(item) { observed.delete(item); }
-    } : undefined,
-  };
-  return {
-    doc, win, targets, observed,
-    setReduced(value) { reduced = value; },
-    intersect(item, isIntersecting = true) {
-      callback([{ target: item, isIntersecting }]);
-    },
-  };
-}
-
-test('reveals below-fold targets once, without hiding visible or focused content', () => {
-  const f = fixture();
-  revealBelowFold(f.doc, f.win);
-  const [visible, below, focused] = f.targets;
-  assert.equal(f.observed.has(visible), false);
-  assert.equal(f.observed.has(below), true);
-  assert.deepEqual(below.classes, []);
-  f.intersect(below, false);
-  assert.equal(f.observed.has(below), true);
-  f.intersect(below);
-  assert.deepEqual(below.classes, ['home-reveal']);
-  assert.equal(f.observed.has(below), false);
-  f.intersect(focused);
-  assert.deepEqual(focused.classes, []);
-  assert.equal(f.observed.has(focused), false);
+test('scroll progress is clamped to the pinned track', () => {
+  assert.equal(progressForScroll(50,3600,1000),0);
+  assert.equal(progressForScroll(-1300,3600,1000),.5);
+  assert.equal(progressForScroll(-2600,3600,1000),1);
+  assert.equal(progressForScroll(-3000,3600,1000),1);
 });
-
-test('reduced motion and unsupported browsers keep the static page', () => {
-  for (const options of [{ reduced: true }, { supported: false }]) {
-    const f = fixture(options);
-    revealBelowFold(f.doc, f.win);
-    assert.equal(f.observed.size, 0);
-    assert.ok(f.targets.every((target) => target.classes.length === 0));
+test('the active phone and copy match every chapter at desktop and mobile widths', () => {
+  for (const width of [320,390,1440]) {
+    for (const i of [0,1,2]) {
+      const f = cinematicFrame(i/2,width,844);
+      assert.equal(f.active,i);
+      assert.equal(f.scenes[i].opacity,1);
+      assert.equal(f.rigs[i].opacity,1);
+      assert.equal(f.rigs[i].x,0);
+      assert.ok(f.rigs.every(r => Number.isFinite(r.scale) && r.scale>0));
+      assert.ok(f.rigs.every((r,j) => j===i || r.order<f.rigs[i].order));
+      assert.ok(f.scenes.every((s,j) => j===i || s.opacity===0));
+    }
   }
 });
-
-test('a preference change before intersection suppresses the reveal', () => {
-  const f = fixture();
-  revealBelowFold(f.doc, f.win);
-  f.setReduced(true);
-  const target = f.targets[3];
-  f.intersect(target);
-  assert.deepEqual(target.classes, []);
-  assert.equal(f.observed.has(target), false);
+test('interpolation is deterministic, reversible and bounded', () => {
+  const checkpoints = Array.from({length:101},(_,i)=>i/100);
+  const forward = checkpoints.map(p=>cinematicFrame(p,1440,900));
+  assert.deepEqual([...checkpoints].reverse().map(p=>cinematicFrame(p,1440,900)),[...forward].reverse());
+  for (const frame of forward) {
+    assert.ok(frame.rigs.every(r=>r.opacity>=0 && r.opacity<=1));
+    assert.ok(frame.scenes.filter(s=>s.opacity>.5).length<=1);
+  }
 });

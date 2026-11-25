@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import GetApp from '../components/GetApp.astro';
 import { SITE } from '../site';
-import '../styles/home-motion.css';
+import CinematicIntro from '../components/CinematicIntro.astro';
 
 const faqs = [
   {
@@ -51,32 +51,17 @@ const jsonLd = [
   title="BeyondRep"
   description="BeyondRep is a strength-training log for iPhone and Android that works offline, backs up only your finished workouts, and shows your sleep and recovery beside your training."
   jsonLd={jsonLd}
+  cinematic
 >
-  <div class="wrap">
-    <div class="hero home-hero">
-      <div class="hero-grid">
-        <div class="home-hero-copy">
-          <p class="eyebrow">Strength training log</p>
-          <h1>Log every rep. Even offline.</h1>
-          <p class="lede">
-            BeyondRep is a workout tracker for lifters that saves every set on your phone first, backs up only the
-            workouts you finish, and puts last night’s sleep beside today’s session.
-          </p>
-          <GetApp />
-        </div>
-        <figure class="home-hero-preview">
-          <img
-            src="/concept-phones.svg"
-            width="1440"
-            height="816"
-            alt="Three BeyondRep phone screens: Today with a workout plan and health snapshot, Train with a plan's exercises, and Health with last night's sleep and daily metrics."
-            fetchpriority="high"
-          />
-          <figcaption class="note">Design preview with sample data.</figcaption>
-        </figure>
-      </div>
+  <CinematicIntro />
+
+  <section id="details" aria-labelledby="details-title">
+    <div class="wrap">
+      <h2 class="section-title" id="details-title">Strength. Without the clutter.</h2>
+      <p class="section-lede">{SITE.tagline}</p>
+      <GetApp tone="plain" />
     </div>
-  </div>
+  </section>
 
   <section aria-labelledby="offline">
     <div class="wrap">
@@ -204,9 +189,4 @@ const jsonLd = [
       </div>
     </div>
   </section>
-  <script>
-    import { revealBelowFold } from '../scripts/home-motion.mjs';
-
-    revealBelowFold(document, window);
-  </script>
 </Base>
