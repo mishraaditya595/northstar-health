@@ -3,7 +3,6 @@
     "id": "builtin.v1.cable-crossover",
     "name": "Cable crossover",
     "aliases": [
-      "Cable fly",
       "High-to-low cable fly"
     ],
     "muscleGroup": "Chest",
@@ -233,8 +232,7 @@
     "id": "builtin.v1.straight-arm-pulldown",
     "name": "Straight-arm pulldown",
     "aliases": [
-      "Cable pullover",
-      "Lat prayer"
+      "Cable pullover"
     ],
     "muscleGroup": "Back",
     "primaryMuscles": [
@@ -296,7 +294,8 @@
     ],
     "secondaryMuscles": [
       "biceps",
-      "shoulders"
+      "shoulders",
+      "obliques"
     ],
     "equipment": [
       "cable"

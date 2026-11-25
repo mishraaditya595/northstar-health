@@ -258,7 +258,10 @@
     ],
     "secondaryMuscles": [
       "triceps",
-      "quads"
+      "quads",
+      "glutes",
+      "traps",
+      "abs"
     ],
     "equipment": [
       "kettlebell"
@@ -281,10 +284,10 @@
     ],
     "muscleGroup": "Back",
     "primaryMuscles": [
-      "lats",
-      "traps"
+      "lats"
     ],
     "secondaryMuscles": [
+      "traps",
       "biceps",
       "lowerBack",
       "shoulders"

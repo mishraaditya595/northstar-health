@@ -132,7 +132,7 @@
     "mode": "reps_load",
     "cues": [
       "Rest your back foot on a bench behind you",
-      "Step far enough forward to keep your front shin upright",
+      "Choose a comfortable stance with your front foot planted",
       "Lower straight down between your feet",
       "Drive through your front foot to stand"
     ],
@@ -234,10 +234,10 @@
     "muscleGroup": "Legs",
     "primaryMuscles": [
       "hamstrings",
-      "glutes",
-      "lowerBack"
+      "glutes"
     ],
     "secondaryMuscles": [
+      "lowerBack",
       "abs"
     ],
     "equipment": [
@@ -302,12 +302,13 @@
       "forearms"
     ],
     "equipment": [
-      "barbell"
+      "barbell",
+      "other"
     ],
     "category": "hinge",
     "mode": "reps_load",
     "cues": [
-      "Set the bar at or just below knee height",
+      "Set the bar on safety pins or blocks at or just below knee height",
       "Pull the slack out before you lift",
       "Drive your hips through to stand tall",
       "Lower the bar back to the pins under control"
@@ -349,8 +350,7 @@
     "id": "builtin.v1.reverse-grip-barbell-row",
     "name": "Reverse-grip barbell row",
     "aliases": [
-      "Underhand barbell row",
-      "Yates row"
+      "Underhand barbell row"
     ],
     "muscleGroup": "Back",
     "primaryMuscles": [
@@ -368,7 +368,7 @@
     "mode": "reps_load",
     "cues": [
       "Hold the bar underhand about shoulder width",
-      "Hinge to a steep torso angle and keep it fixed",
+      "Hinge until your torso leans forward, brace and hold that angle for the set",
       "Pull the bar toward your lower stomach",
       "Keep your elbows close to your sides"
     ],
@@ -419,12 +419,13 @@
       "forearms"
     ],
     "equipment": [
-      "barbell"
+      "barbell",
+      "other"
     ],
     "category": "pull_horizontal",
     "mode": "reps_load",
     "cues": [
-      "Stand over the bar and hinge with a flat back",
+      "Anchor the bar in a landmine or T-bar base, then stand over it and hinge with a flat back",
       "Pull the handle toward your chest",
       "Keep your hips still",
       "Lower until your arms are straight"
@@ -584,12 +585,13 @@
       "shoulders"
     ],
     "equipment": [
-      "barbell"
+      "barbell",
+      "other"
     ],
     "category": "push_horizontal",
     "mode": "reps_load",
     "cues": [
-      "Lie on the floor inside a rack with the bar set just below lockout height",
+      "Lie inside a rack with the safeties set just above your chest and the bar below lockout height",
       "Lower until your upper arms touch the floor",
       "Pause without relaxing",
       "Press back to full lockout"
@@ -609,6 +611,7 @@
     "secondaryMuscles": [
       "triceps",
       "quads",
+      "glutes",
       "traps",
       "abs"
     ],
@@ -641,12 +644,13 @@
       "abs"
     ],
     "equipment": [
-      "barbell"
+      "barbell",
+      "other"
     ],
     "category": "push_vertical",
     "mode": "reps_load",
     "cues": [
-      "Hold the end of the bar at your shoulder",
+      "Secure one end of the bar in a landmine anchor and hold the other end at your shoulder",
       "Stand with a split stance and brace",
       "Press up and forward along the arc of the bar",
       "Lower back to your shoulder under control"
@@ -721,12 +725,13 @@
     ],
     "equipment": [
       "ez_bar",
-      "bench"
+      "bench",
+      "other"
     ],
     "category": "isolation",
     "mode": "reps_load",
     "cues": [
-      "Set the pad under your armpits",
+      "Sit at a preacher bench with the pad under your armpits",
       "Lower the bar until your arms are nearly straight",
       "Curl up without lifting your elbows off the pad",
       "Control the way down"
@@ -911,7 +916,7 @@
     "category": "core",
     "mode": "reps_load",
     "cues": [
-      "Kneel and grip the bar with plates on both ends",
+      "Use round plates with collars and kneel holding the bar",
       "Brace your trunk and posteriorly tilt your pelvis",
       "Roll out only as far as you can keep your back flat",
       "Pull back using your abs, not your hips"

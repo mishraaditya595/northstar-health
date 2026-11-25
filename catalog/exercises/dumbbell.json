@@ -286,7 +286,10 @@
     ],
     "secondaryMuscles": [
       "triceps",
-      "quads"
+      "quads",
+      "glutes",
+      "traps",
+      "abs"
     ],
     "equipment": [
       "dumbbell"
@@ -412,10 +415,10 @@
     ],
     "muscleGroup": "Back",
     "primaryMuscles": [
-      "lats",
-      "traps"
+      "lats"
     ],
     "secondaryMuscles": [
+      "traps",
       "biceps",
       "shoulders",
       "forearms"
@@ -675,7 +678,7 @@
     "mode": "reps_load",
     "cues": [
       "Rest your back foot on a bench",
-      "Step out far enough to keep your front shin upright",
+      "Choose a balanced stance and keep your front knee tracking over your toes",
       "Lower until your front thigh is near parallel",
       "Drive through the front foot to stand"
     ],
@@ -929,12 +932,13 @@
     ],
     "equipment": [
       "dumbbell",
-      "bench"
+      "bench",
+      "other"
     ],
     "category": "isolation",
     "mode": "reps_load",
     "cues": [
-      "Rest your upper arm on the pad",
+      "Sit at a preacher bench and rest your upper arm on the pad",
       "Curl the dumbbell up without lifting your elbow",
       "Pause at the top",
       "Lower until your arm is nearly straight"

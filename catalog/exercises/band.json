@@ -170,7 +170,7 @@
       "Loop the band over the bar and place a foot or knee in it",
       "Start with straight arms",
       "Pull until your chin clears the bar",
-      "Check the band is firmly looped over the bar before you hang"
+      "Check the band is secured to the bar and use a stable step to get in and out"
     ],
     "status": "active"
   },
@@ -303,10 +303,12 @@
     "muscleGroup": "Legs",
     "primaryMuscles": [
       "hamstrings",
-      "glutes",
-      "lowerBack"
+      "glutes"
     ],
-    "secondaryMuscles": [],
+    "secondaryMuscles": [
+      "lowerBack",
+      "abs"
+    ],
     "equipment": [
       "band"
     ],

@@ -34,6 +34,7 @@
         "builtin.v1.arnold-press": "reps_load",
         "builtin.v1.assisted-pull-up-machine": "reps_load",
         "builtin.v1.back-extension": "reps_load",
+        "builtin.v1.back-extension-machine": "reps_load",
         "builtin.v1.band-assisted-pull-up": "reps_load",
         "builtin.v1.band-biceps-curl": "reps_load",
         "builtin.v1.band-chest-fly": "reps_load",
@@ -218,6 +219,7 @@
         "builtin.v1.plate-halo": "reps_load",
         "builtin.v1.plate-russian-twist": "reps_load",
         "builtin.v1.power-clean": "reps_load",
+        "builtin.v1.prone-back-extension": "reps_load",
         "builtin.v1.pull-up": "reps_load",
         "builtin.v1.pullover-machine": "reps_load",
         "builtin.v1.push-up": "reps_load",
@@ -271,7 +273,7 @@
       "programs": [],
       "release": 2,
       "retired": [],
-      "sha256": "1338bcfbb00914bbdeafc922e44d13b1c98ef9ed3313581873a01039e2da7e92",
+      "sha256": "9910ab0c909dd9b626f57ac7a2cfc794391aac5d7fabe2751e1517d3c0eec722",
       "templates": []
     }
   ]

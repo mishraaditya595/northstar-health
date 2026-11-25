@@ -79,7 +79,7 @@
     "cues": [
       "Place your hands on the bench edge behind you",
       "Keep your back close to the bench",
-      "Lower until your elbows reach about 90 degrees",
+      "Lower only as far as your shoulders stay comfortable",
       "Press back up without shrugging"
     ],
     "status": "active"
@@ -244,7 +244,7 @@
     "mode": "reps_load",
     "cues": [
       "Rest your back foot on a bench behind you",
-      "Step out far enough to keep your front shin upright",
+      "Choose a comfortable stance and keep your front foot planted as you lower",
       "Lower straight down",
       "Drive through your front foot to stand"
     ],
@@ -449,12 +449,13 @@
       "calves"
     ],
     "equipment": [
-      "bodyweight"
+      "bodyweight",
+      "other"
     ],
     "category": "isolation",
     "mode": "reps_load",
     "cues": [
-      "Kneel with your ankles anchored and your body in one line",
+      "Kneel with your ankles anchored under a pad or held by a partner",
       "Lower your torso forward as slowly as you can",
       "Catch yourself with your hands at the bottom",
       "Push off lightly to return up"
@@ -684,11 +685,12 @@
     "aliases": [],
     "muscleGroup": "Core",
     "primaryMuscles": [
-      "lowerBack"
+      "lowerBack",
+      "abs"
     ],
     "secondaryMuscles": [
       "glutes",
-      "abs",
+      "obliques",
       "shoulders"
     ],
     "equipment": [
@@ -1016,7 +1018,9 @@
   {
     "id": "builtin.v1.dead-hang",
     "name": "Dead hang",
-    "aliases": [],
+    "aliases": [
+      "Passive hang"
+    ],
     "muscleGroup": "Back",
     "primaryMuscles": [
       "forearms"
@@ -1033,7 +1037,7 @@
     "mode": "duration",
     "cues": [
       "Hang from the bar with a firm grip",
-      "Keep your shoulders active, not shrugged to your ears",
+      "Keep your arms straight and let your shoulders settle overhead without swinging",
       "Keep your legs still",
       "Step down when your grip fades"
     ],
@@ -1110,7 +1114,7 @@
     "category": "core",
     "mode": "duration",
     "cues": [
-      "Support yourself on straight arms with shoulders pressed down",
+      "Sit on the floor or on parallettes and press down on straight arms with shoulders low",
       "Lift your legs out in front of you",
       "Keep your knees straight if you can",
       "Hold without leaning back or shrugging"
@@ -1127,7 +1131,8 @@
       "glutes"
     ],
     "secondaryMuscles": [
-      "hamstrings"
+      "hamstrings",
+      "shoulders"
     ],
     "equipment": [
       "bodyweight"
@@ -1193,6 +1198,32 @@
       "Lower until your back knee hovers above the floor",
       "Keep your torso tall",
       "Hold, then switch legs"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.prone-back-extension",
+    "name": "Prone back extension",
+    "aliases": [
+      "Floor back extension"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lowerBack"
+    ],
+    "secondaryMuscles": [
+      "glutes"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "category": "core",
+    "mode": "reps_load",
+    "cues": [
+      "Lie face down with your hands by your ears",
+      "Lift your chest a few inches off the floor",
+      "Keep your neck in line and your feet down",
+      "Lower with control and pause before the next rep"
     ],
     "status": "active"
   }

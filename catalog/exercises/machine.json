@@ -528,7 +528,7 @@
     "category": "calf",
     "mode": "reps_load",
     "cues": [
-      "Sit with the balls of your feet on the platform edge",
+      "Place the balls of your feet firmly on the platform edge so they cannot slip",
       "Keep your knees nearly straight",
       "Push the platform away with your toes",
       "Lower to a full stretch without letting the weights slam"
@@ -595,11 +595,11 @@
     ],
     "muscleGroup": "Back",
     "primaryMuscles": [
-      "lowerBack",
-      "glutes"
+      "glutes",
+      "hamstrings"
     ],
     "secondaryMuscles": [
-      "hamstrings"
+      "lowerBack"
     ],
     "equipment": [
       "machine"
@@ -623,10 +623,11 @@
     "muscleGroup": "Back",
     "primaryMuscles": [
       "glutes",
-      "lowerBack"
+      "hamstrings"
     ],
     "secondaryMuscles": [
-      "hamstrings"
+      "lowerBack",
+      "abs"
     ],
     "equipment": [
       "machine"
@@ -789,6 +790,33 @@
       "Lift your shoulders straight up",
       "Pause at the top",
       "Lower without leaning forward"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "builtin.v1.back-extension-machine",
+    "name": "Seated back extension machine",
+    "aliases": [
+      "Lower back machine"
+    ],
+    "muscleGroup": "Back",
+    "primaryMuscles": [
+      "lowerBack"
+    ],
+    "secondaryMuscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": [
+      "machine"
+    ],
+    "category": "isolation",
+    "mode": "reps_load",
+    "cues": [
+      "Set the pad across your upper back and fasten the belt if there is one",
+      "Extend backward by straightening your lower back",
+      "Stop when your torso is upright without leaning back further",
+      "Return forward with control"
     ],
     "status": "active"
   }
