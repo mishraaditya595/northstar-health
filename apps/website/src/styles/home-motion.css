@@ -1,0 +1,118 @@
+/* Homepage motion: one product-led entrance, quiet supporting motion.
+   All content is visible by default; there is no animation dependency. */
+.home-hero {
+  position: relative;
+  isolation: isolate;
+}
+
+.home-hero::before,
+.home-hero::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  right: -12%;
+  top: 50%;
+  width: 85%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(214, 255, 96, .11);
+  border-radius: 50%;
+  transform: translateY(-50%);
+}
+
+.home-hero::after {
+  width: 65%;
+  right: -2%;
+  border-color: rgba(214, 255, 96, .18);
+}
+
+.home-hero .hero-grid > * {
+  min-width: 0;
+}
+
+.home-hero h1 {
+  font-size: clamp(2rem, 7vw, 4.25rem);
+  overflow-wrap: anywhere;
+}
+
+.home-hero .button {
+  max-width: 100%;
+  text-align: center;
+}
+
+.home-hero .button:focus-visible {
+  outline-color: var(--lime);
+}
+
+.home-hero-preview {
+  margin: 0;
+}
+
+.home-hero-preview img {
+  display: block;
+  width: 100%;
+  border: 1px solid rgba(214, 255, 96, .16);
+}
+
+.home-hero-preview .note {
+  margin-top: 8px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .home-hero {
+    --motion-ease: cubic-bezier(.16, 1, .3, 1);
+  }
+
+  .home-hero-copy > .eyebrow {
+    animation: home-rise 420ms var(--motion-ease) both;
+  }
+
+  .home-hero-copy > h1 {
+    animation: home-rise 600ms var(--motion-ease) 60ms both;
+  }
+
+  .home-hero-copy > .lede {
+    animation: home-rise 620ms var(--motion-ease) 140ms both;
+  }
+
+  .home-hero::before,
+  .home-hero::after {
+    animation: home-signal 900ms var(--motion-ease) both;
+  }
+
+  .home-hero::after {
+    animation-delay: 100ms;
+  }
+
+  .home-reveal:not(:focus-within) {
+    animation: home-rise 520ms cubic-bezier(.16, 1, .3, 1) both;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .home-hero .button {
+      transition: transform 180ms ease, box-shadow 180ms ease;
+    }
+
+    .home-hero .button:hover {
+      transform: translateY(-2px);
+    }
+
+    .home-hero .button-primary:hover {
+      box-shadow: 0 6px 24px rgba(214, 255, 96, .18);
+    }
+
+    .home-hero .button:active {
+      transform: translateY(0);
+    }
+  }
+}
+
+@keyframes home-rise {
+  from { opacity: .85; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes home-signal {
+  from { opacity: .35; transform: translateY(-50%) scale(.86); }
+  to { opacity: 1; transform: translateY(-50%) scale(1); }
+}

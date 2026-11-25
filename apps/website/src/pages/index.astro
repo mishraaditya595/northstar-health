@@ -2,6 +2,7 @@
 import Base from '../layouts/Base.astro';
 import GetApp from '../components/GetApp.astro';
 import { SITE } from '../site';
+import '../styles/home-motion.css';
 
 const faqs = [
   {
@@ -52,9 +53,9 @@ const jsonLd = [
   jsonLd={jsonLd}
 >
   <div class="wrap">
-    <div class="hero">
+    <div class="hero home-hero">
       <div class="hero-grid">
-        <div>
+        <div class="home-hero-copy">
           <p class="eyebrow">Strength training log</p>
           <h1>Log every rep. Even offline.</h1>
           <p class="lede">
@@ -63,7 +64,7 @@ const jsonLd = [
           </p>
           <GetApp />
         </div>
-        <figure style="margin:0">
+        <figure class="home-hero-preview">
           <img
             src="/concept-phones.svg"
             width="1440"
@@ -203,4 +204,9 @@ const jsonLd = [
       </div>
     </div>
   </section>
+  <script>
+    import { revealBelowFold } from '../scripts/home-motion.mjs';
+
+    revealBelowFold(document, window);
+  </script>
 </Base>
