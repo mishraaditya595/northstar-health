@@ -4,6 +4,7 @@ import 'package:flutter/services.dart' show MethodChannel;
 import 'package:health/health.dart' hide HealthValue;
 
 import '../domain/health_types.dart';
+import '../domain/sleep_nights.dart';
 import 'health_reader.dart';
 
 // Read types requested on both platforms. Sleep stages share one permission
@@ -170,7 +171,7 @@ class PlatformHealthReader implements HealthReader {
       startTime: from,
       endTime: to,
     );
-    return SeriesData([
+    final segments = <SleepSegment>[
       for (final p in points)
         if (_sleepStages[p.type] case final stage?)
           (
@@ -180,7 +181,12 @@ class PlatformHealthReader implements HealthReader {
             source: _sleepSourceName(p),
             sourceKey: p.sourceId.isEmpty ? p.sourceName : p.sourceId,
           ),
-    ]);
+    ];
+    // Health Connect apps may write sessions without stages. iOS in-bed
+    // alone (e.g. an iPhone bedtime schedule) is not sleep and stays as is.
+    return SeriesData(
+      _isAndroid ? sessionsWithoutStagesAsSleep(segments) : segments,
+    );
   });
 
   /// HealthKit's source name is the app or device name the Health app shows

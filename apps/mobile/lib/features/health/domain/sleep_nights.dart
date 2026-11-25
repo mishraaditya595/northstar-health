@@ -135,6 +135,34 @@ bool _isMainSleepCandidate(_Session s) {
   return end.hour >= 3 || _localDate(s.end).isAfter(_localDate(s.start));
 }
 
+/// Health Connect sources may write a sleep session without stages, which
+/// reads as an in-bed segment only. Each in-bed segment that overlaps no
+/// asleep stage from the same [SleepSegment.sourceKey] becomes unspecified
+/// sleep over the session (no stages, so no score). Other segments pass
+/// through unchanged.
+List<SleepSegment> sessionsWithoutStagesAsSleep(List<SleepSegment> segments) {
+  bool hasStages(SleepSegment session) => segments.any(
+    (s) =>
+        s.sourceKey == session.sourceKey &&
+        _asleepStages.contains(s.stage) &&
+        s.from.isBefore(session.to) &&
+        s.to.isAfter(session.from),
+  );
+  return [
+    for (final s in segments)
+      if (s.stage == SleepStage.inBed && !hasStages(s))
+        (
+          from: s.from,
+          to: s.to,
+          stage: SleepStage.asleepUnspecified,
+          source: s.source,
+          sourceKey: s.sourceKey,
+        )
+      else
+        s,
+  ];
+}
+
 /// Turns raw sleep segments into at most one [SleepNight] per local date,
 /// ascending. Per source and date the longest main-sleep candidate wins (so
 /// a nap never beats the main sleep, but a nap-only day shows the nap); per

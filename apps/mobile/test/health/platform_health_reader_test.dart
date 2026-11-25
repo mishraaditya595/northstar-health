@@ -610,6 +610,33 @@ void main() {
       );
     });
 
+    test('Android session without stages is one unstaged night', () async {
+      final bed = DateTime(2026, 11, 23, 23);
+      final wake = DateTime(2026, 11, 24, 7);
+      health.points = [
+        _point(
+          HealthDataType.SLEEP_SESSION,
+          0,
+          bed,
+          wake,
+          source: 'com.example.sleepapp',
+        ),
+      ];
+      final r = await android().readSleep(from, to);
+      final n = buildNights((r as SeriesData<List<SleepSegment>>).data).single;
+      expect(n.asleep, const Duration(hours: 8));
+      expect(n.hasStages, isFalse);
+      expect(n.inBed, isNull);
+
+      // iOS in-bed only (e.g. an iPhone bedtime schedule) is still no night.
+      health.points = [_point(HealthDataType.SLEEP_IN_BED, 0, bed, wake)];
+      final iosResult = await ios().readSleep(from, to);
+      expect(
+        buildNights((iosResult as SeriesData<List<SleepSegment>>).data),
+        isEmpty,
+      );
+    });
+
     group('two wearables the same night stay separate sources', () {
       DateTime t(int h, [int m = 0]) => DateTime(2026, 11, 24, h, m);
 

@@ -409,4 +409,50 @@ void main() {
       },
     );
   });
+  group('sessionsWithoutStagesAsSleep', () {
+    final bed = DateTime(2026, 11, 23, 23);
+    final wake = DateTime(2026, 11, 24, 7);
+
+    test('in-bed only builds no night on its own (iOS stays as before)', () {
+      expect(buildNights([seg(bed, wake, SleepStage.inBed)]), isEmpty);
+    });
+
+    test('a session with no asleep stage from its source becomes sleep', () {
+      final nights = buildNights(
+        sessionsWithoutStagesAsSleep([
+          seg(bed, wake, SleepStage.inBed, sourceKey: 'app'),
+        ]),
+      );
+      expect(nights, hasLength(1));
+      final n = nights.single;
+      expect(n.date, DateTime(2026, 11, 24));
+      expect(n.asleep, const Duration(hours: 8));
+      expect(n.hasStages, isFalse);
+      expect(n.inBed, isNull);
+      expect(n.start, bed);
+      expect(n.end, wake);
+    });
+
+    test('a session with stages from the same source stays in bed', () {
+      final session = seg(
+        DateTime(2026, 11, 23, 23),
+        DateTime(2026, 11, 24, 7),
+        SleepStage.inBed,
+      );
+      final out = sessionsWithoutStagesAsSleep([...stagedNight(), session]);
+      expect(out.last, session);
+      final n = buildNights(out).single;
+      expect(n.asleep, const Duration(hours: 7));
+      expect(n.inBed, const Duration(hours: 8));
+    });
+
+    test('stages from another source do not count', () {
+      final out = sessionsWithoutStagesAsSleep([
+        ...stagedNight(sourceKey: 'ring'),
+        seg(bed, wake, SleepStage.inBed, sourceKey: 'app'),
+      ]);
+      expect(out.last.stage, SleepStage.asleepUnspecified);
+      expect(out.last.sourceKey, 'app');
+    });
+  });
 }
