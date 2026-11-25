@@ -126,6 +126,22 @@ void main() {
     expect(find.byType(MuscleMap), findsNWidgets(2));
   });
 
+  testWidgets('the body maps have one label and the name is a header', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    await open(tester, rdl.id, size: const Size(390, 2400));
+    expect(
+      find.bySemanticsLabel(
+        'Body map: Hamstrings, Glutes; secondary Lower back',
+      ),
+      findsOneWidget,
+    );
+    final heading = tester.getSemantics(find.text('Romanian deadlift').last);
+    expect(heading.flagsCollection.isHeader, isTrue);
+    handle.dispose();
+  });
+
   testWidgets('the body maps draw primary at full and secondary at half', (
     tester,
   ) async {

@@ -88,6 +88,10 @@ class _Detail extends StatelessWidget {
       for (final name in primary) ?muscleFromName(name): 1.0,
     });
 
+    final bodyMapLabel =
+        'Body map: ${primary.map(muscleDisplayName).join(', ')}'
+        '${secondary.isEmpty ? '' : '; secondary ${secondary.map(muscleDisplayName).join(', ')}'}';
+
     Widget facts(String label, String value) => value.isEmpty
         ? const SizedBox.shrink()
         : Padding(
@@ -155,7 +159,7 @@ class _Detail extends StatelessWidget {
         24 + MediaQuery.paddingOf(context).bottom,
       ),
       children: [
-        SectionHeading(choice.name),
+        Semantics(header: true, child: SectionHeading(choice.name)),
         if (choice.aliases.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(bottom: 14),
@@ -167,14 +171,18 @@ class _Detail extends StatelessWidget {
         if (mapped) ...[
           muscleList('Primary', primary),
           if (secondary.isNotEmpty) muscleList('Secondary', secondary),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              figure(BodySide.front, 'FRONT'),
-              const SizedBox(width: 16),
-              figure(BodySide.back, 'BACK'),
-            ],
+          Semantics(
+            label: bodyMapLabel,
+            excludeSemantics: true,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                figure(BodySide.front, 'FRONT'),
+                const SizedBox(width: 16),
+                figure(BodySide.back, 'BACK'),
+              ],
+            ),
           ),
           const SizedBox(height: 18),
         ] else
