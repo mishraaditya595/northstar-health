@@ -188,7 +188,7 @@ void main() {
       find.bySemanticsLabel(RegExp(r'^Sleep stages, 11:48 PM to 6:31 AM')),
       findsOneWidget,
     );
-    expect(find.text('16% · normal 15–20%'), findsOneWidget);
+    expect(find.text('16% · normal 15–25%'), findsOneWidget);
     expect(find.text('24% · normal 20–25%'), findsOneWidget);
     expect(find.text('Core'), findsWidgets);
     expect(find.text('Avg 50 · lowest 46 bpm at 3:10 AM'), findsOneWidget);

@@ -221,7 +221,7 @@ class _LastNight extends ConsumerWidget {
           DetailStat(
             'Deep',
             formatDuration(night.deep),
-            '${_percent(night.deep, night.asleep)} · normal 15–20%',
+            '${_percent(night.deep, night.asleep)} · normal 15–25%',
           ),
           DetailStat(
             'REM',
