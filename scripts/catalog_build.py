@@ -142,6 +142,22 @@ def _write_lock(path, lock):
     )
 
 
+def _check_target(migrations, timestamp, name):
+    """Return an error string if this migration file would be unsafe to add."""
+    target = migrations / name
+    if target.exists():
+        return f"{target.name} already exists"
+    newest = max(
+        (p.name.split("_", 1)[0] for p in migrations.glob("*.sql")), default=""
+    )
+    if newest and timestamp <= newest:
+        return (
+            f"--timestamp {timestamp} must be later than the newest existing "
+            f"migration timestamp {newest}"
+        )
+    return None
+
+
 def main(argv=None, root=None):
     root = Path(root) if root else Path(__file__).resolve().parent.parent
     parser = argparse.ArgumentParser(description="BeyondRep catalogue build tool")
@@ -169,7 +185,12 @@ def main(argv=None, root=None):
         except ValueError as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 1
-        target = migrations / f"{args.timestamp}_catalog_rollback_to_{args.to}.sql"
+        name = f"{args.timestamp}_catalog_rollback_to_{args.to}.sql"
+        problem = _check_target(migrations, args.timestamp, name)
+        if problem:
+            print(f"error: {problem}", file=sys.stderr)
+            return 1
+        target = migrations / name
         target.write_text(sql, encoding="utf-8")
         print(f"wrote {target.relative_to(root)}")
         return 0
@@ -187,7 +208,8 @@ def main(argv=None, root=None):
             print(f"error: {error}")
         return 1
     sha256, size = digest(snapshot)
-    print(f"release {snapshot['release']} sha256 {sha256} size {size}")
+    note = " (placeholder publish date)" if args.command == "check" else ""
+    print(f"release {snapshot['release']} sha256 {sha256}{note} size {size}")
     if args.command == "check":
         return 0
 
@@ -196,11 +218,32 @@ def main(argv=None, root=None):
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
-    target = migrations / f"{args.timestamp}_catalog_release_{snapshot['release']}.sql"
-    target.write_text(sql, encoding="utf-8")
-    lock["releases"].append(lock_entry(snapshot, sha256))
-    _write_lock(lock_path, lock)
-    _update_changelog(root / "catalog" / "CHANGELOG.md", snapshot, sha256, published_at[:10])
+    name = f"{args.timestamp}_catalog_release_{snapshot['release']}.sql"
+    problem = _check_target(migrations, args.timestamp, name)
+    if problem:
+        print(f"error: {problem}", file=sys.stderr)
+        return 1
+    target = migrations / name
+    changelog_path = root / "catalog" / "CHANGELOG.md"
+    lock_before = changelog_before = None
+    # Migration first, then the lock; undo everything if any step fails.
+    try:
+        if lock_path.is_file():
+            lock_before = lock_path.read_text(encoding="utf-8")
+        if changelog_path.is_file():
+            changelog_before = changelog_path.read_text(encoding="utf-8")
+        target.write_text(sql, encoding="utf-8")
+        lock["releases"].append(lock_entry(snapshot, sha256))
+        _write_lock(lock_path, lock)
+        _update_changelog(changelog_path, snapshot, sha256, published_at[:10])
+    except Exception as exc:
+        target.unlink(missing_ok=True)
+        if lock_before is not None:
+            lock_path.write_text(lock_before, encoding="utf-8")
+        if changelog_before is not None and changelog_path.is_file():
+            changelog_path.write_text(changelog_before, encoding="utf-8")
+        print(f"error: publish failed, nothing written: {exc}", file=sys.stderr)
+        return 1
     print(f"wrote {target.relative_to(root)}")
     return 0
 

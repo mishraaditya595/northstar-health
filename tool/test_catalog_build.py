@@ -221,5 +221,63 @@ class MigrationTest(unittest.TestCase):
             self.assertEqual(list((root / "supabase/migrations").iterdir()), [])
 
 
+class GeneratorSafetyTest(unittest.TestCase):
+    def publish(self, root, ts="20261126000100"):
+        return run_cli(root, "publish", "--timestamp", ts,
+                       "--published-at", "2026-11-26T00:00:00Z")
+
+    def test_publish_refuses_timestamp_not_later_than_newest_migration(self):
+        for newest, ts in (("20261126000100", "20261126000100"),
+                           ("20261126000100", "20261125235959")):
+            with self.subTest(ts=ts), tempfile.TemporaryDirectory() as tmp:
+                root = temp_repo(tmp)
+                (root / "supabase/migrations" / f"{newest}_existing.sql").write_text("select 1;\n")
+                lock_before = (root / "catalog/releases.lock.json").read_text()
+                code, out = self.publish(root, ts)
+                self.assertEqual(code, 1, out)
+                self.assertIn("timestamp", out)
+                self.assertEqual(
+                    sorted(p.name for p in (root / "supabase/migrations").iterdir()),
+                    [f"{newest}_existing.sql"])
+                self.assertEqual((root / "catalog/releases.lock.json").read_text(), lock_before)
+
+    def test_publish_refuses_existing_target_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = temp_repo(tmp)
+            target = root / "supabase/migrations/20261126000100_catalog_release_1.sql"
+            target.write_text("hand written\n")
+            code, out = self.publish(root)
+            self.assertEqual(code, 1, out)
+            self.assertEqual(target.read_text(), "hand written\n")
+
+    def test_rollback_refuses_old_timestamp_and_existing_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = temp_repo(tmp)
+            self.assertEqual(self.publish(root)[0], 0)
+            code, _ = run_cli(root, "rollback", "--to", "1", "--timestamp", "20261126000100")
+            self.assertEqual(code, 1)
+            code, _ = run_cli(root, "rollback", "--to", "1", "--timestamp", "20260101000000")
+            self.assertEqual(code, 1)
+            self.assertEqual(len(list((root / "supabase/migrations").iterdir())), 1)
+
+    def test_failure_after_migration_write_leaves_nothing_behind(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = temp_repo(tmp)
+            changelog = root / "catalog/CHANGELOG.md"
+            changelog.unlink()
+            changelog.mkdir()  # makes the changelog step fail
+            lock_before = (root / "catalog/releases.lock.json").read_text()
+            code, out = self.publish(root)
+            self.assertEqual(code, 1, out)
+            self.assertEqual(list((root / "supabase/migrations").iterdir()), [])
+            self.assertEqual((root / "catalog/releases.lock.json").read_text(), lock_before)
+
+    def test_check_names_the_placeholder_date(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, out = run_cli(temp_repo(tmp), "check")
+            self.assertEqual(code, 0)
+            self.assertIn("placeholder publish date", out)
+
+
 if __name__ == "__main__":
     unittest.main()
