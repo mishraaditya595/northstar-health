@@ -23,7 +23,7 @@ Shared, read-only exercise (and later template and program) content. Decision: [
 
 ## Canonical bytes and checksum
 
-`json.dumps(snapshot, sort_keys=True, separators=(",", ":"), ensure_ascii=False)` encoded as UTF-8, no trailing newline. `sha256` is the hex SHA-256 of those bytes and `size_bytes` their length. The phone (stage 2) reproduces this form to verify a download.
+`json.dumps(snapshot, sort_keys=True, separators=(",", ":"), ensure_ascii=False)` encoded as UTF-8, no trailing newline. `sha256` is the hex SHA-256 of those bytes and `size_bytes` their length. The phone (`lib/features/catalog/domain/canonical_json.dart`) reproduces this form to verify a download; a test checks it against release 1 and `catalog/releases.lock.json`.
 
 ## Commands (from the repository root)
 
@@ -38,6 +38,18 @@ python3 scripts/catalog_build.py rollback --to N --timestamp YYYYMMDDHHMMSS
 ## Deploying
 
 Open a pull request with the generated migration, the lock and the changelog. CI replays every migration and runs the pgTAP tests (`supabase/tests/catalog.test.sql`). After merge, the owner runs the `supabase-database` Codemagic job (preview, then deploy), see [SUPABASE_CODEMAGIC_DEPLOY.md](SUPABASE_CODEMAGIC_DEPLOY.md). Nothing is deployed from a branch.
+
+## Phone client (stage 2, in source, not released)
+
+Code lives in `apps/mobile/lib/features/catalog/`. The app is read-only against the catalogue: it never writes to Supabase and the refresh never writes to ObjectBox.
+
+- **Cache:** `<app store directory>/northstar_catalog/<backend host>/` holds `snapshot.json` (the canonical snapshot bytes, which name their own `release`) and `meta.json` (`{"lastCheckedAtMs": n}`). It is shared by every account on that backend host and holds no account, health or workout data. Each write goes to a uniquely named `.tmp` file that is renamed over the target, so a kill mid-write can only leave a stale `.tmp`; the next start deletes temp files older than 10 minutes. The new snapshot is active in memory as soon as the rename succeeds, even if the metadata write then fails.
+- **Refresh:** on start, on app resume and when cloud backup becomes ready, at most once per 24 hours (a last-checked time in the future counts as stale). It needs a verified, non-anonymous, unexpired session for the bound account and calls `catalog_manifest` (10 s timeout), then `catalog_snapshot(release)` (20 s) only if the release or checksum differs. Pull to refresh on the Exercises page and the Retry buttons force a check.
+- **Verification before activation:** the client repeats the cheap structural checks, not every validator rule: SHA-256 over the canonical bytes equals the manifest, canonical size equals the manifest `sizeBytes` and is at most 2 MiB, `release` matches, the snapshot shape (required fields and types, no doubles), unique IDs across kinds, references (unknown or retired exercises, unknown templates in a week), ranges, week length and mode/prescription fit. Anything else is rejected and the old cache stays. A release rejected this way is not downloaded again for 24 hours (in memory, the manifest is still checked); pull to refresh and Retry ignore that.
+- **Compatibility:** `minAppCatalogSchema` is the only gate. The app supports catalogue schema 1 and accepts any snapshot whose `minAppCatalogSchema` is at most that, even if `schemaVersion` is higher, ignoring unknown keys at every level. **Publishers must raise `minAppCatalogSchema` for any breaking change** (a removed or re-typed field, a changed meaning); additive changes keep it. Only a higher `minAppCatalogSchema` shows the update notice, which is remembered across restarts in `meta.json` and cleared by the next successful check or by an app update.
+- **Outcomes:** `updated`, `upToDate`, `skippedFresh`, `noLiveRelease`, `outdatedApp` (manifest `minAppCatalogSchema` above the supported schema 1: keeps the cache and shows "Update BeyondRep to get the latest exercises."), `unauthorized`, `notLive` (the named release was rolled back mid-check), `invalid` and `failed`. `updated`, `upToDate`, `noLiveRelease` and `outdatedApp` record the last-checked time; `skippedFresh`, `unauthorized`, `notLive`, `invalid` and `failed` change nothing on disk.
+- **Failure behaviour:** a failed refresh with a cache is silent (pull to refresh shows "Couldn't update the exercise library. Showing the saved copy.", or "Couldn't download the exercise library. Check your connection and try again." with no cache). With no cache, pickers and the Exercises page show "The exercise library hasn't downloaded yet. Your own exercises and the basics still work." with Retry. A corrupt or unparsable cache file is deleted and treated as no cache. Logs and failure kinds never contain response bodies.
+- **Use:** pickers offer only exercises the logger can record today (modes `reps_load` and `duration`; `reps` and `duration_load` stay hidden until timed sets and bodyweight logging exist, unless the account already has the exercise). Picking a catalogue exercise copies it into the account's ObjectBox store (`materializeCatalogExercise`: insert, or refresh display fields when the stored copy is from an older release; the input mode is never changed). Nothing references the cache live.
 
 ## Provenance and licence
 

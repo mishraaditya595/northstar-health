@@ -8,8 +8,13 @@ import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 import '../../core/ids/uuid_factory.dart';
 import '../../core/ui/dispose_after_dialog.dart';
+import '../catalog/application/catalog_providers.dart';
+import '../catalog/application/exercise_choices_provider.dart';
+import '../catalog/data/catalog_repository.dart';
+import '../catalog/domain/exercise_choices.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
 import '../workouts/domain/workout_library_models.dart';
+import 'exercise_picker_sheet.dart';
 import 'train_library_state.dart';
 
 class ExerciseCatalogPage extends ConsumerStatefulWidget {
@@ -129,9 +134,38 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
     }
   }
 
+  Future<void> _refreshCatalog() async {
+    var outcome = CatalogRefreshOutcome.failed;
+    try {
+      outcome = await ref.read(catalogRepositoryProvider).refresh(force: true);
+    } on Object {
+      // Handled as a failed refresh below.
+    }
+    const failures = {
+      CatalogRefreshOutcome.invalid,
+      CatalogRefreshOutcome.failed,
+      CatalogRefreshOutcome.notLive,
+      CatalogRefreshOutcome.unauthorized,
+    };
+    if (failures.contains(outcome) && mounted) {
+      final hasCopy =
+          safeCatalogState(() => ref.read(catalogStateProvider)).snapshot !=
+          null;
+      showNsMessage(
+        context,
+        hasCopy
+            ? "Couldn't update the exercise library. Showing the saved copy."
+            : "Couldn't download the exercise library. "
+                  'Check your connection and try again.',
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(trainLibraryProvider);
+    final async = ref.watch(exerciseChoicesProvider);
+    final status = safeCatalogState(() => ref.watch(catalogStateProvider))
+        .status;
     final muted = Theme.of(context).extension<BeyondRepColors>()!.muted;
     return Scaffold(
       appBar: AppBar(
@@ -149,107 +183,124 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 900),
-          child: ListView(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              8,
-              16,
-              100 + MediaQuery.paddingOf(context).bottom,
-            ),
-            children: [
-              const SectionHeading('Find your movement'),
-              Text(
-                'Built-ins are read-only. Your own exercises stay on this device.',
-                style: TextStyle(color: muted),
+          child: RefreshIndicator(
+            onRefresh: _refreshCatalog,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                8,
+                16,
+                100 + MediaQuery.paddingOf(context).bottom,
               ),
-              const SizedBox(height: 16),
-              NsTextField(
-                onChanged: (value) =>
-                    setState(() => query = value.trim().toLowerCase()),
-                prefixIcon: Icons.search,
-                hint: 'Search exercise or equipment',
-              ),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: NsChip(
-                  label: 'Custom only',
-                  selected: customOnly,
-                  onSelected: (value) => setState(() => customOnly = value),
+              children: [
+                const SectionHeading('Find your movement'),
+                Text(
+                  'Built-ins are read-only. Your own exercises stay on this device.',
+                  style: TextStyle(color: muted),
                 ),
-              ),
-              const SizedBox(height: 14),
-              async.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (_, _) => TextButton(
-                  onPressed: () => ref.invalidate(trainLibraryProvider),
-                  child: const Text('Could not load exercises. Retry'),
+                if (status == CatalogStatus.unavailable) ...[
+                  const SizedBox(height: 8),
+                  Text(catalogUnavailableCopy, style: TextStyle(color: muted)),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      onPressed: () => retryCatalogDownload(ref),
+                      child: const Text('Retry'),
+                    ),
+                  ),
+                ],
+                if (status == CatalogStatus.outdatedApp) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Update BeyondRep to get the latest exercises.',
+                    style: TextStyle(color: muted),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                NsTextField(
+                  onChanged: (value) =>
+                      setState(() => query = value.trim().toLowerCase()),
+                  prefixIcon: Icons.search,
+                  hint: 'Search exercise or equipment',
                 ),
-                data: (data) {
-                  final visible = data.exercises
-                      .where(
-                        (exercise) =>
-                            exercise.archivedAtMs == null &&
-                            (!customOnly || !exercise.isBuiltIn) &&
-                            (query.isEmpty ||
-                                exercise.name.toLowerCase().contains(query) ||
-                                exercise.equipment.toLowerCase().contains(
-                                  query,
-                                ) ||
-                                exercise.muscleGroup.toLowerCase().contains(
-                                  query,
-                                )),
-                      )
-                      .toList();
-                  if (visible.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Text('No matching exercises.'),
-                    );
-                  }
-                  return Column(
-                    children: [
-                      for (final exercise in visible)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: NsListCard(
-                            icon: exercise.isBuiltIn
-                                ? Icons.fitness_center
-                                : Icons.edit_note,
-                            title: exercise.name,
-                            subtitle: [
-                              exercise.muscleGroup,
-                              exercise.equipment,
-                            ].where((s) => s.isNotEmpty).join(' · '),
-                            trailing: exercise.isBuiltIn
-                                ? const NsTag('Built-in')
-                                : PopupMenuButton<String>(
-                                    tooltip:
-                                        'Exercise actions for ${exercise.name}',
-                                    onSelected: (action) {
-                                      if (action == 'edit') _edit(exercise);
-                                      if (action == 'archive') {
-                                        _archive(exercise);
-                                      }
-                                    },
-                                    itemBuilder: (_) => const [
-                                      PopupMenuItem(
-                                        value: 'edit',
-                                        child: Text('Edit'),
-                                      ),
-                                      PopupMenuItem(
-                                        value: 'archive',
-                                        child: Text('Archive'),
-                                      ),
-                                    ],
-                                  ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: NsChip(
+                    label: 'Custom only',
+                    selected: customOnly,
+                    onSelected: (value) => setState(() => customOnly = value),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                async.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (_, _) => TextButton(
+                    onPressed: () => ref.invalidate(trainLibraryProvider),
+                    child: const Text('Could not load exercises. Retry'),
+                  ),
+                  data: (choices) {
+                    final visible = choices
+                        .where(
+                          (choice) =>
+                              (!customOnly || choice.isCustom) &&
+                              matchesExerciseQuery(choice, query),
+                        )
+                        .toList();
+                    if (visible.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Text('No matching exercises.'),
+                      );
+                    }
+                    return Column(
+                      children: [
+                        for (final choice in visible)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: NsListCard(
+                              icon: choice.isCustom
+                                  ? Icons.edit_note
+                                  : Icons.fitness_center,
+                              title: choice.name,
+                              subtitle: [
+                                choice.muscleGroup,
+                                choice.equipment,
+                              ].where((s) => s.isNotEmpty).join(' · '),
+                              trailing: !choice.isCustom
+                                  ? const NsTag('Built-in')
+                                  : PopupMenuButton<String>(
+                                      tooltip:
+                                          'Exercise actions for ${choice.name}',
+                                      onSelected: (action) {
+                                        if (action == 'edit') {
+                                          _edit(choice.local);
+                                        }
+                                        if (action == 'archive') {
+                                          _archive(choice.local!);
+                                        }
+                                      },
+                                      itemBuilder: (_) => const [
+                                        PopupMenuItem(
+                                          value: 'edit',
+                                          child: Text('Edit'),
+                                        ),
+                                        PopupMenuItem(
+                                          value: 'archive',
+                                          child: Text('Archive'),
+                                        ),
+                                      ],
+                                    ),
+                            ),
                           ),
-                        ),
-                    ],
-                  );
-                },
-              ),
-            ],
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

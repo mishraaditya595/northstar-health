@@ -11,6 +11,8 @@ import 'package:beyondrep/features/workouts/data/objectbox_workout_library_repos
 import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
 import 'package:beyondrep/features/workouts/domain/workout_library_repository.dart';
 
+import '../catalog/catalog_fixtures.dart';
+
 class FakeLibrary implements WorkoutLibraryRepository {
   final planRecords = <String, WorkoutPlanRecord>{};
   int archiveCalls = 0;
@@ -47,6 +49,17 @@ class FakeLibrary implements WorkoutLibraryRepository {
 
   @override
   void archiveCustomExercise(String uuid) => throw UnimplementedError();
+
+  @override
+  ExerciseRecord materializeCatalogExercise({
+    required String id,
+    required String name,
+    required String muscleGroup,
+    required String equipment,
+    required String category,
+    required String mode,
+    required int release,
+  }) => throw UnimplementedError();
 
   @override
   WorkoutPlanRecord? getPlan(String uuid) {
@@ -122,6 +135,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ...catalogTestOverrides(),
           localNowProvider.overrideWithValue(DateTime(2026, 11, 24, 9)),
           workoutLibraryRepositoryProvider.overrideWithValue(FakeLibrary()),
           activeWorkoutProvider.overrideWith(
@@ -164,6 +178,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ...catalogTestOverrides(),
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
           activeWorkoutProvider.overrideWith(
             (ref) => const AsyncData<ActiveWorkoutView?>(null),
@@ -244,6 +259,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ...catalogTestOverrides(),
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
           activeWorkoutProvider.overrideWith(
             (ref) => const AsyncData<ActiveWorkoutView?>(null),
@@ -294,6 +310,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            ...catalogTestOverrides(),
             workoutLibraryRepositoryProvider.overrideWithValue(fake),
             activeWorkoutProvider.overrideWith(
               (ref) => const AsyncData<ActiveWorkoutView?>(null),
@@ -362,6 +379,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ...catalogTestOverrides(),
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
           activeWorkoutProvider.overrideWith(
             (ref) => const AsyncData<ActiveWorkoutView?>(null),
@@ -415,6 +433,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ...catalogTestOverrides(),
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
           activeWorkoutProvider.overrideWith(
             (ref) => const AsyncData<ActiveWorkoutView?>(null),
@@ -466,6 +485,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ...catalogTestOverrides(),
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
           activeWorkoutProvider.overrideWith(
             (ref) => const AsyncData<ActiveWorkoutView?>(null),
@@ -515,6 +535,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ...catalogTestOverrides(),
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
           activeWorkoutProvider.overrideWith(
             (ref) => const AsyncData<ActiveWorkoutView?>(null),
@@ -564,6 +585,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ...catalogTestOverrides(),
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
           activeWorkoutProvider.overrideWith(
             (ref) => const AsyncData<ActiveWorkoutView?>(null),
@@ -618,6 +640,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ...catalogTestOverrides(),
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
           activeWorkoutProvider.overrideWith(
             (ref) => const AsyncData<ActiveWorkoutView?>(null),
@@ -665,6 +688,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ...catalogTestOverrides(),
           workoutLibraryRepositoryProvider.overrideWithValue(fake),
           activeWorkoutProvider.overrideWith(
             (ref) => const AsyncData<ActiveWorkoutView?>(null),

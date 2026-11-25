@@ -19,7 +19,7 @@ import '../sync/workout_upload_coordinator.dart';
 import 'previous_sets.dart';
 import 'active_workout_state.dart';
 import 'rest_timer_card.dart';
-import 'train_library_state.dart';
+import 'exercise_picker_sheet.dart';
 
 class ActiveWorkoutPage extends ConsumerStatefulWidget {
   const ActiveWorkoutPage({super.key});
@@ -150,59 +150,14 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
 
   Future<void> _chooseExercise(WorkoutSessionRecord workout) async {
     try {
-      final snapshot = await ref.read(trainLibraryProvider.future);
-      if (!mounted) {
-        return;
-      }
-      final available = snapshot.exercises
-          .where((exercise) => exercise.archivedAtMs == null)
-          .toList();
-      var search = '';
-      final chosen = await showNsSheet<String>(
+      final selected = await showExercisePicker(
         context,
-        builder: (sheetContext) => StatefulBuilder(
-          builder: (context, updateSheet) {
-            final list = available
-                .where(
-                  (e) =>
-                      e.name.toLowerCase().contains(search) ||
-                      e.muscleGroup.toLowerCase().contains(search),
-                )
-                .toList();
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: NsTextField(
-                    prefixIcon: Icons.search,
-                    label: 'Find a movement',
-                    onChanged: (value) =>
-                        updateSheet(() => search = value.trim().toLowerCase()),
-                  ),
-                ),
-                Expanded(
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    itemCount: list.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 10),
-                    itemBuilder: (_, index) => NsListCard(
-                      icon: Icons.fitness_center,
-                      title: list[index].name,
-                      subtitle: list[index].muscleGroup,
-                      onTap: () =>
-                          Navigator.pop(sheetContext, list[index].uuid),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
+        ref,
+        title: 'ADD EXERCISE',
       );
-      if (chosen == null || !mounted) {
+      if (selected == null || !mounted) {
         return;
       }
-      final selected = available.singleWhere((e) => e.uuid == chosen);
       await _perform((a) => a.addExercise(workout, selected));
     } catch (_) {
       if (mounted) {
