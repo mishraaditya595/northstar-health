@@ -4,7 +4,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(50);
+select plan(63);
 
 -- Synthetic release helper: content mirrors a real snapshot's header fields.
 create function pg_temp.pub(p_release integer, p_over jsonb default '{}',
@@ -194,6 +194,74 @@ select is((public.catalog_manifest()->>'release')::int,
   current_setting('catalog.base')::int, 'manifest follows the rollback');
 select throws_ok($$select public.catalog_snapshot(current_setting('catalog.base')::int + 1)$$,
   'P0002', 'catalog release not live', 'a rolled-back release can no longer be downloaded');
+reset role;
+
+-- Hardening (stage 9 security review).
+select is(
+  (select bool_or(has_table_privilege('service_role', t, p))
+     from unnest(array['public.catalog_releases','public.catalog_live']) t,
+          unnest(array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE']) p),
+  false, 'the service key has no direct privileges on the catalogue tables');
+select is(
+  (select bool_or(has_table_privilege(r, t, p))
+     from unnest(array['anon','authenticated']) r,
+          unnest(array['public.catalog_releases','public.catalog_live']) t,
+          unnest(array['TRUNCATE','REFERENCES','TRIGGER']) p),
+  false, 'clients cannot truncate, reference or add triggers to catalogue tables');
+select is(
+  (select bool_and(prosecdef and proconfig = array['search_path=""'])
+     from pg_proc where oid in ('public.catalog_manifest()'::regprocedure,
+                                'public.catalog_snapshot(integer)'::regprocedure)),
+  true, 'catalogue RPCs are security definer with an empty search_path');
+select is(
+  (select bool_or(prosecdef or proconfig is distinct from array['search_path=""'])
+     from pg_proc where oid in (
+       'northstar_private.publish_catalog_release(integer,integer,integer,jsonb,text,integer,timestamptz)'::regprocedure,
+       'northstar_private.set_live_catalog_release(integer)'::regprocedure,
+       'northstar_private.reject_catalog_release_change()'::regprocedure)),
+  false, 'private catalogue functions are not security definer and pin search_path');
+select is(
+  (select coalesce(string_agg(p.oid::regprocedure::text, ', '), '')
+     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'northstar_private'
+      and p.proname not in ('sync_workout_internal', 'current_workout_restore_state')
+      and (has_function_privilege('authenticated', p.oid, 'EXECUTE')
+           or has_function_privilege('anon', p.oid, 'EXECUTE'))),
+  '', 'no other private function is executable by clients');
+select throws_ok($$select northstar_private.publish_catalog_release(
+  current_setting('catalog.base')::int + 2, 1, 1,
+  pg_catalog.jsonb_build_object('release', current_setting('catalog.base')::int + 2,
+    'schemaVersion', 1, 'minAppCatalogSchema', 1,
+    'publishedAt', '2026-11-26T00:00:00Z'),
+  repeat('a', 64), 2097153, '2026-11-26T00:00:00Z')$$, '23514', null,
+  'a release over 2 MiB is refused');
+select throws_ok($$truncate public.catalog_live, public.catalog_releases$$,
+  'P0001', 'catalog releases are immutable', 'catalogue releases cannot be truncated');
+
+set local role authenticated;
+select set_config('request.jwt.claims',
+ '{"sub":"00000000-0000-4000-8000-0000000000c1","role":"authenticated","is_anonymous":false}', true);
+select throws_ok($$select public.catalog_snapshot(null)$$, 'P0002',
+  'catalog release not live', 'a null release cannot be downloaded');
+select throws_ok($$insert into public.catalog_live (singleton, release) values (true, 1)$$,
+  '42501', null, 'signed-in clients cannot insert a live pointer');
+select throws_ok($$delete from public.catalog_live$$, '42501', null,
+  'signed-in clients cannot delete the live pointer');
+select set_config('request.jwt.claims',
+ '{"sub":"00000000-0000-4000-8000-0000000000c1","role":"authenticated"}', true);
+select throws_ok($$select public.catalog_manifest()$$, '28000', 'verified account required',
+  'a JWT without the is_anonymous claim cannot read the manifest');
+select set_config('request.jwt.claims', '', true);
+select throws_ok($$select public.catalog_snapshot(1)$$, '28000', 'verified account required',
+  'a session without a JWT cannot read a snapshot');
+reset role;
+
+-- With nothing live, the manifest is empty rather than an error.
+delete from public.catalog_live;
+set local role authenticated;
+select set_config('request.jwt.claims',
+ '{"sub":"00000000-0000-4000-8000-0000000000c1","role":"authenticated","is_anonymous":false}', true);
+select is(public.catalog_manifest(), null, 'the manifest is null when no release is live');
 reset role;
 
 select * from finish();

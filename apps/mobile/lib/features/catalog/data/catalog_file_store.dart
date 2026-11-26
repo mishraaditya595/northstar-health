@@ -106,19 +106,73 @@ class CatalogFileStore {
     return null;
   }
 
-  /// Replaces the whole metadata file, so omitting [outdated] clears it.
+  /// The release and checksum the snapshot file had when it was written.
+  /// Absent in meta files from before this was recorded: those are accepted.
+  Future<({int release, String sha256})?> readSnapshotIdentity() async {
+    final meta = await _readMeta();
+    final release = meta?['snapshotRelease'];
+    final sha = meta?['snapshotSha256'];
+    if (release is int &&
+        sha is String &&
+        RegExp(r'^[0-9a-f]{64}$').hasMatch(sha)) {
+      return (release: release, sha256: sha);
+    }
+    return null;
+  }
+
+  /// Records which snapshot the file holds; keeps every other meta field.
+  Future<void> writeSnapshotIdentity({
+    required int release,
+    required String sha256,
+  }) async {
+    final meta = await _readMeta() ?? <String, Object?>{};
+    await _writeAtomically(
+      _meta,
+      'meta.json',
+      jsonEncode({
+        ...meta,
+        'snapshotRelease': release,
+        'snapshotSha256': sha256,
+      }),
+    );
+  }
+
+  /// Forgets the recorded identity, keeping every other meta field. Called
+  /// before the snapshot file is replaced, so a crash or failed identity write
+  /// afterwards leaves "no identity" (accepted) instead of the old release's.
+  Future<void> clearSnapshotIdentity() async {
+    final meta = await _readMeta();
+    if (meta == null || !meta.containsKey('snapshotSha256')) return;
+    await _writeAtomically(
+      _meta,
+      'meta.json',
+      jsonEncode(
+        {...meta}
+          ..remove('snapshotRelease')
+          ..remove('snapshotSha256'),
+      ),
+    );
+  }
+
+  /// Replaces the check time and the outdated mark (omitting [outdated]
+  /// clears it); keeps the snapshot identity.
   Future<void> writeLastCheckedAtMs(
     int value, {
     CatalogOutdatedMark? outdated,
-  }) => _writeAtomically(
-    _meta,
-    'meta.json',
-    jsonEncode({
-      'lastCheckedAtMs': value,
-      if (outdated != null) 'outdatedRelease': outdated.release,
-      if (outdated != null) 'outdatedSchema': outdated.schema,
-    }),
-  );
+  }) async {
+    final identity = await readSnapshotIdentity();
+    await _writeAtomically(
+      _meta,
+      'meta.json',
+      jsonEncode({
+        'lastCheckedAtMs': value,
+        if (outdated != null) 'outdatedRelease': outdated.release,
+        if (outdated != null) 'outdatedSchema': outdated.schema,
+        if (identity != null) 'snapshotRelease': identity.release,
+        if (identity != null) 'snapshotSha256': identity.sha256,
+      }),
+    );
+  }
 
   Future<void> _writeAtomically(File target, String name, String text) async {
     final tmp = File('${_directory.path}/$name.${_tempSuffix()}.tmp');

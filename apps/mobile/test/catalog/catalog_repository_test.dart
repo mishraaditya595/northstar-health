@@ -21,6 +21,18 @@ class _FailingWriteStore extends CatalogFileStore {
   }
 }
 
+class _FailingIdentityStore extends CatalogFileStore {
+  _FailingIdentityStore(super.directory);
+
+  @override
+  Future<void> writeSnapshotIdentity({
+    required int release,
+    required String sha256,
+  }) async {
+    throw const FileSystemException('identity write failed');
+  }
+}
+
 class _FailingMetaStore extends CatalogFileStore {
   _FailingMetaStore(super.directory);
 
@@ -288,6 +300,25 @@ void main() {
       expect(await store.readLastCheckedAtMs(), 5);
       expect(r.state.snapshot?.release, 1);
       expect(r.state.status, CatalogStatus.ready);
+    });
+
+    test('a checksum mismatch is found before the structural parse', () async {
+      var parses = 0;
+      final t = FakeCatalogTransport(
+        manifest: () async => manifestFor(r2, sha256: 'c' * 64),
+        snapshot: (_) async => r2,
+      );
+      final r = CatalogRepository(
+        transport: t,
+        store: store,
+        clock: () => now,
+        parseInBackground: (text) {
+          parses++;
+          return _parse(text);
+        },
+      );
+      expect(await r.refresh(), CatalogRefreshOutcome.invalid);
+      expect(parses, 0);
     });
 
     test('release different from the manifest is invalid', () async {
@@ -639,6 +670,46 @@ void main() {
       },
     );
 
+    test(
+      'hostile nesting is invalid, backs off and is not "unexpected"',
+      () async {
+        Object deep = 'x';
+        for (var i = 0; i < 100000; i++) {
+          deep = [deep];
+        }
+        final t = FakeCatalogTransport(
+          manifest: () async => manifestFor(r1),
+          snapshot: (_) async => deep,
+        );
+        final r = repo(t);
+        expect(await r.refresh(), CatalogRefreshOutcome.invalid);
+        expect(r.state.lastFailureKind, isNull);
+        expect(t.snapshotRequests, hasLength(1));
+        // Backoff: the same manifest is not downloaded again within 24 hours.
+        expect(await r.refresh(), CatalogRefreshOutcome.invalid);
+        expect(t.snapshotRequests, hasLength(1));
+      },
+    );
+
+    test(
+      'content larger than the manifest says is rejected and backs off',
+      () async {
+        // The manifest advertises r1, the server sends far more.
+        final big = snapshotJson();
+        (big['provenance']! as Map<String, Object?>)['attribution'] =
+            'x' * (200 * 1024);
+        final t = FakeCatalogTransport(
+          manifest: () async => manifestFor(r1),
+          snapshot: (_) async => big,
+        );
+        final r = repo(t);
+        expect(await r.refresh(), CatalogRefreshOutcome.invalid);
+        expect(snapshotFile().existsSync(), isFalse);
+        expect(await r.refresh(), CatalogRefreshOutcome.invalid);
+        expect(t.snapshotRequests, hasLength(1), reason: 'backed off');
+      },
+    );
+
     test('a snapshot of exactly the manifest size is accepted', () async {
       final r = repo(serving(r1));
       expect(await r.refresh(), CatalogRefreshOutcome.updated);
@@ -704,6 +775,119 @@ void main() {
       expect(await r.refresh(), CatalogRefreshOutcome.upToDate);
       expect(t.manifestCalls, 1, reason: 'not skipped as fresh');
       expect(await store.readOutdated(), isNull);
+    });
+  });
+
+  group('snapshot identity in meta.json', () {
+    test('a download records its release and checksum', () async {
+      final r = repo(serving(r2));
+      expect(await r.refresh(), CatalogRefreshOutcome.updated);
+      final identity = await store.readSnapshotIdentity();
+      expect(identity?.release, 2);
+      expect(identity?.sha256, manifestFor(r2).sha256);
+    });
+
+    test('a matching identity loads normally', () async {
+      await seed(r1);
+      await store.writeSnapshotIdentity(
+        release: 1,
+        sha256: manifestFor(r1).sha256,
+      );
+      final r = repo(serving(r1));
+      await r.load();
+      expect(r.state.status, CatalogStatus.ready);
+    });
+
+    test('a file that no longer matches its checksum is dropped before it is '
+        'parsed, and the next refresh is not skipped as fresh', () async {
+      await seed(r1, checkedAtMs: now.millisecondsSinceEpoch);
+      await store.writeSnapshotIdentity(
+        release: 1,
+        sha256: manifestFor(r1).sha256,
+      );
+      // A different, perfectly valid snapshot swapped in behind our back.
+      snapshotFile().writeAsStringSync(_canonical(r2));
+      var parses = 0;
+      final t = serving(r1);
+      final r = CatalogRepository(
+        transport: t,
+        store: store,
+        clock: () => now,
+        parseInBackground: (text) {
+          parses++;
+          return _parse(text);
+        },
+      );
+      await r.load();
+      expect(r.state.status, CatalogStatus.unavailable);
+      expect(r.state.snapshot, isNull);
+      expect(snapshotFile().existsSync(), isFalse);
+      expect(parses, 0);
+      expect(await r.refresh(), CatalogRefreshOutcome.updated);
+      expect(t.manifestCalls, 1, reason: 'not skipped as fresh');
+      expect(r.state.snapshot?.release, 1);
+    });
+
+    test('an identity write that fails after the rename still loads the new '
+        'release on the next start', () async {
+      await seed(r1, checkedAtMs: 1);
+      await store.writeSnapshotIdentity(
+        release: 1,
+        sha256: manifestFor(r1).sha256,
+      );
+      var live = r1;
+      final t = FakeCatalogTransport(
+        manifest: () async => manifestFor(live),
+        snapshot: (_) async => live,
+      );
+      final r = repo(t, withStore: _FailingIdentityStore(dir));
+      await r.load();
+      live = r2;
+      expect(await r.refresh(force: true), CatalogRefreshOutcome.failed);
+      expect(r.state.snapshot?.release, 2);
+      // Release 1's identity must not survive next to release 2's file.
+      expect(await store.readSnapshotIdentity(), isNull);
+
+      final restarted = repo(serving(r2));
+      await restarted.load();
+      expect(restarted.state.status, CatalogStatus.ready);
+      expect(restarted.state.snapshot?.release, 2);
+    });
+
+    test('a release that disagrees with the identity is dropped', () async {
+      await seed(r2);
+      await store.writeSnapshotIdentity(
+        release: 1,
+        sha256: manifestFor(r2).sha256,
+      );
+      final r = repo(serving(r2));
+      await r.load();
+      expect(r.state.status, CatalogStatus.unavailable);
+      expect(snapshotFile().existsSync(), isFalse);
+    });
+
+    test('an old meta file without an identity is accepted and rewritten on '
+        'the next refresh', () async {
+      await seed(r1, checkedAtMs: 1);
+      expect(await store.readSnapshotIdentity(), isNull);
+      final r = repo(serving(r1));
+      await r.load();
+      expect(r.state.status, CatalogStatus.ready);
+      expect(await r.refresh(force: true), CatalogRefreshOutcome.upToDate);
+      final identity = await store.readSnapshotIdentity();
+      expect(identity?.release, 1);
+      expect(identity?.sha256, manifestFor(r1).sha256);
+    });
+
+    test('a corrupt cached file is dropped and rechecked at once', () async {
+      await seed(r1, checkedAtMs: now.millisecondsSinceEpoch);
+      snapshotFile().writeAsStringSync('{"release":');
+      final t = serving(r1);
+      final r = repo(t);
+      await r.load();
+      expect(r.state.status, CatalogStatus.unavailable);
+      expect(await r.refresh(), CatalogRefreshOutcome.updated);
+      expect(t.manifestCalls, 1);
     });
   });
 

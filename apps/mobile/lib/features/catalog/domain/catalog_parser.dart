@@ -6,6 +6,28 @@ const supportedCatalogSchema = 1;
 const _modes = {'reps_load', 'reps', 'duration', 'duration_load'};
 const _durationModes = {'duration', 'duration_load'};
 
+// The closed vocabularies and limits of catalog/schema/catalog.schema.json.
+const _muscles = {
+  'chest', 'shoulders', 'biceps', 'forearms', 'abs', 'obliques', 'quads', //
+  'calves', 'traps', 'lats', 'lowerBack', 'triceps', 'glutes', 'hamstrings',
+};
+const _muscleGroups = {'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'};
+const _equipment = {
+  'barbell', 'dumbbell', 'kettlebell', 'machine', 'cable', 'band', //
+  'bodyweight', 'bench', 'pull_up_bar', 'ez_bar', 'trap_bar', 'plate', 'box',
+  'rings', 'other',
+};
+const _categories = {
+  'squat', 'hinge', 'lunge', 'push_horizontal', 'push_vertical', //
+  'pull_horizontal', 'pull_vertical', 'carry', 'core', 'isolation', 'calf',
+  'conditioning', 'mobility',
+};
+const _levels = {'beginner', 'intermediate', 'advanced'};
+const _goals = {'strength', 'hypertrophy', 'general', 'endurance', 'fat_loss'};
+final _exerciseId = RegExp(r'^builtin\.v1\.[a-z0-9]+(-[a-z0-9]+)*$');
+final _templateId = RegExp(r'^tpl\.[a-z0-9]+(-[a-z0-9]+)*$');
+final _programId = RegExp(r'^prog\.[a-z0-9]+(-[a-z0-9]+)*$');
+
 CatalogSnapshot parseCatalogSnapshot(Object? json, {String? expectedSha256}) {
   final root = _map(json);
   final List<int> bytes;
@@ -18,6 +40,9 @@ CatalogSnapshot parseCatalogSnapshot(Object? json, {String? expectedSha256}) {
   if (expectedSha256 != null && expectedSha256 != digest) {
     throw const CatalogFormatException('checksum');
   }
+  // Canonicalisation already bounded the depth; now reject any control
+  // character or lone surrogate in a key or a value.
+  _checkText(json);
 
   final schemaVersion = _int(root, 'schemaVersion');
   final minAppCatalogSchema = _int(root, 'minAppCatalogSchema');
@@ -29,7 +54,12 @@ CatalogSnapshot parseCatalogSnapshot(Object? json, {String? expectedSha256}) {
   final release = _int(root, 'release');
   final publishedAt = _string(root, 'publishedAt');
 
-  final exercises = _list(root, 'exercises').map(_exercise).toList();
+  // Exercises hidden because a closed-vocabulary value or the name is not one
+  // this build understands; templates using them are hidden too.
+  final hiddenIds = <String>{};
+  final exercises = [
+    for (final value in _list(root, 'exercises')) _exercise(value, hiddenIds),
+  ];
   final templateMaps = _list(root, 'templates').map(_map).toList();
   final programMaps = _list(root, 'programs').map(_map).toList();
 
@@ -53,7 +83,7 @@ CatalogSnapshot parseCatalogSnapshot(Object? json, {String? expectedSha256}) {
     for (final template in templateMaps) _string(template, 'id'),
   };
   final templates = [
-    for (final template in templateMaps) _template(template, byId),
+    for (final template in templateMaps) _template(template, byId, hiddenIds),
   ];
   final programs = [
     for (final program in programMaps) _program(program, templateIds),
@@ -89,7 +119,7 @@ CatalogManifest? parseCatalogManifest(Object? json) {
   );
 }
 
-CatalogExercise _exercise(Object? value) {
+CatalogExercise _exercise(Object? value, Set<String> hiddenIds) {
   final map = _map(value);
   final mode = _string(map, 'mode');
   if (!_modes.contains(mode)) throw const CatalogFormatException('shape');
@@ -97,18 +127,37 @@ CatalogExercise _exercise(Object? value) {
   if (status != 'active' && status != 'retired') {
     throw const CatalogFormatException('shape');
   }
+  final id = _id(map, _exerciseId);
+  final name = _text(map, 'name', max: 80);
+  final muscleGroup = _scalar(map, 'muscleGroup', _muscleGroups);
+  final category = _scalar(map, 'category', _categories);
+  final primary = _known(map, 'primaryMuscles', _muscles);
+  final equipment = _known(map, 'equipment', _equipment);
+  // Lenient vocabularies: unknown list values are dropped. The exercise is
+  // hidden (not the snapshot) when a scalar is unknown, the name is blank, or
+  // nothing known is left to log it with: no primary muscle or no equipment.
+  // Hidden is safer than loggable: a half-described exercise would show with
+  // an empty equipment label and wrong filters. Logged history keeps its own
+  // snapshot, so hiding never touches saved workouts.
+  final hidden =
+      muscleGroup == null ||
+      category == null ||
+      name.trim().isEmpty ||
+      primary.isEmpty ||
+      equipment.isEmpty;
+  if (hidden && status == 'active') hiddenIds.add(id);
   return CatalogExercise(
-    id: _string(map, 'id'),
-    name: _string(map, 'name'),
-    aliases: _strings(map, 'aliases'),
-    muscleGroup: _string(map, 'muscleGroup'),
-    primaryMuscles: _strings(map, 'primaryMuscles'),
-    secondaryMuscles: _strings(map, 'secondaryMuscles'),
-    equipment: _strings(map, 'equipment'),
-    category: _string(map, 'category'),
+    id: id,
+    name: name,
+    aliases: _strings(map, 'aliases', maxItems: 10, min: 1, max: 60),
+    muscleGroup: muscleGroup ?? _string(map, 'muscleGroup'),
+    primaryMuscles: primary,
+    secondaryMuscles: _known(map, 'secondaryMuscles', _muscles),
+    equipment: equipment,
+    category: category ?? _string(map, 'category'),
     mode: mode,
-    cues: _strings(map, 'cues'),
-    retired: status == 'retired',
+    cues: _strings(map, 'cues', maxItems: 6, min: 1, max: 160),
+    retired: status == 'retired' || hidden,
   );
 }
 
@@ -124,25 +173,32 @@ bool _retired(Map<String, Object?> map) {
 CatalogTemplate _template(
   Map<String, Object?> map,
   Map<String, CatalogExercise> exercises,
+  Set<String> hiddenIds,
 ) {
   final tags = _map(map['tags']);
   final standalone = map['standalone'];
   if (standalone != null && standalone is! bool) {
     throw const CatalogFormatException('shape');
   }
+  final name = _text(map, 'name', max: 80);
+  final level = _scalar(tags, 'level', _levels);
+  final rows = _list(map, 'exercises');
+  final usesHidden = rows.any(
+    (row) => row is Map && hiddenIds.contains(row['exerciseId']),
+  );
   return CatalogTemplate(
-    id: _string(map, 'id'),
-    name: _string(map, 'name'),
-    description: _string(map, 'description'),
-    goals: _strings(tags, 'goal'),
-    level: _string(tags, 'level'),
-    equipment: _strings(tags, 'equipment'),
+    id: _id(map, _templateId),
+    name: name,
+    description: _text(map, 'description', max: 1000),
+    goals: _known(tags, 'goal', _goals),
+    level: level ?? _string(tags, 'level'),
+    equipment: _known(tags, 'equipment', _equipment),
     estimatedMinutes: _int(map, 'estimatedMinutes'),
     standalone: standalone as bool? ?? true,
-    retired: _retired(map),
+    retired:
+        _retired(map) || level == null || name.trim().isEmpty || usesHidden,
     exercises: List.unmodifiable([
-      for (final item in _list(map, 'exercises'))
-        _prescription(_map(item), exercises),
+      for (final item in rows) _prescription(_map(item), exercises, hiddenIds),
     ]),
   );
 }
@@ -162,16 +218,18 @@ CatalogProgram _program(Map<String, Object?> map, Set<String> templateIds) {
   if (trainingDays == 0 || daysPerWeek != trainingDays) {
     throw const CatalogFormatException('range');
   }
+  final name = _text(map, 'name', max: 80);
+  final level = _scalar(map, 'level', _levels);
   return CatalogProgram(
-    id: _string(map, 'id'),
-    name: _string(map, 'name'),
-    description: _string(map, 'description'),
-    goals: _strings(map, 'goals'),
-    level: _string(map, 'level'),
+    id: _id(map, _programId),
+    name: name,
+    description: _text(map, 'description', max: 1000),
+    goals: _known(map, 'goals', _goals),
+    level: level ?? _string(map, 'level'),
     daysPerWeek: daysPerWeek,
     estimatedMinutes: _int(map, 'estimatedMinutes'),
-    equipment: _strings(map, 'equipment'),
-    retired: _retired(map),
+    equipment: _known(map, 'equipment', _equipment),
+    retired: _retired(map) || level == null || name.trim().isEmpty,
     week: List.unmodifiable(week.cast<String?>()),
   );
 }
@@ -179,9 +237,11 @@ CatalogProgram _program(Map<String, Object?> map, Set<String> templateIds) {
 CatalogPrescription _prescription(
   Map<String, Object?> item,
   Map<String, CatalogExercise> exercises,
+  Set<String> hiddenIds,
 ) {
   final exercise = exercises[_string(item, 'exerciseId')];
-  if (exercise == null || exercise.retired) {
+  if (exercise == null ||
+      (exercise.retired && !hiddenIds.contains(exercise.id))) {
     throw const CatalogFormatException('reference');
   }
   final sets = _int(item, 'sets');
@@ -199,8 +259,9 @@ CatalogPrescription _prescription(
     throw const CatalogFormatException('mode');
   }
   final note = item['note'];
-  if (note != null && note is! String) {
-    throw const CatalogFormatException('shape');
+  if (note != null) {
+    if (note is! String) throw const CatalogFormatException('shape');
+    if (note.runes.length > 300) throw const CatalogFormatException('range');
   }
   int? seconds;
   int? low;
@@ -245,12 +306,94 @@ List<Object?> _list(Map<String, Object?> map, String key) {
   return value;
 }
 
-List<String> _strings(Map<String, Object?> map, String key) {
+List<String> _strings(
+  Map<String, Object?> map,
+  String key, {
+  int? maxItems,
+  int min = 0,
+  int? max,
+}) {
   final values = _list(map, key);
   if (values.any((value) => value is! String)) {
     throw const CatalogFormatException('shape');
   }
+  if (maxItems != null && values.length > maxItems) {
+    throw const CatalogFormatException('range');
+  }
+  for (final value in values.cast<String>()) {
+    _checkLength(value, min, max);
+  }
   return List.unmodifiable(values.cast<String>());
+}
+
+void _checkLength(String value, int min, int? max) {
+  final length = value.runes.length;
+  if (length < min || (max != null && length > max)) {
+    throw const CatalogFormatException('range');
+  }
+}
+
+/// A string within the schema's length limits (in code points).
+String _text(Map<String, Object?> map, String key, {int min = 0, int? max}) {
+  final value = _string(map, key);
+  _checkLength(value, min, max);
+  return value;
+}
+
+String _id(Map<String, Object?> map, RegExp pattern) {
+  final value = _text(map, 'id', min: 1, max: 120);
+  if (!pattern.hasMatch(value)) throw const CatalogFormatException('shape');
+  return value;
+}
+
+/// The value if it is in [allowed], null if this build does not know it
+/// (the caller hides the item). A non-string is still a shape error.
+String? _scalar(Map<String, Object?> map, String key, Set<String> allowed) {
+  final value = _string(map, key);
+  return allowed.contains(value) ? value : null;
+}
+
+/// A list of strings with the values this build does not know dropped.
+List<String> _known(Map<String, Object?> map, String key, Set<String> allowed) {
+  final values = _strings(map, key);
+  return List.unmodifiable(values.where(allowed.contains));
+}
+
+/// Rejects ASCII control characters (U+0000-U+001F, U+007F) and unpaired
+/// surrogates in every key and string, like the publisher's validator.
+void _checkText(Object? node) {
+  if (node is String) {
+    _checkString(node);
+  } else if (node is List) {
+    node.forEach(_checkText);
+  } else if (node is Map) {
+    for (final entry in node.entries) {
+      _checkText(entry.key);
+      _checkText(entry.value);
+    }
+  }
+}
+
+void _checkString(String value) {
+  final units = value.codeUnits;
+  for (var i = 0; i < units.length; i++) {
+    final unit = units[i];
+    if (unit < 0x20 || unit == 0x7f) {
+      throw const CatalogFormatException('shape');
+    }
+    if (unit >= 0xD800 && unit <= 0xDBFF) {
+      if (i + 1 < units.length &&
+          units[i + 1] >= 0xDC00 &&
+          units[i + 1] <= 0xDFFF) {
+        i++;
+        continue;
+      }
+      throw const CatalogFormatException('shape');
+    }
+    if (unit >= 0xDC00 && unit <= 0xDFFF) {
+      throw const CatalogFormatException('shape');
+    }
+  }
 }
 
 int _int(Map<String, Object?> map, String key) {

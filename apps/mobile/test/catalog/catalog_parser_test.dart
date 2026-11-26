@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:beyondrep/features/catalog/domain/canonical_json.dart';
 import 'package:beyondrep/features/catalog/domain/catalog_models.dart';
 import 'package:beyondrep/features/catalog/domain/catalog_parser.dart';
+import 'package:beyondrep/features/catalog/domain/catalog_programs.dart';
+import 'package:beyondrep/features/catalog/domain/catalog_templates.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, Object?> exercise(String id, {String mode = 'reps_load'}) => {
@@ -408,6 +410,252 @@ void main() {
               'shape',
             ),
           ),
+        );
+      }
+    });
+  });
+
+  group('schema limits', () {
+    Map<String, Object?> at(Map<String, Object?> json, String key) =>
+        (json[key]! as List).first as Map<String, Object?>;
+
+    void expectRejected(
+      String reason,
+      void Function(Map<String, Object?> json) edit,
+    ) {
+      final json = validSnapshot();
+      edit(json);
+      expect(
+        () => parseCatalogSnapshot(json),
+        throwsA(isA<CatalogFormatException>()),
+        reason: reason,
+      );
+    }
+
+    test('text lengths are enforced like the schema', () {
+      expectRejected(
+        'exercise name 81',
+        (j) => at(j, 'exercises')['name'] = 'a' * 81,
+      );
+      expectRejected(
+        'alias 61',
+        (j) => at(j, 'exercises')['aliases'] = ['a' * 61],
+      );
+      expectRejected(
+        '11 aliases',
+        (j) => at(j, 'exercises')['aliases'] = [
+          for (var i = 0; i < 11; i++) 'a$i',
+        ],
+      );
+      expectRejected(
+        'cue 161',
+        (j) => at(j, 'exercises')['cues'] = ['a' * 161],
+      );
+      expectRejected(
+        '7 cues',
+        (j) => at(j, 'exercises')['cues'] = [for (var i = 0; i < 7; i++) 'c$i'],
+      );
+      expectRejected(
+        'template name 81',
+        (j) => at(j, 'templates')['name'] = 'a' * 81,
+      );
+      expectRejected(
+        'template description 1001',
+        (j) => at(j, 'templates')['description'] = 'a' * 1001,
+      );
+      expectRejected(
+        'program name 81',
+        (j) => at(j, 'programs')['name'] = 'a' * 81,
+      );
+      expectRejected(
+        'program description 1001',
+        (j) => at(j, 'programs')['description'] = 'a' * 1001,
+      );
+      expectRejected(
+        'note 301',
+        (j) => firstPrescription(j)['note'] = 'a' * 301,
+      );
+      // The limits themselves are fine.
+      final json = validSnapshot();
+      at(json, 'exercises')['name'] = 'a' * 80;
+      at(json, 'templates')['description'] = 'a' * 1000;
+      firstPrescription(json)['note'] = 'a' * 300;
+      expect(parseCatalogSnapshot(json).exercises.first.name, hasLength(80));
+    });
+
+    test('ids follow the schema pattern and length', () {
+      expectRejected(
+        'exercise id case',
+        (j) => at(j, 'exercises')['id'] = 'builtin.v1.Squat',
+      );
+      expectRejected(
+        'exercise id prefix',
+        (j) => at(j, 'exercises')['id'] = 'custom.squat',
+      );
+      expectRejected(
+        'exercise id double dash',
+        (j) => at(j, 'exercises')['id'] = 'builtin.v1.a--b',
+      );
+      expectRejected(
+        'exercise id 121',
+        (j) => at(j, 'exercises')['id'] = 'builtin.v1.${'a' * 109}',
+      );
+      expectRejected(
+        'template id',
+        (j) => at(j, 'templates')['id'] = 'tpl.Bad Id',
+      );
+      expectRejected(
+        'program id',
+        (j) => at(j, 'programs')['id'] = 'program.a',
+      );
+    });
+
+    test('unknown values in list fields are dropped', () {
+      final json = validSnapshot();
+      at(json, 'exercises')['primaryMuscles'] = ['quads', 'neck'];
+      at(json, 'exercises')['secondaryMuscles'] = ['neck'];
+      at(json, 'exercises')['equipment'] = ['barbell', 'rocket'];
+      (at(json, 'templates')['tags']! as Map)['goal'] = ['general', 'fame'];
+      (at(json, 'templates')['tags']! as Map)['equipment'] = ['rocket'];
+      at(json, 'programs')['goals'] = ['fame', 'strength'];
+      at(json, 'programs')['equipment'] = ['barbell', 'rocket'];
+      final snapshot = parseCatalogSnapshot(json);
+      final squat = snapshot.exercises.first;
+      expect(squat.primaryMuscles, ['quads']);
+      expect(squat.secondaryMuscles, isEmpty);
+      expect(squat.equipment, ['barbell']);
+      expect(squat.retired, isFalse);
+      expect(snapshot.templates.single.goals, ['general']);
+      expect(snapshot.templates.single.equipment, isEmpty);
+      expect(snapshot.templates.single.retired, isFalse);
+      expect(snapshot.programs.single.goals, ['strength']);
+      expect(snapshot.programs.single.equipment, ['barbell']);
+    });
+
+    test('an unknown scalar value hides that item, not the snapshot', () {
+      for (final (key, field) in [
+        ('exercises', 'muscleGroup'),
+        ('exercises', 'category'),
+      ]) {
+        final json = validSnapshot();
+        at(json, key)[field] = 'future-value';
+        final snapshot = parseCatalogSnapshot(json);
+        expect(snapshot.exercises.first.retired, isTrue, reason: field);
+        expect(snapshot.exercises.last.retired, isFalse, reason: field);
+        expect(snapshot.activeExercises.map((e) => e.id), ['builtin.v1.plank']);
+      }
+      var json = validSnapshot();
+      (at(json, 'templates')['tags']! as Map)['level'] = 'expert';
+      var snapshot = parseCatalogSnapshot(json);
+      expect(snapshot.templates.single.retired, isTrue);
+      expect(snapshot.programs.single.retired, isFalse);
+      expect(snapshot.exercises, hasLength(2));
+      json = validSnapshot();
+      at(json, 'programs')['level'] = 'expert';
+      snapshot = parseCatalogSnapshot(json);
+      expect(snapshot.programs.single.retired, isTrue);
+      expect(snapshot.templates.single.retired, isFalse);
+    });
+
+    test('an exercise with nothing known to log it with is hidden', () {
+      for (final (field, value) in [
+        ('equipment', ['rocket']),
+        ('equipment', <String>[]),
+        ('primaryMuscles', ['neck']),
+      ]) {
+        final json = validSnapshot();
+        at(json, 'exercises')[field] = value;
+        final snapshot = parseCatalogSnapshot(json);
+        expect(snapshot.exercises.first.retired, isTrue, reason: field);
+        expect(snapshot.exercises, hasLength(2));
+      }
+    });
+
+    test('a template using a hidden exercise is hidden, a program using a '
+        'hidden template is not browsable, nothing crashes', () {
+      final json = validSnapshot();
+      at(json, 'exercises')['category'] = 'future-value';
+      final snapshot = parseCatalogSnapshot(json);
+      expect(snapshot.exercises.first.retired, isTrue);
+      expect(snapshot.templates.single.retired, isTrue);
+      expect(snapshot.templates.single.exercises, hasLength(2));
+      expect(browsablePrograms(snapshot), isEmpty);
+      expect(browsableTemplates(snapshot), isEmpty);
+      // A genuinely retired exercise in a template is still a publisher error.
+      final strict = validSnapshot();
+      at(strict, 'exercises')['status'] = 'retired';
+      expectCode(strict, 'reference');
+    });
+
+    test('blank names hide the item, not the snapshot', () {
+      for (final blank in ['', '   ', ' \u00A0 ']) {
+        final json = validSnapshot();
+        at(json, 'exercises')['name'] = blank;
+        at(json, 'programs')['name'] = blank;
+        final snapshot = parseCatalogSnapshot(json);
+        expect(snapshot.exercises.first.retired, isTrue, reason: '"$blank"');
+        expect(snapshot.programs.single.retired, isTrue);
+        // The template uses the hidden exercise, so it is hidden as well.
+        expect(snapshot.templates.single.retired, isTrue);
+        final tpl = validSnapshot();
+        at(tpl, 'templates')['name'] = blank;
+        expect(parseCatalogSnapshot(tpl).templates.single.retired, isTrue);
+      }
+    });
+
+    test('control characters and lone surrogates are rejected', () {
+      for (final bad in [
+        'a\u0000b',
+        'tab\there',
+        'x\u007f',
+        'new\nline',
+        'lone\ud800',
+        'lone\udc00x',
+      ]) {
+        expectRejected(
+          'name ${bad.codeUnits}',
+          (j) => at(j, 'exercises')['name'] = bad,
+        );
+        expectRejected(
+          'cue ${bad.codeUnits}',
+          (j) => at(j, 'exercises')['cues'] = [bad],
+        );
+        expectRejected(
+          'description ${bad.codeUnits}',
+          (j) => at(j, 'templates')['description'] = bad,
+        );
+        expectRejected(
+          'note ${bad.codeUnits}',
+          (j) => firstPrescription(j)['note'] = bad,
+        );
+        expectRejected(
+          'program ${bad.codeUnits}',
+          (j) => at(j, 'programs')['name'] = bad,
+        );
+      }
+      // A valid surrogate pair (an emoji) and accents stay accepted.
+      final json = validSnapshot();
+      at(json, 'exercises')['name'] = 'Curl \u{1F4AA} Zoë';
+      expect(
+        parseCatalogSnapshot(json).exercises.first.name,
+        'Curl \u{1F4AA} Zoë',
+      );
+    });
+
+    test('every published release still parses', () {
+      for (final file in [
+        '20261126000100_catalog_release_1.sql',
+        '20261126030000_catalog_release_2.sql',
+        '20261126040000_catalog_release_3.sql',
+        '20261126050000_catalog_release_4.sql',
+      ]) {
+        final sql = File('../../supabase/migrations/$file').readAsStringSync();
+        final start = sql.indexOf(r'$catalog$') + r'$catalog$'.length;
+        final end = sql.indexOf(r'$catalog$', start);
+        expect(
+          () => parseCatalogSnapshot(jsonDecode(sql.substring(start, end))),
+          returnsNormally,
+          reason: file,
         );
       }
     });

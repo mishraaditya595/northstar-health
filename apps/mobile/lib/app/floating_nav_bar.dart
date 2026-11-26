@@ -23,7 +23,9 @@ class FloatingNavBar extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final background = dark ? const Color(0xE0161F22) : const Color(0xE3F5F9F7);
     final border = dark ? const Color(0x33B2C7C2) : const Color(0x2150645F);
-    final inactive = dark ? const Color(0xFF9DAAAA) : const Color(0xFF647674);
+    final inactive = dark
+        ? const Color(0xFF9DAAAA)
+        : BeyondRepPalette.lightMuted;
     final activeBackground = dark
         ? BeyondRepPalette.lime.withValues(alpha: .12)
         : const Color(0xFFE0EACA);

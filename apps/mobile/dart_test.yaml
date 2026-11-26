@@ -1,0 +1,4 @@
+tags:
+  # Measured catalogue performance (docs/CATALOG.md); run alone with
+  # `flutter test --tags performance`.
+  performance: {}

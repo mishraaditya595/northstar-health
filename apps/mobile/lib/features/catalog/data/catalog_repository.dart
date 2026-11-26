@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
@@ -42,6 +43,24 @@ class CatalogState {
 
 const _freshWindow = Duration(hours: 24);
 const maxCatalogBytes = 2 * 1024 * 1024;
+
+/// Room above the manifest's size_bytes while canonicalising, so a size lie is
+/// measured and rejected instead of aborting mid-write.
+const _sizeSlack = 1024;
+
+typedef _Canonical = ({String text, String sha256, int length});
+
+/// Canonical bytes, checksum and size, off the main isolate and never past
+/// [maxBytes]. Throws on anything canonicalisation rejects.
+Future<_Canonical> _canonicalizeInIsolate(Object? json, int maxBytes) =>
+    Isolate.run(() {
+      final bytes = canonicalJsonBytes(json, maxBytes: maxBytes);
+      return (
+        text: utf8.decode(bytes),
+        sha256: sha256Hex(bytes),
+        length: bytes.length,
+      );
+    });
 
 Future<CatalogSnapshot?> _parseInIsolate(String text) => Isolate.run(() {
   try {
@@ -86,8 +105,22 @@ class CatalogRepository extends ChangeNotifier {
       await store.prepare();
       final text = await store.readSnapshotText();
       if (text != null) {
-        snapshot = await _parse(text);
-        if (snapshot == null) await store.deleteSnapshot();
+        final identity = await store.readSnapshotIdentity();
+        // A file that is not the one we wrote is dropped before it is parsed.
+        if (identity == null ||
+            sha256Hex(utf8.encode(text)) == identity.sha256) {
+          snapshot = await _parse(text);
+          if (snapshot != null &&
+              identity != null &&
+              snapshot.release != identity.release) {
+            snapshot = null;
+          }
+        }
+        if (snapshot == null) {
+          await store.deleteSnapshot();
+          // Nothing cached now: do not wait out the 24 hour window.
+          _recheckDespiteFresh = true;
+        }
       }
       final mark = await store.readOutdated();
       if (mark != null) {
@@ -177,18 +210,24 @@ class CatalogRepository extends ChangeNotifier {
       }
 
       final json = await transport.fetchSnapshot(manifest.release);
-      final String text;
+      final cap = min(manifest.sizeBytes + _sizeSlack, maxCatalogBytes);
+      final _Canonical canonical;
       try {
-        text = utf8.decode(canonicalJsonBytes(json));
-      } on ArgumentError {
+        canonical = await _canonicalizeInIsolate(json, cap);
+      } on Object {
+        // Any error from canonicalisation (too deep, too big, a double, a bad
+        // key, unsendable) is hostile or broken content: invalid with backoff,
+        // not "unexpected".
         _reject(manifest);
         return CatalogRefreshOutcome.invalid;
       }
-      final length = utf8.encode(text).length;
-      if (length > maxCatalogBytes || length != manifest.sizeBytes) {
+      // Size and checksum are settled before any structural parse.
+      if (canonical.length != manifest.sizeBytes ||
+          canonical.sha256 != manifest.sha256) {
         _reject(manifest);
         return CatalogRefreshOutcome.invalid;
       }
+      final text = canonical.text;
       final parsed = await _parse(text);
       if (parsed == null ||
           parsed.sha256 != manifest.sha256 ||
@@ -196,11 +235,19 @@ class CatalogRepository extends ChangeNotifier {
         _reject(manifest);
         return CatalogRefreshOutcome.invalid;
       }
+      // Forget the old identity first: from here until the new one is written
+      // the file and meta disagree, and "no identity" is accepted on load
+      // while the old release's identity would delete the new file.
+      await store.clearSnapshotIdentity();
       await store.writeSnapshotText(text);
-      // Active as soon as the rename succeeded, even if the metadata write
-      // below fails; the next start loads the same file.
+      // Active as soon as the rename succeeded, even if the metadata writes
+      // below fail; the next start loads the same file (no identity yet).
       _rejected = null;
       _set(CatalogState(snapshot: parsed, status: CatalogStatus.ready));
+      await store.writeSnapshotIdentity(
+        release: parsed.release,
+        sha256: parsed.sha256,
+      );
       await _markChecked();
       return CatalogRefreshOutcome.updated;
     } on CatalogUnauthorized {
@@ -248,11 +295,20 @@ class CatalogRepository extends ChangeNotifier {
     return last <= now && now - last < _freshWindow.inMilliseconds;
   }
 
-  Future<void> _markChecked({CatalogOutdatedMark? outdated}) =>
-      store.writeLastCheckedAtMs(
-        _clock().millisecondsSinceEpoch,
-        outdated: outdated,
+  Future<void> _markChecked({CatalogOutdatedMark? outdated}) async {
+    await store.writeLastCheckedAtMs(
+      _clock().millisecondsSinceEpoch,
+      outdated: outdated,
+    );
+    // A meta file written before the identity existed gets one now.
+    final snapshot = _state.snapshot;
+    if (snapshot != null && await store.readSnapshotIdentity() == null) {
+      await store.writeSnapshotIdentity(
+        release: snapshot.release,
+        sha256: snapshot.sha256,
       );
+    }
+  }
 
   /// A successful check ends an earlier outdated-app or failure display.
   void _clearTransient() {
