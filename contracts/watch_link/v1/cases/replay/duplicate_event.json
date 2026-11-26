@@ -1,0 +1,113 @@
+{
+  "events": [
+    {
+      "schema_version": 2,
+      "event_id": "99999999-2222-4222-8222-000000000001",
+      "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "origin_device_id": "watch-installation-a",
+      "sequence": 0,
+      "type": "workout_started",
+      "occurred_at_utc": "2026-10-23T11:00:00Z",
+      "recorded_at_utc": "2026-10-23T11:00:01Z",
+      "time_zone": "Asia/Kolkata",
+      "payload": {
+        "activity_type": "traditional_strength_training",
+        "name": "Synthetic push day",
+        "owner": "watch",
+        "account_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      }
+    },
+    {
+      "schema_version": 2,
+      "event_id": "99999999-2222-4222-8222-000000000002",
+      "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "origin_device_id": "watch-installation-a",
+      "sequence": 1,
+      "type": "set_logged",
+      "occurred_at_utc": "2026-10-23T11:01:00Z",
+      "recorded_at_utc": "2026-10-23T11:01:01Z",
+      "time_zone": "Asia/Kolkata",
+      "payload": {
+        "set_id": "dddddddd-dddd-4ddd-8ddd-00000000000a",
+        "exercise_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+        "position": 0,
+        "kind": "working",
+        "input_unit": "kg",
+        "reps": 8,
+        "load_grams": 60000
+      }
+    },
+    {
+      "schema_version": 2,
+      "event_id": "99999999-2222-4222-8222-000000000002",
+      "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "origin_device_id": "watch-installation-a",
+      "sequence": 1,
+      "type": "set_logged",
+      "occurred_at_utc": "2026-10-23T11:01:00Z",
+      "recorded_at_utc": "2026-10-23T11:01:01Z",
+      "time_zone": "Asia/Kolkata",
+      "payload": {
+        "set_id": "dddddddd-dddd-4ddd-8ddd-00000000000a",
+        "exercise_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+        "position": 0,
+        "kind": "working",
+        "input_unit": "kg",
+        "reps": 8,
+        "load_grams": 60000
+      }
+    },
+    {
+      "schema_version": 2,
+      "event_id": "99999999-2222-4222-8222-000000000003",
+      "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "origin_device_id": "watch-installation-a",
+      "sequence": 2,
+      "type": "set_logged",
+      "occurred_at_utc": "2026-10-23T11:02:00Z",
+      "recorded_at_utc": "2026-10-23T11:02:01Z",
+      "time_zone": "Asia/Kolkata",
+      "payload": {
+        "set_id": "dddddddd-dddd-4ddd-8ddd-00000000000b",
+        "exercise_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+        "position": 0,
+        "kind": "working",
+        "input_unit": "kg",
+        "reps": 6,
+        "load_grams": 62500,
+        "rpe": 8.5
+      }
+    }
+  ],
+  "expected": {
+    "status": "active",
+    "sets": [
+      {
+        "set_id": "dddddddd-dddd-4ddd-8ddd-00000000000a",
+        "status": "completed",
+        "reps": 8,
+        "load_grams": 60000,
+        "history": [
+          "99999999-2222-4222-8222-000000000002"
+        ]
+      },
+      {
+        "set_id": "dddddddd-dddd-4ddd-8ddd-00000000000b",
+        "status": "completed",
+        "reps": 6,
+        "load_grams": 62500,
+        "rpe": 8.5,
+        "history": [
+          "99999999-2222-4222-8222-000000000003"
+        ]
+      }
+    ],
+    "volume_grams": 855000,
+    "completed_sets": 2,
+    "gaps": []
+  }
+}

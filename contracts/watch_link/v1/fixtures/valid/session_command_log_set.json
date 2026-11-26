@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "message_id": "77777777-3333-4333-8333-000000000007",
+  "type": "session_command",
+  "sent_at_utc": "2026-10-23T11:00:00Z",
+  "account_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "body": {
+    "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "command_id": "88888888-4444-4444-8444-000000000001",
+    "command": "log_set",
+    "set": {
+      "set_id": "dddddddd-dddd-4ddd-8ddd-ddddddddddd2",
+      "exercise_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      "position": 0,
+      "kind": "working",
+      "input_unit": "kg",
+      "reps": 8,
+      "load_grams": 60000
+    }
+  }
+}
