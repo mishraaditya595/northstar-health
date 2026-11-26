@@ -2,7 +2,10 @@ import 'dart:io';
 
 import 'package:beyondrep/features/catalog/domain/catalog_models.dart';
 import 'package:beyondrep/features/catalog/domain/catalog_programs.dart';
+import 'package:beyondrep/features/programs/application/program_providers.dart';
 import 'package:beyondrep/features/programs/domain/program_models.dart';
+import 'package:beyondrep/features/programs/domain/program_status.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
 import 'package:beyondrep/features/catalog/domain/catalog_templates.dart';
 import 'package:beyondrep/features/programs/data/objectbox_program_repository.dart';
@@ -109,6 +112,7 @@ void main() {
     double textScale = 1,
     DateTime? now,
     DateTime Function()? clock,
+    List<Override> overrides = const [],
   }) => pumpPrograms(
     tester,
     store: store,
@@ -118,6 +122,7 @@ void main() {
     textScale: textScale,
     now: now,
     clock: clock,
+    overrides: overrides,
   );
 
   group('programs list', () {
@@ -143,6 +148,89 @@ void main() {
       await tester.enterText(find.byType(TextField), 'zzz');
       await tester.pumpAndSettle();
       expect(find.text('No matching programs.'), findsOneWidget);
+    });
+
+    group('filters', () {
+      Future<void> pick(WidgetTester tester, List<String> labels) async {
+        await tester.tap(find.byTooltip('Filters'));
+        await tester.pumpAndSettle();
+        for (final label in labels) {
+          await tester.tap(find.text(label));
+          await tester.pumpAndSettle();
+        }
+        await tester.tap(find.text('Show results'));
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets('goal, equipment and days per week narrow the list', (
+        tester,
+      ) async {
+        await open(tester, '/train/programs');
+        await pick(tester, ['Hypertrophy']);
+        expect(find.text('Synthetic six-day'), findsOneWidget);
+        expect(find.text('Synthetic three-day'), findsNothing);
+        expect(find.text('Filters (1)'), findsOneWidget);
+        await tester.tap(find.text('Clear'));
+        await tester.pumpAndSettle();
+        expect(find.text('Synthetic three-day'), findsOneWidget);
+
+        // Cable is only needed by the six-day program.
+        await pick(tester, ['Barbell', 'Dumbbell']);
+        expect(find.text('Synthetic three-day'), findsOneWidget);
+        expect(find.text('Synthetic six-day'), findsNothing);
+        await tester.tap(find.text('Clear'));
+        await tester.pumpAndSettle();
+
+        await pick(tester, ['6']);
+        expect(find.text('Synthetic six-day'), findsOneWidget);
+        expect(find.text('Synthetic three-day'), findsNothing);
+      });
+
+      testWidgets('days per week is single select and can be unselected', (
+        tester,
+      ) async {
+        await open(tester, '/train/programs');
+        await pick(tester, ['3', '6']);
+        expect(find.text('Synthetic six-day'), findsOneWidget);
+        expect(find.text('Synthetic three-day'), findsNothing);
+        await pick(tester, ['6']);
+        expect(find.text('Synthetic three-day'), findsOneWidget);
+        expect(find.text('Synthetic six-day'), findsOneWidget);
+      });
+
+      testWidgets('no match says so', (tester) async {
+        await open(tester, '/train/programs');
+        await pick(tester, ['Hypertrophy', '3']);
+        expect(find.text('Filters (2)'), findsOneWidget);
+        expect(find.text('No matching programs.'), findsOneWidget);
+      });
+
+      for (final brightness in Brightness.values) {
+        testWidgets('the sheet at text scale 2.0 (${brightness.name})', (
+          tester,
+        ) async {
+          await open(
+            tester,
+            '/train/programs',
+            textScale: 2,
+            brightness: brightness,
+          );
+          await tester.tap(find.byTooltip('Filters'));
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          await tester.scrollUntilVisible(
+            find.text('Show results'),
+            100,
+            scrollable: find
+                .descendant(
+                  of: find.byType(BottomSheet),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          );
+          expect(tester.takeException(), isNull);
+        });
+      }
     });
 
     testWidgets('your programs are listed first and open', (tester) async {
@@ -223,6 +311,15 @@ void main() {
     testWidgets('a program-only template is previewed', (tester) async {
       await open(tester, '/train/programs/prog.three');
       expect(find.textContaining('Synthetic hidden'), findsOneWidget);
+    });
+
+    testWidgets('a retired program is hidden and says it is no longer '
+        'available', (tester) async {
+      await open(tester, '/train/programs');
+      expect(find.text('Synthetic retired program'), findsNothing);
+      await open(tester, '/train/programs/prog.old');
+      expect(find.text('This program is no longer available.'), findsOneWidget);
+      expect(find.text('Add program'), findsNothing);
     });
 
     testWidgets('an unknown program is not available', (tester) async {
@@ -331,7 +428,8 @@ void main() {
       await open(tester, '/train/program/$uuid', now: wednesday);
       expect(find.text('Wednesday · Synthetic push'), findsOneWidget);
       expect(find.text('Thursday · Rest'), findsOneWidget);
-      expect(find.text('Day 1 · Today'), findsOneWidget);
+      expect(find.text('Day 1'), findsOneWidget); // the Today tag says it
+      expect(find.text('Day 1 · Today'), findsNothing);
       expect(find.text('Active'), findsOneWidget);
     });
 
@@ -403,6 +501,154 @@ void main() {
       );
       expect(find.text('Rest day today'), findsOneWidget);
       expect(find.text("Start today's workout"), findsNothing);
+    });
+
+    group('status and missed days', () {
+      // Monday first, activated Wednesday 2026-11-25, now Friday 2026-11-27:
+      // Mon push is before activation, Wed pull is missed, Fri hidden is today.
+      final friday = DateTime(2026, 11, 27, 10);
+
+      Future<String> openMissed(
+        WidgetTester tester, {
+        DateTime Function()? clock,
+        double textScale = 1,
+        Brightness brightness = Brightness.light,
+      }) async {
+        final uuid = seed('prog.three', firstDay: 1);
+        await open(
+          tester,
+          '/train/program/$uuid',
+          now: friday,
+          clock: clock,
+          textScale: textScale,
+          brightness: brightness,
+        );
+        return uuid;
+      }
+
+      testWidgets('each row carries a status tag', (tester) async {
+        await openMissed(tester);
+        expect(find.text('Upcoming'), findsOneWidget); // Monday
+        expect(find.text('Missed'), findsOneWidget); // Wednesday
+        expect(find.text('Today'), findsOneWidget); // Friday
+        expect(find.text('Rest'), findsWidgets);
+        expect(find.text('Start for Wednesday'), findsOneWidget);
+      });
+
+      testWidgets('Start for Wednesday opens the logger and records that '
+          'date', (tester) async {
+        final uuid = await openMissed(tester);
+        await tapLow(tester, 'Start for Wednesday');
+        final session = store.box<WorkoutSessionEntity>().getAll().single;
+        expect(session.programUuid, uuid);
+        expect(session.programDayLocalDate, '2026-11-25');
+        expect(session.name, 'Synthetic pull');
+        expect(find.text('LOGGER'), findsOneWidget);
+      });
+
+      testWidgets('a day that stopped being missed before the tap does not '
+          'start', (tester) async {
+        var clock = friday;
+        await openMissed(tester, clock: () => clock);
+        clock = DateTime(2026, 11, 30, 0, 5); // next Monday: a new week
+        await tapLow(tester, 'Start for Wednesday');
+        expect(store.box<WorkoutSessionEntity>().count(), 0);
+        expect(
+          find.text('This day changed. Check it and try again.'),
+          findsOneWidget,
+        );
+      });
+
+      for (final brightness in Brightness.values) {
+        testWidgets('text scale 2.0 (${brightness.name}): tags and start '
+            'rows do not overflow', (tester) async {
+          await openMissed(tester, textScale: 2, brightness: brightness);
+          await tester.scrollUntilVisible(
+            find.text('Start for Wednesday'),
+            200,
+            scrollable: find.byType(Scrollable).first,
+          );
+          expect(tester.takeException(), isNull);
+          expect(find.text('Start for Wednesday'), findsOneWidget);
+        });
+      }
+
+      testWidgets('a finished today shows Done for today, not Start', (
+        tester,
+      ) async {
+        final uuid = seed('prog.three', firstDay: 3);
+        store.box<WorkoutSessionEntity>().put(
+          WorkoutSessionEntity(
+            uuid: 'finished',
+            name: 'Done',
+            status: 'completed',
+            startedAtMs: 1,
+            completedAtMs: 2,
+            originalOffsetMinutes: 0,
+            updatedAtMs: 2,
+            programUuid: uuid,
+            programDayLocalDate: '2026-11-25',
+          ),
+        );
+        await open(tester, '/train/program/$uuid', now: wednesday);
+        expect(find.text('Done for today'), findsOneWidget);
+        expect(find.text("Start today's workout"), findsNothing);
+        expect(find.text('Done'), findsOneWidget); // the row tag
+        expect(find.text('Day 1'), findsOneWidget);
+      });
+
+      testWidgets("another program's week is never used for the statuses", (
+        tester,
+      ) async {
+        final uuid = seed('prog.three', firstDay: 3);
+        final other = ProgramDayRecord(uuid: 'x', dayIndex: 0, planUuid: 'p');
+        final foreign = ProgramWeek(
+          program: TrainingProgramRecord(
+            uuid: 'another-program',
+            name: 'Other',
+            description: '',
+            sourceId: 'x',
+            sourceRelease: 4,
+            firstDayWeekday: 3,
+            isActive: true,
+            updatedAtMs: 0,
+            days: [other],
+          ),
+          localToday: wednesday,
+          rows: [
+            (
+              date: DateTime(2026, 11, 25),
+              dayIndex: 0,
+              day: other,
+              status: ProgramDayStatus.done,
+            ),
+          ],
+          plans: const {},
+          latestMissed: null,
+          nextTraining: null,
+        );
+        await open(
+          tester,
+          '/train/program/$uuid',
+          now: wednesday,
+          overrides: [programWeekProvider.overrideWithValue(foreign)],
+        );
+        expect(find.text('Done'), findsNothing);
+        expect(find.text('Done for today'), findsNothing);
+      });
+
+      testWidgets('an inactive program shows no Start and says how to get '
+          'one', (tester) async {
+        final uuid = seed('prog.three', firstDay: 3, active: false);
+        await open(tester, '/train/program/$uuid', now: wednesday);
+        expect(
+          find.text('Make this your active program to start its workouts'),
+          findsOneWidget,
+        );
+        expect(find.text("Start today's workout"), findsNothing);
+        expect(find.textContaining('Start for'), findsNothing);
+        expect(find.text('Missed'), findsNothing);
+      });
     });
 
     testWidgets('a day can be changed to Rest', (tester) async {

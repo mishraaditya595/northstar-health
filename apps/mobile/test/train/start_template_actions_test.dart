@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:beyondrep/core/ids/uuid_factory.dart';
 import 'package:beyondrep/features/catalog/domain/catalog_templates.dart';
 import 'package:beyondrep/features/train/active_workout_state.dart';
+import 'package:beyondrep/features/programs/data/objectbox_program_repository.dart';
 import 'package:beyondrep/features/workouts/data/objectbox_live_workout_engine.dart';
 import 'package:beyondrep/features/workouts/data/objectbox_workout_library_repository.dart';
 import 'package:beyondrep/features/workouts/data/objectbox_workout_repository.dart';
@@ -28,6 +29,7 @@ void main() {
       ObjectBoxWorkoutRepository(store),
       ObjectBoxWorkoutLibraryRepository(store),
       SecureUuidFactory(),
+      programs: ObjectBoxProgramRepository(store),
     );
   });
 

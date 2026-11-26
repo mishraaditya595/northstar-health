@@ -3,13 +3,14 @@ import '../../workouts/domain/durations.dart';
 import 'catalog_models.dart';
 import 'exercise_choices.dart';
 
-/// Standalone templates the phone can show: every exercise is active in
+/// Standalone, not retired templates the phone can show: every exercise is active in
 /// [snapshot] and has a mode the logger can record. Sorted by name.
 List<CatalogTemplate> browsableTemplates(CatalogSnapshot snapshot) {
   final byId = {for (final e in snapshot.activeExercises) e.id: e};
   final result = [
     for (final template in snapshot.templates)
       if (template.standalone &&
+          !template.retired &&
           template.exercises.every(
             (row) => loggableModes.contains(byId[row.exerciseId]?.mode),
           ))

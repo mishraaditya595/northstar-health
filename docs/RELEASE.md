@@ -172,6 +172,25 @@ Programs (release 4, 17 programs) are implemented in source, **not deployed, rel
 | Upgrade an install that has plans and workouts from the previous build: everything is still there and Programs opens | not run | not run |
 | Text size 200 percent on a 6-day program and on Your program in light and dark: nothing overflows and the buttons can be reached | not run | not run |
 
+## Training library stage 8 device QA (ADR-0010, owner actions, none done)
+
+Today and scheduling (Today program card, missed days, filters, retiring) is implemented in source, **not released or device-verified**. It needs no database deploy and publishes no catalogue release. Every row is not run.
+
+| Check | iOS | Android |
+| --- | --- | --- |
+| Today on a training day with an active program: the program card shows the workout, exercise count and about minutes; Start opens the logger and Open program opens Your program | not run | not run |
+| Today on a rest day: "Rest day" with "Next: <weekday> · <workout>" and no Start | not run | not run |
+| Today after finishing the day's workout: "Done for today" with the next workout; the day is Done in Your program | not run | not run |
+| Missed line: skip a training day, then on Today tap "Missed <weekday>: <workout>", confirm; the logger opens, and after finishing the missed day is Done and the line moves to an older miss or disappears | not run | not run |
+| Older misses in the same week start from "Start for <weekday>" in Your program; a new program week clears them | not run | not run |
+| Session across midnight: start at 23:50, finish after midnight; the start date is marked done, not the next day | not run | not run |
+| Time-zone change after starting: change the device time zone mid-workout; the recorded day does not move | not run | not run |
+| Schedule edit after sessions: change a day or the start day; finished days stay done, and the missed list follows the new schedule | not run | not run |
+| Program switch: make a second program active; Today shows it, the first shows no Start and "Make this your active program to start its workouts" | not run | not run |
+| Unfinished workout: Today keeps the Resume card above everything, with no program card or missed line | not run | not run |
+| Filters: goal, equipment I have and days per week narrow Workouts and Programs, "Filters (n)" and Clear work, and nothing is remembered after leaving the page | not run | not run |
+| Text size 200 percent on Today with the missed line, Your program with tags, and both filter sheets in light and dark: nothing overflows and the buttons can be reached | not run | not run |
+
 ## Feature and privacy readiness
 
 - ObjectBox real sessions/sets with generated model UID fixture migration, durable offline writes and recovery through process death.

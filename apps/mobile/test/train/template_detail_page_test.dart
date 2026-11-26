@@ -135,6 +135,15 @@ void main() {
     expect(copyButton, findsNothing);
   });
 
+  testWidgets('a retired template says it is no longer available', (
+    tester,
+  ) async {
+    await open(tester, id: 'tpl.old');
+    expect(find.text('This workout is no longer available.'), findsOneWidget);
+    expect(find.text("This workout isn't available."), findsNothing);
+    expect(copyButton, findsNothing);
+  });
+
   testWidgets('copying twice quickly makes one plan; a later copy numbers it', (
     tester,
   ) async {

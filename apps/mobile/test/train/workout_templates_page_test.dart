@@ -150,4 +150,117 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('a retired template is not listed', (tester) async {
+    await open(tester, readyTemplates());
+    expect(find.text('Synthetic retired'), findsNothing);
+    expect(find.text('Synthetic push'), findsOneWidget);
+  });
+
+  group('filters', () {
+    Future<void> openSheet(WidgetTester tester) async {
+      await tester.tap(find.byTooltip('Filters'));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> showResults(WidgetTester tester) async {
+      await tester.tap(find.text('Show results'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('goal narrows the list and shows the count; Clear restores '
+        'it', (tester) async {
+      await open(tester, readyTemplates());
+      expect(find.text('Filters (1)'), findsNothing);
+      await openSheet(tester);
+      await tester.tap(find.text('Strength'));
+      await tester.pumpAndSettle();
+      await showResults(tester);
+      expect(find.text('Synthetic pull'), findsOneWidget);
+      expect(find.text('Synthetic push'), findsNothing);
+      expect(find.text('Filters (1)'), findsOneWidget);
+      await tester.tap(find.text('Clear'));
+      await tester.pumpAndSettle();
+      expect(find.text('Synthetic push'), findsOneWidget);
+      expect(find.text('Filters (1)'), findsNothing);
+    });
+
+    testWidgets('equipment I have, with bodyweight always counted', (
+      tester,
+    ) async {
+      await open(tester, readyTemplates());
+      await openSheet(tester);
+      expect(find.text('Bodyweight'), findsNothing); // always available
+      await tester.tap(find.text('Dumbbell'));
+      await tester.pumpAndSettle();
+      await showResults(tester);
+      expect(find.text('Synthetic pull'), findsOneWidget);
+      expect(find.text('Synthetic push'), findsNothing);
+      expect(find.text('Synthetic seven'), findsNothing);
+    });
+
+    testWidgets('goal and equipment together, with no match', (tester) async {
+      await open(tester, readyTemplates());
+      await openSheet(tester);
+      await tester.tap(find.text('Strength'));
+      await tester.tap(find.text('Barbell'));
+      await tester.pumpAndSettle();
+      await showResults(tester);
+      expect(find.text('Filters (2)'), findsOneWidget);
+      expect(find.text('No matching workouts.'), findsOneWidget);
+      await tester.tap(find.text('Clear'));
+      await tester.pumpAndSettle();
+      expect(find.text('Synthetic push'), findsOneWidget);
+    });
+
+    testWidgets('closing the sheet without Show results changes nothing', (
+      tester,
+    ) async {
+      await open(tester, readyTemplates());
+      await openSheet(tester);
+      await tester.tap(find.text('Strength'));
+      await tester.pumpAndSettle();
+      await tester.tapAt(const Offset(195, 20));
+      await tester.pumpAndSettle();
+      expect(find.text('Synthetic push'), findsOneWidget);
+      expect(find.text('Filters (1)'), findsNothing);
+    });
+
+    testWidgets('the level chips still work with the filters', (tester) async {
+      await open(tester, readyTemplates());
+      await openSheet(tester);
+      await tester.tap(find.text('Dumbbell'));
+      await tester.pumpAndSettle();
+      await showResults(tester);
+      await tester.tap(find.text('Beginner'));
+      await tester.pumpAndSettle();
+      expect(find.text('No matching workouts.'), findsOneWidget);
+    });
+
+    for (final brightness in Brightness.values) {
+      testWidgets('the sheet at text scale 2.0 (${brightness.name})', (
+        tester,
+      ) async {
+        await open(
+          tester,
+          readyTemplates(),
+          textScale: 2,
+          brightness: brightness,
+        );
+        await openSheet(tester);
+        expect(tester.takeException(), isNull);
+        await tester.scrollUntilVisible(
+          find.text('Show results'),
+          100,
+          scrollable: find
+              .descendant(
+                of: find.byType(BottomSheet),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
+  });
 }

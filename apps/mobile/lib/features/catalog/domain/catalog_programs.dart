@@ -1,7 +1,7 @@
 import 'catalog_models.dart';
 import 'exercise_choices.dart';
 
-/// Programs the phone can show: every template the week uses is fully
+/// Programs the phone can show, not retired: every template the week uses is fully
 /// loggable with active exercises. Program-only templates count. Sorted by
 /// days per week, then name.
 List<CatalogProgram> browsablePrograms(CatalogSnapshot snapshot) {
@@ -10,6 +10,7 @@ List<CatalogProgram> browsablePrograms(CatalogSnapshot snapshot) {
   bool loggable(String id) {
     final template = templates[id];
     return template != null &&
+        !template.retired &&
         template.exercises.every(
           (row) => loggableModes.contains(byId[row.exerciseId]?.mode),
         );
@@ -17,7 +18,8 @@ List<CatalogProgram> browsablePrograms(CatalogSnapshot snapshot) {
 
   final result = [
     for (final program in snapshot.programs)
-      if (program.week.whereType<String>().every(loggable)) program,
+      if (!program.retired && program.week.whereType<String>().every(loggable))
+        program,
   ];
   result.sort((a, b) {
     final byDays = a.daysPerWeek.compareTo(b.daysPerWeek);

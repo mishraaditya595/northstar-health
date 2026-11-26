@@ -28,15 +28,18 @@ CatalogTemplate _tpl(
   List<CatalogPrescription> rows, {
   bool standalone = true,
   List<String> equipment = const ['barbell'],
+  List<String> goals = const ['general'],
+  bool retired = false,
 }) => CatalogTemplate(
   id: id,
   name: name,
   description: 'Synthetic description for $name.',
-  goals: const ['general'],
+  goals: goals,
   level: level,
   equipment: equipment,
   estimatedMinutes: 40,
   standalone: standalone,
+  retired: retired,
   exercises: rows,
 );
 
@@ -83,10 +86,14 @@ CatalogSnapshot templatesSnapshot() {
           _rx('builtin.v1.synthetic-move-3', repsMin: 10, repsMax: 10),
         ],
         equipment: const ['dumbbell'],
+        goals: const ['strength', 'hypertrophy'],
       ),
       _tpl('tpl.hidden', 'Synthetic hidden', 'beginner', [
         _rx('builtin.v1.synthetic-move-1'),
       ], standalone: false),
+      _tpl('tpl.old', 'Synthetic retired', 'beginner', [
+        _rx('builtin.v1.synthetic-move-1'),
+      ], retired: true),
       _tpl('tpl.big', 'Synthetic seven', 'advanced', [
         for (var i = 1; i <= 6; i++) _rx('builtin.v1.synthetic-move-$i'),
         _rx('builtin.v1.synthetic-hold', seconds: 30, rest: 60),

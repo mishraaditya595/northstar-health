@@ -112,6 +112,15 @@ CatalogExercise _exercise(Object? value) {
   );
 }
 
+/// Optional `status` on templates and programs: missing or `active` is
+/// active. `retired`, and any value this build does not know, count as retired
+/// (not browsable): a future status must hide one item, not reject the whole
+/// snapshot. Exercises keep their strict check.
+bool _retired(Map<String, Object?> map) {
+  final status = map['status'];
+  return status != null && status != 'active';
+}
+
 CatalogTemplate _template(
   Map<String, Object?> map,
   Map<String, CatalogExercise> exercises,
@@ -130,6 +139,7 @@ CatalogTemplate _template(
     equipment: _strings(tags, 'equipment'),
     estimatedMinutes: _int(map, 'estimatedMinutes'),
     standalone: standalone as bool? ?? true,
+    retired: _retired(map),
     exercises: List.unmodifiable([
       for (final item in _list(map, 'exercises'))
         _prescription(_map(item), exercises),
@@ -161,6 +171,7 @@ CatalogProgram _program(Map<String, Object?> map, Set<String> templateIds) {
     daysPerWeek: daysPerWeek,
     estimatedMinutes: _int(map, 'estimatedMinutes'),
     equipment: _strings(map, 'equipment'),
+    retired: _retired(map),
     week: List.unmodifiable(week.cast<String?>()),
   );
 }

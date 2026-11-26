@@ -16,6 +16,7 @@ import 'package:beyondrep/features/train/train_page.dart';
 import 'package:beyondrep/objectbox.g.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
@@ -27,16 +28,20 @@ CatalogProgram _program(
   String id,
   String name,
   String level,
-  List<String?> week,
-) => CatalogProgram(
+  List<String?> week, {
+  List<String> goals = const ['general'],
+  List<String> equipment = const ['barbell', 'dumbbell'],
+  bool retired = false,
+}) => CatalogProgram(
   id: id,
   name: name,
   description: 'Synthetic description for $name.',
-  goals: const ['general'],
+  goals: goals,
   level: level,
   daysPerWeek: week.whereType<String>().length,
   estimatedMinutes: 40,
-  equipment: const ['barbell', 'dumbbell'],
+  equipment: equipment,
+  retired: retired,
   week: week,
 );
 
@@ -62,15 +67,31 @@ CatalogSnapshot programsSnapshot() {
         null,
         null,
       ]),
-      _program('prog.six', 'Synthetic six-day', 'intermediate', [
+      _program(
+        'prog.six',
+        'Synthetic six-day',
+        'intermediate',
+        [
+          'tpl.push',
+          'tpl.pull',
+          'tpl.big',
+          'tpl.push',
+          'tpl.pull',
+          'tpl.hidden',
+          null,
+        ],
+        goals: const ['hypertrophy'],
+        equipment: const ['barbell', 'dumbbell', 'cable'],
+      ),
+      _program('prog.old', 'Synthetic retired program', 'beginner', [
         'tpl.push',
-        'tpl.pull',
-        'tpl.big',
-        'tpl.push',
-        'tpl.pull',
-        'tpl.hidden',
         null,
-      ]),
+        'tpl.pull',
+        null,
+        null,
+        null,
+        null,
+      ], retired: true),
     ],
   );
 }
@@ -90,6 +111,7 @@ Future<List<String>> pumpPrograms(
   DateTime? now,
   DateTime Function()? clock,
   ProgramRepository? programRepository,
+  List<Override> overrides = const [],
 }) async {
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1;
@@ -141,6 +163,7 @@ Future<List<String>> pumpPrograms(
         catalogRepositoryProvider.overrideWithValue(
           StubCatalogRepository(state ?? readyPrograms(), directory),
         ),
+        ...overrides,
       ],
       child: MaterialApp.router(
         theme: BeyondRepTheme.build(brightness),

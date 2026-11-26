@@ -196,6 +196,43 @@ class ObjectBoxWorkoutRepository implements WorkoutRepository {
   }
 
   @override
+  List<WorkoutSessionRecord> listProgramSessions(String programUuid) {
+    // programUuid is not indexed: the session table is small and the scan
+    // runs natively, so an index (a model change) is not worth it.
+    final entities = _matching(
+      _sessions,
+      WorkoutSessionEntity_.programUuid,
+      programUuid,
+    );
+    return [
+      for (final s in entities)
+        if (s.deletedAtMs == null &&
+            s.status == WorkoutStatus.completed.name &&
+            s.programDayLocalDate != null)
+          WorkoutSessionRecord(
+            uuid: s.uuid,
+            name: s.name,
+            status: WorkoutStatus.completed,
+            startedAtUtc: DateTime.fromMillisecondsSinceEpoch(
+              s.startedAtMs,
+              isUtc: true,
+            ),
+            originalOffsetMinutes: s.originalOffsetMinutes,
+            revision: s.revision,
+            planUuid: s.planUuid,
+            completedAtUtc: s.completedAtMs == null
+                ? null
+                : DateTime.fromMillisecondsSinceEpoch(
+                    s.completedAtMs!,
+                    isUtc: true,
+                  ),
+            programUuid: s.programUuid,
+            programDayLocalDate: s.programDayLocalDate,
+          ),
+    ];
+  }
+
+  @override
   void addExercise(WorkoutExerciseRecord exercise) {
     if (exercise.uuid.isEmpty ||
         exercise.nameSnapshot.trim().isEmpty ||

@@ -68,6 +68,7 @@ class CatalogTemplate {
     required this.estimatedMinutes,
     required this.exercises,
     this.standalone = true,
+    this.retired = false,
   });
 
   final String id;
@@ -78,6 +79,10 @@ class CatalogTemplate {
   final List<String> equipment;
   final int estimatedMinutes;
   final bool standalone;
+
+  /// Retired by the publisher: hidden from the lists, never offered again.
+  /// Copies and imported programs are unaffected.
+  final bool retired;
   final List<CatalogPrescription> exercises;
 }
 
@@ -92,6 +97,7 @@ class CatalogProgram {
     required this.estimatedMinutes,
     required this.equipment,
     required this.week,
+    this.retired = false,
   });
 
   final String id;
@@ -102,6 +108,10 @@ class CatalogProgram {
   final int daysPerWeek;
   final int estimatedMinutes;
   final List<String> equipment;
+
+  /// Retired by the publisher: hidden from the lists. Programs already added
+  /// are unaffected.
+  final bool retired;
 
   /// Seven entries, index 0 is the program's first day. `null` is a rest day.
   final List<String?> week;

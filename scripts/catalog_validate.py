@@ -187,6 +187,9 @@ def validate_snapshot(snapshot, lock):
     modes = {ex["id"]: ex["mode"] for ex in snapshot["exercises"]}
     retired = {ex["id"] for ex in snapshot["exercises"] if ex["status"] == "retired"}
     templates = {t["id"] for t in snapshot["templates"]}
+    retired_templates = {
+        t["id"] for t in snapshot["templates"] if t.get("status") == "retired"
+    }
 
     for template in snapshot["templates"]:
         for item in template["exercises"]:
@@ -214,6 +217,10 @@ def validate_snapshot(snapshot, lock):
         for day in trained:
             if day not in templates:
                 errors.append(f"program {pid}: unknown template reference {day}")
+            elif day in retired_templates and program.get("status") != "retired":
+                errors.append(
+                    f"program {pid}: active program uses retired template {day}"
+                )
 
     _check_lock(snapshot, kinds, modes, lock, errors)
     return errors

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/clock.dart';
@@ -10,6 +11,9 @@ import '../../workouts/data/objectbox_workout_library_repository.dart';
 import '../data/objectbox_program_repository.dart';
 import '../domain/program_models.dart';
 import '../domain/program_schedule.dart';
+import '../domain/program_status.dart';
+import '../../workouts/data/objectbox_workout_repository.dart';
+import '../../workouts/domain/workout_library_models.dart';
 
 /// Programs the phone can show from the cached catalogue.
 final catalogProgramsProvider = Provider<List<CatalogProgram>>((ref) {
@@ -84,10 +88,89 @@ final activeProgramCardProvider = Provider.autoDispose<ActiveProgramCard?>((
   );
 });
 
+/// The active program's current week, computed fresh from the clock, the
+/// program's plans and its finished sessions. Never stored.
+class ProgramWeek {
+  const ProgramWeek({
+    required this.program,
+    required this.localToday,
+    required this.rows,
+    required this.plans,
+    required this.latestMissed,
+    required this.nextTraining,
+  });
+  final TrainingProgramRecord program;
+  final DateTime localToday;
+  final List<ProgramWeekRow> rows;
+
+  /// The program's available plans by UUID.
+  final Map<String, WorkoutPlanRecord> plans;
+  final ({DateTime date, ProgramDayRecord day})? latestMissed;
+  final ({DateTime date, ProgramDayRecord day})? nextTraining;
+
+  ProgramWeekRow? get todayRow => rows
+      .where(
+        (r) =>
+            r.date ==
+            DateTime(localToday.year, localToday.month, localToday.day),
+      )
+      .firstOrNull;
+}
+
+/// Null without an active program or when the store is unavailable.
+/// Not tied to the workout provider (which only notifies when its value
+/// changes): the active workout page invalidates this after every committed
+/// action, program edits go through [invalidatePrograms], and
+/// [localNowProvider] refreshes it on resume and at midnight.
+final programWeekProvider = Provider.autoDispose<ProgramWeek?>((ref) {
+  final active = ref
+      .watch(localProgramsProvider)
+      .where((p) => p.isActive)
+      .firstOrNull;
+  if (active == null) return null;
+  final localToday = ref.watch(localNowProvider);
+  try {
+    final plans = ref
+        .watch(programRepositoryProvider)
+        .programPlans(active.uuid);
+    final available = {for (final p in plans) p.uuid};
+    final sessions = ref
+        .watch(workoutRepositoryProvider)
+        .listProgramSessions(active.uuid);
+    return ProgramWeek(
+      program: active,
+      localToday: localToday,
+      rows: programWeekStatus(
+        program: active,
+        localToday: localToday,
+        sessions: sessions,
+        availablePlanUuids: available,
+      ),
+      plans: {for (final p in plans) p.uuid: p},
+      latestMissed: latestMissed(
+        program: active,
+        localToday: localToday,
+        sessions: sessions,
+        availablePlanUuids: available,
+      ),
+      nextTraining: nextTraining(
+        program: active,
+        localToday: localToday,
+        availablePlanUuids: available,
+      ),
+    );
+  } on Object catch (error) {
+    // The type only: never values from the store.
+    debugPrint('programWeekProvider failed: ${error.runtimeType}');
+    return null;
+  }
+});
+
 /// Refresh every screen that shows programs or program plans.
 void invalidatePrograms(WidgetRef ref) {
   ref.invalidate(localProgramsProvider);
   ref.invalidate(localProgramProvider);
   ref.invalidate(activeProgramCardProvider);
+  ref.invalidate(programWeekProvider);
   ref.invalidate(trainLibraryProvider);
 }

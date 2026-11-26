@@ -228,6 +228,50 @@ class ValidatorTest(unittest.TestCase):
         self.assertTrue(has_error(errors, "retired"))
         self.assertTrue(has_error(errors, "builtin.v1.squat"))
 
+    def test_status_is_optional_and_defaults_to_active(self):
+        snap = valid_snapshot()
+        self.assertNotIn("status", snap["templates"][0])
+        self.assertNotIn("status", snap["programs"][0])
+        self.assertEqual(validate_snapshot(snap, EMPTY_LOCK), [])
+        snap["templates"][0]["status"] = "active"
+        snap["programs"][0]["status"] = "active"
+        self.assertEqual(validate_snapshot(snap, EMPTY_LOCK), [])
+
+    def test_status_must_be_active_or_retired(self):
+        for key in ("templates", "programs"):
+            snap = mutated(lambda s, k=key: s[k][0].update(status="archived"))
+            errors = validate_snapshot(snap, EMPTY_LOCK)
+            self.assertTrue(has_error(errors, "status"), key)
+
+    def test_active_program_cannot_use_retired_template(self):
+        snap = mutated(lambda s: s["templates"][0].update(status="retired"))
+        errors = validate_snapshot(snap, EMPTY_LOCK)
+        self.assertTrue(has_error(errors, "prog.test"))
+        self.assertTrue(has_error(errors, "tpl.test"))
+        self.assertTrue(has_error(errors, "retired"))
+
+    def test_retired_program_may_keep_its_retired_template(self):
+        def retire(s):
+            s["templates"][0]["status"] = "retired"
+            s["programs"][0]["status"] = "retired"
+
+        self.assertEqual(validate_snapshot(mutated(retire), EMPTY_LOCK), [])
+
+    def test_retired_program_may_use_an_active_template(self):
+        snap = mutated(lambda s: s["programs"][0].update(status="retired"))
+        self.assertEqual(validate_snapshot(snap, EMPTY_LOCK), [])
+
+    def test_retired_template_must_still_use_active_exercises(self):
+        # Older apps ignore status and still reject retired exercises.
+        def retire(s):
+            s["templates"][0]["status"] = "retired"
+            s["programs"][0]["status"] = "retired"
+            s["exercises"][0]["status"] = "retired"
+
+        errors = validate_snapshot(mutated(retire), EMPTY_LOCK)
+        self.assertTrue(has_error(errors, "retired exercise"))
+        self.assertTrue(has_error(errors, "builtin.v1.squat"))
+
     def test_week_must_have_seven_entries(self):
         snap = mutated(lambda s: s["programs"][0].update(week=["tpl.test", None]))
         self.assertTrue(validate_snapshot(snap, EMPTY_LOCK))

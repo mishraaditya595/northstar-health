@@ -12,6 +12,8 @@ import '../../core/design/section.dart';
 import '../account/account_auth_provider.dart';
 import '../health/widgets/readiness_note.dart';
 import '../health/widgets/today_health_row.dart';
+import '../programs/application/program_providers.dart';
+import '../programs/domain/program_models.dart';
 import '../progress/domain/progress_overview.dart';
 import '../progress/domain/workout_history_models.dart';
 import '../progress/workout_history_state.dart';
@@ -22,6 +24,7 @@ import '../train/train_library_state.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
 import 'backup_status_notice.dart';
 import 'today_overview.dart';
+import 'today_program_card.dart';
 
 class TodayPage extends ConsumerStatefulWidget {
   const TodayPage({super.key});
@@ -31,6 +34,10 @@ class TodayPage extends ConsumerStatefulWidget {
 }
 
 class _TodayPageState extends ConsumerState<TodayPage> {
+  /// A program-day start is in flight, or its logger is still open: a second
+  /// tap must not start again or show an error over the logger.
+  var _starting = false;
+
   int _count(WorkoutSyncFlag flag) => ref
       .watch(workoutSyncFlagsProvider)
       .values
@@ -57,9 +64,82 @@ class _TodayPageState extends ConsumerState<TodayPage> {
     }
   }
 
+  /// Starts today's program workout, or the missed day [missedDate].
+  Future<void> _startProgramDay(
+    TrainingProgramRecord program,
+    String planUuid, {
+    DateTime? missedDate,
+  }) async {
+    if (_starting) return;
+    _starting = true;
+    try {
+      await _startProgramDayGuarded(program, planUuid, missedDate);
+    } finally {
+      _starting = false;
+    }
+  }
+
+  Future<void> _startProgramDayGuarded(
+    TrainingProgramRecord program,
+    String planUuid,
+    DateTime? missedDate,
+  ) async {
+    if (!await confirmReadinessBeforeStart(context, ref) || !mounted) return;
+    try {
+      ref
+          .read(workoutActionsProvider)
+          .startProgramDay(
+            program,
+            expectedPlanUuid: planUuid,
+            missedDate: missedDate,
+          );
+      ref.invalidate(activeWorkoutProvider);
+      ref.invalidate(programWeekProvider);
+      await context.push<void>('/train/workout');
+    } on ProgramDayChanged {
+      if (!mounted) return;
+      // The day rolled over or the schedule changed since this was built.
+      ref.invalidate(localNowProvider);
+      ref.invalidate(programWeekProvider);
+      showNsMessage(
+        context,
+        missedDate == null
+            ? "Today's workout changed. Check it and try again."
+            : 'This day changed. Check it and try again.',
+      );
+    } catch (_) {
+      if (!mounted) return;
+      showNsMessage(
+        context,
+        'Could not start this workout. Check the plan and any unfinished '
+        'workout.',
+      );
+      ref.invalidate(activeWorkoutProvider);
+      invalidatePrograms(ref);
+    }
+  }
+
+  Future<void> _confirmMissed(
+    ProgramWeek week,
+    DateTime date,
+    String planUuid,
+    String workout,
+  ) async {
+    if (_starting) return;
+    final yes = await showNsConfirm(
+      context,
+      title: 'Start $workout for ${weekdayName(date)}?',
+      message: 'It counts as your ${weekdayName(date)} workout.',
+      confirmLabel: 'Start',
+    );
+    if (!yes || !mounted) return;
+    await _startProgramDay(week.program, planUuid, missedDate: date);
+  }
+
   @override
   Widget build(BuildContext context) {
     final now = ref.watch(localNowProvider);
+    final week = ref.watch(programWeekProvider);
     final today = DateTime.utc(now.year, now.month, now.day);
     final library = ref.watch(trainLibraryProvider);
     final history = ref.watch(completedWorkoutHistoryProvider);
@@ -111,6 +191,15 @@ class _TodayPageState extends ConsumerState<TodayPage> {
             subtitle: 'No local data has been deleted.',
             actions: [NsHeroAction('Open Train', () => context.go('/train'))],
           )
+        else if (week != null)
+          TodayProgramHero(
+            week: week,
+            onStart: (planUuid) => _startProgramDay(week.program, planUuid),
+            onOpenProgram: () async {
+              await context.push<void>('/train/program/${week.program.uuid}');
+              ref.invalidate(programWeekProvider);
+            },
+          )
         // A reload keeps showing the last value instead of a spinner.
         else if (library.hasValue && history.hasValue)
           _Hero(
@@ -137,6 +226,12 @@ class _TodayPageState extends ConsumerState<TodayPage> {
             title: null,
             subtitle: null,
             actions: [],
+          ),
+        if (week != null && unfinished == null && !active.hasError)
+          TodayMissedLine(
+            week: week,
+            onTap: (date, planUuid, workout) =>
+                _confirmMissed(week, date, planUuid, workout),
           ),
         const SizedBox(height: 27),
         const SectionHeading('Recent health'),

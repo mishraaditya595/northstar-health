@@ -9,20 +9,15 @@ import '../../core/design/section.dart';
 import '../catalog/application/catalog_providers.dart';
 import '../catalog/application/exercise_choices_provider.dart';
 import '../catalog/data/catalog_repository.dart';
+import '../catalog/domain/catalog_filter.dart';
 import '../catalog/domain/catalog_models.dart';
 import '../catalog/domain/exercise_choices.dart';
 import '../programs/application/program_providers.dart';
+import 'catalog_filter_sheet.dart';
 import 'exercise_picker_sheet.dart';
 import 'workout_templates_page.dart' show levelLabel;
 
 const _levels = ['beginner', 'intermediate', 'advanced'];
-
-bool _matches(CatalogProgram program, String query, String? level) {
-  if (level != null && program.level != level) return false;
-  if (query.isEmpty) return true;
-  return program.name.toLowerCase().contains(query) ||
-      program.description.toLowerCase().contains(query);
-}
 
 /// "3 days a week · Beginner · about 45 min".
 String programSummary(CatalogProgram p) =>
@@ -37,8 +32,7 @@ class ProgramsPage extends ConsumerStatefulWidget {
 }
 
 class _ProgramsPageState extends ConsumerState<ProgramsPage> {
-  String query = '';
-  String? level;
+  CatalogFilter filter = const CatalogFilter();
   final searchController = TextEditingController();
 
   @override
@@ -64,7 +58,7 @@ class _ProgramsPageState extends ConsumerState<ProgramsPage> {
     final muted = Theme.of(context).extension<BeyondRepColors>()!.muted;
     final visible = [
       for (final p in all)
-        if (_matches(p, query, level)) p,
+        if (matchesProgram(p, filter)) p,
     ];
     final headers = <Widget>[
       if (mine.isNotEmpty) ...[
@@ -107,8 +101,9 @@ class _ProgramsPageState extends ConsumerState<ProgramsPage> {
       const SizedBox(height: 16),
       NsTextField(
         controller: searchController,
-        onChanged: (value) =>
-            setState(() => query = value.trim().toLowerCase()),
+        onChanged: (value) => setState(
+          () => filter = filter.withQuery(value.trim().toLowerCase()),
+        ),
         prefixIcon: Icons.search,
         hint: 'Search programs',
       ),
@@ -119,19 +114,25 @@ class _ProgramsPageState extends ConsumerState<ProgramsPage> {
           children: [
             NsChip(
               label: 'All',
-              selected: level == null,
-              onSelected: (_) => setState(() => level = null),
+              selected: filter.level == null,
+              onSelected: (_) =>
+                  setState(() => filter = filter.withLevel(null)),
             ),
             for (final name in _levels) ...[
               const SizedBox(width: 8),
               NsChip(
                 label: levelLabel(name),
-                selected: level == name,
-                onSelected: (on) => setState(() => level = on ? name : null),
+                selected: filter.level == name,
+                onSelected: (on) =>
+                    setState(() => filter = filter.withLevel(on ? name : null)),
               ),
             ],
           ],
         ),
+      ),
+      CatalogFilterSummary(
+        filter: filter,
+        onClear: () => setState(() => filter = filter.clearedSheetFilters()),
       ),
       const SizedBox(height: 14),
     ];
@@ -162,6 +163,22 @@ class _ProgramsPageState extends ConsumerState<ProgramsPage> {
       appBar: AppBar(
         leading: const NsBackButton(),
         title: const Text('Programs'),
+        actions: [
+          CatalogFilterButton(
+            onPressed: () async {
+              final next = await showCatalogFilterSheet(
+                context,
+                filter: filter,
+                goals: goalOptions([for (final p in all) p.goals]),
+                equipment: equipmentFilterOptions([
+                  for (final p in all) p.equipment,
+                ]),
+                showDays: true,
+              );
+              if (next != null && mounted) setState(() => filter = next);
+            },
+          ),
+        ],
       ),
       body: Center(
         child: ConstrainedBox(

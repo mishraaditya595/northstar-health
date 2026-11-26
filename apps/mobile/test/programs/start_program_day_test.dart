@@ -3,12 +3,15 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:beyondrep/core/ids/uuid_factory.dart';
+import 'package:beyondrep/features/programs/data/objectbox_program_repository.dart';
 import 'package:beyondrep/features/programs/domain/program_models.dart';
+import 'package:beyondrep/features/programs/domain/program_status.dart';
 import 'package:beyondrep/features/train/active_workout_state.dart';
 import 'package:beyondrep/features/workouts/data/objectbox_live_workout_engine.dart';
 import 'package:beyondrep/features/workouts/data/objectbox_workout_library_repository.dart';
 import 'package:beyondrep/features/workouts/data/objectbox_workout_repository.dart';
 import 'package:beyondrep/features/workouts/data/workout_entities.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 import 'package:beyondrep/objectbox.g.dart';
 
 class _Ids implements UuidFactory {
@@ -36,9 +39,14 @@ void main() {
       ObjectBoxWorkoutRepository(store),
       library,
       _Ids(),
+      programs: ObjectBoxProgramRepository(store),
       clock: () => clock,
     );
-    for (final (uuid, program) in [('plan-a', 'prog-1'), ('own', null)]) {
+    for (final (uuid, program) in [
+      ('plan-a', 'prog-1'),
+      ('plan-b', 'prog-1'),
+      ('own', null),
+    ]) {
       library.savePlan(
         uuid: uuid,
         name: uuid,
@@ -53,36 +61,88 @@ void main() {
     }
   });
 
+  /// Writes [record] as the stored program (replacing the same uuid).
+  void storeProgram(TrainingProgramRecord record, {int? archivedAtMs}) {
+    final programs = store.box<TrainingProgramEntity>();
+    final days = store.box<ProgramDayEntity>();
+    programs.removeMany([
+      for (final p in programs.getAll())
+        if (p.uuid == record.uuid) p.id,
+    ]);
+    days.removeMany([
+      for (final d in days.getAll())
+        if (d.programUuid == record.uuid) d.id,
+    ]);
+    programs.put(
+      TrainingProgramEntity(
+        uuid: record.uuid,
+        name: record.name,
+        sourceId: record.sourceId,
+        sourceRelease: record.sourceRelease,
+        firstDayWeekday: record.firstDayWeekday,
+        isActive: record.isActive,
+        activatedLocalDate: record.activatedLocalDate,
+        createdAtMs: 0,
+        updatedAtMs: 0,
+        archivedAtMs: archivedAtMs,
+      ),
+    );
+    days.putMany([
+      for (final d in record.days)
+        ProgramDayEntity(
+          uuid: '${record.uuid}-${d.uuid}',
+          programUuid: record.uuid,
+          dayIndex: d.dayIndex,
+          planUuid: d.planUuid,
+        ),
+    ]);
+  }
+
+  /// Stores [record] as it is passed, then starts: the common case where the
+  /// caller's record is current.
+  WorkoutSessionRecord start(
+    TrainingProgramRecord record, {
+    required String? expectedPlanUuid,
+    DateTime? missedDate,
+  }) {
+    storeProgram(record);
+    return actions.startProgramDay(
+      record,
+      expectedPlanUuid: expectedPlanUuid,
+      missedDate: missedDate,
+    );
+  }
+
   tearDown(() {
     store.close();
     directory.deleteSync(recursive: true);
   });
 
   // First day Wednesday: 2026-11-25 is a Wednesday and day 0.
-  TrainingProgramRecord program({String uuid = 'prog-1'}) =>
-      TrainingProgramRecord(
-        uuid: uuid,
-        name: 'P',
-        description: '',
-        sourceId: 'prog.x',
-        sourceRelease: 4,
-        firstDayWeekday: 3,
-        isActive: true,
-        updatedAtMs: 0,
-        days: [
-          const ProgramDayRecord(uuid: 'd0', dayIndex: 0, planUuid: 'plan-a'),
-          const ProgramDayRecord(uuid: 'd1', dayIndex: 1),
-          for (var i = 2; i < 7; i++)
-            ProgramDayRecord(uuid: 'd$i', dayIndex: i),
-        ],
-      );
+  TrainingProgramRecord program({
+    String uuid = 'prog-1',
+    bool isActive = true,
+    String? activated = '2026-11-25',
+  }) => TrainingProgramRecord(
+    uuid: uuid,
+    activatedLocalDate: activated,
+    name: 'P',
+    description: '',
+    sourceId: 'prog.x',
+    sourceRelease: 4,
+    firstDayWeekday: 3,
+    isActive: isActive,
+    updatedAtMs: 0,
+    days: [
+      const ProgramDayRecord(uuid: 'd0', dayIndex: 0, planUuid: 'plan-a'),
+      const ProgramDayRecord(uuid: 'd1', dayIndex: 1),
+      for (var i = 2; i < 7; i++) ProgramDayRecord(uuid: 'd$i', dayIndex: i),
+    ],
+  );
 
   test('a program-day start stores both fields', () {
     clock = DateTime(2026, 11, 25, 23, 50);
-    final session = actions.startProgramDay(
-      program(),
-      expectedPlanUuid: 'plan-a',
-    );
+    final session = start(program(), expectedPlanUuid: 'plan-a');
     expect(session.programUuid, 'prog-1');
     expect(session.programDayLocalDate, '2026-11-25');
     expect(session.planUuid, 'plan-a');
@@ -99,10 +159,7 @@ void main() {
 
   test('a rest day throws StateError and writes nothing', () {
     clock = DateTime(2026, 11, 26);
-    expect(
-      () => actions.startProgramDay(program(), expectedPlanUuid: null),
-      throwsStateError,
-    );
+    expect(() => start(program(), expectedPlanUuid: null), throwsStateError);
     expect(store.box<WorkoutSessionEntity>().count(), 0);
   });
 
@@ -110,7 +167,7 @@ void main() {
       'not start; the day the screen showed is not recorded', () {
     clock = DateTime(2026, 11, 26, 0, 5); // now a rest day
     expect(
-      () => actions.startProgramDay(program(), expectedPlanUuid: 'plan-a'),
+      () => start(program(), expectedPlanUuid: 'plan-a'),
       throwsA(isA<ProgramDayChanged>()),
     );
     expect(store.box<WorkoutSessionEntity>().count(), 0);
@@ -119,7 +176,7 @@ void main() {
   test('a different plan than the screen showed does not start', () {
     clock = DateTime(2026, 11, 25, 9);
     expect(
-      () => actions.startProgramDay(program(), expectedPlanUuid: 'other'),
+      () => start(program(), expectedPlanUuid: 'other'),
       throwsA(isA<ProgramDayChanged>()),
     );
     expect(store.box<WorkoutSessionEntity>().count(), 0);
@@ -127,10 +184,7 @@ void main() {
 
   test('the start time comes from the clock at the tap', () {
     clock = DateTime(2026, 11, 25, 18, 30);
-    final session = actions.startProgramDay(
-      program(),
-      expectedPlanUuid: 'plan-a',
-    );
+    final session = start(program(), expectedPlanUuid: 'plan-a');
     expect(session.startedAtUtc, clock.toUtc());
   });
 
@@ -197,8 +251,317 @@ void main() {
   test('another unfinished workout blocks the start', () {
     actions.startQuick('Quick');
     expect(
-      () => actions.startProgramDay(program(), expectedPlanUuid: 'plan-a'),
+      () => start(program(), expectedPlanUuid: 'plan-a'),
       throwsStateError,
     );
+  });
+  group('only the active program starts', () {
+    test('an inactive program throws and writes nothing', () {
+      clock = DateTime(2026, 11, 25, 10);
+      expect(
+        () => start(program(isActive: false), expectedPlanUuid: 'plan-a'),
+        throwsStateError,
+      );
+      expect(store.box<WorkoutSessionEntity>().count(), 0);
+    });
+  });
+
+  group('starting a missed day', () {
+    // Wednesday plan-a, Thursday plan-b; today is Friday 2026-11-27.
+    TrainingProgramRecord week({String? activated = '2026-11-25'}) =>
+        TrainingProgramRecord(
+          uuid: 'prog-1',
+          name: 'P',
+          description: '',
+          sourceId: 'prog.x',
+          sourceRelease: 4,
+          firstDayWeekday: 3,
+          isActive: true,
+          activatedLocalDate: activated,
+          updatedAtMs: 0,
+          days: [
+            const ProgramDayRecord(uuid: 'd0', dayIndex: 0, planUuid: 'plan-a'),
+            const ProgramDayRecord(uuid: 'd1', dayIndex: 1, planUuid: 'plan-b'),
+            for (var i = 2; i < 7; i++)
+              ProgramDayRecord(uuid: 'd$i', dayIndex: i),
+          ],
+        );
+
+    setUp(() => clock = DateTime(2026, 11, 27, 18, 30));
+
+    test(
+      'stores the missed date, the start time is now, and the day is done',
+      () {
+        final session = start(
+          week(),
+          expectedPlanUuid: 'plan-b',
+          missedDate: DateTime(2026, 11, 26),
+        );
+        expect(session.programUuid, 'prog-1');
+        expect(session.programDayLocalDate, '2026-11-26');
+        expect(session.planUuid, 'plan-b');
+        expect(session.startedAtUtc, clock.toUtc());
+        engine.finishWorkout(
+          session.uuid,
+          expectedRevision: session.revision,
+          finishedAtUtc: clock.toUtc(),
+        );
+        final rows = programWeekStatus(
+          program: week(),
+          localToday: clock,
+          sessions: ObjectBoxWorkoutRepository(store)
+              .listProgramSessions('prog-1'),
+          availablePlanUuids: {'plan-a', 'plan-b'},
+        );
+        expect(rows[1].status, ProgramDayStatus.done);
+        expect(rows[0].status, ProgramDayStatus.missed);
+      },
+    );
+
+    test('a date that is now done throws ProgramDayChanged', () {
+      final first = start(
+        week(),
+        expectedPlanUuid: 'plan-b',
+        missedDate: DateTime(2026, 11, 26),
+      );
+      engine.finishWorkout(
+        first.uuid,
+        expectedRevision: first.revision,
+        finishedAtUtc: clock.toUtc(),
+      );
+      expect(
+        () => start(
+          week(),
+          expectedPlanUuid: 'plan-b',
+          missedDate: DateTime(2026, 11, 26),
+        ),
+        throwsA(isA<ProgramDayChanged>()),
+      );
+      expect(store.box<WorkoutSessionEntity>().count(), 1);
+    });
+
+    test('a date that is now a rest day after an edit throws', () {
+      final edited = TrainingProgramRecord(
+        uuid: 'prog-1',
+        name: 'P',
+        description: '',
+        sourceId: 'prog.x',
+        sourceRelease: 4,
+        firstDayWeekday: 3,
+        isActive: true,
+        activatedLocalDate: '2026-11-25',
+        updatedAtMs: 0,
+        days: [
+          const ProgramDayRecord(uuid: 'd0', dayIndex: 0, planUuid: 'plan-a'),
+          for (var i = 1; i < 7; i++)
+            ProgramDayRecord(uuid: 'd$i', dayIndex: i),
+        ],
+      );
+      expect(
+        () => start(
+          edited,
+          expectedPlanUuid: 'plan-b',
+          missedDate: DateTime(2026, 11, 26),
+        ),
+        throwsA(isA<ProgramDayChanged>()),
+      );
+      expect(store.box<WorkoutSessionEntity>().count(), 0);
+    });
+
+    test('a plan that differs from the one shown throws', () {
+      expect(
+        () => start(
+          week(),
+          expectedPlanUuid: 'plan-a',
+          missedDate: DateTime(2026, 11, 26),
+        ),
+        throwsA(isA<ProgramDayChanged>()),
+      );
+    });
+
+    test('dates outside the window throw: today, future, last week, before '
+        'activation', () {
+      for (final (date, activated) in [
+        (DateTime(2026, 11, 27), '2026-11-25'), // today
+        (DateTime(2026, 11, 28), '2026-11-25'), // future
+        (DateTime(2026, 11, 19), '2026-11-25'), // previous week
+        (DateTime(2026, 11, 25), '2026-11-26'), // before activation
+      ]) {
+        expect(
+          () => start(
+            week(activated: activated),
+            expectedPlanUuid: 'plan-a',
+            missedDate: date,
+          ),
+          throwsA(isA<ProgramDayChanged>()),
+          reason: '$date',
+        );
+      }
+      expect(store.box<WorkoutSessionEntity>().count(), 0);
+    });
+
+    test('an inactive program cannot start a missed day', () {
+      expect(
+        () => start(
+          TrainingProgramRecord(
+            uuid: 'prog-1',
+            name: 'P',
+            description: '',
+            sourceId: 'prog.x',
+            sourceRelease: 4,
+            firstDayWeekday: 3,
+            isActive: false,
+            activatedLocalDate: '2026-11-25',
+            updatedAtMs: 0,
+            days: week().days,
+          ),
+          expectedPlanUuid: 'plan-b',
+          missedDate: DateTime(2026, 11, 26),
+        ),
+        throwsStateError,
+      );
+      expect(store.box<WorkoutSessionEntity>().count(), 0);
+    });
+
+    test('another unfinished workout blocks the start', () {
+      actions.startQuick('Quick');
+      expect(
+        () => start(
+          week(),
+          expectedPlanUuid: 'plan-b',
+          missedDate: DateTime(2026, 11, 26),
+        ),
+        throwsStateError,
+      );
+    });
+  });
+  group('fresh state at the tap', () {
+    TrainingProgramRecord twoDays({bool active = true}) =>
+        TrainingProgramRecord(
+          uuid: 'prog-1',
+          name: 'P',
+          description: '',
+          sourceId: 'prog.x',
+          sourceRelease: 4,
+          firstDayWeekday: 3,
+          isActive: active,
+          activatedLocalDate: '2026-11-25',
+          updatedAtMs: 0,
+          days: [
+            const ProgramDayRecord(uuid: 'd0', dayIndex: 0, planUuid: 'plan-a'),
+            const ProgramDayRecord(uuid: 'd1', dayIndex: 1, planUuid: 'plan-b'),
+            for (var i = 2; i < 7; i++)
+              ProgramDayRecord(uuid: 'd$i', dayIndex: i),
+          ],
+        );
+
+    void expectNothingWritten() =>
+        expect(store.box<WorkoutSessionEntity>().count(), 0);
+
+    test('a stale active record while the store has it inactive throws', () {
+      clock = DateTime(2026, 11, 25, 10);
+      storeProgram(twoDays(active: false));
+      expect(
+        () => actions.startProgramDay(twoDays(), expectedPlanUuid: 'plan-a'),
+        throwsStateError,
+      );
+      expectNothingWritten();
+    });
+
+    test(
+      'a stale record with edited days throws ProgramDayChanged (today)',
+      () {
+        clock = DateTime(2026, 11, 25, 10);
+        // The store now has day 0 as a rest day.
+        storeProgram(
+          TrainingProgramRecord(
+            uuid: 'prog-1',
+            name: 'P',
+            description: '',
+            sourceId: 'prog.x',
+            sourceRelease: 4,
+            firstDayWeekday: 3,
+            isActive: true,
+            activatedLocalDate: '2026-11-25',
+            updatedAtMs: 0,
+            days: [
+              for (var i = 0; i < 7; i++)
+                ProgramDayRecord(uuid: 'd$i', dayIndex: i),
+            ],
+          ),
+        );
+        expect(
+          () => actions.startProgramDay(twoDays(), expectedPlanUuid: 'plan-a'),
+          throwsA(isA<ProgramDayChanged>()),
+        );
+        expectNothingWritten();
+      },
+    );
+
+    test('a stale record with edited days throws for a missed day', () {
+      clock = DateTime(2026, 11, 27, 10);
+      storeProgram(
+        TrainingProgramRecord(
+          uuid: 'prog-1',
+          name: 'P',
+          description: '',
+          sourceId: 'prog.x',
+          sourceRelease: 4,
+          firstDayWeekday: 3,
+          isActive: true,
+          activatedLocalDate: '2026-11-25',
+          updatedAtMs: 0,
+          days: [
+            const ProgramDayRecord(uuid: 'd0', dayIndex: 0, planUuid: 'plan-a'),
+            for (var i = 1; i < 7; i++)
+              ProgramDayRecord(uuid: 'd$i', dayIndex: i),
+          ],
+        ),
+      );
+      expect(
+        () => actions.startProgramDay(
+          twoDays(),
+          expectedPlanUuid: 'plan-b',
+          missedDate: DateTime(2026, 11, 26),
+        ),
+        throwsA(isA<ProgramDayChanged>()),
+      );
+      expectNothingWritten();
+    });
+
+    test('an archived or missing program throws, today and missed', () {
+      clock = DateTime(2026, 11, 27, 10);
+      storeProgram(twoDays(), archivedAtMs: 5);
+      expect(
+        () => actions.startProgramDay(twoDays(), expectedPlanUuid: null),
+        throwsStateError,
+      );
+      expect(
+        () => actions.startProgramDay(
+          twoDays(),
+          expectedPlanUuid: 'plan-b',
+          missedDate: DateTime(2026, 11, 26),
+        ),
+        throwsStateError,
+      );
+      expect(
+        () => actions.startProgramDay(
+          TrainingProgramRecord(
+            uuid: 'never-stored',
+            name: 'P',
+            description: '',
+            sourceId: 'x',
+            sourceRelease: 4,
+            firstDayWeekday: 3,
+            isActive: true,
+            updatedAtMs: 0,
+            days: twoDays().days,
+          ),
+          expectedPlanUuid: null,
+        ),
+        throwsStateError,
+      );
+      expectNothingWritten();
+    });
   });
 }
