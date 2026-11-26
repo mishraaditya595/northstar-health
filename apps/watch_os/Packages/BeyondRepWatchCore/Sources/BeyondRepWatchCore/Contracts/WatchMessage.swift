@@ -158,7 +158,7 @@ public struct WatchMessage {
                 for entry in try x.array("sets", max: 300) {
                     let s = try StrictObject(
                         entry, required: ["set_id", "position", "kind", "status"],
-                        optional: ["input_unit"].union(SetValues.optionalKeys))
+                        optional: Set(["input_unit"]).union(SetValues.optionalKeys))
                     _ = try s.uuid("set_id")
                     _ = try s.int("position")
                     _ = try s.oneOf("kind", ["working", "warmup"])
