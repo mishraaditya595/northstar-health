@@ -7,8 +7,13 @@ import json
 import unittest
 from pathlib import Path
 
-from jsonschema import Draft202012Validator, FormatChecker
+from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
+
+try:
+    from contract_validation import ContractValidator, format_checker
+except ImportError:  # run as `python3 -m unittest tool.<module>` from the root
+    from tool.contract_validation import ContractValidator, format_checker
 
 ROOT = Path(__file__).resolve().parents[1]
 LINK = ROOT / "contracts" / "watch_link" / "v1"
@@ -80,11 +85,11 @@ class WatchLinkContractTest(unittest.TestCase):
             BASE + "contracts/workout_sync/v2/envelope.schema.json",
             Resource.from_contents(load(V2 / "envelope.schema.json")),
         )
-        cls.validator = Draft202012Validator(
-            schema, format_checker=FormatChecker(), registry=registry
+        cls.validator = ContractValidator(
+            schema, format_checker=format_checker(), registry=registry
         )
-        cls.v2 = Draft202012Validator(
-            load(V2 / "envelope.schema.json"), format_checker=FormatChecker()
+        cls.v2 = ContractValidator(
+            load(V2 / "envelope.schema.json"), format_checker=format_checker()
         )
 
     def test_valid_messages(self):
@@ -96,7 +101,7 @@ class WatchLinkContractTest(unittest.TestCase):
 
     def test_invalid_messages(self):
         fixtures = sorted((LINK / "fixtures/invalid").glob("*.json"))
-        self.assertGreaterEqual(len(fixtures), 8)
+        self.assertGreaterEqual(len(fixtures), 14)
         names = {p.stem for p in fixtures}
         for expected in (
             "missing_account_key",

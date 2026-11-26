@@ -32,12 +32,12 @@ final class ContractFixtureTests: XCTestCase {
 
     func testWorkoutSyncV2ValidFixturesRoundTrip() throws {
         try roundTrips(
-            "contracts/workout_sync/v2/fixtures/valid", minimum: 12,
+            "contracts/workout_sync/v2/fixtures/valid", minimum: 15,
             decode: { try WorkoutEventV2(json: $0) }, encode: { try $0.jsonData() })
     }
 
     func testWorkoutSyncV2InvalidFixturesAreRejected() throws {
-        try rejects("contracts/workout_sync/v2/fixtures/invalid", minimum: 7) { _ = try WorkoutEventV2(json: $0) }
+        try rejects("contracts/workout_sync/v2/fixtures/invalid", minimum: 12) { _ = try WorkoutEventV2(json: $0) }
     }
 
     func testV1EnvelopeIsUnsupportedVersion() throws {
@@ -54,7 +54,7 @@ final class ContractFixtureTests: XCTestCase {
     }
 
     func testWatchLinkInvalidFixturesAreRejected() throws {
-        try rejects("contracts/watch_link/v1/fixtures/invalid", minimum: 8) { _ = try WatchMessage(json: $0) }
+        try rejects("contracts/watch_link/v1/fixtures/invalid", minimum: 14) { _ = try WatchMessage(json: $0) }
     }
 
     func testReplayCaseEventsDecode() throws {

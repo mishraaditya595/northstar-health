@@ -36,11 +36,13 @@ final class WatchJournalTests: XCTestCase {
     private func recordSession(_ journal: WatchJournal, sets: Int) throws -> [WorkoutEventV2] {
         var m = machine()
         var events = try m.start(name: "Synthetic push day")
-        if sets > 0 { for n in 1...sets { events.append(try m.log(set: set(n))) } }
-        var replayed: [WorkoutEventV2] = []
-        for event in events {
-            replayed.append(event)
-            try journal.record(event, sessionState: replay(replayed))
+        try journal.record(events, sessionState: replay(events))
+        if sets > 0 {
+            for n in 1...sets {
+                let event = try m.log(set: set(n))
+                events.append(event)
+                try journal.record(event, sessionState: replay(events))
+            }
         }
         return events
     }
@@ -56,11 +58,106 @@ final class WatchJournalTests: XCTestCase {
         var m = machine()
         _ = try m.start(name: "x")
         let event = try m.log(set: set(1))
-        journal.failAfterEventInsert = true
+        journal.failAt = .afterEventInsert(index: 0)
         XCTAssertThrowsError(try journal.record(event, sessionState: m.state))
         let reopened = try WatchJournal(url: url)
         XCTAssertEqual(try reopened.pendingOutbox(limit: 100).count, before)
-        XCTAssertEqual(try reopened.activeSession()?.events.count, 1)
+        XCTAssertEqual(try reopened.activeSession(accountKey: key)?.events.count, 1)
+    }
+
+    func testRecordRollsBackWhenItFailsAfterTheStateUpsertOrTheCompletedInsert() throws {
+        let journal = try WatchJournal(url: url)
+        try recordSession(journal, sets: 0)
+        let before = try journal.pendingOutbox(limit: 100).count
+        var m = machine()
+        _ = try m.start(name: "x")
+        let event = try m.log(set: set(1))
+        let completed = try fixture("completed_workout")
+        for point in [WatchJournal.FailurePoint.afterSessionUpsert, .afterCompletedEnqueue] {
+            journal.failAt = point
+            XCTAssertThrowsError(
+                try journal.record(event, sessionState: m.state, completed: completed, commandId: "88888888-4444-4444-8444-00000000000c"))
+            let reopened = try WatchJournal(url: url)
+            XCTAssertEqual(try reopened.pendingOutbox(limit: 100).count, before, "\(point)")
+            let active = try XCTUnwrap(reopened.activeSession(accountKey: key))
+            XCTAssertEqual(active.events.count, 1, "\(point)")
+            XCTAssertEqual(active.state.completedSets, 0, "\(point)")
+            XCTAssertTrue(active.commandIds.isEmpty, "\(point)")
+        }
+    }
+
+    func testMultiEventRecordIsAtomic() throws {
+        let journal = try WatchJournal(url: url)
+        var m = machine()
+        let events = try m.start(
+            name: "x",
+            exercises: [ExerciseAddedPayload(exerciseId: "builtin.v1.synthetic-move-1", name: "Move", kind: "reps", position: 0)])
+        XCTAssertEqual(events.count, 2)
+        journal.failAt = .afterEventInsert(index: 0)
+        XCTAssertThrowsError(try journal.record(events, sessionState: m.state))
+        journal.failAt = nil
+        let reopened = try WatchJournal(url: url)
+        XCTAssertNil(try reopened.activeSession(accountKey: key))
+        XCTAssertTrue(try reopened.pendingOutbox(limit: 100).isEmpty)
+        try reopened.record(events, sessionState: m.state)
+        XCTAssertEqual(try reopened.activeSession(accountKey: key)?.events.count, 2)
+        XCTAssertEqual(try reopened.pendingOutbox(limit: 100).count, 2)
+    }
+
+    func testActiveSessionIsPerAccount() throws {
+        let journal = try WatchJournal(url: url)
+        try recordSession(journal, sets: 1)
+        let other = String(repeating: "f", count: 64)
+        XCTAssertNil(try journal.activeSession(accountKey: other))
+        XCTAssertNotNil(try journal.activeSession(accountKey: key))
+    }
+
+    func testRestoredMachineContinuesTheSequenceWithoutReuse() throws {
+        var journal: WatchJournal? = try WatchJournal(url: url)
+        try recordSession(journal!, sets: 1)
+        journal = nil
+        let reopened = try WatchJournal(url: url)
+        let active = try XCTUnwrap(reopened.activeSession(accountKey: key))
+        var tick = 100
+        var m = try SessionMachine(
+            restoring: active.events, owner: "watch", accountKey: key, deviceId: "watch-installation-a",
+            clock: { tick += 1; return Date(timeIntervalSince1970: 1_792_100_000 + TimeInterval(tick)) },
+            timeZone: "Asia/Kolkata", appliedCommandIds: active.commandIds)
+        XCTAssertEqual(m.status, "active")
+        let next = try m.log(set: set(2))
+        XCTAssertEqual(next.header.sequence, 2)
+        XCTAssertEqual(Set(m.events.map { $0.header.sequence }).count, 3)
+        XCTAssertEqual(next.header.sessionId, session)
+        try reopened.record(next, sessionState: m.state)
+        XCTAssertEqual(try reopened.activeSession(accountKey: key)?.state.completedSets, 2)
+    }
+
+    func testDuplicateLogAfterCorrectIsIgnoredAcrossReopen() throws {
+        var journal: WatchJournal? = try WatchJournal(url: url)
+        var m = machine()
+        let start = try m.start(name: "x")
+        try journal!.record(start, sessionState: m.state)
+        let logId = "88888888-4444-4444-8444-00000000000a"
+        let log = SessionCommand(sessionId: session, commandId: logId, command: "log_set", set: set(1))
+        let e1 = try XCTUnwrap(m.apply(command: log))
+        try journal!.record(e1, sessionState: m.state, commandId: logId)
+        let fixId = "88888888-4444-4444-8444-00000000000b"
+        let e2 = try XCTUnwrap(m.apply(
+            command: SessionCommand(sessionId: session, commandId: fixId, command: "correct_set", set: SetValues(
+                setId: set(1).setId, exerciseId: "builtin.v1.synthetic-move-1", position: 1, reps: 9, loadGrams: 60000))))
+        try journal!.record(e2, sessionState: m.state, commandId: fixId)
+        journal = nil
+
+        let reopened = try WatchJournal(url: url)
+        let active = try XCTUnwrap(reopened.activeSession(accountKey: key))
+        XCTAssertEqual(active.commandIds, [logId, fixId])
+        var restored = try SessionMachine(
+            restoring: active.events, owner: "watch", accountKey: key, deviceId: "watch-installation-a",
+            clock: { Date(timeIntervalSince1970: 1_792_100_000) }, timeZone: "Asia/Kolkata",
+            appliedCommandIds: active.commandIds)
+        XCTAssertNil(try restored.apply(command: log))
+        XCTAssertEqual(restored.state.sets.first?.reps, 9)
+        XCTAssertEqual(restored.events.count, 3)
     }
 
     func testReopenRestoresTheActiveSessionAndItsReplayedState() throws {
@@ -68,7 +165,7 @@ final class WatchJournalTests: XCTestCase {
         let events = try recordSession(journal!, sets: 2)
         journal = nil
         let reopened = try WatchJournal(url: url)
-        let restored = try XCTUnwrap(reopened.activeSession())
+        let restored = try XCTUnwrap(reopened.activeSession(accountKey: key))
         XCTAssertEqual(restored.events, events)
         XCTAssertEqual(restored.state, replay(events))
         XCTAssertEqual(restored.state.completedSets, 2)
@@ -80,7 +177,7 @@ final class WatchJournalTests: XCTestCase {
         let count = try journal.pendingOutbox(limit: 100).count
         try journal.record(events[1], sessionState: replay(events))
         XCTAssertEqual(try journal.pendingOutbox(limit: 100).count, count)
-        XCTAssertEqual(try journal.activeSession()?.events.count, events.count)
+        XCTAssertEqual(try journal.activeSession(accountKey: key)?.events.count, events.count)
     }
 
     func testAcknowledgeRemovesOnlyThatMessageAndIsIdempotent() throws {
@@ -101,6 +198,23 @@ final class WatchJournalTests: XCTestCase {
         try journal.saveHealth(snapshot)
         XCTAssertNotNil(try journal.health(accountKey: key, forLocalDate: "2026-10-23"))
         XCTAssertNil(try journal.health(accountKey: key, forLocalDate: "2026-10-24"))
+        // Reading another date deleted the stale row (cleared at local midnight).
+        XCTAssertNil(try journal.health(accountKey: key, forLocalDate: "2026-10-23"))
+    }
+
+    func testSavingTodaysHealthDeletesOlderDates() throws {
+        let journal = try WatchJournal(url: url)
+        let old = try fixture("health_snapshot")
+        try journal.saveHealth(old)
+        guard case .healthSnapshot(_, let raw) = old.body else { return XCTFail("fixture") }
+        var next = raw
+        next["local_date"] = "2026-10-24"
+        let newer = WatchMessage(
+            messageId: UUID().uuidString.lowercased(), sentAtUtc: old.sentAtUtc, accountKey: key,
+            body: .healthSnapshot(localDate: "2026-10-24", raw: next))
+        try journal.saveHealth(newer)
+        XCTAssertNil(try journal.health(accountKey: key, forLocalDate: "2026-10-23"))
+        XCTAssertNotNil(try journal.health(accountKey: key, forLocalDate: "2026-10-24"))
     }
 
     func testClearAccountWithoutWipeKeepsUnsentOutbox() throws {
@@ -112,7 +226,7 @@ final class WatchJournalTests: XCTestCase {
         XCTAssertNil(try journal.plans(accountKey: key))
         XCTAssertNil(try journal.health(accountKey: key, forLocalDate: "2026-10-23"))
         XCTAssertEqual(try journal.pendingOutbox(limit: 100).count, 2)
-        XCTAssertNotNil(try journal.activeSession())
+        XCTAssertNotNil(try journal.activeSession(accountKey: key))
     }
 
     func testClearAccountWithWipeRemovesIt() throws {
@@ -120,7 +234,7 @@ final class WatchJournalTests: XCTestCase {
         try recordSession(journal, sets: 1)
         try journal.clearAccount(key, wipeUnsent: true)
         XCTAssertTrue(try journal.pendingOutbox(limit: 100).isEmpty)
-        XCTAssertNil(try journal.activeSession())
+        XCTAssertNil(try journal.activeSession(accountKey: key))
     }
 
     func testOutboxSurvivesReopen() throws {

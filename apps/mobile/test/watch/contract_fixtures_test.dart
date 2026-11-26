@@ -22,7 +22,7 @@ void main() {
   group('workout_sync v2', () {
     test('valid fixtures round-trip', () {
       final files = _files('workout_sync/v2/fixtures/valid');
-      expect(files.length, greaterThanOrEqualTo(12));
+      expect(files.length, greaterThanOrEqualTo(15));
       for (final f in files) {
         final json = _read(f);
         expect(
@@ -35,7 +35,7 @@ void main() {
 
     test('invalid fixtures are rejected', () {
       final files = _files('workout_sync/v2/fixtures/invalid');
-      expect(files.length, greaterThanOrEqualTo(7));
+      expect(files.length, greaterThanOrEqualTo(12));
       for (final f in files) {
         expect(
           () => WorkoutEventV2.fromJson(_read(f)),
@@ -78,7 +78,7 @@ void main() {
 
     test('invalid fixtures are rejected', () {
       final files = _files('watch_link/v1/fixtures/invalid');
-      expect(files.length, greaterThanOrEqualTo(8));
+      expect(files.length, greaterThanOrEqualTo(14));
       for (final f in files) {
         expect(
           () => WatchMessage.fromJson(_read(f)),

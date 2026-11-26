@@ -9,6 +9,11 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator, FormatChecker
 
+try:
+    from contract_validation import ContractValidator, format_checker
+except ImportError:  # run as `python3 -m unittest tool.<module>` from the root
+    from tool.contract_validation import ContractValidator, format_checker
+
 ROOT = Path(__file__).resolve().parents[1]
 PROTOCOL = ROOT / "contracts" / "workout_sync" / "v1"
 SCHEMA = json.loads((PROTOCOL / "envelope.schema.json").read_text(encoding="utf-8"))
@@ -53,11 +58,11 @@ class ProtocolV2FixturesTest(unittest.TestCase):
             (PROTOCOL_V2 / "envelope.schema.json").read_text(encoding="utf-8")
         )
         Draft202012Validator.check_schema(schema)
-        cls.validator = Draft202012Validator(schema, format_checker=FormatChecker())
+        cls.validator = ContractValidator(schema, format_checker=format_checker())
 
     def test_valid_messages(self):
         fixtures = sorted((PROTOCOL_V2 / "fixtures/valid").glob("*.json"))
-        self.assertGreaterEqual(len(fixtures), 12)
+        self.assertGreaterEqual(len(fixtures), 15)
         for path in fixtures:
             with self.subTest(file=path.name):
                 data = json.loads(path.read_text(encoding="utf-8"))
@@ -65,7 +70,7 @@ class ProtocolV2FixturesTest(unittest.TestCase):
 
     def test_invalid_messages(self):
         fixtures = sorted((PROTOCOL_V2 / "fixtures/invalid").glob("*.json"))
-        self.assertGreaterEqual(len(fixtures), 7)
+        self.assertGreaterEqual(len(fixtures), 12)
         for path in fixtures:
             with self.subTest(file=path.name):
                 data = json.loads(path.read_text(encoding="utf-8"))

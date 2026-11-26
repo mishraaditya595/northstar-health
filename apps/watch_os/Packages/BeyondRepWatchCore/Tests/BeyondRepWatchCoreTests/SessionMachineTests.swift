@@ -85,9 +85,13 @@ final class SessionMachineTests: XCTestCase {
             if n == 3 { _ = try m.skip(setId: set(5).setId) }
         }
         _ = try m.pause()
+        XCTAssertEqual(m.status, "paused")
+        XCTAssertEqual(m.status, m.state.status)
         _ = try m.resume()
         _ = try m.log(set: SetValues(setId: "dddddddd-dddd-4ddd-8ddd-0000000000aa", exerciseId: exercise, position: 9, durationSeconds: 45))
+        XCTAssertEqual(m.status, m.state.status)
         _ = try m.complete()
+        XCTAssertEqual(m.status, m.state.status)
         XCTAssertEqual(m.events.count, 19)
         XCTAssertEqual(replay(m.events.reversed() + m.events), m.state)
         XCTAssertEqual(m.state.status, "completed")
@@ -97,19 +101,61 @@ final class SessionMachineTests: XCTestCase {
 
     func testCommandFinishMapsToComplete() throws {
         var m = try started()
-        let event = try m.apply(
+        let event = try XCTUnwrap(m.apply(
             command: SessionCommand(
-                sessionId: session, commandId: "88888888-4444-4444-8444-000000000002", command: "finish"))
+                sessionId: session, commandId: "88888888-4444-4444-8444-000000000002", command: "finish")))
         guard case .workoutCompleted = event else { return XCTFail("expected workout_completed") }
         XCTAssertEqual(m.state.status, "completed")
     }
 
     func testCommandLogSetMapsToLog() throws {
         var m = try started()
-        let event = try m.apply(
+        let event = try XCTUnwrap(m.apply(
             command: SessionCommand(
                 sessionId: session, commandId: "88888888-4444-4444-8444-000000000001",
-                command: "log_set", set: set(1)))
+                command: "log_set", set: set(1))))
         guard case .setLogged = event else { return XCTFail("expected set_logged") }
+    }
+
+    private func noValues(_ n: Int) -> SetValues {
+        SetValues(setId: "dddddddd-dddd-4ddd-8ddd-00000000000\(n)", exerciseId: exercise, position: n)
+    }
+
+    func testLogOrCorrectWithoutRepsOrDurationThrows() throws {
+        var m = try started()
+        XCTAssertThrowsError(try m.log(set: noValues(1))) { XCTAssertEqual($0 as? SessionError, .invalidCommand) }
+        _ = try m.log(set: set(1))
+        XCTAssertThrowsError(try m.correct(setId: set(1).setId, values: noValues(1))) {
+            XCTAssertEqual($0 as? SessionError, .invalidCommand)
+        }
+        for name in ["log_set", "correct_set"] {
+            XCTAssertThrowsError(try m.apply(command: SessionCommand(
+                sessionId: session, commandId: UUID().uuidString.lowercased(), command: name, set: noValues(1)))
+            ) { XCTAssertEqual($0 as? SessionError, .invalidCommand) }
+        }
+        XCTAssertEqual(m.events.count, 2)
+    }
+
+    func testLoggingAnAlreadyLoggedSetEmitsACorrection() throws {
+        var m = try started()
+        let first = try m.log(set: set(1))
+        let again = try m.log(set: set(1, reps: 9))
+        guard case .setCorrected(_, _, let superseded) = again else { return XCTFail("expected set_corrected") }
+        XCTAssertEqual(superseded, first.header.eventId)
+        XCTAssertEqual(m.state.sets.first?.reps, 9)
+    }
+
+    func testDuplicateCommandIsIgnored() throws {
+        var m = try started()
+        func command(_ id: String, _ name: String, reps: Int) -> SessionCommand {
+            SessionCommand(sessionId: session, commandId: id, command: name, set: set(1, reps: reps))
+        }
+        let log = command("88888888-4444-4444-8444-00000000000a", "log_set", reps: 8)
+        _ = try m.apply(command: log)
+        _ = try m.apply(command: command("88888888-4444-4444-8444-00000000000b", "correct_set", reps: 9))
+        let count = m.events.count
+        XCTAssertNil(try m.apply(command: log))
+        XCTAssertEqual(m.events.count, count)
+        XCTAssertEqual(m.state.sets.first?.reps, 9)
     }
 }
