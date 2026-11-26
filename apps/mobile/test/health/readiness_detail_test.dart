@@ -157,6 +157,7 @@ HealthOverview _overview(
           restingHrDaily: rhrDaily,
           loadSessions: loadSessions(logged, mergeWorkouts(logged, outside)),
         ),
+        loadSessions: loadSessions(logged, mergeWorkouts(logged, outside)),
         hasHrv: true,
         hasRestingHr: true,
         hasSleep: true,
@@ -660,7 +661,8 @@ void main() {
       },
     );
 
-    test("today's trend point equals the overview score with load", () async {
+    test("today's trend point equals the hero after the history changes "
+        'without an overview refresh', () async {
       DateTime at(int back) => DateTime(2026, 11, 24 - back, 9);
       WorkoutSessionRecord logged(String id, int back) => WorkoutSessionRecord(
         uuid: id,
@@ -695,8 +697,9 @@ void main() {
         overrides: [
           fakeHealthOverview(FakeHealthOverviewController(overview)),
           healthReaderProvider.overrideWithValue(reader),
+          // The history changed since the overview was read.
           workoutHistoryRepositoryProvider.overrideWithValue(
-            _History(sessions),
+            _History(const []),
           ),
           healthOwnerIdProvider.overrideWithValue(_owner),
           healthClockProvider.overrideWithValue(() => _now),

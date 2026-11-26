@@ -1,11 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../progress/workout_history_state.dart';
-import '../../workouts/domain/workout_models.dart';
 import '../data/health_reader.dart';
 import '../domain/daily_series.dart';
 import '../domain/health_types.dart';
-import '../domain/outside_workouts.dart';
 import '../domain/readiness.dart';
 import '../domain/sleep_nights.dart';
 import '../domain/sleep_score.dart';
@@ -120,16 +117,6 @@ Future<(HealthOverview, SleepOverview)?> _sleepOf(Ref ref) async {
 
 bool _stillOwner(Ref ref, String owner) =>
     ref.mounted && ref.read(healthOwnerIdProvider) == owner;
-
-/// Completed BeyondRep sessions for the training load; null when the read
-/// fails, as in the overview.
-Future<List<WorkoutSessionRecord>?> _completedSessions(Ref ref) async {
-  try {
-    return (await ref.watch(completedWorkoutHistoryProvider.future)).sessions;
-  } catch (_) {
-    return null;
-  }
-}
 
 DateTime _monthFrom(DateTime readAt) =>
     DateTime(readAt.year, readAt.month, readAt.day - 29);
@@ -444,21 +431,17 @@ final readinessHistoryProvider = FutureProvider.autoDispose
           );
       final hrvF = read(HealthSeriesType.hrv);
       final rhrF = read(HealthSeriesType.restingHeartRate);
-      final historyF = _completedSessions(ref);
       final rangeNights = await rangeNightsF;
       final hr = await hrF;
       final hrv = await hrvF;
       final rhr = await rhrF;
-      final sessions = await historyF;
       if (!_stillOwner(ref, overview.ownerId)) return null;
 
-      final outside = switch (overview.workouts) {
-        SectionData(:final value) => value.outside,
-        SectionGap() => const <OutsideWorkout>[],
+      // The overview's own load sessions, so today matches its score.
+      final load = switch (overview.readiness) {
+        SectionData(:final value) => value.loadSessions,
+        SectionGap() => const <LoadSession>[],
       };
-      final load = sessions == null
-          ? const <LoadSession>[]
-          : loadSessions(sessions, mergeWorkouts(sessions, outside));
       final sleepNights = switch (overview.sleep) {
         SectionData(:final value) => value.nights,
         SectionGap() => const <SleepNight>[],

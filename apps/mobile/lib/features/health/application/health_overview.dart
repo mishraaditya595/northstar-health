@@ -170,6 +170,7 @@ class ReadinessOverview {
     required this.hrvBaseline,
     required this.restingHrBaseline,
     required this.hrvIsSdnn,
+    this.loadSessions = const [],
   });
 
   final ReadinessResult result;
@@ -181,6 +182,10 @@ class ReadinessOverview {
   final TrendResult? hrvVsNormal, restingHrVsNormal;
   final Baseline? hrvBaseline, restingHrBaseline;
   final bool hrvIsSdnn;
+
+  /// The training load sessions the score used, so the readiness trend scores
+  /// past days from the same sessions as the hero. Memory only.
+  final List<LoadSession> loadSessions;
 }
 
 /// Read fresh and held in memory only; never written anywhere.
@@ -484,6 +489,7 @@ Section<ReadinessOverview> _readiness(
       hrvBaseline: hrvBaseline,
       restingHrBaseline: rhrBaseline,
       hrvIsSdnn: platform == HealthPlatformKind.appleHealth,
+      loadSessions: load,
     ),
   );
 }
