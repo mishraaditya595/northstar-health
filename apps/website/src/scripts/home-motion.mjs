@@ -36,89 +36,159 @@ export function cinematicFrame(progress, width, height) {
   };
 }
 
+// Share of the remaining distance covered in one frame, scaled so a 120 Hz
+// screen settles in the same time as a 60 Hz one.
+export function settleFactor(dtMs, base = .16) {
+  return 1 - Math.pow(1 - base, clamp(dtMs, 0, 1000) / (1000 / 60));
+}
+
+// The pinned intro needs every chapter's copy to fit without overlapping the
+// nav or the chapter bar. Desktop copy is centred; phone copy sits above the
+// phones and gets the top 43% of the stage.
+export function introFits({ sceneHeights, stageHeight, navHeight, bottomHeight, mobile }) {
+  const room = mobile ? stageHeight * .43
+    : stageHeight - 2 * Math.max(navHeight, bottomHeight) - 16;
+  return sceneHeights.every(h => h <= room);
+}
+
+export const MOTION_QUERY = '(prefers-reduced-motion: no-preference) and (min-height: 581px)';
+
 export function mountCinematic(root, win) {
+  const doc = root.ownerDocument;
   const stage = root.querySelector('[data-stage]');
   const word = root.querySelector('[data-word]');
+  const nav = root.querySelector('.cine-nav');
+  const bottom = root.querySelector('.cine-bottom');
   const scenes = [...root.querySelectorAll('[data-scene]')];
   const rigs = [...root.querySelectorAll('[data-rig]')];
   const buttons = [...root.querySelectorAll('[data-chapter]')];
-  if (!stage || !word || scenes.length !== 3 || rigs.length !== 3 ||
-      buttons.length !== 3 || !win.matchMedia || !win.requestAnimationFrame) return;
-  const media = win.matchMedia('(prefers-reduced-motion: reduce), (max-height: 580px)');
-  // At large text zoom a pinned viewport can clip content. Fall back when
-  // the desktop/mobile copy cannot fit into its allocated vertical space.
-  let current = 0, target = 0, raf = 0, enabled = false;
+  const progressEls = [...root.querySelectorAll('[data-progress]')];
+  if (!stage || !word || !nav || !bottom || scenes.length !== 3 || rigs.length !== 3 ||
+      buttons.length !== 3 || !win.matchMedia || !win.requestAnimationFrame) {
+    root.classList.remove('motion-ready');
+    return;
+  }
+  const media = win.matchMedia(MOTION_QUERY);
+  let current = 0, target = 0, raf = 0, last = 0, enabled = false, active = -1;
+  // Layout is measured in reset() only, so scrolling never forces a reflow.
+  let trackTop = 0, travel = 1, width = win.innerWidth, height = win.innerHeight;
+  let focusAfterSettle = -1;
+
+  function setActive(i) {
+    if (i === active) return;
+    active = i;
+    word.textContent = ['REP.', 'LIFT.', 'REST.'][i];
+    buttons.forEach((b, j) => {
+      if (j === i) b.setAttribute('aria-current', 'step');
+      else b.removeAttribute('aria-current');
+    });
+    scenes.forEach((el, j) => el.classList.toggle('is-active', j === i));
+  }
   function draw(p) {
-    const frame = cinematicFrame(p, win.innerWidth, win.innerHeight);
-    stage.style.setProperty('--p', String(p));
-    rigs.forEach((el,i) => {
+    const frame = cinematicFrame(p, width, height);
+    progressEls.forEach(el => el.style.setProperty('--p', p.toFixed(4)));
+    rigs.forEach((el, i) => {
       const v = frame.rigs[i];
-      el.style.transform = `translate(-50%,-50%) translate3d(${v.x}px,${v.y}px,${v.z}px) rotateX(${v.rx}deg) rotateY(${v.ry}deg) rotateZ(${v.ry*.22}deg) scale(${v.scale})`;
+      el.style.transform = `translate(-50%,-50%) translate3d(${v.x}px,${v.y}px,${v.z}px) rotateX(${v.rx}deg) rotateY(${v.ry}deg) rotateZ(${v.ry * .22}deg) scale(${v.scale})`;
       el.style.opacity = String(v.opacity);
       el.style.zIndex = String(v.order);
     });
-    scenes.forEach((el,i) => {
+    scenes.forEach((el, i) => {
       const v = frame.scenes[i];
-      const inactive = i !== frame.active || v.opacity < .5;
-      if (inactive && el.contains(root.ownerDocument.activeElement)) {
-        buttons[frame.active].focus({ preventScroll: true });
-      }
       el.style.opacity = String(v.opacity);
       el.style.transform = frame.mobile ? `translateY(${v.drift}px)` : `translateY(calc(-50% + ${v.drift}px))`;
-      el.style.visibility = v.opacity > 0 ? 'visible' : 'hidden';
-      el.style.pointerEvents = inactive ? 'none' : 'auto';
-      el.inert = inactive;
     });
-    word.textContent = ['REP.','LIFT.','REST.'][frame.active];
-    buttons.forEach((b,i) => {
-      if (i === frame.active) b.setAttribute('aria-current','true');
-      else b.removeAttribute('aria-current');
-    });
+    setActive(frame.active);
   }
-  function loop() {
+  function loop(now) {
     raf = 0;
     if (!enabled) return;
-    current += (target-current)*.16;
-    if (Math.abs(target-current)<.001) current = target;
+    const dt = last ? now - last : 1000 / 60;
+    last = now;
+    current += (target - current) * settleFactor(dt);
+    if (Math.abs(target - current) < .001) current = target;
     draw(current);
-    if (current !== target) raf = win.requestAnimationFrame(loop);
+    if (current !== target) { raf = win.requestAnimationFrame(loop); return; }
+    last = 0;
+    if (focusAfterSettle >= 0) {
+      const heading = scenes[focusAfterSettle].querySelector('h1, h2');
+      focusAfterSettle = -1;
+      heading?.focus({ preventScroll: true });
+    }
   }
   function read() {
     if (!enabled) return;
-    target = progressForScroll(root.getBoundingClientRect().top, root.offsetHeight, stage.offsetHeight);
+    target = clamp((win.scrollY - trackTop) / travel);
     if (!raf) raf = win.requestAnimationFrame(loop);
   }
-  function disable() {
-    enabled = false;
-    if (raf) win.cancelAnimationFrame(raf);
-    raf = 0;
-    root.classList.remove('motion-ready');
+  function scrollToChapter(i, behavior) {
+    win.scrollTo({ top: trackTop + travel * i / 2, behavior });
+  }
+  function clearStyles() {
     scenes.forEach(el => {
-      el.inert = false;
       el.style.removeProperty('opacity');
       el.style.removeProperty('transform');
-      el.style.removeProperty('visibility');
-      el.style.removeProperty('pointer-events');
+      el.classList.remove('is-active');
     });
   }
+  function measure() {
+    width = win.innerWidth;
+    height = win.innerHeight;
+    trackTop = root.getBoundingClientRect().top + win.scrollY;
+    travel = Math.max(1, root.offsetHeight - stage.offsetHeight);
+  }
   function reset() {
-    if (media.matches) { disable(); return; }
-    root.classList.add('motion-ready');
-    // Measure without hiding content; if text enlargement or short viewports
-    // would cause overlap, keep the complete static introduction instead.
-    const available = stage.clientHeight * (win.innerWidth <= 720 ? .43 : .70);
-    if (scenes.some(el => el.offsetHeight > available)) { disable(); return; }
+    // Remember where the reader was, so rotating a phone or zooming keeps
+    // the same chapter in view whichever layout comes next.
+    const wasEnabled = enabled;
+    const before = wasEnabled ? clamp((win.scrollY - trackTop) / travel) : 0;
+    const wasInside = wasEnabled && win.scrollY >= trackTop && win.scrollY < trackTop + travel;
+    enabled = false;
+    if (raf) win.cancelAnimationFrame(raf);
+    raf = 0; last = 0; active = -1;
+    clearStyles();
+    root.classList.toggle('motion-ready', media.matches);
+    const ok = media.matches && introFits({
+      sceneHeights: scenes.map(el => el.offsetHeight),
+      stageHeight: stage.clientHeight,
+      navHeight: nav.offsetHeight,
+      bottomHeight: bottom.offsetHeight,
+      mobile: win.innerWidth <= 720,
+    });
+    if (!ok) {
+      root.classList.remove('motion-ready');
+      if (wasInside) win.scrollTo({ top: trackTop, behavior: 'instant' });
+      return;
+    }
+    measure();
     enabled = true;
-    current = target = progressForScroll(root.getBoundingClientRect().top,root.offsetHeight,stage.offsetHeight);
+    if (wasInside) scrollToChapter(Math.round(before * 2), 'instant');
+    current = target = clamp((win.scrollY - trackTop) / travel);
     draw(current);
   }
-  buttons.forEach((b,i) => b.addEventListener('click',() => {
+  let resizeTimer = 0;
+  function onResize() {
+    // Phone toolbars resize the viewport while scrolling; only rebuild the
+    // layout when the size really changed, and never mid-gesture.
+    if (Math.abs(win.innerWidth - width) < 1 && Math.abs(win.innerHeight - height) < 120 && enabled) {
+      measure(); read(); return;
+    }
+    win.clearTimeout(resizeTimer);
+    resizeTimer = win.setTimeout(reset, 120);
+  }
+  buttons.forEach((b, i) => b.addEventListener('click', () => {
     if (!enabled) return;
-    const y = win.scrollY + root.getBoundingClientRect().top + (root.offsetHeight-stage.offsetHeight)*i/2;
-    win.scrollTo({top:y,behavior:'smooth'});
+    focusAfterSettle = i;
+    scrollToChapter(i, 'smooth');
   }));
-  win.addEventListener('scroll',read,{passive:true});
-  win.addEventListener('resize',reset);
-  media.addEventListener?.('change',reset);
+  // Keyboard and screen-reader users can reach every chapter's text and links:
+  // moving focus into a chapter brings that chapter on screen.
+  scenes.forEach((el, i) => el.addEventListener('focusin', () => {
+    if (enabled && i !== active) scrollToChapter(i, 'instant');
+  }));
+  win.addEventListener('scroll', read, { passive: true });
+  win.addEventListener('resize', onResize);
+  media.addEventListener?.('change', reset);
+  doc.fonts?.ready?.then(() => { if (enabled) { measure(); read(); } });
   reset();
 }

@@ -3,6 +3,7 @@ import Base from '../layouts/Base.astro';
 import GetApp from '../components/GetApp.astro';
 import { SITE } from '../site';
 import CinematicIntro from '../components/CinematicIntro.astro';
+import '../styles/home-sections.css';
 
 const faqs = [
   {
@@ -54,60 +55,82 @@ const jsonLd = [
   cinematic
 >
   <CinematicIntro />
+  <div class="seam" aria-hidden="true"></div>
 
-  <section id="details" aria-labelledby="details-title">
-    <div class="wrap">
-      <h2 class="section-title" id="details-title">Strength. Without the clutter.</h2>
-      <p class="section-lede">{SITE.tagline}</p>
-      <GetApp tone="plain" />
-    </div>
-  </section>
-
-  <section aria-labelledby="offline">
-    <div class="wrap">
-      <h2 class="section-title" id="offline">Built for the gym, not for signal bars</h2>
-      <p class="section-lede">
-        Basements, garages and hotel gyms rarely have good coverage. BeyondRep never waits on the network to save a
-        set.
-      </p>
-      <div class="cards cards-3">
-        <div class="card">
-          <span class="tag">Saved locally first</span>
-          <h3>Nothing to lose mid-workout</h3>
-          <p>Each set is written to your phone the moment you tick it, so a dead zone or a crash costs you nothing.</p>
+  <section id="details" class="feature" aria-labelledby="offline">
+    <div class="wrap split">
+      <div class="split-head" data-reveal>
+        <p class="kicker">Offline first</p>
+        <h2 class="display" id="offline">Built for the gym, not for signal bars</h2>
+        <p class="section-lede">
+          Basements, garages and hotel gyms rarely have good coverage. BeyondRep never waits on the network to save a
+          set.
+        </p>
+      </div>
+      <ul class="points" data-reveal>
+          <li><span class="tag">Saved locally first</span><h3>Nothing to lose mid-workout</h3><p>Each set is written to your phone the moment you tick it, so a dead zone or a crash costs you nothing.</p></li>
+          <li><span class="tag">Backs up later</span><h3>Syncs when you’re back online</h3><p>Finished workouts queue up and back up when you reconnect. You can see what is still waiting to back up.</p></li>
+          <li><span class="tag">Multi-device</span><h3>New phone, same history</h3><p>Sign in on another phone and your finished workouts come back. If two phones disagree, you choose which version to keep.</p></li>
+      </ul>
+      <div class="demo demo-offline" data-reveal data-glow aria-hidden="true">
+        <div class="demo-head">
+          <span class="demo-title">Bench press</span>
+          <span class="chip chip-offline">No signal</span>
+          <span class="chip chip-online">Backed up</span>
         </div>
-        <div class="card">
-          <span class="tag">Backs up later</span>
-          <h3>Syncs when you’re back online</h3>
-          <p>Finished workouts queue up and back up when you reconnect. You can see what is still waiting to back up.</p>
+        <div class="set-row" style="--i:0"><b>1</b><span>60 kg × 8</span><em>Saved on phone</em><i>✓</i></div>
+        <div class="set-row" style="--i:1"><b>2</b><span>70 kg × 6</span><em>Saved on phone</em><i>✓</i></div>
+        <div class="set-row" style="--i:2"><b>3</b><span>70 kg × 6</span><em>Saved on phone</em><i>✓</i></div>
+        <div class="sync">
+          <div class="sync-text"><span class="sync-wait">Finished workout waiting to back up</span><span class="sync-done">Finished workout backed up</span></div>
+          <div class="sync-bar"><i></i></div>
         </div>
-        <div class="card">
-          <span class="tag">Multi-device</span>
-          <h3>New phone, same history</h3>
-          <p>Sign in on another phone and your finished workouts come back. If two phones disagree, you choose which version to keep.</p>
-        </div>
+        <p class="demo-note">Illustration · sample values</p>
       </div>
     </div>
   </section>
 
-  <section aria-labelledby="train">
+  <section class="feature" aria-labelledby="train">
     <div class="wrap">
-      <h2 class="section-title" id="train">Plan it, lift it, see it add up</h2>
-      <p class="section-lede">The tools you reach for every session, without the clutter.</p>
-      <div class="cards">
-        <div class="card">
+      <div data-reveal>
+        <p class="kicker">Training</p>
+        <h2 class="display" id="train">Plan it, lift it, see it add up</h2>
+        <p class="section-lede">The tools you reach for every session, without the clutter.</p>
+      </div>
+      <div class="tiles">
+        <div class="tile" data-reveal data-glow style="--i:0">
+          <div class="viz viz-library" aria-hidden="true">
+            <div class="search">Search exercises</div>
+            <div class="chips"><span>Chest</span><span>Dumbbell</span><span>Barbell</span></div>
+            <div class="result" style="--j:0">Incline dumbbell press</div>
+            <div class="result" style="--j:1">Barbell bench press</div>
+            <div class="result" style="--j:2">Cable fly</div>
+          </div>
           <h3>Plans and an exercise library</h3>
           <p>Build your own routines from an exercise catalog you can search by name, muscle or equipment, or add your own.</p>
         </div>
-        <div class="card">
+        <div class="tile" data-reveal data-glow style="--i:1">
+          <div class="viz viz-log" aria-hidden="true">
+            <div class="log-last">Last time <b>65 kg × 8</b></div>
+            <div class="log-now"><span class="big"><span data-count="70">70</span><small>kg</small></span><span class="times">×</span><span class="big"><span data-count="6">6</span><small>reps</small></span></div>
+            <div class="log-unit"><span class="on">kg</span><span>lb</span></div>
+          </div>
           <h3>Fast set logging</h3>
           <p>Log weight, reps and RPE in kg or lb, with last session’s numbers shown next to each set.</p>
         </div>
-        <div class="card">
+        <div class="tile" data-reveal data-glow style="--i:2">
+          <div class="viz viz-timer" aria-hidden="true">
+            <svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="50" /><circle class="ring" cx="60" cy="60" r="50" pathLength="100" /></svg>
+            <div class="timer-text"><b>01:28</b><span>Rest</span></div>
+          </div>
           <h3>Rest timer</h3>
           <p>Finish a set and the rest timer starts, so you know when to go again.</p>
         </div>
-        <div class="card">
+        <div class="tile" data-reveal data-glow style="--i:3">
+          <div class="viz viz-progress" aria-hidden="true">
+            <div class="bars">{[42, 64, 38, 80, 55, 92, 70].map((h, j) => <i style={`height:${h}%;--j:${j}`}></i>)}</div>
+            <div class="muscles"><span style="--j:0">Chest</span><span style="--j:1">Back</span><span style="--j:2">Legs</span></div>
+          </div>
           <h3>Progress and recovery map</h3>
           <p>Workout history and weekly volume and training-time trends, plus a body map of which muscle groups you have trained in the last 72 hours.</p>
         </div>
@@ -115,73 +138,89 @@ const jsonLd = [
     </div>
   </section>
 
-  <section aria-labelledby="health">
-    <div class="wrap">
-      <h2 class="section-title" id="health">Your recovery, next to your training</h2>
-      <p class="section-lede">
-        Connect Apple Health or Health Connect and BeyondRep shows a daily summary on your phone. It reads; it never
-        writes or uploads.
-      </p>
-      <div class="cards">
-        <div class="card">
-          <span class="tag tag-sleep">Sleep</span>
-          <h3>Last night’s sleep</h3>
-          <p>How long you slept, so you can decide whether to push or hold back today.</p>
+  <section class="feature" aria-labelledby="health">
+    <div class="wrap split split-flip">
+      <div class="split-head" data-reveal>
+        <p class="kicker kicker-sleep">Recovery</p>
+        <h2 class="display" id="health">Your recovery, next to your training</h2>
+        <p class="section-lede">
+          Connect Apple Health or Health Connect and BeyondRep shows a daily summary on your phone. It reads; it never
+          writes or uploads.
+        </p>
+      </div>
+      <ul class="points" data-reveal>
+          <li><span class="tag tag-sleep">Sleep</span><h3>Last night’s sleep</h3><p>How long you slept, so you can decide whether to push or hold back today.</p></li>
+          <li><span class="tag">Daily signals</span><h3>Steps, resting heart rate and weight</h3><p>Today’s steps, your latest resting heart rate and your latest weight, each with its date. Missing data is shown as missing, never as zero.</p></li>
+      </ul>
+      <div class="demo demo-health" data-reveal data-glow aria-hidden="true">
+        <div class="sleep">
+          <span class="demo-label">Last night’s sleep</span>
+          <b>7h 24m</b>
+          <div class="wave">{[40, 72, 55, 95, 35, 62, 88, 46, 70, 38, 58, 30].map((h, j) => <i style={`height:${h}%;--j:${j}`}></i>)}</div>
         </div>
-        <div class="card">
-          <span class="tag">Daily signals</span>
-          <h3>Steps, resting heart rate and weight</h3>
-          <p>Today’s steps, your latest resting heart rate and your latest weight, each with its date. Missing data is shown as missing, never as zero.</p>
+        <div class="stats">
+          <div><span class="demo-label">Steps</span><b data-count="6,240">6,240</b><small>Today</small></div>
+          <div><span class="demo-label">Resting HR</span><b><span data-count="58">58</span> bpm</b><small>Today</small></div>
+          <div><span class="demo-label">Weight</span><b class="missing">No reading</b><small>Shown as missing, not zero</small></div>
         </div>
+        <p class="demo-note">Illustration · sample values</p>
       </div>
     </div>
   </section>
 
-  <section aria-labelledby="privacy">
+  <section class="feature" aria-labelledby="privacy">
     <div class="wrap">
-      <h2 class="section-title" id="privacy">Your data stays yours</h2>
-      <p class="section-lede">We back up the minimum needed to keep your training safe, and we say exactly what that is.</p>
+      <div data-reveal>
+        <p class="kicker">Privacy</p>
+        <h2 class="display" id="privacy">Your data stays yours</h2>
+        <p class="section-lede">We back up the minimum needed to keep your training safe, and we say exactly what that is.</p>
+      </div>
       <div class="cards">
-        <div class="panel">
+        <div class="panel vault" data-reveal data-glow style="--i:0">
+          <svg class="vault-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.5-8.97A6 6 0 0 1 18 8.5a4.75 4.75 0 0 1-.5 9.5z" /></svg>
           <h3>Stored with your account</h3>
           <ul class="checklist">
-            <li>Your email address, for sign-in codes</li>
-            <li>Workouts you have finished, with their exercises and sets</li>
+            <li style="--j:0">Your email address, for sign-in codes</li>
+            <li style="--j:1">Workouts you have finished, with their exercises and sets</li>
           </ul>
         </div>
-        <div class="panel">
+        <div class="panel vault" data-reveal data-glow style="--i:1">
+          <svg class="vault-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M10.5 18.5h3" /></svg>
           <h3>Never leaves your phone</h3>
           <ul class="checklist no">
-            <li>Apple Health and Health Connect data</li>
-            <li>Unfinished workouts, plans and templates</li>
+            <li style="--j:0">Apple Health and Health Connect data</li>
+            <li style="--j:1">Unfinished workouts, plans and templates</li>
           </ul>
         </div>
       </div>
-      <p class="muted">
+      <p class="muted" data-reveal>
         No ads, no analytics, no tracking and no selling of data. Export your backed-up workouts as a file or delete your account from inside the app at any time.{' '}
         <a href="/privacy">Read the privacy policy</a>.
       </p>
     </div>
   </section>
 
-  <section aria-labelledby="faq">
+  <section class="feature" aria-labelledby="faq">
     <div class="wrap narrow">
-      <h2 class="section-title" id="faq">Questions</h2>
-      {faqs.map((f) => (
-        <details>
-          <summary>{f.q}</summary>
-          <p>{f.a}</p>
-        </details>
-      ))}
+      <h2 class="display" id="faq" data-reveal>Questions</h2>
+      <div class="faq">
+        {faqs.map((f) => (
+          <details>
+            <summary>{f.q}</summary>
+            <p>{f.a}</p>
+          </details>
+        ))}
+      </div>
     </div>
   </section>
 
-  <section aria-labelledby="cta">
+  <section class="feature" aria-labelledby="cta">
     <div class="wrap">
-      <div class="hero">
+      <div class="hero finale" data-reveal>
+        <div class="finale-rings" aria-hidden="true"><i></i><i></i><i></i></div>
         <div class="hero-grid" style="grid-template-columns:1fr">
           <div>
-            <h2 class="section-title" id="cta" style="text-transform:uppercase">Show up. Get strong.</h2>
+            <h2 class="finale-title" id="cta">Show up. <span>Get strong.</span></h2>
             <p class="lede">Be first to know when BeyondRep is out.</p>
             <GetApp />
           </div>
@@ -189,4 +228,8 @@ const jsonLd = [
       </div>
     </div>
   </section>
+  <script>
+    import { mountReveals } from '../scripts/home-reveal.mjs';
+    mountReveals(document, window);
+  </script>
 </Base>

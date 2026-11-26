@@ -1,37 +1,46 @@
 ---
 import '../styles/home-motion.css';
+import { SITE } from '../site';
+
+const notify = `mailto:${SITE.contactEmail}?subject=${encodeURIComponent('Tell me when BeyondRep launches')}`;
 ---
 <div class="cinematic" data-cinematic>
+  <script is:inline>
+    // Choose the pinned layout before first paint so the page does not jump.
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: no-preference) and (min-height: 581px)').matches) document.currentScript.parentElement.classList.add('motion-ready');
+  </script>
   <div class="cine-stage" data-stage>
-    <div class="cine-grid" aria-hidden="true"></div>
-    <div class="cine-halo" aria-hidden="true"><i></i></div>
+    <div class="cine-grid" data-progress aria-hidden="true"></div>
+    <div class="cine-halo" data-progress aria-hidden="true"><i></i></div>
     <div class="cine-word" data-word aria-hidden="true">REP.</div>
-    <div class="cine-meter" aria-hidden="true"><i></i></div>
+    <div class="cine-meter" data-progress aria-hidden="true"><i></i></div>
     <header class="cine-nav">
       <a class="cine-brand" href="/" aria-label="BeyondRep home"><img src="/favicon.svg" width="29" height="29" alt="" />BeyondRep</a>
       <nav class="cine-navright" aria-label="Main">
         <span class="cine-edition" aria-hidden="true">PERFORMANCE / 01</span>
         <a class="cine-navlink" href="/features">Features</a>
         <a class="cine-navlink" href="/privacy">Privacy</a>
-        <a class="cine-pill" href="#details">Explore BeyondRep <span aria-hidden="true">↗</span></a>
+        <a class="cine-navlink" href="/support">Support</a>
+        <a class="cine-pill" href="#details">Explore BeyondRep <span aria-hidden="true">↓</span></a>
       </nav>
     </header>
+    <a class="cine-skip" href="#details">Skip intro</a>
     <section class="cine-scene" data-scene aria-labelledby="cine-title-1">
       <p class="cine-eyebrow">01 / Built for the gym</p>
-      <h1 id="cine-title-1">Every rep.<span>Counts.</span></h1>
+      <h1 id="cine-title-1" tabindex="-1">Every rep. <span>Counts.</span></h1>
       <p>Your training deserves a log that keeps up. After signing in, save every set on your phone, even when the signal disappears.</p>
-      <a class="cine-pill" href="#details">Discover the experience <span aria-hidden="true">↗</span></a>
+      <a class="cine-pill" href="#details">Discover the experience <span aria-hidden="true">↓</span></a>
     </section>
     <section class="cine-scene" data-scene aria-labelledby="cine-title-2">
       <p class="cine-eyebrow">02 / Strength in progress</p>
-      <h2 id="cine-title-2">Show up.<span>Get strong.</span></h2>
+      <h2 id="cine-title-2" tabindex="-1">Show up. <span>Get strong.</span></h2>
       <p>Build your own routines, log weight and reps, and see your training add up. One session at a time.</p>
     </section>
     <section class="cine-scene" data-scene aria-labelledby="cine-title-3">
       <p class="cine-eyebrow">03 / The bigger picture</p>
-      <h2 id="cine-title-3">Train hard.<span>Recover well.</span></h2>
+      <h2 id="cine-title-3" tabindex="-1">Train hard. <span>Recover well.</span></h2>
       <p>See your sleep and daily health signals beside your training. Your health data stays on your phone.</p>
-      <a class="cine-pill" href="#details">Go beyond the rep <span aria-hidden="true">↗</span></a>
+      <a class="cine-pill" href={notify}>Tell me when it launches <span aria-hidden="true">→</span></a>
     </section>
     <div class="cine-visual" aria-hidden="true">
       <div class="cine-rig" data-rig>
@@ -40,7 +49,7 @@ import '../styles/home-motion.css';
           <div class="cine-micro">Friday / October 23</div><h3>Today</h3>
           <div class="cine-work"><div class="cine-micro">Next session / 03 of 04</div><b>SHOW UP.<br />GET STRONG.</b><p>Full body A · 5 exercises</p><div class="cine-mini">Start workout →</div></div>
           <div class="cine-micro" style="margin-bottom:8px">Health snapshot</div>
-          <div class="cine-split"><div class="cine-tile"><div class="cine-micro">Steps</div><strong>6,240</strong><p>Today</p></div><div class="cine-tile"><div class="cine-micro">Sleep</div><strong style="color:#c1a9ff">7h 24m</strong><p>Last night</p></div></div>
+          <div class="cine-split"><div class="cine-tile"><div class="cine-micro">Steps</div><strong>6,240</strong><p>Today</p></div><div class="cine-tile"><div class="cine-micro">Sleep</div><strong style="color:var(--cine-sleep)">7h 24m</strong><p>Last night</p></div></div>
           <div class="cine-tile"><div class="cine-micro">Training this week</div><div class="cine-bars">{[55,90,40,75,20,10,8].map(h => <i style={`height:${h}%`}></i>)}</div></div>
           <div class="cine-tab"><b>Today</b><span>Train</span><span>Progress</span><span>Health</span></div>
         </div></div>
@@ -55,7 +64,7 @@ import '../styles/home-motion.css';
           </div>
           <div class="cine-tile"><div class="cine-micro">02 / Chest</div><strong>Bench press</strong><p>3 sets · 8 reps</p></div>
           <div class="cine-tile"><div class="cine-micro">03 / Back</div><strong>Seated cable row</strong><p>3 sets · 10 reps</p></div>
-          <div class="cine-tile"><div class="cine-micro">Rest timer</div><strong style="color:#316946">01:28</strong></div>
+          <div class="cine-tile"><div class="cine-micro">Rest timer</div><strong style="color:var(--cine-forest)">01:28</strong></div>
           <div class="cine-tab"><span>Today</span><b>Train</b><span>Progress</span><span>Health</span></div>
         </div></div>
       </div>
@@ -63,7 +72,7 @@ import '../styles/home-motion.css';
         <div class="cine-phone"><div class="cine-screen">
           <div class="cine-notch"></div><div class="cine-status"><span>9:41</span><span>▰ ▪</span></div>
           <div class="cine-micro">Daily signals</div><h3>Health</h3>
-          <div class="cine-tile cine-sleep"><div class="cine-micro" style="color:#c1a9ff">Last night's sleep</div><strong>7h 24m</strong><div class="cine-wave">{[40,75,55,95,35,60,90,45,70,40].map(h => <i style={`height:${h}%`}></i>)}</div><p>Sleep duration · sample</p></div>
+          <div class="cine-tile cine-sleep"><div class="cine-micro" style="color:var(--cine-sleep)">Last night's sleep</div><strong>7h 24m</strong><div class="cine-wave">{[40,75,55,95,35,60,90,45,70,40].map(h => <i style={`height:${h}%`}></i>)}</div><p>Sleep duration · sample</p></div>
           <div class="cine-tile"><div class="cine-micro">Steps</div><strong>6,240</strong><p>Today · sample</p></div>
           <div class="cine-tile"><div class="cine-micro">Resting heart rate</div><strong>58 bpm</strong><p>Sample reading</p></div>
           <div class="cine-tile"><div class="cine-micro">Weight</div><strong>74.2 kg</strong></div>
@@ -73,17 +82,16 @@ import '../styles/home-motion.css';
     </div>
     <p class="cine-label">UI concepts · fictional sample values</p>
     <figure class="cine-static">
-      <img src="/concept-phones.svg" width="1440" height="816" alt="Concept previews of the Today, Train and Health screens with fictional sample values." />
+      <img src="/concept-phones.svg" width="1440" height="816" loading="lazy" alt="Concept previews of the Today, Train and Health screens with fictional sample values." />
       <figcaption>UI concepts · fictional sample values</figcaption>
     </figure>
     <div class="cine-bottom">
       <div class="cine-chapters" role="group" aria-label="Introduction chapters">
-        <button type="button" data-chapter="0" aria-current="true"><b>01</b>Workout</button>
+        <button type="button" data-chapter="0" aria-current="step"><b>01</b>Workout</button>
         <button type="button" data-chapter="1"><b>02</b>Training</button>
         <button type="button" data-chapter="2"><b>03</b>Health</button>
       </div>
       <span class="cine-hint" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="6" y="2" width="12" height="20" rx="6"/><path d="M12 6v6"/></svg>Scroll to explore</span>
-      <a class="cine-skip" href="#details">Skip intro</a>
     </div>
   </div>
 </div>
