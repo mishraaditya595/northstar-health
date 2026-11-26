@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/core/design/charts/score_ring.dart';
+import 'package:beyondrep/core/design/stats.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
@@ -11,6 +12,7 @@ import 'package:beyondrep/features/health/widgets/readiness_hero.dart';
 import 'package:beyondrep/features/health/widgets/today_health_row.dart';
 import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
 import 'package:beyondrep/features/progress/workout_history_state.dart';
+import 'package:beyondrep/features/health/domain/outside_workouts.dart';
 import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,6 +37,7 @@ Future<void> pumpRow(
   Brightness brightness = Brightness.dark,
   List<WorkoutSessionRecord> sessions = const [],
   Future<WorkoutHistorySnapshot> Function()? history,
+  String? owner,
 }) async {
   final router = GoRouter(
     routes: [
@@ -73,6 +76,7 @@ Future<void> pumpRow(
           overviewController ?? FakeHealthOverviewController(overview()),
         ),
         healthReaderProvider.overrideWithValue(reader ?? FakeHealthReader()),
+        if (owner != null) healthOwnerIdProvider.overrideWithValue(owner),
         healthClockProvider.overrideWithValue(() => now),
         localNowProvider.overrideWithValue(now),
         completedWorkoutHistoryProvider.overrideWith(
@@ -600,6 +604,55 @@ void main() {
     await tester.tap(find.text('Push day · 32 min'));
     await tester.pumpAndSettle();
     expect(pushed, ['/progress']);
+  });
+
+  testWidgets('a merged outside workout does not raise the Workouts count, a '
+      'standalone one does', (tester) async {
+    final started = DateTime(2026, 11, 24, 7, 30);
+    OutsideWorkout outside(String id, DateTime start) => OutsideWorkout(
+      id: id,
+      kind: OutsideWorkoutKind.running,
+      start: start.toUtc(),
+      end: start.add(const Duration(minutes: 30)).toUtc(),
+      source: 'Synthetic app',
+    );
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      owner: 'synthetic-owner',
+      overviewController: FakeHealthOverviewController(
+        overview(
+          workouts: SectionData(
+            WorkoutsOverview(
+              outside: [
+                // Inside the 07:30 session: merged.
+                outside('merged', started.add(const Duration(minutes: 5))),
+                // Mid-afternoon, no session: standalone.
+                outside('alone', DateTime(2026, 11, 24, 15)),
+              ],
+            ),
+          ),
+        ),
+      ),
+      sessions: [
+        WorkoutSessionRecord(
+          uuid: 'a',
+          name: 'Push day',
+          status: WorkoutStatus.completed,
+          startedAtUtc: started.toUtc(),
+          originalOffsetMinutes: 0,
+          revision: 1,
+          completedAtUtc: started.add(const Duration(minutes: 32)).toUtc(),
+        ),
+      ],
+    );
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is StatTile && w.label == 'Workouts' && w.value == '2',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Push day · 32 min'), findsOneWidget);
   });
 
   testWidgets('data tiles open their Health detail', (tester) async {

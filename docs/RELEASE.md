@@ -97,6 +97,22 @@ The Today readiness hero and tiles, explain sheets, Health terms page and the Tr
 | Every explain (i) sheet and Health terms entry opens, reads correctly and closes with the screen reader on | not run | not run |
 | Core vs Light sleep stage naming on Android | not run | not run |
 
+## Health polish stage 2 device QA (ADR-0011, owner actions, none done)
+
+Workouts from other apps and the training-load readiness input are implemented in source, **not released or device-verified**. Every row is not run.
+
+| Check | iOS | Android |
+| --- | --- | --- |
+| Apple Watch (or another source) logs the same lift as a BeyondRep session: Activity and Progress show one merged session ("From Apple Watch · kcal · avg bpm"), not two, and the Today Workouts count is not raised | not run | n/a |
+| A third-party app workout (for example a run): it shows in Activity, in Progress history tagged "From <app> · read only" with a read-only detail, and in the Today Workouts tile | not run | not run |
+| Android 14+ with the history permission, and without it (only 30 days before the grant): the Workouts panel and history show what Health Connect returns, no error | n/a | not run |
+| Android workouts show no kcal and no distance (only `READ_EXERCISE` is requested) | n/a | not run |
+| Permission added after an existing connect: the Health tab shows "Allow more data", and tapping it requests only the new workouts type | not run | not run |
+| Workouts not allowed (denied or not requested): Activity shows the gap row, Progress and Today look as before, readiness scores from BeyondRep-only load | not run | not run |
+| Readiness with 14+ days of workouts: the detail lists Training load and its (i); with fewer days it is not listed and the score matches stage 1 | not run | not run |
+| Account switch: sign in as another account, no workout or load from the first account appears | not run | not run |
+| No outside workout, kcal, heart rate or load appears in Account > export, Supabase, logs or an iCloud/Android backup | not run | not run |
+
 ## Training library stage 2 device QA (ADR-0010, owner actions, none done)
 
 The catalogue cache and exercise pickers are implemented in source, **not released or device-verified**, and need the stage 1 catalogue migrations applied to the project under test. Every row is not run.

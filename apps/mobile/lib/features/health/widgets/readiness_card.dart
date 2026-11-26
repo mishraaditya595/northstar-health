@@ -79,6 +79,8 @@ String readinessReasons(
     if (inputs.contains(ReadinessInput.restingHr))
       'resting HR ${vsNormal(value.restingHrVsNormal)} your normal',
     if (sleep != null) 'slept ${formatDuration(sleep.lastNight.asleep)}',
+    if (readiness.loadRatio case final r? when r > 1.3)
+      'training load above your usual',
   ].join(' · ');
   return reasons.isEmpty
       ? reasons

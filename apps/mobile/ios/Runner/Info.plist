@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>NSHealthShareUsageDescription</key>
-	<string>BeyondRep reads your sleep, heart, activity and body measurements to show your daily summary and trends. This data stays on your phone.</string>
+	<string>BeyondRep reads your sleep, heart, activity, workouts and body measurements to show your daily summary, trends and training history. This data stays on your phone.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>BeyondRep only reads health data for your daily summary. It does not write or change anything in Apple Health.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>

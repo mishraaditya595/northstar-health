@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/health_types.dart';
+import '../domain/outside_workouts.dart';
 
 export '../domain/health_types.dart' show HealthPlatformKind;
 
@@ -80,6 +81,12 @@ abstract interface class HealthReader {
   /// Hourly buckets from [from] (a local midnight) to [to].
   Future<SeriesResult<List<HealthSample>>> readHourlyTotals(
     HealthTotalType type,
+    DateTime from,
+    DateTime to,
+  );
+
+  /// Workouts other apps saved to the platform, own-app writes dropped.
+  Future<SeriesResult<List<OutsideWorkout>>> readWorkouts(
     DateTime from,
     DateTime to,
   );

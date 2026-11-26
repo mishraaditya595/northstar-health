@@ -1,12 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../progress/workout_history_state.dart';
+import '../../workouts/domain/workout_models.dart';
 import '../data/health_connection_repository.dart';
 import '../data/health_reader.dart';
 import '../domain/daily_series.dart';
 import '../domain/health_types.dart';
+import '../domain/outside_workouts.dart';
 import '../domain/readiness.dart';
 import '../domain/sleep_nights.dart';
 import '../domain/sleep_score.dart';
+import '../domain/training_load.dart';
 import '../domain/trend.dart';
 import 'health_summary_controller.dart';
 
@@ -147,6 +151,13 @@ class BodyOverview {
   final MetricGap? weightGap, bodyFatGap;
 }
 
+/// Workouts other apps saved in the last 90 days; held in memory only.
+class WorkoutsOverview {
+  const WorkoutsOverview({required this.outside});
+
+  final List<OutsideWorkout> outside;
+}
+
 /// Derived from the sleep and heart data already read; held in memory only.
 class ReadinessOverview {
   const ReadinessOverview({
@@ -159,6 +170,7 @@ class ReadinessOverview {
     required this.hrvBaseline,
     required this.restingHrBaseline,
     required this.hrvIsSdnn,
+    this.loadSessions = const [],
   });
 
   final ReadinessResult result;
@@ -170,6 +182,10 @@ class ReadinessOverview {
   final TrendResult? hrvVsNormal, restingHrVsNormal;
   final Baseline? hrvBaseline, restingHrBaseline;
   final bool hrvIsSdnn;
+
+  /// The training load sessions the score used, so the readiness trend scores
+  /// past days from the same sessions as the hero. Memory only.
+  final List<LoadSession> loadSessions;
 }
 
 /// Read fresh and held in memory only; never written anywhere.
@@ -185,6 +201,7 @@ class HealthOverview {
     required this.activity,
     required this.body,
     required this.readiness,
+    this.workouts = const SectionGap(MetricGap.noData),
   });
 
   /// The account this was read for; never shown under another account.
@@ -200,6 +217,10 @@ class HealthOverview {
   final Section<ActivityOverview> activity;
   final Section<BodyOverview> body;
   final Section<ReadinessOverview> readiness;
+
+  /// Workouts from other apps, last 90 days. Joined with BeyondRep history in
+  /// memory by [workoutMergeProvider]; never stored.
+  final Section<WorkoutsOverview> workouts;
 }
 
 /// Readiness only means something on the day it was read: the same-owner
@@ -239,12 +260,14 @@ class HealthOverviewController extends AsyncNotifier<HealthOverview?> {
     if (owner == null || !connected || !ref.mounted) return null;
     final reader = ref.read(healthReaderProvider);
     final repository = ref.read(healthConnectionRepositoryProvider);
+    final history = _completedSessions(ref);
     final overview = await _read(
       owner,
       reader,
       ref.read(healthClockProvider)(),
       repository.connectedAt(owner),
       repository.accessScope(owner),
+      history,
     );
     // An account switch or disconnect while reading discards the result.
     if (!ref.mounted || ref.read(healthOwnerIdProvider) != owner) return null;
@@ -296,6 +319,19 @@ final healthOverviewProvider =
     AsyncNotifierProvider<HealthOverviewController, HealthOverview?>(
       HealthOverviewController.new,
     );
+
+/// Completed BeyondRep sessions, read-only, as the training insights read
+/// them; null when the read fails. Without them nothing can be merged, so
+/// readiness gets no load part rather than counting a session twice.
+Future<List<WorkoutSessionRecord>?> _completedSessions(Ref ref) async {
+  try {
+    return (await ref.read(completedWorkoutHistoryProvider.future)).sessions;
+  } catch (_) {
+    // A failed read stays cached; let the next overview read try again.
+    if (ref.mounted) ref.invalidate(completedWorkoutHistoryProvider);
+    return null;
+  }
+}
 
 Future<SeriesResult<T>> _guard<T>(
   Future<SeriesResult<T>> Function() read,
@@ -406,6 +442,7 @@ Section<ReadinessOverview> _readiness(
   DateTime today,
   HealthPlatformKind platform, {
   required bool inputFailed,
+  required List<LoadSession> load,
 }) {
   // A read that failed is not a missing wearable; ask to try again.
   if (inputFailed) return const SectionGap(MetricGap.failed);
@@ -438,6 +475,7 @@ Section<ReadinessOverview> _readiness(
             : sleep.nights.sublist(0, sleep.nights.length - 1),
         hrvDaily: hrvDaily,
         restingHrDaily: rhrDaily,
+        loadSessions: load,
       ),
       hasHrv: hrvToday != null,
       hasRestingHr: rhrToday != null,
@@ -451,6 +489,7 @@ Section<ReadinessOverview> _readiness(
       hrvBaseline: hrvBaseline,
       restingHrBaseline: rhrBaseline,
       hrvIsSdnn: platform == HealthPlatformKind.appleHealth,
+      loadSessions: load,
     ),
   );
 }
@@ -461,6 +500,7 @@ Future<HealthOverview> _read(
   DateTime now,
   DateTime? connectedAt,
   int accessScope,
+  Future<List<WorkoutSessionRecord>?> history,
 ) async {
   final platform = reader.platform;
   final today = dayOf(now);
@@ -484,6 +524,7 @@ Future<HealthOverview> _read(
   final weightF = series(HealthSeriesType.weight, monthFrom);
   final bodyFatF = series(HealthSeriesType.bodyFat, monthFrom);
   final vo2F = series(HealthSeriesType.vo2Max, daysAgo(89));
+  final workoutsF = _guard(() => reader.readWorkouts(daysAgo(89), now));
   final stepsF = totals(HealthTotalType.steps);
   final energyF = totals(HealthTotalType.activeEnergy);
   // Health Connect keeps reporting a declined type, so Android asks only
@@ -522,6 +563,8 @@ Future<HealthOverview> _read(
   final vo2Result = await vo2F;
   final stepsResult = await stepsF;
   final energyResult = await energyF;
+  final workoutsResult = await workoutsF;
+  final sessions = await history;
 
   final rhrAll = reduceDaily(_list(rhrResult), DailyReduction.latest);
   final hrvAll = hrvDailyOf(_list(hrvResult), nights);
@@ -638,6 +681,14 @@ Future<HealthOverview> _read(
     );
   });
 
+  final outside = _list(workoutsResult);
+  final workouts = switch (workoutsResult) {
+    SeriesData() => SectionData(WorkoutsOverview(outside: outside)),
+    _ => SectionGap<WorkoutsOverview>(
+      metricGapOf(workoutsResult) ?? MetricGap.noData,
+    ),
+  };
+
   final readiness = _readiness(
     sleep,
     heart,
@@ -649,6 +700,9 @@ Future<HealthOverview> _read(
         metricGapOf(sleepResult) == MetricGap.failed ||
         (metricGapOf(rhrResult) == MetricGap.failed &&
             metricGapOf(hrvResult) == MetricGap.failed),
+    load: sessions == null
+        ? const []
+        : loadSessions(sessions, mergeWorkouts(sessions, outside)),
   );
 
   return HealthOverview(
@@ -664,5 +718,23 @@ Future<HealthOverview> _read(
     activity: activity,
     body: body,
     readiness: readiness,
+    workouts: workouts,
   );
 }
+
+/// BeyondRep's completed sessions joined with the outside workouts in memory;
+/// null while either is loading or for another account's overview. Outside
+/// workouts are empty when they are not allowed.
+final workoutMergeProvider = Provider.autoDispose<WorkoutMerge?>((ref) {
+  final overview = ref.watch(healthOverviewProvider).value;
+  final history = ref.watch(completedWorkoutHistoryProvider).value;
+  final owner = ref.watch(healthOwnerIdProvider);
+  if (overview == null || history == null || overview.ownerId != owner) {
+    return null;
+  }
+  final outside = switch (overview.workouts) {
+    SectionData(:final value) => value.outside,
+    SectionGap() => const <OutsideWorkout>[],
+  };
+  return mergeWorkouts(history.sessions, outside);
+});

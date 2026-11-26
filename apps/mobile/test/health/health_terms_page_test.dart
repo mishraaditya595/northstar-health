@@ -51,6 +51,18 @@ void main() {
     }
   });
 
+  testWidgets('lists training load and workouts from other apps', (
+    tester,
+  ) async {
+    await _pump(tester, HealthPlatformKind.healthConnect);
+    expect(find.text('Training load'), findsOneWidget);
+    expect(find.text('Workouts from other apps'), findsOneWidget);
+    expect(
+      find.text('Workouts other apps saved to Health Connect'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('Health Connect shows Light sleep, Apple Health Core sleep', (
     tester,
   ) async {

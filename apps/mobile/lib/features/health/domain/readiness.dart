@@ -4,6 +4,7 @@ import 'daily_series.dart';
 import 'health_types.dart';
 import 'sleep_nights.dart';
 import 'sleep_score.dart';
+import 'training_load.dart';
 
 const _baselineWindowDays = 30;
 const _baselineMinDays = 14;
@@ -63,7 +64,7 @@ ReadinessBand readinessBandOf(int value) => value >= 70
     ? ReadinessBand.fair
     : ReadinessBand.low;
 
-enum ReadinessInput { hrv, restingHr, sleep, sleepDebt }
+enum ReadinessInput { hrv, restingHr, sleep, sleepDebt, trainingLoad }
 
 class ReadinessPart {
   const ReadinessPart({
@@ -88,11 +89,15 @@ class Readiness {
     required this.value,
     required this.band,
     required this.parts,
+    this.loadRatio,
   });
 
   final int value;
   final ReadinessBand band;
   final List<ReadinessPart> parts;
+
+  /// 7-day against 28-day training load; set with the training load part.
+  final double? loadRatio;
 }
 
 sealed class ReadinessResult {
@@ -127,6 +132,7 @@ const _baseWeights = {
   ReadinessInput.restingHr: 0.25,
   ReadinessInput.sleep: 0.25,
   ReadinessInput.sleepDebt: 0.10,
+  ReadinessInput.trainingLoad: 0.15,
 };
 
 double _clamp100(double v) => v.clamp(0.0, 100.0).toDouble();
@@ -148,6 +154,7 @@ ReadinessResult scoreReadiness({
   required List<SleepNight> priorNights,
   required List<DayValue> hrvDaily,
   required List<DayValue> restingHrDaily,
+  List<LoadSession> loadSessions = const [],
 }) {
   final day = dayOf(today);
   final night = lastNight != null && dayOf(lastNight.date) == day
@@ -209,6 +216,11 @@ ReadinessResult scoreReadiness({
     );
   }
 
+  final load = trainingLoadOf(loadSessions, day);
+  if (load != null) {
+    scores[ReadinessInput.trainingLoad] = (score: load.score, z: null);
+  }
+
   final total = scores.keys.fold(0.0, (a, k) => a + _baseWeights[k]!);
   final parts = [
     for (final input in ReadinessInput.values)
@@ -222,6 +234,11 @@ ReadinessResult scoreReadiness({
   ];
   final value = parts.fold(0.0, (a, p) => a + p.score * p.weight).round();
   return ReadinessReady(
-    Readiness(value: value, band: readinessBandOf(value), parts: parts),
+    Readiness(
+      value: value,
+      band: readinessBandOf(value),
+      parts: parts,
+      loadRatio: load?.ratio,
+    ),
   );
 }

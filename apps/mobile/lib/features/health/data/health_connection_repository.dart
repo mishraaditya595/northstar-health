@@ -7,7 +7,7 @@ import 'health_connection_entity.dart';
 /// Version of the read-type list the app requests: 0 for Phase 3 (sleep,
 /// steps, resting heart rate, weight), 2 for health insights stage 1. Bump it
 /// when the requested types change.
-const currentHealthAccessScope = 2;
+const currentHealthAccessScope = 3;
 
 abstract interface class HealthConnectionRepository {
   bool isConnected(String ownerAccountId);

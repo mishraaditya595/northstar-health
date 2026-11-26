@@ -13,6 +13,7 @@ import '../features/health/health_page.dart';
 import '../features/account/account_sync_page.dart';
 import '../features/sync/workout_conflict_review_page.dart';
 import '../features/progress/progress_page.dart';
+import '../features/progress/outside_workout_detail_page.dart';
 import '../features/progress/workout_history_detail_page.dart';
 import '../features/today/today_page.dart';
 import '../features/train/train_page.dart';
@@ -133,6 +134,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/progress/workouts/:id',
             builder: (_, state) => WorkoutHistoryDetailPage(
               sessionUuid: state.pathParameters['id']!,
+            ),
+          ),
+          GoRoute(
+            path: '/progress/health-workouts/:id',
+            builder: (_, state) => OutsideWorkoutDetailPage(
+              workoutId: state.pathParameters['id']!,
             ),
           ),
           GoRoute(

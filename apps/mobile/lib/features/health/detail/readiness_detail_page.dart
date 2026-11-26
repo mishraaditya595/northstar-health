@@ -135,7 +135,9 @@ class _Today extends StatelessWidget {
               "Readiness compares today's $hrvName and resting heart rate "
               'with your own normal, their average over the 30 days before '
               "today, and adds last night's sleep. A measure counts once it "
-              'has 14 days of data. The 7 and 30 day comparison scores the '
+              'has 14 days of data. Training load, your last 7 days of '
+              'workouts against your usual week, counts once you have 14 '
+              'days of workout history. The 7 and 30 day comparison scores the '
               'days before the period without sleep heart rate. Readiness '
               'is a suggestion for planning your training, not medical '
               'advice.',
@@ -222,6 +224,10 @@ class _Today extends StatelessWidget {
         weekAverage == null
             ? '$asleep asleep'
             : '$asleep vs $weekAverage 7-night average',
+      ReadinessInput.trainingLoad =>
+        r.loadRatio == null
+            ? null
+            : 'Last 7 days at ${(r.loadRatio! * 100).round()}% of your usual',
     };
     String whyNot(ReadinessInput input) => switch (input) {
       ReadinessInput.hrv =>
@@ -234,12 +240,14 @@ class _Today extends StatelessWidget {
             : 'No resting HR today yet.',
       ReadinessInput.sleep => 'No sleep last night.',
       ReadinessInput.sleepDebt => 'Needs 3 nights in the week before.',
+      ReadinessInput.trainingLoad => 'Needs 14 days of workout history and some training in the last 28 days.',
     };
     final names = {
       ReadinessInput.hrv: hrvName,
       ReadinessInput.restingHr: 'Resting HR',
       ReadinessInput.sleep: 'Sleep',
       ReadinessInput.sleepDebt: 'Sleep vs your week',
+      ReadinessInput.trainingLoad: 'Training load',
     };
     // HRV and resting HR say when their usual range will appear.
     Widget about(ReadinessInput input) => metricInfoButton(
@@ -249,6 +257,7 @@ class _Today extends StatelessWidget {
         ReadinessInput.restingHr => MetricKey.restingHeartRate,
         ReadinessInput.sleep ||
         ReadinessInput.sleepDebt => MetricKey.timeAsleep,
+        ReadinessInput.trainingLoad => MetricKey.trainingLoad,
       },
       platform: overview.platform,
       showUsualPlaceholder:
@@ -258,7 +267,9 @@ class _Today extends StatelessWidget {
       title: 'What made the score',
       children: [
         for (final input in ReadinessInput.values)
-          if (parts[input] case final p?) ...[
+          if (input == ReadinessInput.trainingLoad && parts[input] == null)
+            const SizedBox.shrink()
+          else if (parts[input] case final p?) ...[
             DetailRow(names[input]!, '${p.score.round()}', info: about(input)),
             HealthCaption([?today(input), share(p)].join(' · ')),
             const SizedBox(height: 6),

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart' show MethodChannel;
 import 'package:health/health.dart' hide HealthValue;
 
 import '../domain/health_types.dart';
+import '../domain/outside_workouts.dart';
 import '../domain/sleep_nights.dart';
 import 'health_reader.dart';
 
@@ -25,6 +26,7 @@ const _commonRequestTypes = [
   HealthDataType.ACTIVE_ENERGY_BURNED,
   HealthDataType.BODY_FAT_PERCENTAGE,
   HealthDataType.LEAN_BODY_MASS,
+  HealthDataType.WORKOUT,
 ];
 
 const _iosRequestTypes = [
@@ -57,6 +59,62 @@ const _iosFractionTypes = {
   HealthDataType.BODY_FAT_PERCENTAGE,
   HealthDataType.BLOOD_OXYGEN,
 };
+
+/// Workouts BeyondRep itself saves, never read back as another app's.
+const _ownAppId = 'in.beyondrep.app';
+
+OutsideWorkoutKind _kindOf(HealthWorkoutActivityType type) {
+  final name = type.name;
+  if (name.contains('DANCE')) return OutsideWorkoutKind.dance;
+  return switch (type) {
+    HealthWorkoutActivityType.TRADITIONAL_STRENGTH_TRAINING ||
+    HealthWorkoutActivityType.FUNCTIONAL_STRENGTH_TRAINING ||
+    HealthWorkoutActivityType.STRENGTH_TRAINING ||
+    HealthWorkoutActivityType.WEIGHTLIFTING => OutsideWorkoutKind.strength,
+    HealthWorkoutActivityType.RUNNING ||
+    HealthWorkoutActivityType.RUNNING_TREADMILL => OutsideWorkoutKind.running,
+    HealthWorkoutActivityType.WALKING ||
+    HealthWorkoutActivityType.WALKING_TREADMILL => OutsideWorkoutKind.walking,
+    HealthWorkoutActivityType.BIKING ||
+    HealthWorkoutActivityType.BIKING_STATIONARY ||
+    HealthWorkoutActivityType.HAND_CYCLING => OutsideWorkoutKind.cycling,
+    HealthWorkoutActivityType.SWIMMING ||
+    HealthWorkoutActivityType.SWIMMING_OPEN_WATER ||
+    HealthWorkoutActivityType.SWIMMING_POOL => OutsideWorkoutKind.swimming,
+    HealthWorkoutActivityType.HIGH_INTENSITY_INTERVAL_TRAINING =>
+      OutsideWorkoutKind.hiit,
+    HealthWorkoutActivityType.YOGA => OutsideWorkoutKind.yoga,
+    HealthWorkoutActivityType.PILATES => OutsideWorkoutKind.pilates,
+    HealthWorkoutActivityType.ROWING ||
+    HealthWorkoutActivityType.ROWING_MACHINE => OutsideWorkoutKind.rowing,
+    HealthWorkoutActivityType.ELLIPTICAL => OutsideWorkoutKind.elliptical,
+    HealthWorkoutActivityType.HIKING => OutsideWorkoutKind.hiking,
+    _ => OutsideWorkoutKind.other,
+  };
+}
+
+/// Kilocalories, or null for a missing, zero or unknown value.
+double? _kcalOf(int? value, HealthDataUnit? unit) {
+  if (value == null) return null;
+  final kcal = switch (unit) {
+    null || HealthDataUnit.KILOCALORIE => value.toDouble(),
+    HealthDataUnit.JOULE => value / 4184,
+    _ => null,
+  };
+  return kcal != null && kcal > 0 ? kcal : null;
+}
+
+/// Metres, or null for a missing, zero or unknown value.
+double? _metersOf(int? value, HealthDataUnit? unit) {
+  if (value == null) return null;
+  final meters = switch (unit) {
+    null || HealthDataUnit.METER => value.toDouble(),
+    HealthDataUnit.CENTIMETER => value / 100,
+    HealthDataUnit.MILE => value * 1609.344,
+    _ => null,
+  };
+  return meters != null && meters > 0 ? meters : null;
+}
 
 const _settingsChannel = MethodChannel('northstar/health_settings');
 
@@ -233,6 +291,41 @@ class PlatformHealthReader implements HealthReader {
       interval: 3600,
     );
     return SeriesData(_samples(points, 1));
+  });
+
+  @override
+  Future<SeriesResult<List<OutsideWorkout>>> readWorkouts(
+    DateTime from,
+    DateTime to,
+  ) => _guard(() async {
+    if (!await _allowed(HealthDataType.WORKOUT)) {
+      return const SeriesNotAllowed();
+    }
+    final points = await _health.getHealthDataFromTypes(
+      types: [HealthDataType.WORKOUT],
+      startTime: from,
+      endTime: to,
+    );
+    return SeriesData([
+      for (final p in points)
+        if (p.value case final WorkoutHealthValue w)
+          if (p.sourceId != _ownAppId && p.sourceName != _ownAppId)
+            OutsideWorkout(
+              id: p.uuid.isEmpty
+                  ? '${p.sourceId}-${p.dateFrom.millisecondsSinceEpoch}'
+                  : p.uuid,
+              kind: _kindOf(w.workoutActivityType),
+              start: p.dateFrom.toUtc(),
+              end: p.dateTo.toUtc(),
+              // Health Connect needs a separate calories permission that
+              // BeyondRep does not request.
+              activeKcal: _isAndroid
+                  ? null
+                  : _kcalOf(w.totalEnergyBurned, w.totalEnergyBurnedUnit),
+              distanceMeters: _metersOf(w.totalDistance, w.totalDistanceUnit),
+              source: _sleepSourceName(p),
+            ),
+    ]);
   });
 
   @override

@@ -1,5 +1,6 @@
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/domain/metric_explanations.dart';
+import 'package:beyondrep/features/health/domain/outside_workouts.dart';
 import 'package:beyondrep/features/health/domain/sleep_nights.dart';
 import 'package:beyondrep/features/health/widgets/today_health_tiles.dart';
 import 'package:beyondrep/features/workouts/domain/workout_models.dart';
@@ -20,6 +21,19 @@ WorkoutSessionRecord _session(
   originalOffsetMinutes: 0,
   revision: 1,
   completedAtUtc: started.add(length).toUtc(),
+);
+
+OutsideWorkout _outside(
+  String id,
+  DateTime start,
+  int minutes, {
+  OutsideWorkoutKind kind = OutsideWorkoutKind.running,
+}) => OutsideWorkout(
+  id: id,
+  kind: kind,
+  start: start.toUtc(),
+  end: start.add(Duration(minutes: minutes)).toUtc(),
+  source: 'Synthetic app',
 );
 
 HeartOverview _heart({required double today, required int days}) =>
@@ -122,25 +136,33 @@ void main() {
 
   test("workoutsTile counts only today's completed sessions", () {
     final now = DateTime(2026, 11, 24, 18, 20);
-    final tile = workoutsTile([
-      _session(
-        'Pull day',
-        DateTime(2026, 11, 23, 18),
-        const Duration(hours: 1),
-      ),
-      _session(
-        'Push day',
-        DateTime(2026, 11, 24, 7, 30),
-        const Duration(minutes: 32, seconds: 20),
-      ),
-      _session('Legs', DateTime(2026, 11, 24, 12), const Duration(minutes: 45)),
-      _session(
-        'Unfinished',
-        DateTime(2026, 11, 24, 13),
-        const Duration(minutes: 5),
-        status: WorkoutStatus.inProgress,
-      ),
-    ], now);
+    final tile = workoutsTile(
+      [
+        _session(
+          'Pull day',
+          DateTime(2026, 11, 23, 18),
+          const Duration(hours: 1),
+        ),
+        _session(
+          'Push day',
+          DateTime(2026, 11, 24, 7, 30),
+          const Duration(minutes: 32, seconds: 20),
+        ),
+        _session(
+          'Legs',
+          DateTime(2026, 11, 24, 12),
+          const Duration(minutes: 45),
+        ),
+        _session(
+          'Unfinished',
+          DateTime(2026, 11, 24, 13),
+          const Duration(minutes: 5),
+          status: WorkoutStatus.inProgress,
+        ),
+      ],
+      const [],
+      now,
+    );
     expect(tile.label, 'Workouts');
     expect(tile.value, '2');
     expect(tile.unit, 'today');
@@ -149,14 +171,70 @@ void main() {
     expect(tile.infoKey, isNull);
   });
 
+  test('a standalone outside workout today raises the count to 2 and names '
+      'the caption when it is the first of the day', () {
+    final now = DateTime(2026, 11, 24, 18, 20);
+    final tile = workoutsTile(
+      [
+        _session(
+          'Legs',
+          DateTime(2026, 11, 24, 12),
+          const Duration(minutes: 45),
+        ),
+      ],
+      [_outside('o', DateTime(2026, 11, 24, 7, 30), 28)],
+      now,
+    );
+    expect(tile.value, '2');
+    expect(tile.caption, 'Running · 28 min');
+  });
+
+  test('outside workouts alone count and an earlier BeyondRep session '
+      'names the caption', () {
+    final now = DateTime(2026, 11, 24, 18, 20);
+    final alone = workoutsTile(const [], [
+      _outside('o', DateTime(2026, 11, 24, 7), 30),
+    ], now);
+    expect(alone.value, '1');
+    expect(alone.caption, 'Running · 30 min');
+    final both = workoutsTile(
+      [
+        _session(
+          'Push day',
+          DateTime(2026, 11, 24, 6),
+          const Duration(minutes: 32),
+        ),
+      ],
+      [_outside('o', DateTime(2026, 11, 24, 17), 30)],
+      now,
+    );
+    expect(both.value, '2');
+    expect(both.caption, 'Push day · 32 min');
+  });
+
+  test('an outside workout from yesterday is not counted today', () {
+    final tile = workoutsTile(const [], [
+      _outside('o', DateTime(2026, 11, 23, 20), 30),
+    ], DateTime(2026, 11, 24, 18));
+    expect(tile.value, '—');
+    expect(tile.caption, 'None yet today');
+  });
+
+  test('unknown history still makes no claim with outside workouts', () {
+    final tile = workoutsTile(null, [
+      _outside('o', DateTime(2026, 11, 24, 7), 30),
+    ], DateTime(2026, 11, 24, 18));
+    expect(tile.value, '—');
+  });
+
   test('workoutsTile with none is a dash and None yet today', () {
-    final tile = workoutsTile(const [], DateTime(2026, 11, 24, 18));
+    final tile = workoutsTile(const [], const [], DateTime(2026, 11, 24, 18));
     expect(tile.value, '—');
     expect(tile.caption, 'None yet today');
   });
 
   test('workoutsTile with unknown history is a dash and no claim', () {
-    final tile = workoutsTile(null, DateTime(2026, 11, 24, 18));
+    final tile = workoutsTile(null, const [], DateTime(2026, 11, 24, 18));
     expect(tile.value, '—');
     expect(tile.caption, isNot('None yet today'));
   });

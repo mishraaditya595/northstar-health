@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../workouts/domain/workout_models.dart';
 import '../application/health_overview.dart';
+import '../domain/outside_workouts.dart';
 import '../domain/metric_explanations.dart';
 import '../health_format.dart';
 
@@ -157,26 +158,28 @@ TodayTile _restingHrData(
   );
 }
 
-/// Finished BeyondRep sessions on the local day of [localNow]. A null
-/// [completed] (history loading or failed) makes no claim about today.
+/// Finished BeyondRep sessions plus [standaloneOutside] workouts (those not
+/// merged into a session) on the local day of [localNow]. A null [completed]
+/// (history loading or failed) makes no claim about today. The caption names
+/// the first workout of the day.
 TodayTile workoutsTile(
   List<WorkoutSessionRecord>? completed,
+  List<OutsideWorkout> standaloneOutside,
   DateTime localNow,
 ) {
-  if (completed == null) {
-    return (
-      label: 'Workouts',
-      icon: Icons.fitness_center,
-      value: '—',
-      unit: null,
-      caption: 'Finished today',
-      gap: null,
-      route: '/progress',
-      infoKey: null,
-      usual: null,
-      sleepTint: false,
-    );
-  }
+  TodayTile tile(String value, String? unit, String caption) => (
+    label: 'Workouts',
+    icon: Icons.fitness_center,
+    value: value,
+    unit: unit,
+    caption: caption,
+    gap: null,
+    route: '/progress',
+    infoKey: null,
+    usual: null,
+    sleepTint: false,
+  );
+  if (completed == null) return tile('—', null, 'Finished today');
   bool today(DateTime t) {
     final local = t.toLocal();
     return local.year == localNow.year &&
@@ -184,40 +187,30 @@ TodayTile workoutsTile(
         local.day == localNow.day;
   }
 
-  final sessions = [
+  final workouts = <({DateTime start, String name, int minutes})>[
     for (final s in completed)
       if (s.status == WorkoutStatus.completed &&
           s.completedAtUtc != null &&
           today(s.completedAtUtc!))
-        s,
-  ]..sort((a, b) => a.startedAtUtc.compareTo(b.startedAtUtc));
-  if (sessions.isEmpty) {
-    return (
-      label: 'Workouts',
-      icon: Icons.fitness_center,
-      value: '—',
-      unit: null,
-      caption: 'None yet today',
-      gap: null,
-      route: '/progress',
-      infoKey: null,
-      usual: null,
-      sleepTint: false,
-    );
-  }
-  final first = sessions.first;
-  final minutes =
-      (first.completedAtUtc!.difference(first.startedAtUtc)).inSeconds / 60;
-  return (
-    label: 'Workouts',
-    icon: Icons.fitness_center,
-    value: '${sessions.length}',
-    unit: 'today',
-    caption: '${first.name} · ${minutes.round()} min',
-    gap: null,
-    route: '/progress',
-    infoKey: null,
-    usual: null,
-    sleepTint: false,
+        (
+          start: s.startedAtUtc,
+          name: s.name,
+          minutes: (s.completedAtUtc!.difference(s.startedAtUtc).inSeconds / 60)
+              .round(),
+        ),
+    for (final w in standaloneOutside)
+      if (today(w.end))
+        (
+          start: w.start,
+          name: outsideWorkoutName(w.kind),
+          minutes: (w.end.difference(w.start).inSeconds / 60).round(),
+        ),
+  ]..sort((a, b) => a.start.compareTo(b.start));
+  if (workouts.isEmpty) return tile('—', null, 'None yet today');
+  final first = workouts.first;
+  return tile(
+    '${workouts.length}',
+    'today',
+    '${first.name} · ${first.minutes} min',
   );
 }

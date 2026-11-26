@@ -6,6 +6,7 @@ import '../domain/health_types.dart';
 import '../domain/readiness.dart';
 import '../domain/sleep_nights.dart';
 import '../domain/sleep_score.dart';
+import '../domain/training_load.dart';
 import 'health_overview.dart';
 import 'health_summary_controller.dart';
 
@@ -436,6 +437,11 @@ final readinessHistoryProvider = FutureProvider.autoDispose
       final rhr = await rhrF;
       if (!_stillOwner(ref, overview.ownerId)) return null;
 
+      // The overview's own load sessions, so today matches its score.
+      final load = switch (overview.readiness) {
+        SectionData(:final value) => value.loadSessions,
+        SectionGap() => const <LoadSession>[],
+      };
       final sleepNights = switch (overview.sleep) {
         SectionData(:final value) => value.nights,
         SectionGap() => const <SleepNight>[],
@@ -461,6 +467,7 @@ final readinessHistoryProvider = FutureProvider.autoDispose
             restingHr,
             hrvDaily,
             rhrDaily,
+            load,
           ),
       ];
     });
@@ -473,6 +480,7 @@ ReadinessDay _readinessOn(
   List<DayValue> restingHr,
   List<DayValue> hrvDaily,
   List<DayValue> rhrDaily,
+  List<LoadSession> load,
 ) {
   final night = byDate[day];
   return (
@@ -489,6 +497,7 @@ ReadinessDay _readinessOn(
       ],
       hrvDaily: hrvDaily,
       restingHrDaily: rhrDaily,
+      loadSessions: load,
     ),
   );
 }

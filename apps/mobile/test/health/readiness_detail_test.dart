@@ -14,7 +14,12 @@ import 'package:beyondrep/features/health/domain/daily_series.dart';
 import 'package:beyondrep/features/health/domain/health_types.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/features/health/domain/sleep_nights.dart';
+import 'package:beyondrep/features/health/domain/outside_workouts.dart';
 import 'package:beyondrep/features/health/domain/sleep_score.dart';
+import 'package:beyondrep/features/health/domain/training_load.dart';
+import 'package:beyondrep/features/progress/data/objectbox_workout_history_repository.dart';
+import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 import 'package:beyondrep/features/health/widgets/detail_layout.dart';
 import 'package:beyondrep/objectbox.g.dart';
 import 'package:flutter/material.dart' hide Baseline;
@@ -26,6 +31,18 @@ import '../support/fake_health_reader.dart';
 import '../support/health_overview_fixtures.dart';
 
 const _owner = 'synthetic-owner';
+
+class _History implements WorkoutHistoryRepository {
+  _History(this.sessions);
+  final List<WorkoutSessionRecord> sessions;
+
+  @override
+  WorkoutHistorySnapshot readCompleted() =>
+      WorkoutHistorySnapshot(sessions: sessions);
+
+  @override
+  Future<WorkoutHistorySnapshot> readCompletedAsync() async => readCompleted();
+}
 
 class _Owner extends Notifier<String?> {
   @override
@@ -86,7 +103,12 @@ void _heartFrom(FakeHealthReader reader, int first) {
 
 /// The overview the page would get from [segments]; its heart lists and
 /// readiness come from [reader]'s samples as the overview builds them.
-HealthOverview _overview(List<SleepSegment> segments, FakeHealthReader reader) {
+HealthOverview _overview(
+  List<SleepSegment> segments,
+  FakeHealthReader reader, {
+  List<WorkoutSessionRecord> logged = const [],
+  List<OutsideWorkout> outside = const [],
+}) {
   final nights = [
     for (final n in buildNights(segments))
       if (!n.date.isBefore(_day(-30))) n,
@@ -123,6 +145,7 @@ HealthOverview _overview(List<SleepSegment> segments, FakeHealthReader reader) {
     heart: SectionData(fullHeart),
     activity: SectionData(fullActivity),
     body: SectionData(fullBody),
+    workouts: SectionData(WorkoutsOverview(outside: outside)),
     readiness: SectionData(
       ReadinessOverview(
         result: scoreReadiness(
@@ -132,7 +155,9 @@ HealthOverview _overview(List<SleepSegment> segments, FakeHealthReader reader) {
           priorNights: nights.sublist(0, nights.length - 1),
           hrvDaily: hrvDaily,
           restingHrDaily: rhrDaily,
+          loadSessions: loadSessions(logged, mergeWorkouts(logged, outside)),
         ),
+        loadSessions: loadSessions(logged, mergeWorkouts(logged, outside)),
         hasHrv: true,
         hasRestingHr: true,
         hasSleep: true,
@@ -150,6 +175,7 @@ HealthOverview _overview(List<SleepSegment> segments, FakeHealthReader reader) {
 HealthOverview _todayOverview({
   HealthPlatformKind platform = HealthPlatformKind.appleHealth,
   bool restingHr = true,
+  double? loadRatio,
   DateTime? readAt,
 }) {
   // sleepOverview's vsWeek is 36 min under the 7-night average: 6h 48m.
@@ -193,7 +219,14 @@ HealthOverview _todayOverview({
                 score: 60,
                 weight: 0.1,
               ),
+              if (loadRatio != null)
+                const ReadinessPart(
+                  input: ReadinessInput.trainingLoad,
+                  score: 80,
+                  weight: 0.15,
+                ),
             ],
+            loadRatio: loadRatio,
           ),
         ),
         hasHrv: true,
@@ -289,6 +322,24 @@ void main() {
       expect(find.text('How readiness works'), findsOneWidget);
       expect(find.textContaining('not medical advice'), findsOneWidget);
       expect(find.textContaining('14 days'), findsOneWidget);
+    });
+
+    testWidgets('lists Training load with its About button when the part '
+        'exists', (tester) async {
+      await _pump(tester, _todayOverview(loadRatio: 1.1), FakeHealthReader());
+      expect(find.text('Training load'), findsOneWidget);
+      expect(
+        find.text('Last 7 days at 110% of your usual · 15% of the score'),
+        findsOneWidget,
+      );
+      expect(find.bySemanticsLabel('About Training load'), findsOneWidget);
+      expect(find.textContaining('14 days of workout history'), findsOneWidget);
+    });
+
+    testWidgets('has no Training load row without the part', (tester) async {
+      await _pump(tester, _todayOverview(), FakeHealthReader());
+      expect(find.text('Training load'), findsNothing);
+      expect(find.bySemanticsLabel('About Training load'), findsNothing);
     });
 
     testWidgets('About buttons on the how-it-works panel and each input', (
@@ -609,6 +660,69 @@ void main() {
         }
       },
     );
+
+    test("today's trend point equals the hero after the history changes "
+        'without an overview refresh', () async {
+      DateTime at(int back) => DateTime(2026, 11, 24 - back, 9);
+      WorkoutSessionRecord logged(String id, int back) => WorkoutSessionRecord(
+        uuid: id,
+        name: 'Logged',
+        status: WorkoutStatus.completed,
+        startedAtUtc: at(back).toUtc(),
+        completedAtUtc: at(back).add(const Duration(hours: 1)).toUtc(),
+        originalOffsetMinutes: 0,
+        revision: 1,
+      );
+      final sessions = [logged('a', 45), logged('b', 20), logged('c', 3)];
+      final outside = [
+        OutsideWorkout(
+          id: 'o',
+          kind: OutsideWorkoutKind.running,
+          start: at(9).toUtc(),
+          end: at(9).add(const Duration(minutes: 40)).toUtc(),
+          source: 'Synthetic app',
+        ),
+      ];
+      final reader = FakeHealthReader()
+        ..applyWindows = true
+        ..sleep = _nights(-100);
+      _heartFrom(reader, -100);
+      final overview = _overview(
+        _nights(-100),
+        reader,
+        logged: sessions,
+        outside: outside,
+      );
+      final c = ProviderContainer(
+        overrides: [
+          fakeHealthOverview(FakeHealthOverviewController(overview)),
+          healthReaderProvider.overrideWithValue(reader),
+          // The history changed since the overview was read.
+          workoutHistoryRepositoryProvider.overrideWithValue(
+            _History(const []),
+          ),
+          healthOwnerIdProvider.overrideWithValue(_owner),
+          healthClockProvider.overrideWithValue(() => _now),
+        ],
+      );
+      addTearDown(c.dispose);
+      final provider = readinessHistoryProvider(SleepRange.week);
+      c.listen(provider, (_, _) {});
+      final history = (await c.read(provider.future))!;
+
+      final fromOverview =
+          ((overview.readiness as SectionData<ReadinessOverview>).value.result
+                  as ReadinessReady)
+              .readiness;
+      expect(
+        fromOverview.parts.map((p) => p.input),
+        contains(ReadinessInput.trainingLoad),
+      );
+      final todayPoint = (history.last.result as ReadinessReady).readiness;
+      expect(history.last.day, _day(0));
+      expect(todayPoint.value, fromOverview.value);
+      expect(todayPoint.loadRatio, fromOverview.loadRatio);
+    });
 
     testWidgets('no overflow at text scale 2.0 in dark mode', (tester) async {
       final reader = FakeHealthReader()..sleep = _nights(-40);

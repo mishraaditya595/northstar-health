@@ -99,6 +99,7 @@ Agreed with Adi: read fresh, store nothing, never back up. Entries are read-only
 
 ### Merge rule
 
+- Outside workouts that overlap each other by at least 50% of the shorter are the same workout written by two sources (for example Samsung Health and Fit, or Strava copying an Apple Watch run). They collapse to one before merging, keeping the one with kcal, then the longer, then the earlier start.
 - An outside workout merges into a finished BeyondRep session when their time ranges overlap by at least 50% of the shorter of the two. *My call on the threshold.* Each outside workout merges into at most one session (the largest overlap). One session can absorb several outside workouts. Calories add up, and average HR is computed from HR samples inside the BeyondRep session's own window.
 - Merged sessions show "From Apple Watch · 131 kcal · avg 112 bpm" under the BeyondRep row (per the mockup). Unmerged outside workouts are listed on their own.
 - The merge happens in memory, in an application-layer provider that joins `completedWorkoutHistoryProvider` with the outside-workout read, following the stage 3 training-insights join pattern.
