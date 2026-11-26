@@ -330,7 +330,7 @@ void main() {
 
   testWidgets('text scale 2.0 no overflow at 320 dp', (tester) async {
     // Progress's overview tiles and body map already overflow at this size
-    // (stage 1); only overflows caused by anything else count here.
+    // (stage 1); nothing else may.
     final errors = <FlutterErrorDetails>[];
     final previous = FlutterError.onError;
     FlutterError.onError = errors.add;
@@ -357,10 +357,16 @@ void main() {
     } finally {
       FlutterError.onError = previous;
     }
-    final unexpected = errors.where((e) {
+    // Only the layout overflows of StatTile (stats.dart) and the body map
+    // (muscle_map.dart) are known; any other error fails the test.
+    bool known(FlutterErrorDetails e) {
       final text = e.toString();
-      return !text.contains('stats.dart') && !text.contains('muscle_map.dart');
-    });
+      return text.contains('A RenderFlex overflowed') &&
+          (text.contains('lib/core/design/stats.dart') ||
+              text.contains('lib/features/progress/muscle_map.dart'));
+    }
+
+    final unexpected = errors.where((e) => !known(e));
     expect(unexpected, isEmpty);
     await tester.scrollUntilVisible(
       find.text('Running'),
