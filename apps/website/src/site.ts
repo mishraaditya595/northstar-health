@@ -15,5 +15,5 @@ export const SITE = {
   // The legal pages are drafts until the open questions in
   // docs/PRIVACY_POLICY_INPUTS.md section 10 are answered.
   legalDraft: true,
-  legalLastUpdated: '2026-11-24',
+  legalLastUpdated: '2026-11-26',
 };

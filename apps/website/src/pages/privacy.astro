@@ -12,7 +12,7 @@ import { SITE } from '../site';
   <ul>
     <li>Your workouts are stored on your phone. Only workouts you finish are backed up to your account.</li>
     <li>We collect your email address so you can sign in. We do not ask for your name, phone number, location or contacts.</li>
-    <li>If you connect Apple Health or Health Connect, BeyondRep reads a few values to show you a daily summary. They never leave your phone and are never saved.</li>
+    <li>If you connect Apple Health or Health Connect, BeyondRep reads your sleep, heart, activity and body measurements to show you a daily summary, trends and a readiness score. They never leave your phone and are never saved.</li>
     <li>There are no ads, no analytics, no tracking across apps or websites, and we do not sell or share your data.</li>
     <li>You can export your workouts or delete your account at any time from inside the app.</li>
   </ul>
@@ -63,11 +63,32 @@ import { SITE } from '../site';
   <h2>Apple Health and Health Connect</h2>
   <p>
     Connecting is optional and only happens when you tap Connect. BeyondRep then asks your phone for permission to read
-    last night’s sleep, today’s steps, your most recent resting heart rate (last 7 days) and your most recent weight
-    (last 30 days). It does not write or change anything in Apple Health or Health Connect.
+    the data below. You can allow or deny each type. It does not write or change anything in Apple Health or Health Connect.
+  </p>
+  <table>
+    <thead><tr><th>Data read</th><th>What BeyondRep shows with it</th></tr></thead>
+    <tbody>
+      <tr><td>Sleep: sleep sessions and stages (asleep, light, deep, REM, awake, in bed)</td><td>Last night’s sleep, sleep stages, a sleep score and sleep trends</td></tr>
+      <tr><td>Steps and active calories burned</td><td>Today’s activity and activity trends</td></tr>
+      <tr><td>Heart rate, resting heart rate, heart rate variability, and walking heart rate (iPhone only)</td><td>Heart trends and the readiness score</td></tr>
+      <tr><td>Respiratory rate, blood oxygen, and skin or wrist temperature (only where your phone supports it)</td><td>Overnight values shown with your sleep</td></tr>
+      <tr><td>VO2 max</td><td>Cardio fitness trend</td></tr>
+      <tr><td>Weight, body fat and lean body mass</td><td>Body measurement trends</td></tr>
+    </tbody>
+  </table>
+  <p>
+    BeyondRep reads up to the last 90 days so it can compare today with your usual range. On Android, Health Connect
+    normally only shares data from the 30 days before you first connected, so BeyondRep also asks for the
+    <strong>access to past data</strong> (health data history) permission. If you deny it, BeyondRep shows only what
+    Health Connect allows.
+  </p>
+  <p>
+    On your phone, BeyondRep works out a readiness score from your sleep and heart data, shows it on the Train tab, and
+    combines these values with your logged workouts to show insights such as how your sleep relates to your training. That happens in memory
+    on your phone. Health data is never added to your workouts, backups or exports.
   </p>
   <ul>
-    <li>These values are used only to show you a daily summary in the app.</li>
+    <li>These values are used only to show you the summaries, trends, scores and insights described above, inside the app.</li>
     <li>They are held in memory while the app is open. They are never written to disk, backed up to your account, included in exports, logged or sent to anyone.</li>
     <li>The only thing stored is a note that you connected, which is removed when you disconnect or delete your account.</li>
     <li>Health data is never used for advertising, marketing or data mining, and is never sold or shared.</li>

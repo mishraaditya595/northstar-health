@@ -1,7 +1,51 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Release signing (upload key). Nothing secret is committed:
+// - Locally: android/key.properties (gitignored) with storeFile,
+//   storePassword, keyAlias and keyPassword.
+// - Codemagic: the android_signing keystore reference sets CM_KEYSTORE_PATH,
+//   CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS and CM_KEY_PASSWORD.
+// Without either, release builds fall back to the debug key so
+// `flutter run --release` still works, unless
+// BEYONDREP_REQUIRE_RELEASE_SIGNING=true, which the Play job sets.
+val keyPropertiesFile = rootProject.file("key.properties")
+val signingSource: Map<String, String?> =
+    if (keyPropertiesFile.exists()) {
+        val properties = Properties()
+        keyPropertiesFile.inputStream().use { properties.load(it) }
+        listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+            .associateWith { properties.getProperty(it) }
+    } else {
+        mapOf(
+            "storeFile" to System.getenv("CM_KEYSTORE_PATH"),
+            "storePassword" to System.getenv("CM_KEYSTORE_PASSWORD"),
+            "keyAlias" to System.getenv("CM_KEY_ALIAS"),
+            "keyPassword" to System.getenv("CM_KEY_PASSWORD"),
+        )
+    }
+val uploadSigning: Map<String, String>? =
+    if (signingSource.values.all { !it.isNullOrBlank() }) {
+        signingSource.mapValues { it.value!! }
+    } else {
+        if (keyPropertiesFile.exists()) {
+            throw GradleException(
+                "android/key.properties must set storeFile, storePassword, keyAlias and keyPassword.",
+            )
+        }
+        null
+    }
+val requireReleaseSigning = System.getenv("BEYONDREP_REQUIRE_RELEASE_SIGNING") == "true"
+if (requireReleaseSigning && uploadSigning == null) {
+    throw GradleException(
+        "Release signing required but no upload key found: set android/key.properties " +
+            "or the Codemagic android_signing keystore reference.",
+    )
 }
 
 android {
@@ -32,11 +76,25 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (uploadSigning != null) {
+            create("upload") {
+                storeFile = file(uploadSigning.getValue("storeFile"))
+                storePassword = uploadSigning.getValue("storePassword")
+                keyAlias = uploadSigning.getValue("keyAlias")
+                keyPassword = uploadSigning.getValue("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig =
+                if (uploadSigning != null) {
+                    signingConfigs.getByName("upload")
+                } else {
+                    signingConfigs.getByName("debug")
+                }
         }
     }
 }
