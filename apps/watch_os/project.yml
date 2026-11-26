@@ -14,11 +14,14 @@ targets:
     deploymentTarget: "10.0"
     sources:
       - path: Sources
+      - path: Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore
+    dependencies:
+      - sdk: libsqlite3.tbd
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: in.beyondrep.watch.dev
+        PRODUCT_BUNDLE_IDENTIFIER: in.beyondrep.app.watchkitapp
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_WKWatchOnly: YES
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: in.beyondrep.app
         INFOPLIST_KEY_CFBundleDisplayName: BeyondRep
         TARGETED_DEVICE_FAMILY: "4"
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: NO
