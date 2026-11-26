@@ -16,6 +16,7 @@ import 'package:beyondrep/features/train/train_page.dart';
 import 'package:beyondrep/objectbox.g.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
@@ -110,6 +111,7 @@ Future<List<String>> pumpPrograms(
   DateTime? now,
   DateTime Function()? clock,
   ProgramRepository? programRepository,
+  List<Override> overrides = const [],
 }) async {
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1;
@@ -161,6 +163,7 @@ Future<List<String>> pumpPrograms(
         catalogRepositoryProvider.overrideWithValue(
           StubCatalogRepository(state ?? readyPrograms(), directory),
         ),
+        ...overrides,
       ],
       child: MaterialApp.router(
         theme: BeyondRepTheme.build(brightness),

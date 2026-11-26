@@ -2,7 +2,11 @@ import 'dart:io';
 
 import 'package:beyondrep/features/catalog/domain/catalog_models.dart';
 import 'package:beyondrep/features/catalog/domain/catalog_programs.dart';
+import 'package:beyondrep/features/programs/application/program_providers.dart';
 import 'package:beyondrep/features/programs/domain/program_models.dart';
+import 'package:beyondrep/features/programs/domain/program_status.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
 import 'package:beyondrep/features/catalog/domain/catalog_templates.dart';
 import 'package:beyondrep/features/programs/data/objectbox_program_repository.dart';
@@ -109,6 +113,7 @@ void main() {
     double textScale = 1,
     DateTime? now,
     DateTime Function()? clock,
+    List<Override> overrides = const [],
   }) => pumpPrograms(
     tester,
     store: store,
@@ -118,6 +123,7 @@ void main() {
     textScale: textScale,
     now: now,
     clock: clock,
+    overrides: overrides,
   );
 
   group('programs list', () {
@@ -423,7 +429,8 @@ void main() {
       await open(tester, '/train/program/$uuid', now: wednesday);
       expect(find.text('Wednesday · Synthetic push'), findsOneWidget);
       expect(find.text('Thursday · Rest'), findsOneWidget);
-      expect(find.text('Day 1 · Today'), findsOneWidget);
+      expect(find.text('Day 1'), findsOneWidget); // the Today tag says it
+      expect(find.text('Day 1 · Today'), findsNothing);
       expect(find.text('Active'), findsOneWidget);
     });
 
@@ -553,9 +560,9 @@ void main() {
         );
       });
 
-      testWidgets('text scale 2.0, light and dark: tags and start rows '
-          'do not overflow', (tester) async {
-        for (final brightness in Brightness.values) {
+      for (final brightness in Brightness.values) {
+        testWidgets('text scale 2.0 (${brightness.name}): tags and start '
+            'rows do not overflow', (tester) async {
           await openMissed(tester, textScale: 2, brightness: brightness);
           await tester.scrollUntilVisible(
             find.text('Start for Wednesday'),
@@ -564,7 +571,71 @@ void main() {
           );
           expect(tester.takeException(), isNull);
           expect(find.text('Start for Wednesday'), findsOneWidget);
-        }
+        });
+      }
+
+      testWidgets('a finished today shows Done for today, not Start', (
+        tester,
+      ) async {
+        final uuid = seed('prog.three', firstDay: 3);
+        store.box<WorkoutSessionEntity>().put(
+          WorkoutSessionEntity(
+            uuid: 'finished',
+            name: 'Done',
+            status: 'completed',
+            startedAtMs: 1,
+            completedAtMs: 2,
+            originalOffsetMinutes: 0,
+            updatedAtMs: 2,
+            programUuid: uuid,
+            programDayLocalDate: '2026-11-25',
+          ),
+        );
+        await open(tester, '/train/program/$uuid', now: wednesday);
+        expect(find.text('Done for today'), findsOneWidget);
+        expect(find.text("Start today's workout"), findsNothing);
+        expect(find.text('Done'), findsOneWidget); // the row tag
+        expect(find.text('Day 1'), findsOneWidget);
+      });
+
+      testWidgets("another program's week is never used for the statuses", (
+        tester,
+      ) async {
+        final uuid = seed('prog.three', firstDay: 3);
+        final other = ProgramDayRecord(uuid: 'x', dayIndex: 0, planUuid: 'p');
+        final foreign = ProgramWeek(
+          program: TrainingProgramRecord(
+            uuid: 'another-program',
+            name: 'Other',
+            description: '',
+            sourceId: 'x',
+            sourceRelease: 4,
+            firstDayWeekday: 3,
+            isActive: true,
+            updatedAtMs: 0,
+            days: [other],
+          ),
+          localToday: wednesday,
+          rows: [
+            (
+              date: DateTime(2026, 11, 25),
+              dayIndex: 0,
+              day: other,
+              status: ProgramDayStatus.done,
+            ),
+          ],
+          plans: const {},
+          latestMissed: null,
+          nextTraining: null,
+        );
+        await open(
+          tester,
+          '/train/program/$uuid',
+          now: wednesday,
+          overrides: [programWeekProvider.overrideWithValue(foreign)],
+        );
+        expect(find.text('Done'), findsNothing);
+        expect(find.text('Done for today'), findsNothing);
       });
 
       testWidgets('an inactive program shows no Start and says how to get '

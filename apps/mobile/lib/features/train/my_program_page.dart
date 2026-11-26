@@ -273,9 +273,10 @@ class _MyProgramPageState extends ConsumerState<MyProgramPage> {
                 ? Icons.hotel_outlined
                 : Icons.fitness_center,
             title: '$weekday · $name',
+            // The Today and Done tags already say it.
             subtitle:
                 'Day ${entry.day.dayIndex + 1}'
-                '${entry.day.dayIndex == todayIndex ? ' · Today' : ''}',
+                '${entry.day.dayIndex == todayIndex && status != ProgramDayStatus.today && status != ProgramDayStatus.done ? ' · Today' : ''}',
             trailing: tag == null
                 ? null
                 : NsTag(tag, warning: status == ProgramDayStatus.missed),
@@ -308,7 +309,16 @@ class _MyProgramPageState extends ConsumerState<MyProgramPage> {
         todayPlan != null &&
         ref.read(workoutLibraryRepositoryProvider).getPlan(todayPlan) != null;
     final week = calendarWeek(program);
-    final rows = program.isActive ? ref.watch(programWeekProvider)?.rows : null;
+    final programWeek = program.isActive
+        ? ref.watch(programWeekProvider)
+        : null;
+    // Only this program's own week: never another program's statuses.
+    final rows = programWeek?.program.uuid == program.uuid
+        ? programWeek?.rows
+        : null;
+    final todayRow = rows
+        ?.where((r) => r.date == DateTime(now.year, now.month, now.day))
+        .firstOrNull;
     ProgramWeekRow? rowOf(int dayIndex) =>
         rows?.where((r) => r.dayIndex == dayIndex).firstOrNull;
     return ListView(
@@ -336,6 +346,13 @@ class _MyProgramPageState extends ConsumerState<MyProgramPage> {
           Text(
             'Make this your active program to start its workouts',
             style: theme.textTheme.bodyMedium,
+          )
+        else if (todayRow?.status == ProgramDayStatus.done)
+          Text(
+            'Done for today',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           )
         else if (todayPlan == null || !todayAvailable)
           Text(
