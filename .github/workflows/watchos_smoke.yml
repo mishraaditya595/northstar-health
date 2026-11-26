@@ -88,6 +88,13 @@ jobs:
       - name: Resolve from committed lockfile
         working-directory: apps/mobile
         run: flutter pub get --enforce-lockfile
+      - name: Select the newest installed Xcode
+        # device_info_plus needs a recent iOS SDK (isiOSAppOnVision); the
+        # runner default is older.
+        run: |
+          xcode="$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
       - name: Pick an iPhone simulator
         # Flutter needs a device id to build an app that has a watchOS companion.
         run: |
