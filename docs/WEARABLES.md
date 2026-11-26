@@ -1,6 +1,6 @@
 # BeyondRep watch architecture: watchOS and Wear OS
 
-**Status:** Native SwiftUI/Wear OS non-recording UI scaffolds exist under `apps/watch_os/` and `apps/wear_os/`. Real workout sessions, pairing, native HealthKit/Health Services and watch-to-phone sync remain unimplemented. Based on the attached “BeyondRep — Flutter Smartwatch Development Research” (23 October 2026). Revalidate current third-party compatibility immediately before any spike.
+**Status:** Apple Watch companion in progress per [ADR-0012](adr/0012-apple-watch-companion.md) (contracts and watch core in source, no UI yet); Wear OS deferred. Native SwiftUI/Wear OS non-recording UI scaffolds exist under `apps/watch_os/` and `apps/wear_os/`. Real workout sessions, pairing, native HealthKit/Health Services and watch-to-phone sync remain unimplemented. Based on the attached “BeyondRep — Flutter Smartwatch Development Research” (23 October 2026). Revalidate current third-party compatibility immediately before any spike.
 
 ## Separate the three capabilities
 
