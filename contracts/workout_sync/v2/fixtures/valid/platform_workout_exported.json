@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "event_id": "99999999-2222-4222-8222-000000000014",
+  "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  "origin_device_id": "watch-installation-a",
+  "sequence": 12,
+  "type": "platform_workout_exported",
+  "occurred_at_utc": "2026-10-23T11:12:00Z",
+  "recorded_at_utc": "2026-10-23T11:12:01Z",
+  "time_zone": "Asia/Kolkata",
+  "payload": {
+    "platform": "healthkit",
+    "external_record_id": "11111111-2222-4333-8444-555555555555"
+  }
+}

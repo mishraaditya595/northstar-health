@@ -1,0 +1,23 @@
+{
+  "schema_version": 2,
+  "event_id": "99999999-2222-4222-8222-000000000001\n",
+  "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  "origin_device_id": "watch-installation-a",
+  "sequence": 0,
+  "type": "workout_started",
+  "occurred_at_utc": "2026-10-23T11:00:00Z",
+  "recorded_at_utc": "2026-10-23T11:00:01Z",
+  "time_zone": "Asia/Kolkata",
+  "payload": {
+    "activity_type": "traditional_strength_training",
+    "name": "Synthetic push day",
+    "owner": "watch",
+    "account_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "plan_id": "plan-synthetic-1",
+    "program_day": {
+      "program_id": "program-synthetic-1",
+      "local_date": "2026-10-23"
+    }
+  }
+}

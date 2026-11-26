@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "event_id": "99999999-2222-4222-8222-000000000003",
+  "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  "origin_device_id": "watch-installation-a",
+  "sequence": 2,
+  "type": "set_logged",
+  "occurred_at_utc": "2026-10-23T11:02:00Z",
+  "recorded_at_utc": "2026-10-23T11:02:01Z",
+  "time_zone": "Asia/Kolkata",
+  "payload": {
+    "set_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    "exercise_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    "position": 0,
+    "kind": "working",
+    "input_unit": "kg",
+    "reps": 8,
+    "load_grams": 60000,
+    "rpe": 8.5
+  }
+}

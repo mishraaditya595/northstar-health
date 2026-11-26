@@ -105,6 +105,10 @@ completed set needs `completed_at_utc` and either `reps` or `duration_seconds`.
   builds reject the unknown set key when restoring (`unsupported_field`, the
   whole page is refused), so update every install.
 
+## Watch link v1
+
+Phone-to-watch and watch-to-phone messages (account binding, plans and health snapshots, live session state and commands, completed workouts, ACKs) are defined in `contracts/watch_link/v1`. Events inside them use `contracts/workout_sync/v2` (RPE, timed sets, catalogue exercise ids); `contracts/workout_sync/v1` stays as it was. The replay cases under `contracts/watch_link/v1/cases/replay` are the shared test for ordering, duplicates, gaps and corrections. See [ADR-0012](adr/0012-apple-watch-companion.md).
+
 ## Workout owner / platform writer matrix
 
 | Origin | Owns detailed set journal | Phone ObjectBox | Health platform writer | Supabase coordinator |
@@ -122,7 +126,7 @@ Origin is stable across reconnection; do not arbitrarily transfer active workout
 2. Watch sends event UUID and per-session sequence. Receiver validates IDs, unit, schema version, owner/pairing and event shape; write domain update **and inbox dedupe receipt in one ObjectBox transaction**.
 3. Only then send an explicit ACK #1 for the accepted `event_id`. Retrying the same event must return the same receipt without duplicating a set.
 4. Sequence gaps, clock drift, deleted set corrections and unsupported schema versions are handled explicitly; no wall-clock-only total ordering.
-5. Phone's cloud outbox synchronizes **completed BeyondRep phone workouts** as stable revisioned aggregates under ADR-0005; watch-origin session transfer/backup is deferred for its separate implementation. Cloud operation UUID/revision is different from watch event UUID/sequence.
+5. Phone's cloud outbox synchronizes **completed** workouts as stable revisioned aggregates under ADR-0005: BeyondRep phone workouts, and, after the phone's durable import, completed Apple Watch workouts with origin `beyondrep_watch` (ADR-0012). In-progress watch sessions, raw heart rate and the health snapshot are never backed up. Cloud operation UUID/revision is different from watch event UUID/sequence.
 6. Server enforces authenticated conditional update, operation idempotency and owner isolation; ACK #2 is returned only after commit.
 7. Account logout stops cloud transfers; no unknown account auto-association. Device reboot, backgrounding and network loss preserve pending queues.
 8. Watch platform export receipt is transmitted with `platform_workout_exported` so phone doesn't duplicate HealthKit `HKWorkout`. Android uses one elected writer. External record metadata never becomes a sync event of raw HR/SpO₂.

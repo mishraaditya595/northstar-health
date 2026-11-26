@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "message_id": "77777777-3333-4333-8333-000000000009",
+  "type": "completed_workout",
+  "sent_at_utc": "2026-10-23T11:00:00Z",
+  "account_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "body": {
+    "last_sequence": 12,
+    "healthkit_workout_uuid": "11111111-2222-4333-8444-555555555555",
+    "workout": {
+      "schema_version": 1,
+      "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "origin": "beyondrep_watch",
+      "status": "completed",
+      "name": "Synthetic push day",
+      "started_at_utc": "2026-10-23T11:00:00Z",
+      "completed_at_utc": "2026-10-23T11:40:00Z",
+      "original_offset_minutes": 330,
+      "exercises": [
+        {
+          "id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+          "name": "Synthetic press",
+          "position": 0,
+          "muscle": "chest",
+          "primary_muscles": [
+            "chest"
+          ],
+          "secondary_muscles": [
+            "triceps"
+          ],
+          "sets": [
+            {
+              "id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+              "position": 0,
+              "kind": "working",
+              "status": "completed",
+              "input_unit": "kg",
+              "reps": 8,
+              "load_grams": 60000,
+              "rpe": 8.0,
+              "completed_at_utc": "2026-10-23T11:05:00Z"
+            },
+            {
+              "id": "dddddddd-dddd-4ddd-8ddd-ddddddddddd2",
+              "position": 1,
+              "kind": "working",
+              "status": "skipped",
+              "input_unit": "kg"
+            }
+          ]
+        },
+        {
+          "id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee2",
+          "name": "Synthetic plank",
+          "position": 1,
+          "sets": [
+            {
+              "id": "dddddddd-dddd-4ddd-8ddd-ddddddddddd3",
+              "position": 0,
+              "kind": "working",
+              "status": "completed",
+              "input_unit": "kg",
+              "duration_seconds": 45,
+              "completed_at_utc": "2026-10-23T11:20:00Z"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

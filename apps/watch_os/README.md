@@ -17,6 +17,16 @@ xcodebuild -list -project BeyondRepWatch.xcodeproj
 
 The generated `BeyondRepWatch.xcodeproj` from this standalone spec is **not** the embedded companion configuration. A later packaging PR must test actual iPhone + watch pairing and TestFlight archive. `Sources/` should remain the single source in both projects.
 
+## BeyondRepWatchCore package
+
+`Packages/BeyondRepWatchCore/` is a pure Swift package (Foundation and system SQLite only) for the watch's message codecs, session state machine, event replay and on-watch journal ([ADR-0012](../../docs/adr/0012-apple-watch-companion.md)). It has no UI and no transport yet. It is tested against the shared files under `contracts/` (`workout_sync/v2`, `watch_link/v1`):
+
+```sh
+swift test --package-path apps/watch_os/Packages/BeyondRepWatchCore   # macOS
+```
+
+CI runs this in the `WatchOS standalone build proof` workflow before the Xcode build. The package is not yet linked into the watch app target.
+
 ## Planned modules
 
 - `Features/Workout/`: compact workout state, timer, sets; currently only informational UI

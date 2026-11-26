@@ -54,6 +54,8 @@ Apple Watch recording plus wide-window layouts for tablets, designed together in
 
 **Stage 1 (tablet layouts, implemented in source, not released or device-verified):** on windows 840 dp and wider Today, Health, the five Health detail screens, Progress history, the Exercises, Workouts and Programs lists and Train use the width (two columns, card grids, list and detail side by side); narrower windows, portrait iPad and split view keep the single column. Layout primitives live in `lib/core/design/layout.dart`. The iPad simulator and split-view checks are open in [RELEASE.md](RELEASE.md).
 
+**Stage 2 (message contracts and watch core, implemented in source, no UI, not device-verified):** [ADR-0012](adr/0012-apple-watch-companion.md); `contracts/workout_sync/v2` and `contracts/watch_link/v1` with synthetic fixtures and replay cases; Dart codecs and the watch account key in `lib/features/watch/domain/`; the `BeyondRepWatchCore` Swift package (codecs, event replay, session state machine, SQLite journal and outbox) tested on macOS CI. No transport, no screens, no HealthKit, no Supabase migration for `beyondrep_watch` yet.
+
 ## Phase 5 — User-controlled completed-workout export
 
 Opt-in write of one BeyondRep-owned workout summary, export receipts and platform-specific retry/reconciliation. Avoid double writing Apple Watch `HKWorkout` or Android sessions; imported workouts stay read-only. Resolve app-owned edits/deletion UX before shipping.

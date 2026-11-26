@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "message_id": "77777777-3333-4333-8333-000000000006",
+  "type": "session_state",
+  "sent_at_utc": "2026-10-23T11:00:00Z",
+  "account_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "body": {
+    "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "owner": "watch",
+    "status": "active",
+    "name": "Synthetic push day",
+    "started_at_utc": "2026-10-23T11:00:00Z",
+    "last_sequence": 3,
+    "current_set_id": "dddddddd-dddd-4ddd-8ddd-ddddddddddd2",
+    "rest_deadline_utc": "2026-10-23T11:08:31Z",
+    "exercises": [
+      {
+        "exercise_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+        "name": "Synthetic press",
+        "kind": "reps",
+        "sets": [
+          {
+            "set_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+            "position": 0,
+            "kind": "working",
+            "status": "completed",
+            "input_unit": "kg",
+            "reps": 8,
+            "load_grams": 60000,
+            "rpe": 8.0
+          },
+          {
+            "set_id": "dddddddd-dddd-4ddd-8ddd-ddddddddddd2",
+            "position": 1,
+            "kind": "working",
+            "status": "planned"
+          }
+        ]
+      }
+    ]
+  }
+}

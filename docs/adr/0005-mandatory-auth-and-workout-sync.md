@@ -1,5 +1,7 @@
 # ADR-0005 — Mandatory accounts and automatic completed-workout sync
 
+> **Amended by [ADR-0012](0012-apple-watch-companion.md):** completed watch workouts are backed up by the phone with origin `beyondrep_watch`.
+
 **Status:** **Accepted** — approved by the project owner on 2026-10-25 (PR #13).  
 **Supersedes:** ADR-0003 and earlier Phase 1/2 roadmaps **only where they specify optional accounts and guest access**. ADR-0003's completed-workout-only cloud scope is **kept**. All privacy and local-first constraints not explicitly changed remain in force.
 
