@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/ids/uuid_factory.dart';
+import '../programs/data/objectbox_program_repository.dart';
 import '../programs/domain/program_models.dart';
+import '../programs/domain/program_repository.dart';
 import '../programs/domain/program_schedule.dart';
 import '../programs/domain/program_status.dart';
 import '../workouts/data/objectbox_live_workout_engine.dart';
@@ -110,6 +112,7 @@ final workoutActionsProvider = Provider<WorkoutActions>(
     ref.watch(workoutRepositoryProvider),
     ref.watch(workoutLibraryRepositoryProvider),
     SecureUuidFactory(),
+    programs: ref.watch(programRepositoryProvider),
     clock: ref.watch(workoutClockProvider),
   ),
 );
@@ -125,6 +128,7 @@ class RepositoryWorkoutActions implements WorkoutActions {
     this.repository,
     this.library,
     this.ids, {
+    required this.programs,
     this.clock = DateTime.now,
   });
 
@@ -132,6 +136,9 @@ class RepositoryWorkoutActions implements WorkoutActions {
   final WorkoutRepository repository;
   final WorkoutLibraryRepository library;
   final UuidFactory ids;
+
+  /// Re-read at every program-day start: the caller's record may be stale.
+  final ProgramRepository programs;
   final DateTime Function() clock;
 
   @override
@@ -162,7 +169,12 @@ class RepositoryWorkoutActions implements WorkoutActions {
     required String? expectedPlanUuid,
     DateTime? missedDate,
   }) {
-    if (!program.isActive) throw StateError('Program is not active');
+    // The stored program decides, not the record the screen was built with.
+    final stored = programs.getProgram(program.uuid);
+    if (stored == null || stored.archivedAtMs != null || !stored.isActive) {
+      throw StateError('Program is not active');
+    }
+    program = stored;
     final localNow = clock();
     final String planUuid;
     final DateTime day;
