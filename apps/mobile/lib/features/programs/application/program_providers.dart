@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/clock.dart';
@@ -11,7 +12,6 @@ import '../data/objectbox_program_repository.dart';
 import '../domain/program_models.dart';
 import '../domain/program_schedule.dart';
 import '../domain/program_status.dart';
-import '../../train/active_workout_state.dart';
 import '../../workouts/data/objectbox_workout_repository.dart';
 import '../../workouts/domain/workout_library_models.dart';
 
@@ -118,11 +118,11 @@ class ProgramWeek {
 }
 
 /// Null without an active program or when the store is unavailable.
-/// Recomputes after any workout change (finish, discard) through
-/// [activeWorkoutProvider], after program edits through
-/// [localProgramsProvider], and on resume through [localNowProvider].
+/// Not tied to the workout provider (which only notifies when its value
+/// changes): the active workout page invalidates this after every committed
+/// action, program edits go through [invalidatePrograms], and
+/// [localNowProvider] refreshes it on resume and at midnight.
 final programWeekProvider = Provider.autoDispose<ProgramWeek?>((ref) {
-  ref.watch(activeWorkoutProvider);
   final active = ref
       .watch(localProgramsProvider)
       .where((p) => p.isActive)
@@ -159,7 +159,9 @@ final programWeekProvider = Provider.autoDispose<ProgramWeek?>((ref) {
         availablePlanUuids: available,
       ),
     );
-  } on Object {
+  } on Object catch (error) {
+    // The type only: never values from the store.
+    debugPrint('programWeekProvider failed: ${error.runtimeType}');
     return null;
   }
 });
