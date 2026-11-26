@@ -97,6 +97,7 @@ void main() {
     double width = 900,
     double textScale = 1,
     String initial = '/progress',
+    bool overviewLoading = false,
   }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = Size(width, 5200);
@@ -132,6 +133,7 @@ void main() {
           progressNowProvider.overrideWithValue(_anchor),
           fakeHealthOverview(
             FakeHealthOverviewController(
+              pending: overviewLoading,
               connected
                   ? overview(
                       workouts:
@@ -156,7 +158,11 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    if (overviewLoading) {
+      await tester.pump(const Duration(milliseconds: 50));
+    } else {
+      await tester.pumpAndSettle();
+    }
   }
 
   final a = _session('Session A', DateTime.utc(2026, 11, 20, 10));
@@ -440,6 +446,18 @@ void main() {
         workouts: SectionData(WorkoutsOverview(outside: [run])),
       );
       expect(find.text('130 bpm'), findsOneWidget);
+    });
+
+    testWidgets('cold load shows a loading state, not no longer available', (
+      tester,
+    ) async {
+      await show(
+        tester,
+        initial: '/progress/health-workouts/run',
+        overviewLoading: true,
+      );
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('This workout is no longer available.'), findsNothing);
     });
 
     testWidgets('unknown id shows This workout is no longer available.', (

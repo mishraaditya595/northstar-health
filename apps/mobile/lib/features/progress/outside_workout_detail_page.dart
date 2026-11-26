@@ -22,7 +22,8 @@ class OutsideWorkoutDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final overview = ref.watch(healthOverviewProvider).value;
+    final async = ref.watch(healthOverviewProvider);
+    final overview = async.value;
     final owner = ref.watch(healthOwnerIdProvider);
     OutsideWorkout? workout;
     if (overview != null && overview.ownerId == owner) {
@@ -44,9 +45,11 @@ class OutsideWorkoutDetailPage extends ConsumerWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 820),
           child: workout == null
-              ? const Center(
-                  child: Text('This workout is no longer available.'),
-                )
+              ? (overview == null && async.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : const Center(
+                        child: Text('This workout is no longer available.'),
+                      ))
               : _Detail(workout: workout, platform: overview!.platform),
         ),
       ),
