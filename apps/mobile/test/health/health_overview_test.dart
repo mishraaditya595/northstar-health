@@ -6,6 +6,11 @@ import 'package:beyondrep/features/health/application/health_summary_controller.
 import 'package:beyondrep/features/health/data/health_connection_repository.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/health/domain/health_types.dart';
+import 'package:beyondrep/features/health/domain/outside_workouts.dart';
+import 'package:beyondrep/features/progress/data/objectbox_workout_history_repository.dart';
+import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
+import 'package:beyondrep/features/progress/workout_history_state.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/objectbox.g.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,6 +29,46 @@ class _Owner extends Notifier<String?> {
 }
 
 final _ownerProvider = NotifierProvider<_Owner, String?>(_Owner.new);
+
+class _FakeHistory implements WorkoutHistoryRepository {
+  _FakeHistory(this.sessions, {this.fail = false});
+  final List<WorkoutSessionRecord> sessions;
+  final bool fail;
+
+  @override
+  WorkoutHistorySnapshot readCompleted() =>
+      WorkoutHistorySnapshot(sessions: sessions);
+
+  @override
+  Future<WorkoutHistorySnapshot> readCompletedAsync() async =>
+      fail ? throw StateError('synthetic history bug') : readCompleted();
+}
+
+/// A completed 60 minute BeyondRep session [daysBack] days before the
+/// test's clock, at 09:00 local.
+WorkoutSessionRecord _logged(String id, int daysBack) {
+  final start = DateTime(2026, 11, 24 - daysBack, 9);
+  return WorkoutSessionRecord(
+    uuid: id,
+    name: 'Logged',
+    status: WorkoutStatus.completed,
+    startedAtUtc: start.toUtc(),
+    completedAtUtc: start.add(const Duration(hours: 1)).toUtc(),
+    originalOffsetMinutes: 0,
+    revision: 1,
+  );
+}
+
+OutsideWorkout _outside(String id, int daysBack, {int hour = 18}) {
+  final start = DateTime(2026, 11, 24 - daysBack, hour);
+  return OutsideWorkout(
+    id: id,
+    kind: OutsideWorkoutKind.running,
+    start: start.toUtc(),
+    end: start.add(const Duration(minutes: 30)).toUtc(),
+    source: 'Synthetic app',
+  );
+}
 
 /// Delegates to [inner]; [connectedAt] throws while [fail] is set.
 class _FlakyRepo implements HealthConnectionRepository {
@@ -95,9 +140,13 @@ void main() {
     root.deleteSync(recursive: true);
   });
 
+  WorkoutHistoryRepository? history;
+
   ProviderContainer container() {
     final c = ProviderContainer(
       overrides: [
+        if (history != null)
+          workoutHistoryRepositoryProvider.overrideWithValue(history!),
         healthReaderProvider.overrideWithValue(fake),
         healthConnectionRepositoryProvider.overrideWithValue(repo),
         healthOwnerIdProvider.overrideWith((ref) => ref.watch(_ownerProvider)),
@@ -864,5 +913,128 @@ void main() {
 
     expect(fake.requestMoreAccessCalls, 1);
     expect(fake.sleepCalls, hasLength(2));
+  });
+
+  group('workouts from other apps', () {
+    test('reads outside workouts for the last 90 days', () async {
+      syntheticWeek();
+      fake.workouts = SeriesData([_outside('o1', 2)]);
+      final c = container();
+      final o = (await c.read(healthOverviewProvider.future))!;
+      expect(fake.workoutCalls.single, (DateTime(2026, 11, 24 - 89), now));
+      final w = (o.workouts as SectionData<WorkoutsOverview>).value;
+      expect(w.outside.single.id, 'o1');
+    });
+
+    test('not allowed maps to MetricGap.notAllowed', () async {
+      syntheticWeek();
+      fake.workouts = const SeriesNotAllowed();
+      final o = (await container().read(healthOverviewProvider.future))!;
+      expect((o.workouts as SectionGap).gap, MetricGap.notAllowed);
+    });
+
+    test('needs access and failures map like the other sections', () async {
+      syntheticWeek();
+      fake.workouts = const SeriesNeedsAccess();
+      var o = (await container().read(healthOverviewProvider.future))!;
+      expect((o.workouts as SectionGap).gap, MetricGap.needsAccess);
+      fake.workouts = const SeriesFailed();
+      o = (await container().read(healthOverviewProvider.future))!;
+      expect((o.workouts as SectionGap).gap, MetricGap.failed);
+    });
+
+    ReadinessReady ready(HealthOverview o) =>
+        ((o.readiness as SectionData<ReadinessOverview>).value.result)
+            as ReadinessReady;
+
+    bool hasLoad(HealthOverview o) =>
+        ready(o).readiness.parts
+            .any((p) => p.input == ReadinessInput.trainingLoad);
+
+    test('readiness includes a training load part when 14+ days of sessions '
+        'exist', () async {
+      readinessWeek();
+      history = _FakeHistory([_logged('a', 20), _logged('b', 3)]);
+      final o = (await container().read(healthOverviewProvider.future))!;
+      expect(hasLoad(o), isTrue);
+      expect(ready(o).readiness.loadRatio, isNotNull);
+    });
+
+    test('outside workouts alone can supply the load history', () async {
+      readinessWeek();
+      history = _FakeHistory(const []);
+      fake.workouts = SeriesData([_outside('a', 20), _outside('b', 3)]);
+      final o = (await container().read(healthOverviewProvider.future))!;
+      expect(hasLoad(o), isTrue);
+    });
+
+    test('readiness has no training load part when workouts are not allowed '
+        'and BeyondRep history is short', () async {
+      readinessWeek();
+      history = _FakeHistory([_logged('b', 3)]);
+      fake.workouts = const SeriesNotAllowed();
+      final o = (await container().read(healthOverviewProvider.future))!;
+      expect(hasLoad(o), isFalse);
+      expect(ready(o).readiness.loadRatio, isNull);
+    });
+
+    test('a history read failure leaves readiness without load but still '
+        'scored', () async {
+      readinessWeek();
+      history = _FakeHistory(const [], fail: true);
+      fake.workouts = SeriesData([_outside('a', 20), _outside('b', 3)]);
+      final o = (await container().read(healthOverviewProvider.future))!;
+      expect(hasLoad(o), isFalse);
+      expect(ready(o).readiness.value, inInclusiveRange(0, 100));
+    });
+
+    test('an account switch during the read never exposes the other '
+        "owner's workouts", () async {
+      syntheticWeek();
+      repo.connect(_ownerB, DateTime(2026, 11, 1));
+      fake.workouts = SeriesData([_outside('of-a', 2)]);
+      fake.workoutsGate = Completer<void>();
+      final c = container();
+      final pending = c.read(healthOverviewProvider.future);
+      while (fake.workoutCalls.isEmpty) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      fake.workouts = const SeriesData([]);
+      c.read(_ownerProvider.notifier).set(_ownerB);
+      fake.workoutsGate!.complete();
+      await pending.catchError((_) => null);
+
+      final b = (await c.read(healthOverviewProvider.future))!;
+      expect(b.ownerId, _ownerB);
+      expect(
+        (b.workouts as SectionData<WorkoutsOverview>).value.outside,
+        isEmpty,
+      );
+    });
+
+    test('workoutMergeProvider merges using overview outside workouts and '
+        'completed history', () async {
+      syntheticWeek();
+      history = _FakeHistory([_logged('s', 2)]);
+      // 09:10-09:40 sits inside the 09:00-10:00 session two days ago.
+      fake.workouts = SeriesData([
+        OutsideWorkout(
+          id: 'merged',
+          kind: OutsideWorkoutKind.strength,
+          start: DateTime(2026, 11, 22, 9, 10).toUtc(),
+          end: DateTime(2026, 11, 22, 9, 40).toUtc(),
+          source: 'Synthetic app',
+        ),
+        _outside('alone', 5),
+      ]);
+      final c = container();
+      c.listen(completedWorkoutHistoryProvider, (_, _) {});
+      await c.read(healthOverviewProvider.future);
+      await c.read(completedWorkoutHistoryProvider.future);
+      c.listen(workoutMergeProvider, (_, _) {});
+      final merge = c.read(workoutMergeProvider)!;
+      expect(merge.mergedIntoSession['s']!.single.id, 'merged');
+      expect(merge.standalone.single.id, 'alone');
+    });
   });
 }

@@ -127,12 +127,16 @@ class FakeHealthReader implements HealthReader {
   SeriesResult<List<OutsideWorkout>> workouts = const SeriesData([]);
   final List<(DateTime, DateTime)> workoutCalls = [];
 
+  /// Holds every [readWorkouts] until completed.
+  Completer<void>? workoutsGate;
+
   @override
   Future<SeriesResult<List<OutsideWorkout>>> readWorkouts(
     DateTime from,
     DateTime to,
   ) async {
     workoutCalls.add((from, to));
+    await workoutsGate?.future;
     return workouts;
   }
 
