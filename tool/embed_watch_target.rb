@@ -98,5 +98,13 @@ phase.dst_path = "$(CONTENTS_FOLDER_PATH)/Watch"
 build_file = phase.add_file_reference(watch.product_reference, true)
 build_file.settings = { "ATTRIBUTES" => ["RemoveHeadersOnCopy"] }
 
+# Flutter's "Thin Binary" script rewrites the app bundle, so a copy phase placed
+# after it forms a dependency cycle with the CocoaPods embed phase. Keep the
+# watch embed directly after "Embed Frameworks", before "Thin Binary".
+runner.build_phases.delete(phase)
+frameworks_index = runner.build_phases.index { |bp| bp.display_name == "Embed Frameworks" }
+abort("Embed Frameworks phase not found") unless frameworks_index
+runner.build_phases.insert(frameworks_index + 1, phase)
+
 project.save
 puts "Embedded #{WATCH_TARGET} in #{project_path}."
