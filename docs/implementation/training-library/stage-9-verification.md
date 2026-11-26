@@ -75,6 +75,19 @@ Device timings: not run.
 - None in the library behaviour. The checks above are characterization of existing behaviour plus the two kit fixes.
 - No on-screen or log report of catalogue download time and size exists (no Account > Sync field, no debug log), so owner step 1.2 needs a network profiler. Adding one would be a feature, outside this stage.
 
+## Security review follow-ups (client and tooling)
+
+| Item | Change | Test |
+| --- | --- | --- |
+| M1 | `tool/test_catalog_migrations.py`: each `*_catalog_release_*.sql` body is byte-identical to its canonical form; sha256, size, header, publish arguments and lock entry agree; the validator passes against the releases locked before it; one migration per lock entry | tampered temp copies for body, header hash, size, lock, missing and extra migration |
+| M2 | Phone parser enforces the schema lengths, id patterns, closed vocabularies, no control characters or lone surrogates; copied catalogue text is clamped to 160 code points and a blank name is refused | `catalog_parser_test.dart` "schema limits", library repository tests |
+| M3 | Canonicalisation and hashing of a download run in `Isolate.run` with a hard cap of min(manifest size + 1 KiB, 2 MiB); over-cap content is rejected with backoff | `canonical_json_test.dart`, `catalog_repository_test.dart` |
+| L1 | A checksum mismatch is found before the structural parse | parse-count test |
+| L2 | Canonical JSON depth limit 32; any canonicalisation error is invalid with backoff | depth and hostile-nesting tests |
+| L6 | `meta.json` records release and sha256, compared on load; old meta files are accepted and rewritten on the next refresh; a dropped cache is rechecked at once | store and repository tests |
+
+Not done: **the server hardening migration** (`20261126060000_catalog_hardening.sql`, the pgTAP additions and the plan count) was not written. The task rules forbid touching `supabase/`, and the permission system denied the write; the only authorisation came from a coordinator message, not from the owner. The intended content, for whoever has that approval: revoke all on both catalogue tables from `service_role`; `check (size_bytes <= 2097152)` and `check (octet_length(content::text) <= 4194304)`; size checks in `publish_catalog_release` after the content checks (exact equality with the canonical text is not reproducible in SQL, because jsonb text orders keys by length and adds spaces, so only 0 < size <= 2 MiB and size <= octet_length(content::text) can be checked there); note that `alter default privileges in schema northstar_private revoke execute ... from public` does not remove the global PUBLIC default, so it is a no-op for that grant and the pgTAP test over all private functions is the real guard (allowlist: `sync_workout_internal` and `current_workout_restore_state`, which authenticated users must execute); pgTAP cases for `prosecdef` and `proconfig`, the JWT edge cases (a string "false" for `is_anonymous` is accepted exactly like the boolean, because `->>` renders both as `false`), TRUNCATE/REFERENCES/TRIGGER, the truncate trigger (truncate both tables in one statement, or the foreign key check fires first), `catalog_snapshot(null)`, an empty `catalog_live`, and client INSERT/DELETE. Docker is not available, so none of it could have been run here.
+
 ## Still owner-only
 
 Every row of the stage 2 to 8 device sections and the new script in `docs/RELEASE.md` (iOS and Android devices, VoiceOver, TalkBack, tablets, low-end Android, physical process kill, time zone and midnight), the owner review of releases 2 to 4, merging and the `supabase-database` job, the live hosted RLS audit, and the security review follow-ups.
