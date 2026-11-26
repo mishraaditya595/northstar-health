@@ -16,9 +16,16 @@ import '../health/widgets/metric_info_sheet.dart';
 /// Read-only detail of a workout another app saved to the health platform.
 /// Looked up in the in-memory overview; never stored.
 class OutsideWorkoutDetailPage extends ConsumerWidget {
-  const OutsideWorkoutDetailPage({required this.workoutId, super.key});
+  const OutsideWorkoutDetailPage({
+    required this.workoutId,
+    this.embedded = false,
+    super.key,
+  });
 
   final String workoutId;
+
+  /// Shown inside Progress's detail pane: no back button.
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -35,7 +42,8 @@ class OutsideWorkoutDetailPage extends ConsumerWidget {
     }
     return Scaffold(
       appBar: AppBar(
-        leading: const NsBackButton(),
+        automaticallyImplyLeading: false,
+        leading: embedded ? null : const NsBackButton(),
         title: Text(
           workout == null ? 'Workout' : outsideWorkoutName(workout.kind),
         ),

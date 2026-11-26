@@ -18,15 +18,23 @@ import 'domain/workout_history_models.dart';
 import 'workout_history_state.dart';
 
 class WorkoutHistoryDetailPage extends ConsumerWidget {
-  const WorkoutHistoryDetailPage({required this.sessionUuid, super.key});
+  const WorkoutHistoryDetailPage({
+    required this.sessionUuid,
+    this.embedded = false,
+    super.key,
+  });
   final String sessionUuid;
+
+  /// Shown inside Progress's detail pane: no back button.
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(completedWorkoutHistoryProvider);
     return Scaffold(
       appBar: AppBar(
-        leading: const NsBackButton(),
+        automaticallyImplyLeading: false,
+        leading: embedded ? null : const NsBackButton(),
         title: const Text('Workout details'),
       ),
       body: Align(
