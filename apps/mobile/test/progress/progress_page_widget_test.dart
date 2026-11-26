@@ -688,6 +688,9 @@ void main() {
         find.textContaining('No upload will be attempted'),
         findsOneWidget,
       );
+      // Dispose before the test ends: the clock's midnight timer must be gone.
+      await tester.pumpWidget(const SizedBox());
+      container.dispose();
     },
   );
 
