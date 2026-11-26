@@ -283,7 +283,8 @@ sealed class WatchMessage {
         if (workout is! Map) {
           throw const WatchContractException('invalid_value');
         }
-        if (workout['origin'] != 'beyondrep_watch') {
+        if (workout['origin'] != 'beyondrep_watch' ||
+            workout['workout_id'] is! String) {
           throw const WatchContractException('invalid_value');
         }
         return CompletedWorkout(

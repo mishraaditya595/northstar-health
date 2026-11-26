@@ -37,7 +37,7 @@ final class ContractFixtureTests: XCTestCase {
     }
 
     func testWorkoutSyncV2InvalidFixturesAreRejected() throws {
-        try rejects("contracts/workout_sync/v2/fixtures/invalid", minimum: 12) { _ = try WorkoutEventV2(json: $0) }
+        try rejects("contracts/workout_sync/v2/fixtures/invalid", minimum: 14) { _ = try WorkoutEventV2(json: $0) }
     }
 
     func testV1EnvelopeIsUnsupportedVersion() throws {

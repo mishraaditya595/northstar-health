@@ -14,6 +14,10 @@ struct SQLiteError: Error, CustomStringConvertible {
 
 /// A thin wrapper over the system SQLite: one connection, WAL, prepared
 /// statements and explicit transactions.
+///
+/// Not thread-safe: `depth` and the transaction state are unguarded, so one
+/// serial queue (or actor) must own an instance and make every call. The
+/// `FULLMUTEX` flag only protects SQLite's own state.
 final class SQLiteDatabase {
     private var handle: OpaquePointer?
     private var depth = 0
@@ -26,7 +30,10 @@ final class SQLiteDatabase {
             throw SQLiteError(message: message)
         }
         sqlite3_busy_timeout(handle, 5000)
-        _ = try query("PRAGMA journal_mode=WAL")
+        let mode = try query("PRAGMA journal_mode=WAL")
+        guard case .text(let actual)? = mode.first?.first, actual.lowercased() == "wal" else {
+            throw SQLiteError(message: "could not enable write-ahead logging")
+        }
         try execute("PRAGMA synchronous=FULL")
     }
 

@@ -57,7 +57,10 @@ class StrictObject {
 
   String string(String key, {int min = 1, int? max, RegExp? pattern}) {
     final v = map[key];
-    if (v is! String || v.length < min || (max != null && v.length > max)) {
+    // JSON Schema counts Unicode code points, not UTF-16 units.
+    if (v is! String ||
+        v.runes.length < min ||
+        (max != null && v.runes.length > max)) {
       throw const WatchContractException('invalid_value');
     }
     if (pattern != null && !pattern.hasMatch(v)) {
@@ -73,9 +76,24 @@ class StrictObject {
 
   String dateTime(String key) {
     final v = string(key, pattern: _dateTimePattern);
-    if (DateTime.tryParse(v) == null) {
-      throw const WatchContractException('invalid_value');
-    }
+    // DateTime.tryParse rolls 2026-02-30 over to March, so check each part.
+    final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})')
+        .firstMatch(v)!;
+    final year = int.parse(m[1]!);
+    final month = int.parse(m[2]!);
+    final day = int.parse(m[3]!);
+    final offset = RegExp(r'[+-](\d{2}):(\d{2})$').firstMatch(v);
+    final valid =
+        month >= 1 &&
+        month <= 12 &&
+        day >= 1 &&
+        day <= DateTime.utc(year, month + 1, 0).day &&
+        int.parse(m[4]!) <= 23 &&
+        int.parse(m[5]!) <= 59 &&
+        int.parse(m[6]!) <= 59 &&
+        (offset == null ||
+            (int.parse(offset[1]!) <= 23 && int.parse(offset[2]!) <= 59));
+    if (!valid) throw const WatchContractException('invalid_value');
     return v;
   }
 

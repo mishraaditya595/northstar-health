@@ -70,7 +70,7 @@ class ProtocolV2FixturesTest(unittest.TestCase):
 
     def test_invalid_messages(self):
         fixtures = sorted((PROTOCOL_V2 / "fixtures/invalid").glob("*.json"))
-        self.assertGreaterEqual(len(fixtures), 12)
+        self.assertGreaterEqual(len(fixtures), 14)
         for path in fixtures:
             with self.subTest(file=path.name):
                 data = json.loads(path.read_text(encoding="utf-8"))

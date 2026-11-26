@@ -23,6 +23,8 @@ public struct SessionMachine {
     private var phase = Phase.notStarted
     private var nextSequence = 0
     private var lastEventForSet: [String: String] = [:]
+    private var loggedSets: Set<String> = []
+    private var appliedCommandIds: Set<String> = []
     public private(set) var events: [WorkoutEventV2] = []
 
     public init(
@@ -39,6 +41,48 @@ public struct SessionMachine {
         self.timeZone = timeZone
         self.makeId = makeId
     }
+
+    /// Rebuilds a machine from the events a journal stored, so a session survives
+    /// a restart: phase, next sequence number and the last event per set come
+    /// from `events`. `appliedCommandIds` are the phone commands already applied.
+    public init(
+        restoring events: [WorkoutEventV2], owner: String, accountKey: String, deviceId: String,
+        clock: @escaping () -> Date, timeZone: String,
+        appliedCommandIds: Set<String> = [],
+        makeId: @escaping () -> String = { UUID().uuidString.lowercased() }
+    ) throws {
+        var seen = Set<String>()
+        let ordered = events.filter { seen.insert($0.header.eventId).inserted }
+            .sorted { $0.header.sequence < $1.header.sequence }
+        guard let first = ordered.first else { throw SessionError.invalidTransition }
+        self.init(
+            sessionId: first.header.sessionId, workoutId: first.header.workoutId, owner: owner,
+            accountKey: accountKey, deviceId: deviceId, clock: clock, timeZone: timeZone, makeId: makeId)
+        self.events = ordered
+        self.appliedCommandIds = Set(appliedCommandIds.map { $0.lowercased() })
+        nextSequence = (ordered.map { $0.header.sequence }.max() ?? -1) + 1
+        for event in ordered {
+            let id = event.header.eventId
+            switch event {
+            case .setLogged(_, let values), .setCorrected(_, let values, _):
+                lastEventForSet[values.setId] = id
+                loggedSets.insert(values.setId)
+            case .setSkipped(_, let setId):
+                lastEventForSet[setId] = id
+                loggedSets.remove(setId)
+            default: break
+            }
+        }
+        switch replay(ordered).status {
+        case "paused": phase = .paused
+        case "completed": phase = .completed
+        case "abandoned": phase = .abandoned
+        default: phase = .active
+        }
+    }
+
+    /// `notStarted`, `active`, `paused`, `completed` or `abandoned`.
+    public var status: String { "\(phase)" }
 
     /// Equals `replay(events)`.
     public var state: ReplayedWorkout { replay(events) }
@@ -80,18 +124,25 @@ public struct SessionMachine {
         return out
     }
 
+    /// Logs a set. A set that is already logged gets a `set_corrected` that
+    /// supersedes its last event instead of a second `set_logged`.
     public mutating func log(set: SetValues) throws -> WorkoutEventV2 {
         try require(.active)
+        guard set.reps != nil || set.durationSeconds != nil else { throw SessionError.invalidCommand }
+        if loggedSets.contains(set.setId) { return try correct(setId: set.setId, values: set) }
         let event = emit { .setLogged($0, set) }
         lastEventForSet[set.setId] = event.header.eventId
+        loggedSets.insert(set.setId)
         return event
     }
 
     public mutating func correct(setId: String, values: SetValues) throws -> WorkoutEventV2 {
         try require(.active)
+        guard values.reps != nil || values.durationSeconds != nil else { throw SessionError.invalidCommand }
         guard let previous = lastEventForSet[setId], values.setId == setId else {
             throw SessionError.unknownSet
         }
+        loggedSets.insert(setId)
         let event = emit { .setCorrected($0, values, supersedesEventId: previous) }
         lastEventForSet[setId] = event.header.eventId
         return event
@@ -101,6 +152,7 @@ public struct SessionMachine {
         try require(.active)
         let event = emit { .setSkipped($0, setId: setId) }
         lastEventForSet[setId] = event.header.eventId
+        loggedSets.remove(setId)
         return event
     }
 
@@ -140,9 +192,20 @@ public struct SessionMachine {
         return emit { .workoutAbandoned($0) }
     }
 
-    /// Maps a phone command to the same methods a watch tap uses.
-    public mutating func apply(command: SessionCommand) throws -> WorkoutEventV2 {
+    /// Maps a phone command to the same methods a watch tap uses. Delivery is
+    /// at least once, so a command id that was already applied returns `nil` and
+    /// changes nothing. Persist the id with the event (`WatchJournal.record`).
+    @discardableResult
+    public mutating func apply(command: SessionCommand) throws -> WorkoutEventV2? {
         guard command.sessionId == sessionId else { throw SessionError.invalidCommand }
+        let commandId = command.commandId.lowercased()
+        if appliedCommandIds.contains(commandId) { return nil }
+        let event = try run(command)
+        appliedCommandIds.insert(commandId)
+        return event
+    }
+
+    private mutating func run(_ command: SessionCommand) throws -> WorkoutEventV2 {
         switch command.command {
         case "log_set":
             guard let set = command.set else { throw SessionError.invalidCommand }

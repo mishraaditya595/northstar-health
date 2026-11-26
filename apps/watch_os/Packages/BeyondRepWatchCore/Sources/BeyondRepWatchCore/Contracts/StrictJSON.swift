@@ -30,15 +30,18 @@ struct StrictObject {
         CFGetTypeID(number) == CFBooleanGetTypeID()
     }
 
+    /// True only when the pattern matches the whole string. ICU's `$` also
+    /// matches before a trailing newline, which the schemas do not allow.
     private static func matches(_ value: String, _ pattern: String) -> Bool {
-        value.range(of: pattern, options: .regularExpression) != nil
+        guard let range = value.range(of: pattern, options: .regularExpression) else { return false }
+        return range == value.startIndex..<value.endIndex
     }
 
     func string(_ key: String, min: Int = 1, max: Int? = nil, pattern: String? = nil) throws -> String {
         guard let value = dict[key] as? String, !(dict[key] is NSNumber) else {
             throw ContractError("invalid_value")
         }
-        let length = value.count
+        let length = value.unicodeScalars.count  // JSON Schema counts code points
         if length < min || (max != nil && length > max!) { throw ContractError("invalid_value") }
         if let pattern, !StrictObject.matches(value, pattern) { throw ContractError("invalid_value") }
         return value
@@ -54,7 +57,7 @@ struct StrictObject {
 
     func dateTime(_ key: String) throws -> String {
         let value = try string(
-            key, pattern: "^\\d{4}-\\d{2}-\\d{2}[Tt]\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?([Zz]|[+-]\\d{2}:\\d{2})$")
+            key, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt][0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?([Zz]|[+-][0-9]{2}:[0-9]{2})$")
         let plain = ISO8601DateFormatter()
         let fractional = ISO8601DateFormatter()
         fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

@@ -35,7 +35,7 @@ void main() {
 
     test('invalid fixtures are rejected', () {
       final files = _files('workout_sync/v2/fixtures/invalid');
-      expect(files.length, greaterThanOrEqualTo(12));
+      expect(files.length, greaterThanOrEqualTo(14));
       for (final f in files) {
         expect(
           () => WorkoutEventV2.fromJson(_read(f)),

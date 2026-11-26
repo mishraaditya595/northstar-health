@@ -14,8 +14,15 @@ public final class WatchJournal {
     private let clock: () -> Date
     private let makeId: () -> String
 
-    /// Test hook: throw after the event row is inserted, before the outbox row.
-    var failAfterEventInsert = false
+    /// Where a test makes `record` throw, to prove the transaction rolls back.
+    enum FailurePoint: Equatable {
+        /// After the event at this batch index is inserted, before its outbox row.
+        case afterEventInsert(index: Int)
+        case afterCompletedEnqueue
+        case afterSessionUpsert
+    }
+
+    var failAt: FailurePoint?
 
     public init(
         url: URL, clock: @escaping () -> Date = Date.init,
@@ -29,8 +36,9 @@ public final class WatchJournal {
             try db.execute("CREATE TABLE IF NOT EXISTS outbox(message_id TEXT PRIMARY KEY, account_key TEXT NOT NULL, json TEXT NOT NULL, created_at TEXT NOT NULL)")
             try db.execute("CREATE TABLE IF NOT EXISTS sessions(session_id TEXT PRIMARY KEY, account_key TEXT NOT NULL, status TEXT NOT NULL, state_json TEXT NOT NULL)")
             try db.execute("CREATE TABLE IF NOT EXISTS plans(account_key TEXT PRIMARY KEY, json TEXT NOT NULL)")
+            try db.execute("CREATE TABLE IF NOT EXISTS applied_commands(session_id TEXT NOT NULL, command_id TEXT NOT NULL, PRIMARY KEY(session_id, command_id))")
             try db.execute("CREATE TABLE IF NOT EXISTS health(account_key TEXT PRIMARY KEY, local_date TEXT NOT NULL, json TEXT NOT NULL)")
-            try db.setUserVersion(1)
+            try db.setUserVersion(2)
         }
     }
 
@@ -50,37 +58,65 @@ public final class WatchJournal {
             [.text(message.messageId.lowercased()), .text(message.accountKey), .text(try encode(message)), .text(now())])
     }
 
-    /// Stores the event, queues it for the phone and saves the session state in
-    /// one transaction. A repeated event id changes nothing. A `completed`
-    /// message (the final workout) is queued in the same transaction.
+    /// Stores the events (one session, in order), queues each for the phone and
+    /// saves the session state in one transaction: if anything throws, nothing
+    /// is written. An event id already stored is skipped; if every event is a
+    /// repeat nothing changes. `commandId` (a phone command these events
+    /// answer) is stored in the same transaction so a late duplicate is ignored
+    /// after a restart. A `completed` message (the final workout) is queued in
+    /// the same transaction.
     public func record(
-        _ event: WorkoutEventV2, sessionState: ReplayedWorkout, completed: WatchMessage? = nil
+        _ events: [WorkoutEventV2], sessionState: ReplayedWorkout, completed: WatchMessage? = nil,
+        commandId: String? = nil
     ) throws {
+        guard let sessionId = events.first?.header.sessionId else { return }
         try db.transaction {
-            let header = event.header
-            let accountKey: String
-            if case .workoutStarted(_, let payload) = event {
-                accountKey = payload.accountKey
-            } else {
-                let rows = try db.query("SELECT account_key FROM sessions WHERE session_id = ?", [.text(header.sessionId)])
+            var accountKey: String?
+            for case .workoutStarted(_, let payload) in events { accountKey = payload.accountKey }
+            if accountKey == nil {
+                let rows = try db.query("SELECT account_key FROM sessions WHERE session_id = ?", [.text(sessionId)])
                 guard case .text(let key)? = rows.first?.first else { throw JournalError.unknownSession }
                 accountKey = key
             }
-            let inserted = try db.execute(
-                "INSERT OR IGNORE INTO events(event_id, session_id, sequence, json) VALUES(?,?,?,?)",
-                [.text(header.eventId), .text(header.sessionId), .int(Int64(header.sequence)),
-                 .text(String(decoding: try event.jsonData(), as: UTF8.self))])
+            guard let accountKey else { throw JournalError.unknownSession }
+            var inserted = 0
+            for (index, event) in events.enumerated() {
+                let header = event.header
+                guard header.sessionId == sessionId else { throw JournalError.unknownSession }
+                let changed = try db.execute(
+                    "INSERT OR IGNORE INTO events(event_id, session_id, sequence, json) VALUES(?,?,?,?)",
+                    [.text(header.eventId), .text(header.sessionId), .int(Int64(header.sequence)),
+                     .text(String(decoding: try event.jsonData(), as: UTF8.self))])
+                if changed == 0 { continue }
+                inserted += 1
+                if failAt == .afterEventInsert(index: index) { throw JournalError.injectedFailure }
+                try enqueue(WatchMessage(
+                    messageId: makeId(), sentAtUtc: now(), accountKey: accountKey, body: .workoutEvent(event)))
+            }
             if inserted == 0 { return }
-            if failAfterEventInsert { throw JournalError.injectedFailure }
-            try enqueue(WatchMessage(
-                messageId: makeId(), sentAtUtc: now(), accountKey: accountKey, body: .workoutEvent(event)))
-            if let completed { try enqueue(completed) }
+            if let completed {
+                try enqueue(completed)
+                if failAt == .afterCompletedEnqueue { throw JournalError.injectedFailure }
+            }
             let state = String(decoding: try JSONEncoder().encode(sessionState), as: UTF8.self)
             try db.execute(
                 "INSERT INTO sessions(session_id, account_key, status, state_json) VALUES(?,?,?,?) "
                     + "ON CONFLICT(session_id) DO UPDATE SET status = excluded.status, state_json = excluded.state_json",
-                [.text(header.sessionId), .text(accountKey), .text(sessionState.status), .text(state)])
+                [.text(sessionId), .text(accountKey), .text(sessionState.status), .text(state)])
+            if failAt == .afterSessionUpsert { throw JournalError.injectedFailure }
+            if let commandId {
+                try db.execute(
+                    "INSERT OR IGNORE INTO applied_commands(session_id, command_id) VALUES(?,?)",
+                    [.text(sessionId), .text(commandId.lowercased())])
+            }
         }
+    }
+
+    public func record(
+        _ event: WorkoutEventV2, sessionState: ReplayedWorkout, completed: WatchMessage? = nil,
+        commandId: String? = nil
+    ) throws {
+        try record([event], sessionState: sessionState, completed: completed, commandId: commandId)
     }
 
     public func pendingOutbox(limit: Int) throws -> [WatchMessage] {
@@ -115,13 +151,19 @@ public final class WatchJournal {
 
     public func saveHealth(_ message: WatchMessage) throws {
         guard case .healthSnapshot(let localDate, _) = message.body else { throw ContractError("invalid_value") }
-        try db.execute(
-            "INSERT OR REPLACE INTO health(account_key, local_date, json) VALUES(?,?,?)",
-            [.text(message.accountKey), .text(localDate), .text(try encode(message))])
+        try db.transaction {
+            try db.execute("DELETE FROM health WHERE local_date != ?", [.text(localDate)])
+            try db.execute(
+                "INSERT OR REPLACE INTO health(account_key, local_date, json) VALUES(?,?,?)",
+                [.text(message.accountKey), .text(localDate), .text(try encode(message))])
+        }
     }
 
-    /// Today's snapshot only: any other date, even a stored one, is nil.
+    /// Today's snapshot only. Health values are cleared at local midnight
+    /// (ADR-0012), so rows for any other date are deleted here, on read and on
+    /// save, and are never returned.
     public func health(accountKey: String, forLocalDate localDate: String) throws -> WatchMessage? {
+        try db.execute("DELETE FROM health WHERE local_date != ?", [.text(localDate)])
         let rows = try db.query(
             "SELECT json FROM health WHERE account_key = ? AND local_date = ?",
             [.text(accountKey), .text(localDate)])
@@ -139,15 +181,23 @@ public final class WatchJournal {
             try db.execute(
                 "DELETE FROM events WHERE session_id IN (SELECT session_id FROM sessions WHERE account_key = ?)",
                 [.text(key)])
+            try db.execute(
+                "DELETE FROM applied_commands WHERE session_id IN (SELECT session_id FROM sessions WHERE account_key = ?)",
+                [.text(key)])
             try db.execute("DELETE FROM sessions WHERE account_key = ?", [.text(key)])
             try db.execute("DELETE FROM outbox WHERE account_key = ?", [.text(key)])
         }
     }
 
-    /// The newest active or paused session with its events and replayed state.
-    public func activeSession() throws -> (events: [WorkoutEventV2], state: ReplayedWorkout)? {
+    /// `accountKey`'s newest active or paused session with its events, replayed
+    /// state and the phone command ids already applied. Another account's
+    /// session is never returned.
+    public func activeSession(
+        accountKey: String
+    ) throws -> (events: [WorkoutEventV2], state: ReplayedWorkout, commandIds: Set<String>)? {
         let rows = try db.query(
-            "SELECT session_id FROM sessions WHERE status IN ('active','paused') ORDER BY rowid DESC LIMIT 1")
+            "SELECT session_id FROM sessions WHERE account_key = ? AND status IN ('active','paused') "
+                + "ORDER BY rowid DESC LIMIT 1", [.text(accountKey)])
         guard case .text(let sessionId)? = rows.first?.first else { return nil }
         let events = try db.query(
             "SELECT json FROM events WHERE session_id = ? ORDER BY sequence", [.text(sessionId)]
@@ -155,6 +205,12 @@ public final class WatchJournal {
             guard case .text(let text) = row[0] else { return nil }
             return try? WorkoutEventV2(json: Data(text.utf8))
         }
-        return (events, replay(events))
+        let commands = try db.query(
+            "SELECT command_id FROM applied_commands WHERE session_id = ?", [.text(sessionId)]
+        ).compactMap { row -> String? in
+            guard case .text(let text) = row[0] else { return nil }
+            return text
+        }
+        return (events, replay(events), Set(commands))
     }
 }
