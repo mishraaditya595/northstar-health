@@ -116,7 +116,6 @@ void main() {
         reason: '$name: Clear is covered',
       );
       await tester.tap(find.text('Show results'));
-      await tester.tap(find.text('Show results'));
       await tester.pumpAndSettle();
     }
     if (screen.action != null) {
