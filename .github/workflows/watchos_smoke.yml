@@ -25,6 +25,7 @@ jobs:
       pull-requests: read
     outputs:
       watch: ${{ steps.filter.outputs.watch }}
+      ios: ${{ steps.filter.outputs.ios }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
@@ -33,6 +34,11 @@ jobs:
           filters: |
             watch:
               - "apps/watch_os/**"
+              - "contracts/**"
+              - ".github/workflows/watchos_smoke.yml"
+            ios:
+              - "apps/watch_os/**"
+              - "apps/mobile/ios/**"
               - "contracts/**"
               - ".github/workflows/watchos_smoke.yml"
 
@@ -61,5 +67,35 @@ jobs:
             -destination 'generic/platform=watchOS Simulator' \
             CODE_SIGNING_ALLOWED=NO build
 
-# Important: this does NOT validate iPhone Runner embedding, TestFlight packaging,
-# watch permissions, background workout or real-device pairing.
+  # The iPhone Runner with the Apple Watch app embedded (ADR-0004, ADR-0012).
+  # Unsigned simulator build: it proves the target links, compiles and is copied
+  # into Runner.app/Watch. It does not prove signing or a TestFlight upload.
+  ios-with-watch:
+    needs: changes
+    if: >-
+      !cancelled() &&
+      (needs.changes.result != 'success' ||
+       needs.changes.outputs.ios == 'true')
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - name: Resolve from committed lockfile
+        working-directory: apps/mobile
+        run: flutter pub get --enforce-lockfile
+      - name: Build the iPhone simulator app (unsigned)
+        working-directory: apps/mobile
+        run: flutter build ios --simulator --debug --no-codesign
+      - name: Assert the watch app is embedded
+        working-directory: apps/mobile
+        run: |
+          test -d build/ios/iphonesimulator/Runner.app/Watch/BeyondRepWatch.app
+          ls build/ios/iphonesimulator/Runner.app/Watch
+
+# Important: this does NOT validate signing, TestFlight packaging, watch
+# permissions, background workout or real-device pairing.
