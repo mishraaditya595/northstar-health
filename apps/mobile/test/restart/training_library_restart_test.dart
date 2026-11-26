@@ -262,8 +262,18 @@ void main() {
       await seedGood();
       File('${cache.path}/snapshot.json.tmp').writeAsStringSync('{"release"');
       File('${cache.path}/meta.json').writeAsStringSync('{not json');
+      // A killed write leaves a temp file with the store's real pattern.
+      File('${cache.path}/snapshot.json.killed.tmp')
+        ..writeAsStringSync('{"release"')
+        ..setLastModifiedSync(
+          DateTime.now().subtract(const Duration(minutes: 11)),
+        );
       final repository = offline();
       await repository.load();
+      expect(
+        File('${cache.path}/snapshot.json.killed.tmp').existsSync(),
+        isFalse,
+      );
       expect(repository.state.status, CatalogStatus.ready);
       expect(repository.state.snapshot?.release, 1);
       // An offline refresh on top of it does not throw or drop the cache.
