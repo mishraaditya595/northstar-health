@@ -42,9 +42,15 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- Health Connect permission rationale (Android 13 and lower).
-                 TODO(#52): open the in-app privacy policy once it ships; until
-                 then this intent only opens the app. -->
+        </activity>
+        <!-- Health Connect permission rationale (Android 13 and lower): opens
+             the privacy policy (#52). -->
+        <activity
+            android:name=".PermissionsRationaleActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
             <intent-filter>
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
             </intent-filter>
@@ -53,7 +59,7 @@
         <activity-alias
             android:name="ViewPermissionUsageActivity"
             android:exported="true"
-            android:targetActivity=".MainActivity"
+            android:targetActivity=".PermissionsRationaleActivity"
             android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />

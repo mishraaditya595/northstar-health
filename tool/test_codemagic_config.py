@@ -1,7 +1,7 @@
 """Guard rails for the unconfigured Codemagic CI/CD skeleton.
 
-Validates existing inert templates, manual-only credential-free Supabase YAML
-and the manual internal-TestFlight iOS upload.
+Validates existing inert templates, manual-only credential-free Supabase YAML,
+the manual internal-TestFlight iOS upload and the manual Android Play AAB.
 It does not test Codemagic hosted execution, signing or real build artifacts.
 """
 
@@ -16,7 +16,6 @@ EXPECTED = {
     "quality-checks": ".",
     "mobile-android-debug": "apps/mobile",
     "mobile-android-profile": "apps/mobile",
-    "mobile-android-release": "apps/mobile",
     "mobile-ios-simulator": "apps/mobile",
     "mobile-ios-adhoc": "apps/mobile",
     "wear-os-debug": "apps/wear_os",
@@ -38,7 +37,9 @@ class CodemagicTemplateTest(unittest.TestCase):
         self.assertIsInstance(document, dict)
         self.assertEqual(set(document), {"workflows"})
         self.assertEqual(
-            set(EXPECTED) | set(SUPABASE_WORKFLOWS) | {"mobile-ios-testflight"},
+            set(EXPECTED)
+            | set(SUPABASE_WORKFLOWS)
+            | {"mobile-ios-testflight", "mobile-android-release"},
             set(document["workflows"]),
         )
 
@@ -181,6 +182,74 @@ class CodemagicTemplateTest(unittest.TestCase):
         self.assertLess(
             names.index("Resolve version name and build number"),
             names.index("Build signed IPA"),
+        )
+        self.assertIn("sb_publishable_", scripts)
+        for forbidden in (
+            "SERVICE_ROLE",
+            "SUPABASE_ACCESS_TOKEN",
+            "SUPABASE_DB_PASSWORD",
+            "PRIVATE_KEY",
+            "printenv",
+            "set -x",
+        ):
+            self.assertNotIn(forbidden, str(workflow))
+
+    def test_android_release_is_manual_signed_draft_upload_without_secrets(self):
+        workflow = yaml.safe_load(FILE.read_text(encoding="utf-8"))["workflows"][
+            "mobile-android-release"
+        ]
+        self.assertNotIn("triggering", workflow)
+        # Uploads happen in a script with --draft, never Codemagic publishing.
+        self.assertNotIn("publishing", workflow)
+        self.assertIn("MANUAL", workflow["name"])
+        self.assertEqual(workflow["working_directory"], "apps/mobile")
+        env = workflow["environment"]
+        self.assertEqual(env["flutter"], "3.47.7")
+        self.assertEqual(env["android_signing"], ["beyondrep_upload"])
+        self.assertEqual(
+            env["groups"], ["ns_mobile_supabase_public", "ns_google_play"]
+        )
+        self.assertEqual(
+            env["vars"],
+            {
+                "NS_VERSION_NAME": "${{ inputs.version_name }}",
+                "NS_BUILD_NUMBER": "${{ inputs.build_number }}",
+                "NS_PLAY_TRACK": "${{ inputs.play_track }}",
+                "BEYONDREP_REQUIRE_RELEASE_SIGNING": "true",
+            },
+        )
+        inputs = workflow["inputs"]
+        self.assertEqual(set(inputs), {"version_name", "build_number", "play_track"})
+        for name in ("version_name", "build_number"):
+            self.assertEqual(inputs[name]["type"], "string")
+            self.assertEqual(inputs[name]["default"], "AUTO")
+        track = inputs["play_track"]
+        self.assertEqual(track["type"], "choice")
+        # Never production; uploading is opt-in per run.
+        self.assertEqual(track["options"], ["none", "internal", "alpha"])
+        self.assertEqual(track["default"], "none")
+        self.assertEqual(
+            workflow["artifacts"][0], "build/app/outputs/bundle/release/*.aab"
+        )
+        scripts = "\n".join(step["script"] for step in workflow["scripts"])
+        self.assertIn("flutter pub get --enforce-lockfile", scripts)
+        self.assertIn("flutter build appbundle --release", scripts)
+        self.assertNotIn("$BUILD_NUMBER", scripts)
+        self.assertIn("python3 ../../scripts/codemagic_android_version.py", scripts)
+        self.assertIn('--build-name="$BEYONDREP_VERSION_NAME"', scripts)
+        self.assertIn('--build-number="$BEYONDREP_BUILD_NUMBER"', scripts)
+        self.assertIn("CN=Android Debug", scripts)
+        self.assertIn("--draft", scripts)
+        self.assertNotIn("production", scripts)
+        self.assertNotIn("--rollout-fraction", scripts)
+        names = [step["name"] for step in workflow["scripts"]]
+        self.assertLess(
+            names.index("Resolve version name and build number"),
+            names.index("Build signed AAB"),
+        )
+        self.assertLess(
+            names.index("Refuse a debug-signed AAB"),
+            names.index("Upload draft release to Google Play"),
         )
         self.assertIn("sb_publishable_", scripts)
         for forbidden in (

@@ -1,6 +1,6 @@
 # BeyondRep Codemagic CI/CD and manual Supabase deployments
 
-**Status:** 10 of the original 11 app/watch workflows remain intentionally failing, manual templates. `mobile-ios-testflight` is now a real **manual** job that signs the iOS app and uploads it for **internal** TestFlight testing only; see [iOS TestFlight runbook](IOS_TESTFLIGHT_CODEMAGIC.md). It has not yet run on hosted Codemagic. Two additional **manual Supabase workflows** handle database migrations and selected Edge Functions via build inputs, using a private Codemagic group bound to a single target project. None has been run on hosted Codemagic or used to deploy a database. See [Supabase Codemagic deployment runbook](SUPABASE_CODEMAGIC_DEPLOY.md). No other mobile build, signing or store release is enabled.
+**Status:** 9 of the original 11 app/watch workflows remain intentionally failing, manual templates. `mobile-android-release` is now a real **manual** job that builds an upload-key-signed AAB and can upload it as a draft to the Google Play internal or closed testing track; see [Android Play runbook](ANDROID_PLAY_CODEMAGIC.md). It has not yet run on hosted Codemagic. `mobile-ios-testflight` is now a real **manual** job that signs the iOS app and uploads it for **internal** TestFlight testing only; see [iOS TestFlight runbook](IOS_TESTFLIGHT_CODEMAGIC.md). It has not yet run on hosted Codemagic. Two additional **manual Supabase workflows** handle database migrations and selected Edge Functions via build inputs, using a private Codemagic group bound to a single target project. None has been run on hosted Codemagic or used to deploy a database. See [Supabase Codemagic deployment runbook](SUPABASE_CODEMAGIC_DEPLOY.md). No other mobile build, signing or store release is enabled.
 
 Codemagic reads `codemagic.yaml` **from the repository root**, even though apps live under `apps/`. Each workflow sets `working_directory` to the appropriate project. See [Codemagic YAML docs](https://docs.codemagic.io/yaml-basic-configuration/yaml-getting-started/) and [monorepo directory guidance](https://docs.codemagic.io/getting-started/adding-apps/).
 
@@ -11,7 +11,7 @@ Codemagic reads `codemagic.yaml` **from the repository root**, even though apps 
 | `quality-checks` | root | Static checks, protocol tests, Flutter analyze/tests |
 | `mobile-android-debug` | `apps/mobile` | Flutter Android debug APK |
 | `mobile-android-profile` | `apps/mobile` | Flutter Android profile APK |
-| `mobile-android-release` | `apps/mobile` | Flutter Android release AAB |
+| `mobile-android-release` | `apps/mobile` | **Manual, real:** upload-key-signed AAB, optional draft upload to a Play testing track ([runbook](ANDROID_PLAY_CODEMAGIC.md)) |
 | `mobile-ios-simulator` | `apps/mobile` | Unsigned iOS simulator/debug build |
 | `mobile-ios-adhoc` | `apps/mobile` | Signed Ad Hoc distribution IPA |
 | `mobile-ios-testflight` | `apps/mobile` | **Manual, real:** signed IPA uploaded for internal TestFlight ([runbook](IOS_TESTFLIGHT_CODEMAGIC.md)) |
@@ -20,9 +20,9 @@ Codemagic reads `codemagic.yaml` **from the repository root**, even though apps 
 | `watchos-simulator` | `apps/watch_os` | Standalone XcodeGen SwiftUI simulator proof |
 | `watchos-companion-release` | `apps/mobile` | Intended embedded watchOS/iOS companion archive; **blocked** |
 
-### Why the remaining 10 mobile/watch templates intentionally exit with failure
+### Why the remaining 9 mobile/watch templates intentionally exit with failure
 
-Codemagic's manual Start new build can select a workflow even without an automatic `triggering` block. If a workflow only printed “hello,” it might be marked successful without compiling anything. Each app/watch stub prints **TEMPLATE ONLY** and `exit 1` to prevent false release confidence. Replace these guards with validated build commands and artifacts before claiming an app build. Templates have no `publishing`, signing or credential group. **`mobile-ios-testflight` and the two Supabase workflows are different:** the iOS job signs and uploads for internal TestFlight only when started by hand, and the Supabase jobs use a project-bound protected Codemagic group and can write only after an explicit `deploy` input and exact project-ref confirmation. See [operator guide](SUPABASE_CODEMAGIC_DEPLOY.md); never trigger them automatically.
+Codemagic's manual Start new build can select a workflow even without an automatic `triggering` block. If a workflow only printed “hello,” it might be marked successful without compiling anything. Each app/watch stub prints **TEMPLATE ONLY** and `exit 1` to prevent false release confidence. Replace these guards with validated build commands and artifacts before claiming an app build. Templates have no `publishing`, signing or credential group. **`mobile-ios-testflight`, `mobile-android-release` and the two Supabase workflows are different:** the iOS job signs and uploads for internal TestFlight only when started by hand, the Android job signs an AAB and uploads it only as a draft to a testing track, and the Supabase jobs use a project-bound protected Codemagic group and can write only after an explicit `deploy` input and exact project-ref confirmation. See [operator guide](SUPABASE_CODEMAGIC_DEPLOY.md); never trigger them automatically.
 
 ## Manual Supabase workflows
 

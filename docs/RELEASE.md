@@ -11,9 +11,9 @@
 - Watch iOS embedding, companion bundle identifiers, signing, TestFlight archive/physical pairing and watch-only source experiment must not be confused.
 - Wear OS uses final app identity/signing, Play Console declarations and physical round-watch layout tests; package IDs in scaffolding are placeholders.
 - Keep FlutterWatch custom toolchain out of stable builds; experimental comparison only.
-- **Versioning:** `version:` in `apps/mobile/pubspec.yaml` is the default user-visible version name; bump it in a PR. The manual TestFlight job takes optional `version_name` and `build_number` inputs and, on `AUTO`, uses the pubspec version and the latest App Store Connect build plus one ([details](IOS_TESTFLIGHT_CODEMAGIC.md#version-name-and-build-number)). Android has no release job yet, so its `versionCode` strategy (latest Google Play build plus one) is still open in issue #49.
+- **Versioning:** `version:` in `apps/mobile/pubspec.yaml` is the default user-visible version name; bump it in a PR. The manual TestFlight job takes optional `version_name` and `build_number` inputs and, on `AUTO`, uses the pubspec version and the latest App Store Connect build plus one ([details](IOS_TESTFLIGHT_CODEMAGIC.md#version-name-and-build-number)). The manual Android Play job does the same with the latest Google Play versionCode plus one ([details](ANDROID_PLAY_CODEMAGIC.md#version-name-and-versioncode)).
 
-**Controlled backend deployment pipeline:** Codemagic now has [two manual Supabase jobs for database migrations and Edge Functions](SUPABASE_CODEMAGIC_DEPLOY.md), with preview/deploy inputs, project-bound protected credentials, explicit target confirmation and operator acceptance. The existence of these workflows is **not evidence of any hosted deployment**. Ten app/watch Codemagic builds remain templates; the manual [`mobile-ios-testflight` job](IOS_TESTFLIGHT_CODEMAGIC.md) uploads for internal TestFlight testing only and is not a release.
+**Controlled backend deployment pipeline:** Codemagic now has [two manual Supabase jobs for database migrations and Edge Functions](SUPABASE_CODEMAGIC_DEPLOY.md), with preview/deploy inputs, project-bound protected credentials, explicit target confirmation and operator acceptance. The existence of these workflows is **not evidence of any hosted deployment**. Nine app/watch Codemagic builds remain templates; the manual [`mobile-ios-testflight` job](IOS_TESTFLIGHT_CODEMAGIC.md) uploads for internal TestFlight testing only and the manual [`mobile-android-release` job](ANDROID_PLAY_CODEMAGIC.md) uploads only drafts to Play testing tracks. Neither is a release.
 
 ## P2-08 immediate release blockers
 
@@ -32,7 +32,7 @@ Track evidence in [P2-08 export validation](implementation/phase-2/p2-08-workout
 Implemented in source, **not released or device-verified**. Evidence and unrun checks: [p3-01](implementation/phase-3/p3-01-daily-health-summary.md).
 
 - **Apple signing, before the next TestFlight build:** enable the HealthKit capability on the App ID in the Apple developer portal and regenerate the App Store provisioning profile used by the Codemagic TestFlight job. The app now ships a HealthKit entitlement, so signing is expected to fail without this. Not done.
-- **Privacy policy live (issue #52)** and wired to the Health Connect rationale screen (currently a `TODO(#52)` that opens the app). Not done.
+- **Privacy policy live (issue #52):** the Health Connect rationale screen now opens `https://beyondrep.in/privacy` (not device-tested). The page is still marked Draft and must be final before the Health apps declaration. Not done.
 - **Store declarations:** App Store privacy labels; Google Play Data Safety form and Health Connect permissions declaration. Not done.
 - **Builds:** the first Android debug APK build happens in GitHub Actions on the PR (not run locally); no Xcode build has been run, and the hand-edited Runner project and entitlements are unverified in Xcode.
 - **Manual device matrix (all not run):**
