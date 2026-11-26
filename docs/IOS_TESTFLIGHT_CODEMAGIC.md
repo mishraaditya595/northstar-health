@@ -68,8 +68,19 @@ The `+N` part of the pubspec version is not used for TestFlight builds. To chang
 2. When the build finishes, App Store Connect processes the IPA (usually 5–30 minutes). Internal testers then get it in the TestFlight app.
 3. Record the commit SHA, version name, build number (printed by the resolve step) and outcome in the P2-08 evidence before describing the build anywhere.
 
+## Apple Watch app
+
+The watch target is added to `Runner.xcodeproj` by `tool/embed_watch_target.rb` (see `apps/watch_os/README.md`); the sources stay in `apps/watch_os`. Owner steps:
+
+1. In Apple Developer, create the App ID `in.beyondrep.app.watchkitapp` (you may tick HealthKit now; the watch does not use it until stage 4).
+2. Run `mobile-ios-testflight` as above. Codemagic's automatic signing is expected to cover the watch App ID that extends the app's ID. **This is unverified until the first run.**
+3. **If the build fails on watch signing**, create an App Store provisioning profile for `in.beyondrep.app.watchkitapp`, upload it to Codemagic code signing identities as `beyondrep_watch_app_store`, and change the job's `environment` to `ios_signing: provisioning_profiles: [beyondrep_app_store, beyondrep_watch_app_store]` with `certificates: [apple_distribution]` (the iPhone profile keeps its existing identity name). Reference profiles by name only; never commit them.
+4. On the iPhone, install from TestFlight, open the Watch app, find BeyondRep and tap Install.
+
+The watch app has no app icon yet; if App Store Connect rejects the upload for a missing watch icon, add an asset catalog to the watch target before the next run.
+
 ## Known limits
 
 - The Health tab reads sleep, steps, resting heart rate and weight from HealthKit (read-only) and ships a HealthKit entitlement, so the App ID capability and regenerated profile above are required. It is not yet device-verified.
-- No Apple Watch companion is embedded.
+- The build embeds the BeyondRep Apple Watch app (`in.beyondrep.app.watchkitapp`), which shows a read-only glance of plans, readiness, sleep, resting heart rate, HRV and steps that the phone sends. It has no workout recording and no HealthKit access yet. It has never been installed on a watch, and signing it through this job is unverified until the first run (see "Apple Watch app" below).
 - External TestFlight testing needs Beta App Review, a privacy policy URL and App Privacy answers. It is deliberately not enabled here.

@@ -226,6 +226,10 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: in.beyondrep.app
+        # The embedded Apple Watch app (in.beyondrep.app.watchkitapp) is signed
+        # by the same automatic signing; unverified until the first run. If that
+        # run fails on watch signing, use the fallback in
+        # docs/IOS_TESTFLIGHT_CODEMAGIC.md (uploaded watch profile) instead.
       groups:
         - ns_mobile_supabase_public
       vars:

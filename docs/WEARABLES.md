@@ -1,6 +1,6 @@
 # BeyondRep watch architecture: watchOS and Wear OS
 
-**Status:** Apple Watch companion in progress per [ADR-0012](adr/0012-apple-watch-companion.md) (contracts and watch core in source, no UI yet); Wear OS deferred. Native SwiftUI/Wear OS non-recording UI scaffolds exist under `apps/watch_os/` and `apps/wear_os/`. Real workout sessions, pairing, native HealthKit/Health Services and watch-to-phone sync remain unimplemented. Based on the attached “BeyondRep — Flutter Smartwatch Development Research” (23 October 2026). Revalidate current third-party compatibility immediately before any spike.
+**Status:** Apple Watch companion in progress per [ADR-0012](adr/0012-apple-watch-companion.md) (contracts, watch core, a read-only glance and the embedded companion target in source, none device-verified); Wear OS deferred. Native SwiftUI/Wear OS non-recording UI scaffolds exist under `apps/watch_os/` and `apps/wear_os/`. Real workout sessions, pairing, native HealthKit/Health Services and watch-to-phone sync remain unimplemented. Based on the attached “BeyondRep — Flutter Smartwatch Development Research” (23 October 2026). Revalidate current third-party compatibility immediately before any spike.
 
 ## Separate the three capabilities
 
@@ -49,7 +49,7 @@ The watch owns its **recording session and local pending journal**, not the mobi
 The attached research is a feasibility study, not a built watch prototype. Its custom watchOS engine compatibility, memory figures and supported device list were reported from maintainers, not independently measured. See research reference: https://github.com/flutterwatch/flutter-watchos and official https://developer.android.com/health-and-fitness/health-services/active-data and https://developer.apple.com/documentation/healthkit/running-workout-sessions.
 
 ## Repository entry points
-- `apps/watch_os/Sources/`: SwiftUI UI preview, XcodeGen watch compile specification in `apps/watch_os/project.yml`. **No embedded iPhone companion target yet**. Required for release.
+- `apps/watch_os/Sources/`: SwiftUI UI preview, XcodeGen watch compile specification in `apps/watch_os/project.yml`. The target is embedded in `apps/mobile/ios/Runner.xcodeproj` by `tool/embed_watch_target.rb` (stage 3, built unsigned in CI, signing and device pairing not verified). Required for release.
 - `apps/wear_os/app/`: Kotlin/Compose watch scaffold with watch manifest and independent Gradle build.
 - `contracts/workout_sync/v1/`: versioned language-neutral schema and fictional event fixtures; real serializers not implemented.
 - `experiments/`: evaluated only; no Flutter watch runtime committed into stable builds.
