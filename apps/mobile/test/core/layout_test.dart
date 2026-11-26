@@ -146,6 +146,73 @@ void main() {
     },
   );
 
+  testWidgets(
+    'NsListDetail does not push over a route that covers it when narrowed',
+    (tester) async {
+      final collapsed = <String>[];
+      _size(tester, 1194, 834);
+      final router = GoRouter(
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => Scaffold(
+              body: Builder(
+                builder: (context) => NsListDetail(
+                  list: TextButton(
+                    onPressed: () => context.push('/other'),
+                    child: const Text('go other'),
+                  ),
+                  detail: const Text('DETAIL'),
+                  emptyDetail: const Text('EMPTY'),
+                  selectedRoute: '/x/1',
+                  onCollapsed: collapsed.add,
+                ),
+              ),
+            ),
+          ),
+          GoRoute(path: '/other', builder: (_, _) => const Text('OTHER')),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.tap(find.text('go other'));
+      await tester.pumpAndSettle();
+      _size(tester, 507, 1024);
+      await tester.pumpAndSettle();
+      expect(collapsed, isEmpty);
+      expect(router.state.uri.path, '/other');
+    },
+  );
+
+  testWidgets('NsListDetail keeps the list scroll position across 840', (
+    tester,
+  ) async {
+    _size(tester, 1194, 834);
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: NsListDetail(
+            list: ListView.builder(
+              controller: controller,
+              itemCount: 100,
+              itemBuilder: (_, i) => SizedBox(height: 60, child: Text('r$i')),
+            ),
+            detail: null,
+            emptyDetail: const Text('EMPTY'),
+          ),
+        ),
+      ),
+    );
+    controller.jumpTo(600);
+    await tester.pump();
+    _size(tester, 507, 1024);
+    await tester.pump();
+    await tester.pump();
+    expect(controller.offset, 600);
+  });
+
   testWidgets('openListItem selects when wide and pushes when narrow', (
     tester,
   ) async {

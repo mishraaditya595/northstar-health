@@ -148,6 +148,7 @@ class NsListDetail extends StatefulWidget {
 
 class _NsListDetailState extends State<NsListDetail> {
   bool? _wasWide;
+  final _listKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -155,15 +156,20 @@ class _NsListDetailState extends State<NsListDetail> {
     final route = widget.selectedRoute;
     if (_wasWide == true && !wide && route != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) widget.onCollapsed?.call(route);
+        // A page pushed over this one (a live workout, say) must stay on top.
+        if (mounted && (ModalRoute.of(context)?.isCurrent ?? true)) {
+          widget.onCollapsed?.call(route);
+        }
       });
     }
     _wasWide = wide;
-    if (!wide) return widget.list;
+    // Same key in both layouts so the list keeps its scroll position.
+    final list = KeyedSubtree(key: _listKey, child: widget.list);
+    if (!wide) return list;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(width: widget.listWidth, child: widget.list),
+        SizedBox(width: widget.listWidth, child: list),
         const VerticalDivider(width: 1),
         Expanded(child: widget.detail ?? widget.emptyDetail),
       ],
