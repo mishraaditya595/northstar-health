@@ -30,6 +30,10 @@ class BeyondRepPalette {
   static const amberLight = Color(0xFF896123);
   static const amberSoftDark = Color(0xFF473625);
   static const amberSoftLight = Color(0xFFFFF2DB);
+  static const redDark = Color(0xFFFF8587);
+  static const redLight = Color(0xFF9F3041);
+  static const redSoftDark = Color(0xFF47262A);
+  static const redSoftLight = Color(0xFFFBE4E6);
 }
 
 class BeyondRepTheme {

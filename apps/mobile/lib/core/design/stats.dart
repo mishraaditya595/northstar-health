@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'beyondrep_theme.dart';
+import 'info_button.dart';
 
 /// Direction of a [StatTile] trend; colours come from the theme, not the call.
 enum NsTrend { up, down, flat }
@@ -15,8 +16,16 @@ class StatTile extends StatelessWidget {
     this.trendLabel,
     this.caption,
     this.onTap,
+    this.icon,
+    this.iconColor,
+    this.onInfo,
+    this.infoLabel,
+    this.minHeight,
     super.key,
-  });
+  }) : assert(
+         onInfo == null || infoLabel != null,
+         'infoLabel is required with onInfo',
+       );
 
   final String label;
   final String value;
@@ -27,6 +36,17 @@ class StatTile extends StatelessWidget {
 
   /// Shows a chevron and makes the tile tappable.
   final VoidCallback? onTap;
+
+  /// Glyph shown left of the label.
+  final IconData? icon;
+  final Color? iconColor;
+
+  /// Shows an info button right of the label; [infoLabel] is its semantics.
+  final VoidCallback? onInfo;
+  final String? infoLabel;
+
+  /// Lower bound for the tile height (equal-height grids).
+  final double? minHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -46,76 +66,85 @@ class StatTile extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: minHeight ?? 0),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    if (icon != null) ...[
+                      Icon(icon, size: 18, color: iconColor ?? muted),
+                      const SizedBox(width: 6),
+                    ],
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
-                  ),
-                  if (onTap != null) Icon(Icons.chevron_right, color: muted),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.end,
-                spacing: 6,
-                children: [
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(text: value),
-                        if (unit != null)
-                          TextSpan(
-                            text: ' $unit',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                      ],
-                    ),
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -1,
-                    ),
-                  ),
-                  if (trend != null && trendLabel != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 3),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                    if (onInfo != null)
+                      NsInfoButton(label: infoLabel!, onPressed: onInfo!),
+                    if (onTap != null) Icon(Icons.chevron_right, color: muted),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.end,
+                  spacing: 6,
+                  children: [
+                    Text.rich(
+                      TextSpan(
                         children: [
-                          Icon(trendIcon, size: 16, color: trendColor),
-                          const SizedBox(width: 3),
-                          Text(
-                            trendLabel!,
-                            style: TextStyle(
-                              color: trendColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
+                          TextSpan(text: value),
+                          if (unit != null)
+                            TextSpan(
+                              text: ' $unit',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
-                          ),
                         ],
                       ),
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -1,
+                      ),
                     ),
-                ],
-              ),
-              if (caption != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  caption!,
-                  style: theme.textTheme.bodySmall?.copyWith(color: muted),
+                    if (trend != null && trendLabel != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 3),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(trendIcon, size: 16, color: trendColor),
+                            const SizedBox(width: 3),
+                            Text(
+                              trendLabel!,
+                              style: TextStyle(
+                                color: trendColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
+                if (caption != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    caption!,
+                    style: theme.textTheme.bodySmall?.copyWith(color: muted),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

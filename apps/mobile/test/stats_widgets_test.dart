@@ -39,6 +39,31 @@ void main() {
     expect(find.byIcon(Icons.chevron_right), findsOneWidget);
   });
 
+  testWidgets('StatTile info button is separate from the tile tap', (
+    tester,
+  ) async {
+    var taps = 0;
+    var infos = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatTile(
+            label: 'Steps',
+            value: '6,000',
+            icon: Icons.directions_walk,
+            onTap: () => taps++,
+            onInfo: () => infos++,
+            infoLabel: 'About Steps',
+          ),
+        ),
+      ),
+    );
+    expect(find.byIcon(Icons.directions_walk), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('About Steps'));
+    expect(infos, 1);
+    expect(taps, 0);
+  });
+
   testWidgets('month grid starts on the right weekday and marks days', (
     tester,
   ) async {
