@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:beyondrep/features/catalog/data/catalog_repository.dart';
 
-import 'package:beyondrep/features/workouts/data/workout_entities.dart';
 import 'package:beyondrep/objectbox.g.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -101,7 +100,7 @@ void main() {
       testWidgets('your program with done, missed and upcoming days', (
         tester,
       ) async {
-        final uuid = await _seedStatuses(store);
+        final uuid = seedStatusProgram(store);
         await open(
           tester,
           '/train/program/$uuid',
@@ -187,7 +186,7 @@ void main() {
     });
 
     testWidgets('Your program day tags are announced in words', (tester) async {
-      final uuid = await _seedStatuses(store);
+      final uuid = seedStatusProgram(store);
       await open(
         tester,
         '/train/program/$uuid',
@@ -226,29 +225,4 @@ void main() {
       expect(find.bySemanticsLabel('Clear'), findsOneWidget);
     });
   });
-}
-
-/// Program activated Monday 2026-11-23, Monday finished: with "now" on
-/// Thursday the week has one done, one missed and one upcoming day.
-Future<String> _seedStatuses(Store store) async {
-  final uuid = seedLibraryProgram(
-    store,
-    'prog.three',
-    firstDay: 1,
-    activatedOn: DateTime(2026, 11, 23),
-  );
-  store.box<WorkoutSessionEntity>().put(
-    WorkoutSessionEntity(
-      uuid: 'finished-monday',
-      name: 'Done',
-      status: 'completed',
-      startedAtMs: 1,
-      completedAtMs: 2,
-      originalOffsetMinutes: 0,
-      updatedAtMs: 2,
-      programUuid: uuid,
-      programDayLocalDate: '2026-11-23',
-    ),
-  );
-  return uuid;
 }

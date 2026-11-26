@@ -68,6 +68,31 @@ String seedLibraryProgram(
       .uuid;
 }
 
+/// Program activated Monday 2026-11-23, Monday finished: with "now" on
+/// Thursday the week has one done, one missed and one upcoming day.
+String seedStatusProgram(Store store) {
+  final uuid = seedLibraryProgram(
+    store,
+    'prog.three',
+    firstDay: 1,
+    activatedOn: DateTime(2026, 11, 23),
+  );
+  store.box<WorkoutSessionEntity>().put(
+    WorkoutSessionEntity(
+      uuid: 'finished-monday',
+      name: 'Done',
+      status: 'completed',
+      startedAtMs: 1,
+      completedAtMs: 2,
+      originalOffsetMinutes: 0,
+      updatedAtMs: 2,
+      programUuid: uuid,
+      programDayLocalDate: '2026-11-23',
+    ),
+  );
+  return uuid;
+}
+
 /// Pumps any store-backed library screen at [location] inside the app's
 /// adaptive shell (tab bar on a phone, rail on a tablet).
 Future<void> pumpLibraryScreen(
