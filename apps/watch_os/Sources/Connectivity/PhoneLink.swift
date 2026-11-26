@@ -30,10 +30,20 @@ final class PhoneLink: NSObject, WCSessionDelegate {
     }
 
     func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
-        Task { @MainActor [weak model] in model?.receive(userInfo: userInfo) }
+        onMain { $0.receive(userInfo: userInfo) }
     }
 
     private func deliver(context: [String: Any]) {
-        Task { @MainActor [weak model] in model?.receive(applicationContext: context) }
+        onMain { $0.receive(applicationContext: context) }
+    }
+
+    /// Callbacks arrive on a background queue. One FIFO hop to the main queue
+    /// keeps them in the order WatchConnectivity delivered them, which
+    /// separate Tasks would not.
+    private func onMain(_ work: @escaping @MainActor (AppModel) -> Void) {
+        DispatchQueue.main.async { [weak model] in
+            guard let model else { return }
+            MainActor.assumeIsolated { work(model) }
+        }
     }
 }

@@ -8,6 +8,9 @@ public final class PhoneInbox {
     private let journal: WatchJournal
     /// Entries that could not be decoded or did not match their key (for tests).
     public private(set) var rejectedCount = 0
+    /// Well-formed entries that were not applied because a newer binding or a
+    /// later clear for the account is already stored (for tests).
+    public private(set) var ignoredCount = 0
 
     public init(journal: WatchJournal) {
         self.journal = journal
@@ -43,12 +46,44 @@ public final class PhoneInbox {
     private func apply(_ message: WatchMessage) throws {
         switch message.body {
         case .accountBinding:
-            if let current = try journal.binding(), current.accountKey != message.accountKey {
-                // Unsent workouts of the previous account stay (wipeUnsent: false).
-                try journal.clearAccount(current.accountKey, wipeUnsent: false)
+            // Application context and user info are separate, unordered
+            // channels, and the watch replays the last context on launch, so
+            // only send times decide what is current.
+            guard let sentAt = WatchTimestamp.milliseconds(message.sentAtUtc) else {
+                rejectedCount += 1
+                return
+            }
+            if let clearedAt = try journal.clearedAt(message.accountKey), sentAt <= clearedAt {
+                ignoredCount += 1  // sent before the account was cleared
+                return
+            }
+            if let current = try journal.bindingState() {
+                if current.messageId == message.messageId.lowercased() { return }  // already applied
+                if sentAt < current.sentAtMs {
+                    ignoredCount += 1  // older than the binding in place
+                    return
+                }
+                if current.accountKey != message.accountKey {
+                    // Unsent workouts of the previous account stay (wipeUnsent: false).
+                    try journal.clearAccount(current.accountKey, wipeUnsent: false)
+                }
             }
             try journal.saveBinding(message)
         case .accountCleared(let wipeUnsent):
+            guard let sentAt = WatchTimestamp.milliseconds(message.sentAtUtc) else {
+                rejectedCount += 1
+                return
+            }
+            try journal.recordCleared(message.accountKey, sentAtMs: sentAt)
+            // A clear older than the binding in place is late: that binding is
+            // newer, so it stays. Account deletion always applies, because a
+            // deleted account is never bound again.
+            if !wipeUnsent, let current = try journal.bindingState(),
+                current.accountKey == message.accountKey, sentAt < current.sentAtMs
+            {
+                ignoredCount += 1
+                return
+            }
             try journal.clearAccount(message.accountKey, wipeUnsent: wipeUnsent)
         case .plansSnapshot:
             guard try journal.binding()?.accountKey == message.accountKey else { return }

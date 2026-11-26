@@ -47,13 +47,16 @@ public enum GlanceState: Equatable {
     public static let refreshCaption = "Open BeyondRep on your iPhone to refresh"
 
     public static func make(journal: WatchJournal, now: Date, timeZone: TimeZone, locale: Locale) throws -> GlanceState {
-        guard let binding = try journal.binding() else { return .notPaired }
-        let key = binding.accountKey
-
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
         let c = calendar.dateComponents([.year, .month, .day], from: now)
         let today = String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
+
+        // Health values end at local midnight (ADR-0012), also when nothing
+        // is paired.
+        try journal.purgeHealth(exceptLocalDate: today)
+        guard let binding = try journal.binding() else { return .notPaired }
+        let key = binding.accountKey
 
         var plans: [PlanRow] = []
         var todayRow: PlanRow?
@@ -67,6 +70,8 @@ public enum GlanceState: Equatable {
                 let id = t["plan_id"] as? String, let label = t["label"] as? String
             {
                 todayRow = PlanRow(id: id, name: label)
+                // Shown as Today, so not listed again below.
+                plans.removeAll { $0.id == id }
             }
         }
 
@@ -100,11 +105,7 @@ public enum GlanceState: Equatable {
     }
 
     private static func parseDate(_ text: String) -> Date? {
-        let plain = ISO8601DateFormatter()
-        if let d = plain.date(from: text) { return d }
-        let fractional = ISO8601DateFormatter()
-        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return fractional.date(from: text)
+        WatchTimestamp.date(text)
     }
 
     private static func tiles(_ raw: [String: Any]?, locale: Locale) -> [GlanceTile] {
