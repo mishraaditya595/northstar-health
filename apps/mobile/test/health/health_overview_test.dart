@@ -180,6 +180,7 @@ void main() {
       final activity =
           (overview.activity as SectionData<ActivityOverview>).value;
       expect(activity.stepsToday, 900);
+      expect(activity.stepsSource, 'Synthetic phone');
       expect(activity.stepsDaily, hasLength(8));
       expect(activity.stepsWeekAverage, 6600);
       expect(activity.activeEnergyToday, isNull);
@@ -245,6 +246,27 @@ void main() {
       fake.seriesCalls.where((c) => c.$1 == HealthSeriesType.heartRate),
       isEmpty,
     );
+  });
+
+  test('steps from two sources today have no single source', () async {
+    fake.totals[HealthTotalType.steps] = [
+      (
+        from: DateTime(2026, 11, 24, 6),
+        to: DateTime(2026, 11, 24, 7),
+        value: 500,
+        source: 'Synthetic phone',
+      ),
+      (
+        from: DateTime(2026, 11, 24, 7),
+        to: DateTime(2026, 11, 24, 7, 30),
+        value: 400,
+        source: 'Synthetic watch',
+      ),
+    ];
+    final c = container();
+    final overview = (await c.read(healthOverviewProvider.future))!;
+    final activity = (overview.activity as SectionData<ActivityOverview>).value;
+    expect(activity.stepsSource, isNull);
   });
 
   group('steps today of 0', () {

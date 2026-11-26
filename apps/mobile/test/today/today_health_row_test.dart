@@ -171,12 +171,61 @@ void main() {
     expect(find.text('Ended 6:31 AM'), findsOneWidget);
     expect(find.text('As of 7:42 AM'), findsOneWidget);
     expect(find.text('None yet today'), findsOneWidget);
-    expect(find.text('From Apple Health'), findsOneWidget);
-    expect(find.textContaining('Apple Watch'), findsNothing);
+    expect(find.text('From Apple Health · Apple Watch'), findsOneWidget);
     expect(reader.seriesCalls, isEmpty);
     expect(reader.sleepCalls, isEmpty);
     expect(reader.totalsCalls, isEmpty);
     expect(overviewController.refreshIfStaleCalls, 1);
+  });
+
+  testWidgets('the footer names no device when sleep and steps differ', (
+    tester,
+  ) async {
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      overviewController: FakeHealthOverviewController(
+        overview(
+          activity: SectionData(
+            ActivityOverview(
+              stepsToday: 8214,
+              stepsDaily: fullActivity.stepsDaily,
+              activeEnergyToday: null,
+              activeEnergyDaily: const [],
+              stepsWeekAverage: 9480,
+              stepsSource: 'Synthetic phone',
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('From Apple Health'), findsOneWidget);
+  });
+
+  testWidgets('the footer names no device that is the platform name', (
+    tester,
+  ) async {
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      overviewController: FakeHealthOverviewController(
+        overview(
+          platform: HealthPlatformKind.healthConnect,
+          sleep: SectionData(sleepOverview(night(source: 'Health Connect'))),
+          activity: SectionData(
+            ActivityOverview(
+              stepsToday: 8214,
+              stepsDaily: fullActivity.stepsDaily,
+              activeEnergyToday: null,
+              activeEnergyDaily: const [],
+              stepsWeekAverage: 9480,
+              stepsSource: 'Health Connect',
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('From Health Connect'), findsOneWidget);
   });
 
   testWidgets('the footer names Health Connect on Android', (tester) async {
@@ -187,7 +236,7 @@ void main() {
         overview(platform: HealthPlatformKind.healthConnect),
       ),
     );
-    expect(find.text('From Health Connect'), findsOneWidget);
+    expect(find.textContaining('From Health Connect'), findsOneWidget);
   });
 
   testWidgets('gaps show a dash and a reason, never 0', (tester) async {

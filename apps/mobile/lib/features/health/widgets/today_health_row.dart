@@ -133,7 +133,7 @@ class _TodayHealthRowState extends ConsumerState<TodayHealthRow>
           ],
         const SizedBox(height: 10),
         Text(
-          'From ${healthPlatformName(overview.platform)}',
+          _footer(overview),
           style: theme.textTheme.bodySmall?.copyWith(color: theme.mutedColor),
         ),
       ],
@@ -172,6 +172,23 @@ class _TodayHealthRowState extends ConsumerState<TodayHealthRow>
   }
 
   /// Not allowed -> Manage, Couldn't read -> Try again, never requested ->
+  /// "From Apple Health", plus the device when sleep and steps both came from
+  /// one source that is not the platform itself.
+  String _footer(HealthOverview o) {
+    final platform = healthPlatformName(o.platform);
+    final sleep = switch (o.sleep) {
+      SectionData(:final value) => value.lastNight.source,
+      _ => null,
+    };
+    final steps = switch (o.activity) {
+      SectionData(:final value) => value.stepsSource,
+      _ => null,
+    };
+    return sleep != null && sleep == steps && sleep != platform
+        ? 'From $platform · $sleep'
+        : 'From $platform';
+  }
+
   /// Allow more data; none otherwise.
   VoidCallback? _actionFor(MetricGap? gap, bool busy) => switch (gap) {
     MetricGap.notAllowed => guarded(busy, (c) => c.manage()),

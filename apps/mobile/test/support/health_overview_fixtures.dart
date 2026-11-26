@@ -19,13 +19,14 @@ SleepNight night({
   int light = 216,
   int rem = 93,
   int awake = 22,
+  String source = 'Apple Watch',
 }) {
   final d = date ?? DateTime(2026, 11, 24);
   return SleepNight(
     date: d,
     start: DateTime(d.year, d.month, d.day - 1, 23, 48),
     end: DateTime(d.year, d.month, d.day, 6, 31),
-    source: 'Apple Watch',
+    source: source,
     segments: const [],
     asleep: Duration(minutes: asleep),
     deep: Duration(minutes: deep),
@@ -75,6 +76,7 @@ final fullActivity = ActivityOverview(
   activeEnergyToday: 412,
   activeEnergyDaily: daily(30, (i) => 400),
   stepsWeekAverage: 9480,
+  stepsSource: 'Apple Watch',
 );
 
 final fullBody = BodyOverview(

@@ -103,6 +103,7 @@ class ActivityOverview {
     required this.stepsWeekAverage,
     this.stepsGap,
     this.energyGap,
+    this.stepsSource,
   });
 
   final double? stepsToday;
@@ -115,6 +116,9 @@ class ActivityOverview {
 
   /// As on [HeartOverview]: why a metric could not be read.
   final MetricGap? stepsGap, energyGap;
+
+  /// The one source name behind today's steps, or null when none or several.
+  final String? stepsSource;
 }
 
 class BodyOverview {
@@ -587,6 +591,10 @@ Future<HealthOverview> _read(
     final energy = hourlyToDaily(_list(energyResult));
     if (steps.isEmpty && energy.isEmpty) return null;
     final stepsToday = _valueOn(steps, today);
+    final todaySources = {
+      for (final sample in _list(stepsResult))
+        if (dayOf(sample.from) == today) sample.source,
+    };
     return ActivityOverview(
       // iOS reports no steps as 0; Phase 3 shows that as no data.
       stepsToday: platform == HealthPlatformKind.appleHealth && stepsToday == 0
@@ -602,6 +610,7 @@ Future<HealthOverview> _read(
       ).average,
       stepsGap: metricGapOf(stepsResult),
       energyGap: metricGapOf(energyResult),
+      stepsSource: todaySources.length == 1 ? todaySources.first : null,
     );
   });
 
