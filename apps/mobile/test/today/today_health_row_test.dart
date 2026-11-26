@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/core/design/charts/score_ring.dart';
@@ -31,6 +33,7 @@ Future<void> pumpRow(
   double width = 390,
   Brightness brightness = Brightness.dark,
   List<WorkoutSessionRecord> sessions = const [],
+  Future<WorkoutHistorySnapshot> Function()? history,
 }) async {
   final router = GoRouter(
     routes: [
@@ -72,7 +75,9 @@ Future<void> pumpRow(
         healthClockProvider.overrideWithValue(() => now),
         localNowProvider.overrideWithValue(now),
         completedWorkoutHistoryProvider.overrideWith(
-          (ref) async => WorkoutHistorySnapshot(sessions: sessions),
+          (ref) =>
+              history?.call() ??
+              Future.value(WorkoutHistorySnapshot(sessions: sessions)),
         ),
       ],
       child: MaterialApp.router(
@@ -176,6 +181,29 @@ void main() {
     expect(reader.sleepCalls, isEmpty);
     expect(reader.totalsCalls, isEmpty);
     expect(overviewController.refreshIfStaleCalls, 1);
+  });
+
+  testWidgets('Workouts shows a dash and no claim while history loads', (
+    tester,
+  ) async {
+    final never = Completer<WorkoutHistorySnapshot>();
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      history: () => never.future,
+    );
+    expect(find.text('Workouts'), findsOneWidget);
+    expect(find.text('None yet today'), findsNothing);
+  });
+
+  testWidgets('Workouts shows no claim after a history error', (tester) async {
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      history: () => Future.error(StateError('synthetic')),
+    );
+    expect(find.text('Workouts'), findsOneWidget);
+    expect(find.text('None yet today'), findsNothing);
   });
 
   testWidgets('the footer names no device when sleep and steps differ', (

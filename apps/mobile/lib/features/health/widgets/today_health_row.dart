@@ -82,8 +82,7 @@ class _TodayHealthRowState extends ConsumerState<TodayHealthRow>
     }
     final now = ref.watch(localNowProvider);
     final today = todaysReadiness(overview, now);
-    final sessions =
-        ref.watch(completedWorkoutHistoryProvider).value?.sessions ?? const [];
+    final sessions = ref.watch(completedWorkoutHistoryProvider).value?.sessions;
     final tiles = [
       sleepTile(overview),
       stepsTile(overview),

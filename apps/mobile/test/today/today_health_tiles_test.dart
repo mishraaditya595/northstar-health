@@ -155,6 +155,12 @@ void main() {
     expect(tile.caption, 'None yet today');
   });
 
+  test('workoutsTile with unknown history is a dash and no claim', () {
+    final tile = workoutsTile(null, DateTime(2026, 11, 24, 18));
+    expect(tile.value, '—');
+    expect(tile.caption, isNot('None yet today'));
+  });
+
   test('gap tiles keep Allow more data, Not allowed and Try again', () {
     String caption(MetricGap gap) =>
         stepsTile(overview(activity: SectionGap(gap))).caption;

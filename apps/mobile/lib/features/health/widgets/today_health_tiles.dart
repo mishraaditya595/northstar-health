@@ -157,11 +157,26 @@ TodayTile _restingHrData(
   );
 }
 
-/// Finished BeyondRep sessions on the local day of [localNow].
+/// Finished BeyondRep sessions on the local day of [localNow]. A null
+/// [completed] (history loading or failed) makes no claim about today.
 TodayTile workoutsTile(
-  List<WorkoutSessionRecord> completed,
+  List<WorkoutSessionRecord>? completed,
   DateTime localNow,
 ) {
+  if (completed == null) {
+    return (
+      label: 'Workouts',
+      icon: Icons.fitness_center,
+      value: '—',
+      unit: null,
+      caption: 'Finished today',
+      gap: null,
+      route: '/progress',
+      infoKey: null,
+      usual: null,
+      sleepTint: false,
+    );
+  }
   bool today(DateTime t) {
     final local = t.toLocal();
     return local.year == localNow.year &&
