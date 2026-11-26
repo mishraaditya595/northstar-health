@@ -819,7 +819,7 @@ void main() {
       expect(find.text('Synthetic three-day'), findsOneWidget);
       expect(find.text('Today: Synthetic push'), findsOneWidget);
       expect(find.text('Synthetic pull'), findsNothing);
-      expect(find.text('No plans yet'), findsOneWidget);
+      expect(find.text('No plans yet', skipOffstage: false), findsOneWidget);
     });
 
     testWidgets('a rest day reads Today: Rest day', (tester) async {
