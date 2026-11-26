@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../core/design/dialogs.dart';
 import '../../core/design/inputs.dart';
 import 'account_auth_controller.dart';
+import 'privacy_policy_link.dart';
 
 /// Initial authentication requires an online Supabase email OTP.
 /// No workout navigation is instantiated until secure owner binding succeeds.
@@ -261,6 +262,8 @@ class _AccountSignInPageState extends State<AccountSignInPage> {
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
+                          const SizedBox(height: 8),
+                          const Center(child: PrivacyPolicyLink()),
                         ],
                       ),
                     ),
