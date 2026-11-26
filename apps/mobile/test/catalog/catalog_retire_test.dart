@@ -85,6 +85,29 @@ void main() {
     expect(browsablePrograms(retiredProgram).map((p) => p.id), ['prog.six']);
   });
 
+  test('a program that references a retired template is not browsable', () {
+    // Defence in depth: the validator forbids it, but a snapshot that slipped
+    // through must not offer a program whose week uses a retired template.
+    final retiredPull = _with(
+      base,
+      templates: [
+        for (final t in base.templates) t.id == 'tpl.pull' ? _retire(t) : t,
+      ],
+    );
+    expect(browsablePrograms(retiredPull), isEmpty);
+    // A retired template no active program uses does not hide anything.
+    final retiredBig = _with(
+      base,
+      templates: [
+        for (final t in base.templates) t.id == 'tpl.old' ? _retire(t) : t,
+      ],
+    );
+    expect(browsablePrograms(retiredBig).map((p) => p.id), [
+      'prog.three',
+      'prog.six',
+    ]);
+  });
+
   test('a retired program-only template is still previewable', () {
     final retired = _with(
       base,

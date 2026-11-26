@@ -10,6 +10,7 @@ List<CatalogProgram> browsablePrograms(CatalogSnapshot snapshot) {
   bool loggable(String id) {
     final template = templates[id];
     return template != null &&
+        !template.retired &&
         template.exercises.every(
           (row) => loggableModes.contains(byId[row.exerciseId]?.mode),
         );

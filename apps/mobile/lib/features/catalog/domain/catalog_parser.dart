@@ -112,12 +112,13 @@ CatalogExercise _exercise(Object? value) {
   );
 }
 
-/// Optional `status` on templates and programs: missing means active.
+/// Optional `status` on templates and programs: missing or `active` is
+/// active. `retired`, and any value this build does not know, count as retired
+/// (not browsable): a future status must hide one item, not reject the whole
+/// snapshot. Exercises keep their strict check.
 bool _retired(Map<String, Object?> map) {
   final status = map['status'];
-  if (status == null || status == 'active') return false;
-  if (status == 'retired') return true;
-  throw const CatalogFormatException('shape');
+  return status != null && status != 'active';
 }
 
 CatalogTemplate _template(

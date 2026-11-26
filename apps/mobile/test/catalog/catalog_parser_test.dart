@@ -162,14 +162,27 @@ void main() {
       expect(parseCatalogSnapshot(json).templates.single.retired, isFalse);
     });
 
-    test('an unknown template or program status is rejected', () {
+    test('an unknown template or program status keeps the snapshot and hides '
+        'only that item', () {
       for (final key in ['templates', 'programs']) {
-        for (final bad in ['archived', 3, '']) {
+        for (final bad in ['archived', 3, '', 'Retired']) {
           final json = validSnapshot();
           ((json[key]! as List).first as Map<String, Object?>)['status'] = bad;
-          expectCode(json, 'shape');
+          final snapshot = parseCatalogSnapshot(json);
+          expect(snapshot.exercises, hasLength(2), reason: '$key $bad');
+          final item = key == 'templates'
+              ? snapshot.templates.single.retired
+              : snapshot.programs.single.retired;
+          expect(item, isTrue, reason: '$key $bad');
         }
       }
+    });
+
+    test('an unknown exercise status is still rejected', () {
+      final json = validSnapshot();
+      ((json['exercises']! as List).first as Map<String, Object?>)['status'] =
+          'archived';
+      expectCode(json, 'shape');
     });
 
     test('checksum mismatch', () {
