@@ -16,6 +16,7 @@ import '../workouts/domain/durations.dart';
 import '../workouts/domain/workout_library_models.dart';
 import '../workouts/domain/live_workout_engine.dart';
 import '../workouts/domain/workout_models.dart';
+import '../programs/application/program_providers.dart';
 import '../progress/workout_history_state.dart';
 import '../workouts/domain/workout_repository.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
@@ -56,6 +57,8 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
       action(ref.read(workoutActionsProvider));
       committed = true;
       ref.invalidate(activeWorkoutProvider);
+      // Finishing or discarding changes which program days are done.
+      ref.invalidate(programWeekProvider);
       if (leaveOnSuccess) {
         ref.invalidate(completedWorkoutHistoryProvider);
         // Re-query this account's ObjectBox blocked receipts after the

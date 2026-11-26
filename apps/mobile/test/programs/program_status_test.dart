@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:beyondrep/features/programs/domain/program_models.dart';
-import 'package:beyondrep/features/programs/domain/program_schedule.dart';
 import 'package:beyondrep/features/programs/domain/program_status.dart';
 import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 

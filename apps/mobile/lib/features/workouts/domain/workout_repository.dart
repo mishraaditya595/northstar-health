@@ -11,6 +11,11 @@ abstract interface class WorkoutRepository {
   WorkoutSessionRecord? getSession(String uuid);
   void addExercise(WorkoutExerciseRecord exercise);
 
+  /// Finished (completed, not deleted) sessions started for a day of
+  /// [programUuid], without exercises or sets. Enough to decide which program
+  /// days are done.
+  List<WorkoutSessionRecord> listProgramSessions(String programUuid);
+
   /// The caller's observed revision is mandatory for changing a set.
   /// An identical retry returns without a write, even if revision advanced.
   /// A changed stale command throws [WorkoutRevisionConflict].
