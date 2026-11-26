@@ -8,6 +8,7 @@ import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/features/health/domain/trend.dart';
 import 'package:beyondrep/features/health/health_page.dart';
+import 'package:beyondrep/features/health/widgets/readiness_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -412,5 +413,34 @@ void main() {
   ) async {
     await pump(tester, overview());
     expect(find.bySemanticsLabel('About Readiness'), findsOneWidget);
+  });
+
+  group('readinessReasons training load', () {
+    Readiness withRatio(double? ratio) => Readiness(
+      value: 70,
+      band: ReadinessBand.good,
+      parts: [
+        _part(ReadinessInput.sleep),
+        if (ratio != null) _part(ReadinessInput.trainingLoad),
+      ],
+      loadRatio: ratio,
+    );
+    final data = (ready() as SectionData<ReadinessOverview>).value;
+
+    test('adds training load above your usual when r is 1.4', () {
+      final text = readinessReasons(overview(), data, withRatio(1.4));
+      expect(text, endsWith('Slept 6h 12m · training load above your usual'));
+    });
+
+    test('says nothing at r 1.3 or without the part', () {
+      expect(
+        readinessReasons(overview(), data, withRatio(1.3)),
+        isNot(contains('training load')),
+      );
+      expect(
+        readinessReasons(overview(), data, withRatio(null)),
+        isNot(contains('training load')),
+      );
+    });
   });
 }

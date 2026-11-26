@@ -2,6 +2,7 @@ import 'package:beyondrep/features/health/domain/health_types.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/features/health/domain/sleep_nights.dart';
 import 'package:beyondrep/features/health/domain/sleep_score.dart';
+import 'package:beyondrep/features/health/domain/training_load.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 final today = DateTime(2026, 3, 10);
@@ -47,6 +48,7 @@ ReadinessResult score({
   List<SleepNight>? prior,
   List<DayValue> hrv = const [],
   List<DayValue> rhr = const [],
+  List<LoadSession> load = const [],
 }) => scoreReadiness(
   today: today,
   lastNight: lastNight,
@@ -54,9 +56,23 @@ ReadinessResult score({
   priorNights: prior ?? weekOf(450),
   hrvDaily: hrv,
   restingHrDaily: rhr,
+  loadSessions: load,
 );
 
 Readiness ready(ReadinessResult r) => (r as ReadinessReady).readiness;
+
+List<LoadSession> loadFor(double r) => [
+  (
+    start: DateTime(today.year, today.month, today.day - 20, 9),
+    minutes: 100 * (4 / r - 1),
+    intensity: 1.0,
+  ),
+  (
+    start: DateTime(today.year, today.month, today.day - 3, 9),
+    minutes: 100.0,
+    intensity: 1.0,
+  ),
+];
 
 void main() {
   group('baselineOf', () {
@@ -320,5 +336,41 @@ void main() {
         expect(readinessBandOf(value), band);
       });
     }
+  });
+
+  group('training load', () {
+    ReadinessResult withLoad(List<LoadSession> load) => score(
+      lastNight: nightOn(today, asleep: 450),
+      hrv: series(alternating(20, 40, 2), todayValue: 40),
+      rhr: series(alternating(20, 58, 1), todayValue: 58),
+      load: load,
+    );
+
+    test('no load sessions gives exactly the stage 1 score', () {
+      final plain = ready(withLoad(const []));
+      expect(
+        plain.parts.map((p) => p.input),
+        isNot(contains(ReadinessInput.trainingLoad)),
+      );
+      expect(plain.loadRatio, isNull);
+      final same = ready(
+        withLoad([(start: daysAgo(3), minutes: 60.0, intensity: 1.0)]),
+      );
+      expect(same.value, plain.value);
+    });
+
+    test('weights are HRV .40, RHR .25, sleep .25, debt .10, load .15 '
+        'rescaled', () {
+      final r = ready(withLoad(loadFor(1.0)));
+      double w(ReadinessInput i) =>
+          r.parts.firstWhere((p) => p.input == i).weight;
+      expect(w(ReadinessInput.hrv), closeTo(0.40 / 1.15, 1e-9));
+      expect(w(ReadinessInput.restingHr), closeTo(0.25 / 1.15, 1e-9));
+      expect(w(ReadinessInput.sleep), closeTo(0.25 / 1.15, 1e-9));
+      expect(w(ReadinessInput.sleepDebt), closeTo(0.10 / 1.15, 1e-9));
+      expect(w(ReadinessInput.trainingLoad), closeTo(0.15 / 1.15, 1e-9));
+      expect(r.parts.fold(0.0, (a, p) => a + p.weight), closeTo(1, 1e-9));
+      expect(r.loadRatio, closeTo(1.0, 1e-9));
+    });
   });
 }

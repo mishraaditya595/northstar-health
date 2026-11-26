@@ -97,14 +97,17 @@ import 'sibling.dart'
     return dart.map(norm).where((p) => p.startsWith('$dir/')).toList();
   }
 
-  test('health domain imports only dart: and domain files', () {
+  test('health domain imports only dart:, domain files and workout models', () {
     final files = filesUnder('lib/features/health/domain');
     expect(files, isNotEmpty);
     final offenders = [
       for (final p in files)
         for (final i in importsOf(p))
           if (!i.startsWith('dart:') &&
-              !i.startsWith('lib/features/health/domain/'))
+              !i.startsWith('lib/features/health/domain/') &&
+              // Pure value types, read by the outside workout merge and
+              // training load.
+              i != 'lib/features/workouts/domain/workout_models.dart')
             '$p -> $i',
     ];
     expect(offenders, isEmpty);
