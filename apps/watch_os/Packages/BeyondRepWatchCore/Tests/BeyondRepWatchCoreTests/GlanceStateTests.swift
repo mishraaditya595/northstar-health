@@ -45,7 +45,7 @@ final class GlanceStateTests: XCTestCase {
         XCTAssertEqual(g.tiles[3], GlanceTile(label: "Steps", value: "1,200", unit: nil))
         XCTAssertTrue(g.caption.hasPrefix("as of "), g.caption)
         XCTAssertTrue(g.caption.contains("7:10"), g.caption)
-        XCTAssertEqual(g.plans.map { $0.name }, ["Push", "Pull"])
+        XCTAssertEqual(g.plans.map { $0.name }, ["Push"], "today's plan is not listed twice")
         XCTAssertEqual(g.today, PlanRow(id: "plan-1", name: "Pull day"))
     }
 
@@ -106,5 +106,20 @@ final class GlanceStateTests: XCTestCase {
         let g = try ready(try make(now: "2026-10-23T05:00:00Z"))
         XCTAssertNil(g.readiness)
         XCTAssertEqual(g.tiles.map { $0.value }, ["—", "—", "—", "—"])
+    }
+
+    func testHealthRowsFromAnotherDayAreDeletedEvenWithoutABinding() throws {
+        try journal.saveHealth(M.health(localDate: "2026-10-22", asOf: "2026-10-22T18:20:00Z"))
+        XCTAssertEqual(try make(now: "2026-10-23T05:00:00Z"), .notPaired)
+        let check = try SQLiteDatabase(url: dir.appendingPathComponent("journal.sqlite"))
+        XCTAssertEqual(try check.query("SELECT COUNT(*) FROM health").first?.first, .int(0))
+    }
+
+    func testCaptionParsesTheTimestampFormatDartSends() throws {
+        try journal.saveBinding(M.binding())
+        // Whole milliseconds, as the phone builds them.
+        try journal.saveHealth(M.health(asOf: "2026-10-23T01:40:00.123Z"))
+        let g = try ready(try make(now: "2026-10-23T05:00:00Z"))
+        XCTAssertTrue(g.caption.contains("7:10"), g.caption)
     }
 }

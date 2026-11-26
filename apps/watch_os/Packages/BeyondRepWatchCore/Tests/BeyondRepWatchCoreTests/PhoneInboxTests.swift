@@ -111,4 +111,62 @@ final class PhoneInboxTests: XCTestCase {
         XCTAssertNil(try journal.binding())
         XCTAssertEqual(inbox.rejectedCount, 1)
     }
+
+    func testClearedThenAReplayedOlderBindingIsRejected() throws {
+        let old = M.binding(M.keyA, at: "2026-10-23T01:00:00Z")
+        try inbox.receive(applicationContext: context(old, M.plans(M.keyA)))
+        try inbox.receive(userInfo: ["json": M.json(M.cleared(M.keyA, at: "2026-10-23T02:00:00Z"))])
+        XCTAssertNil(try journal.binding())
+
+        // The watch relaunches and replays the context it received before the clear.
+        try inbox.receive(applicationContext: context(old, M.plans(M.keyA)))
+        XCTAssertNil(try journal.binding())
+        XCTAssertNil(try journal.plans(accountKey: M.keyA))
+        XCTAssertEqual(inbox.rejectedCount, 0, "a stale replay is ignored, not malformed")
+    }
+
+    func testBindingNewerThanTheClearIsAppliedAfterIt() throws {
+        try inbox.receive(userInfo: ["json": M.json(M.cleared(M.keyA, at: "2026-10-23T02:00:00Z"))])
+        try inbox.receive(applicationContext: context(M.binding(M.keyA, at: "2026-10-23T03:00:00Z")))
+        XCTAssertEqual(try journal.binding()?.accountKey, M.keyA)
+    }
+
+    func testANewerBindingThenALateOlderClearIsIgnored() throws {
+        try inbox.receive(applicationContext: context(M.binding(M.keyA, at: "2026-10-23T01:00:00Z")))
+        try inbox.receive(applicationContext: context(M.binding(M.keyA, at: "2026-10-23T03:00:00Z"), M.plans(M.keyA)))
+        try inbox.receive(userInfo: ["json": M.json(M.cleared(M.keyA, at: "2026-10-23T02:00:00Z"))])
+        XCTAssertEqual(try journal.binding()?.accountKey, M.keyA)
+        XCTAssertNotNil(try journal.plans(accountKey: M.keyA))
+    }
+
+    func testAnOlderBindingDoesNotReplaceANewerOne() throws {
+        try inbox.receive(applicationContext: context(M.binding(M.keyA, unit: "lb", at: "2026-10-23T03:00:00Z")))
+        try inbox.receive(applicationContext: context(M.binding(M.keyA, unit: "kg", at: "2026-10-23T01:00:00Z")))
+        XCTAssertEqual(try journal.binding()?.unit, "lb")
+    }
+
+    func testReplayingTheSameBindingMessageChangesNothing() throws {
+        let binding = M.binding(M.keyA, unit: "lb")
+        try inbox.receive(applicationContext: context(binding, M.plans(M.keyA)))
+        try inbox.receive(applicationContext: context(binding))
+        XCTAssertEqual(try journal.binding()?.unit, "lb")
+        XCTAssertNotNil(try journal.plans(accountKey: M.keyA))
+        XCTAssertEqual(inbox.rejectedCount, 0)
+    }
+
+    func testClearedInTheContextIsAppliedLikeOneSentByTransfer() throws {
+        try inbox.receive(applicationContext: context(M.binding(M.keyA, at: "2026-10-23T01:00:00Z")))
+        try inbox.receive(applicationContext: context(M.cleared(M.keyA, at: "2026-10-23T02:00:00Z")))
+        XCTAssertNil(try journal.binding())
+    }
+
+    func testAccountDeletionWipesEvenWhenANewerBindingIsStored() throws {
+        try inbox.receive(applicationContext: context(M.binding(M.keyA, at: "2026-10-23T03:00:00Z")))
+        let completed = try WatchMessage(
+            json: FixtureLoader.json("contracts/watch_link/v1/fixtures/valid/completed_workout.json"))
+        try journal.saveCompleted(completed)
+        try inbox.receive(userInfo: ["json": M.json(M.cleared(M.keyA, wipe: true, at: "2026-10-23T02:00:00Z"))])
+        XCTAssertNil(try journal.binding())
+        XCTAssertTrue(try journal.pendingOutbox(limit: 10).isEmpty)
+    }
 }

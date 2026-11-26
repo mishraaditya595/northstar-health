@@ -10,14 +10,14 @@ enum TestMessages {
 
     static func date(_ iso: String) -> Date { ISO8601DateFormatter().date(from: iso)! }
 
-    static func binding(_ key: String = keyA, unit: String = "kg") -> WatchMessage {
-        WatchMessage(
-            messageId: id(), sentAtUtc: "2026-10-23T01:00:00Z", accountKey: key, body: .accountBinding(unit: unit))
+    static let t0 = "2026-10-23T01:00:00Z"
+
+    static func binding(_ key: String = keyA, unit: String = "kg", at: String = t0) -> WatchMessage {
+        WatchMessage(messageId: id(), sentAtUtc: at, accountKey: key, body: .accountBinding(unit: unit))
     }
 
-    static func cleared(_ key: String = keyA, wipe: Bool = false) -> WatchMessage {
-        WatchMessage(
-            messageId: id(), sentAtUtc: "2026-10-23T01:00:00Z", accountKey: key, body: .accountCleared(wipeUnsent: wipe))
+    static func cleared(_ key: String = keyA, wipe: Bool = false, at: String = t0) -> WatchMessage {
+        WatchMessage(messageId: id(), sentAtUtc: at, accountKey: key, body: .accountCleared(wipeUnsent: wipe))
     }
 
     static func plans(
