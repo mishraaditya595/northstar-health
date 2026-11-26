@@ -123,4 +123,65 @@ void main() {
     ]);
     expect(m.standalone.map((w) => w.id), ['new', 'old']);
   });
+
+  group('duplicate outside workouts', () {
+    test('two overlapping runs from different sources show as one, keeping '
+        'the one with kcal', () {
+      final m = mergeWorkouts(const [], [
+        outside('fit', t(10, 0), t(10, 30), source: 'Fit'),
+        outside('samsung', t(10, 1), t(10, 31), kcal: 200, source: 'Samsung'),
+      ]);
+      expect(m.standalone.map((w) => w.id), ['samsung']);
+    });
+
+    test('then the longer duration, then the earlier start', () {
+      final longer = mergeWorkouts(const [], [
+        outside('short', t(10, 0), t(10, 20)),
+        outside('long', t(10, 0), t(10, 30)),
+      ]);
+      expect(longer.standalone.map((w) => w.id), ['long']);
+      final earlier = mergeWorkouts(const [], [
+        outside('late', t(10, 5), t(10, 35)),
+        outside('early', t(10, 0), t(10, 30)),
+      ]);
+      expect(earlier.standalone.map((w) => w.id), ['early']);
+    });
+
+    test('exactly 50% of the shorter is a duplicate; 49% is not', () {
+      expect(
+        mergeWorkouts(const [], [
+          outside('a', t(10, 0), t(11, 0)),
+          outside('b', t(10, 30), t(11, 30)),
+        ]).standalone,
+        hasLength(1),
+      );
+      expect(
+        mergeWorkouts(const [], [
+          outside('a', t(10, 0), t(11, 0)),
+          outside('b', t(10, 31), t(11, 31)),
+        ]).standalone,
+        hasLength(2),
+      );
+    });
+
+    test('back-to-back workouts both stay', () {
+      final m = mergeWorkouts(const [], [
+        outside('a', t(10, 0), t(10, 30)),
+        outside('b', t(10, 30), t(11, 0)),
+      ]);
+      expect(m.standalone, hasLength(2));
+    });
+
+    test('duplicates collapse before merging into a session', () {
+      final m = mergeWorkouts(
+        [session('s', t(10, 0), t(11, 0))],
+        [
+          outside('a', t(10, 0), t(10, 30), kcal: 100),
+          outside('b', t(10, 2), t(10, 32), kcal: 120, source: 'Other'),
+        ],
+      );
+      expect(m.mergedIntoSession['s'], hasLength(1));
+      expect(mergedSummary(m.mergedIntoSession['s']!)!.kcal, 100);
+    });
+  });
 }

@@ -78,6 +78,44 @@ int _overlapMs(DateTime aStart, DateTime aEnd, DateTime bStart, DateTime bEnd) {
   return ms > 0 ? ms : 0;
 }
 
+bool _sameRange(
+  DateTime aStart,
+  DateTime aEnd,
+  DateTime bStart,
+  DateTime bEnd,
+) {
+  final overlap = _overlapMs(aStart, aEnd, bStart, bEnd);
+  final shorter = [
+    aEnd.difference(aStart).inMilliseconds,
+    bEnd.difference(bStart).inMilliseconds,
+  ].reduce((a, b) => a < b ? a : b);
+  return overlap > 0 && shorter > 0 && overlap * 2 >= shorter;
+}
+
+/// One workout per run that several sources wrote: workouts overlapping by at
+/// least half of the shorter are the same. Keeps the one with kcal, then the
+/// longer, then the earlier start.
+List<OutsideWorkout> _withoutDuplicates(List<OutsideWorkout> outside) {
+  final ranked = [...outside]
+    ..sort((a, b) {
+      final kcal = (b.activeKcal == null ? 0 : 1).compareTo(
+        a.activeKcal == null ? 0 : 1,
+      );
+      if (kcal != 0) return kcal;
+      final length = b.end
+          .difference(b.start)
+          .compareTo(a.end.difference(a.start));
+      return length != 0 ? length : a.start.compareTo(b.start);
+    });
+  final kept = <OutsideWorkout>[];
+  for (final w in ranked) {
+    if (!kept.any((k) => _sameRange(w.start, w.end, k.start, k.end))) {
+      kept.add(w);
+    }
+  }
+  return kept;
+}
+
 /// Merges each outside workout into the completed session it overlaps most,
 /// when the overlap is at least half of the shorter of the two.
 WorkoutMerge mergeWorkouts(
@@ -90,7 +128,7 @@ WorkoutMerge mergeWorkouts(
   ]..sort((a, b) => a.startedAtUtc.compareTo(b.startedAtUtc));
   final merged = <String, List<({OutsideWorkout w, int overlap})>>{};
   final standalone = <OutsideWorkout>[];
-  for (final w in outside) {
+  for (final w in _withoutDuplicates(outside)) {
     WorkoutSessionRecord? best;
     var bestOverlap = 0;
     for (final s in done) {
