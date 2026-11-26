@@ -68,20 +68,20 @@ Another account on the same phone cannot open a different account's ObjectBox di
 
 Account > export writes all of the user's cloud workouts as `beyondrep-workouts.json` and hands it to the OS save dialog (`workout_export_file_writer.dart`, `saveFile` channel). The file goes wherever the user saves it; BeyondRep does not upload it anywhere. This is the policy's **access/portability** mechanism.
 
-### 2.6 Health platform reads (Phase 3 branch, not on main)
+### 2.6 Health platform reads (main: Phase 3 plus health insights)
 
-From ADR-0008 and the branch diff:
+From ADR-0008, ADR-0009 and `platform_health_reader.dart`:
 
 | Item | Detail |
 | --- | --- |
-| Types read | Sleep (asleep stages, last night), steps (today), resting heart rate (newest in 7 days), weight (newest in 30 days). Read only; nothing is written to Apple Health or Health Connect. |
+| Types read | Sleep sessions and stages (asleep, light, deep, REM, awake, in bed), steps, active calories burned, heart rate, resting heart rate, heart rate variability (SDNN on iOS, RMSSD on Android), walking heart rate (iOS), respiratory rate, blood oxygen, VO2 max, weight, body fat, lean body mass, skin temperature (Android, where available) / wrist temperature (iOS). Up to the last 90 days (detail trends read two 30-day periods plus a 30-day baseline; VO2 max 89 days). Read only; nothing is written to Apple Health or Health Connect. |
 | Sources | Apple HealthKit (iOS), Google Health Connect (Android 9+), via the `health` 14.0.0 package. |
-| Permissions | iOS: HealthKit entitlement, `NSHealthShareUsageDescription` ("BeyondRep reads your sleep, steps, resting heart rate and weight to show a daily summary. This data stays on your phone."), `NSHealthUpdateUsageDescription` ("BeyondRep only reads health data for your daily summary. It does not write or change anything in Apple Health."; required for upload, never shown because no write types are requested). Android: `READ_SLEEP`, `READ_STEPS`, `READ_RESTING_HEART_RATE`, `READ_WEIGHT`; no `READ_HEALTH_DATA_HISTORY`, no background read. |
+| Permissions | iOS: HealthKit entitlement, `NSHealthShareUsageDescription` ("BeyondRep reads your sleep, heart, activity and body measurements to show your daily summary and trends. This data stays on your phone."), `NSHealthUpdateUsageDescription` ("BeyondRep only reads health data for your daily summary. It does not write or change anything in Apple Health."; required for upload, never shown because no write types are requested). Android: `READ_SLEEP`, `READ_STEPS`, `READ_ACTIVE_CALORIES_BURNED`, `READ_HEART_RATE`, `READ_RESTING_HEART_RATE`, `READ_HEART_RATE_VARIABILITY`, `READ_RESPIRATORY_RATE`, `READ_OXYGEN_SATURATION`, `READ_VO2_MAX`, `READ_WEIGHT`, `READ_BODY_FAT`, `READ_LEAN_BODY_MASS`, `READ_SKIN_TEMPERATURE` (requested only where available) and `READ_HEALTH_DATA_HISTORY` (Health Connect otherwise returns only data from 30 days before the first grant). No background read. |
 | When asked | Only when the user taps Connect, never at sign-up. |
 | Storage | Values are held in memory for the life of the app process only. **No health value is written to disk**, synced to Supabase, put in the outbox or export file, logged, or sent to any third party. A guard test enforces the import boundary. |
 | What is stored | A per-account "connected" flag (`HealthConnectionEntity { id, connectedAt }`) in that account's ObjectBox directory. No health values. Removed on Disconnect and with the account's local data. |
 | Revoking | Disconnect in the app removes the flag; OS access must be revoked in the Health app / Health Connect settings (the app cannot revoke it). |
-| Purpose | Show a daily summary to the user. Not advice, not diagnosis, not advertising, not shared. |
+| Purpose | Show the user a daily summary, 7/30-day trends, detail screens, an on-device sleep score and readiness score (Health tab, Today, Train note), and insights joined in memory with the user's logged workouts. Not advice, not diagnosis, not advertising, not shared. |
 
 Because health data is processed only on the device and never leaves it, it is generally **not "collected"** for the Apple and Google forms (section 6), but the policy text, the HealthKit and Health Connect rules still require it to be described (section 7).
 
@@ -185,9 +185,9 @@ The policy and the app must show that:
 ### 7.2 Google Health Connect
 
 - The privacy policy must describe the handling of each Health Connect data type and is linked from the Health Connect permission screen through the rationale intent / `ViewPermissionUsageActivity` alias. `PermissionsRationaleActivity` now opens `https://beyondrep.in/privacy` there; the page must be final, not Draft, before release.
-- Complete the Play Console **Health apps declaration** listing each permission (`READ_SLEEP`, `READ_STEPS`, `READ_RESTING_HEART_RATE`, `READ_WEIGHT`) with its justification.
+- Complete the Play Console **Health apps declaration** listing each permission in section 2.6 with its justification, including `READ_HEALTH_DATA_HISTORY` (trends and baselines compare today with up to 90 days). The policy's Health section has a table naming every type and its use.
 - Follow the Health Connect **Limited Use** requirements: use only to provide the user-facing feature; no transfer except as needed for that feature, legal compliance or a merger; no ads; no human reading except with consent, for security or legal reasons. The policy should contain a Limited Use statement.
-- Request only needed permissions (no history or background permissions requested).
+- Request only needed permissions: every type in section 2.6 is shown in the app; `READ_HEALTH_DATA_HISTORY` is requested for the 90-day baselines; no background read permission. Adding a type (for example exercise sessions for outside workouts) needs this section, 2.6 and the policy updated first.
 
 ## 8. User rights to describe
 
