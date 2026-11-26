@@ -46,4 +46,29 @@ void main() {
     expect(utf8.decode(canonicalJsonBytes(decoded)), body);
     expect(sha256Hex(canonicalJsonBytes(decoded)), release1['sha256']);
   });
+
+  test('allows 32 levels of nesting and rejects 33 with ArgumentError', () {
+    Object nested(int depth) {
+      Object value = 'leaf';
+      for (var i = 0; i < depth; i++) {
+        value = [value];
+      }
+      return value;
+    }
+
+    expect(canonicalJsonBytes(nested(32)), isNotEmpty);
+    expect(() => canonicalJsonBytes(nested(33)), throwsArgumentError);
+    // A hostile depth fails fast instead of overflowing the stack.
+    expect(() => canonicalJsonBytes(nested(100000)), throwsArgumentError);
+    Object nestedMap(int depth) {
+      Object value = 1;
+      for (var i = 0; i < depth; i++) {
+        value = {'k': value};
+      }
+      return value;
+    }
+
+    expect(canonicalJsonBytes(nestedMap(32)), isNotEmpty);
+    expect(() => canonicalJsonBytes(nestedMap(33)), throwsArgumentError);
+  });
 }

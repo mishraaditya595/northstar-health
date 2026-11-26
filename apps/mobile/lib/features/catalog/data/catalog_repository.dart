@@ -180,7 +180,9 @@ class CatalogRepository extends ChangeNotifier {
       final String text;
       try {
         text = utf8.decode(canonicalJsonBytes(json));
-      } on ArgumentError {
+      } on Object {
+        // Any error from canonicalisation (too deep, a double, a bad key) is
+        // hostile or broken content: invalid with backoff, not "unexpected".
         _reject(manifest);
         return CatalogRefreshOutcome.invalid;
       }

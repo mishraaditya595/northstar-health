@@ -8,13 +8,19 @@ import 'package:crypto/crypto.dart';
 /// encoded as UTF-8. Doubles are rejected: the catalogue only has integers.
 Uint8List canonicalJsonBytes(Object? value) {
   final buffer = StringBuffer();
-  _write(buffer, value);
+  _write(buffer, value, 0);
   return Uint8List.fromList(utf8.encode(buffer.toString()));
 }
 
 String sha256Hex(List<int> bytes) => sha256.convert(bytes).toString();
 
-void _write(StringBuffer out, Object? value) {
+/// Containers may nest at most this deep; a snapshot is about six levels.
+const maxCanonicalDepth = 32;
+
+void _write(StringBuffer out, Object? value, int depth) {
+  if ((value is List || value is Map) && depth >= maxCanonicalDepth) {
+    throw ArgumentError('Canonical JSON nests deeper than $maxCanonicalDepth');
+  }
   if (value == null) {
     out.write('null');
   } else if (value is bool) {
@@ -29,7 +35,7 @@ void _write(StringBuffer out, Object? value) {
     out.write('[');
     for (var i = 0; i < value.length; i++) {
       if (i > 0) out.write(',');
-      _write(out, value[i]);
+      _write(out, value[i], depth + 1);
     }
     out.write(']');
   } else if (value is Map) {
@@ -46,7 +52,7 @@ void _write(StringBuffer out, Object? value) {
       if (i > 0) out.write(',');
       _writeString(out, keys[i]);
       out.write(':');
-      _write(out, value[keys[i]]);
+      _write(out, value[keys[i]], depth + 1);
     }
     out.write('}');
   } else {

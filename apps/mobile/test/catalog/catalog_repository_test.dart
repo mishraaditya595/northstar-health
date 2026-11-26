@@ -639,6 +639,27 @@ void main() {
       },
     );
 
+    test(
+      'hostile nesting is invalid, backs off and is not "unexpected"',
+      () async {
+        Object deep = 'x';
+        for (var i = 0; i < 100000; i++) {
+          deep = [deep];
+        }
+        final t = FakeCatalogTransport(
+          manifest: () async => manifestFor(r1),
+          snapshot: (_) async => deep,
+        );
+        final r = repo(t);
+        expect(await r.refresh(), CatalogRefreshOutcome.invalid);
+        expect(r.state.lastFailureKind, isNull);
+        expect(t.snapshotRequests, hasLength(1));
+        // Backoff: the same manifest is not downloaded again within 24 hours.
+        expect(await r.refresh(), CatalogRefreshOutcome.invalid);
+        expect(t.snapshotRequests, hasLength(1));
+      },
+    );
+
     test('a snapshot of exactly the manifest size is accepted', () async {
       final r = repo(serving(r1));
       expect(await r.refresh(), CatalogRefreshOutcome.updated);
