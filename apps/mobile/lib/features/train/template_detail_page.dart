@@ -140,10 +140,14 @@ class _TemplateDetailPageState extends ConsumerState<TemplateDetailPage> {
     final snapshot = safeCatalogState(() => ref.watch(catalogStateProvider))
         .snapshot;
     CatalogTemplate? template;
+    var retired = false;
     if (snapshot != null) {
       for (final t in browsableTemplates(snapshot)) {
         if (t.id == widget.templateId) template = t;
       }
+      retired = snapshot.templates.any(
+        (t) => t.id == widget.templateId && t.standalone && t.retired,
+      );
     }
     return Scaffold(
       appBar: AppBar(
@@ -154,9 +158,13 @@ class _TemplateDetailPageState extends ConsumerState<TemplateDetailPage> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 900),
           child: template == null || snapshot == null
-              ? const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text("This workout isn't available."),
+              ? Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    retired
+                        ? 'This workout is no longer available.'
+                        : "This workout isn't available.",
+                  ),
                 )
               : _Detail(
                   template: template,

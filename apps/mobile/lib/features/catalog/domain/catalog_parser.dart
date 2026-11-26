@@ -112,6 +112,14 @@ CatalogExercise _exercise(Object? value) {
   );
 }
 
+/// Optional `status` on templates and programs: missing means active.
+bool _retired(Map<String, Object?> map) {
+  final status = map['status'];
+  if (status == null || status == 'active') return false;
+  if (status == 'retired') return true;
+  throw const CatalogFormatException('shape');
+}
+
 CatalogTemplate _template(
   Map<String, Object?> map,
   Map<String, CatalogExercise> exercises,
@@ -130,6 +138,7 @@ CatalogTemplate _template(
     equipment: _strings(tags, 'equipment'),
     estimatedMinutes: _int(map, 'estimatedMinutes'),
     standalone: standalone as bool? ?? true,
+    retired: _retired(map),
     exercises: List.unmodifiable([
       for (final item in _list(map, 'exercises'))
         _prescription(_map(item), exercises),
@@ -161,6 +170,7 @@ CatalogProgram _program(Map<String, Object?> map, Set<String> templateIds) {
     daysPerWeek: daysPerWeek,
     estimatedMinutes: _int(map, 'estimatedMinutes'),
     equipment: _strings(map, 'equipment'),
+    retired: _retired(map),
     week: List.unmodifiable(week.cast<String?>()),
   );
 }

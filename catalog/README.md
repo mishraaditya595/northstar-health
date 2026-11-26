@@ -7,5 +7,6 @@ Before you edit anything here, read [docs/CATALOG.md](../docs/CATALOG.md), and e
 - Edit the JSON, then run `python3 scripts/catalog_build.py check` and `publish`. Never edit a generated migration by hand.
 - Users' copied workouts, added programs and past sessions never change when this content changes.
 - IDs are permanent: never delete, rename or reuse one. An exercise's `mode` never changes; add a new ID instead.
+- To withdraw something, set `"status": "retired"` on the exercise, template or program instead of deleting it. An active program cannot use a retired template, and a retired template must still use only active exercises. Builds from before stage 8 keep showing a retired template or program until they update.
 - Use `rollback --to N` to undo a bad release.
 - Raise `minAppCatalogSchema` only for a breaking format change, which also needs an app update.

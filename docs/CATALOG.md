@@ -6,7 +6,7 @@ Shared, read-only exercise (and later template and program) content. Decision: [
 
 `catalog/exercises/*.json`, `catalog/templates/*.json` and `catalog/programs/*.json` are JSON arrays. `scripts/catalog_build.py` merges them, sorts each list by `id` and adds the release metadata and provenance to form one snapshot described by `catalog/schema/catalog.schema.json`.
 
-- IDs: exercises `builtin.v1.<slug>`, templates `tpl.<slug>`, programs `prog.<slug>`; slug `^[a-z0-9]+(-[a-z0-9]+)*$`. IDs are never renamed, reused or removed; retire an exercise with `"status": "retired"`.
+- IDs: exercises `builtin.v1.<slug>`, templates `tpl.<slug>`, programs `prog.<slug>`; slug `^[a-z0-9]+(-[a-z0-9]+)*$`. IDs are never renamed, reused or removed; retire an exercise, template or program with `"status": "retired"` (see "Changing content after launch").
 - Muscles (exactly the app's `Muscle` enum): `chest, shoulders, biceps, forearms, abs, obliques, quads, calves, traps, lats, lowerBack, triceps, glutes, hamstrings`. Each exercise has at least one primary muscle.
 - `muscleGroup`: `Chest, Back, Legs, Shoulders, Arms, Core`.
 - Modes: `reps_load`, `reps`, `duration`, `duration_load`.
@@ -19,7 +19,7 @@ Shared, read-only exercise (and later template and program) content. Decision: [
 
 ## Validation
 
-`scripts/catalog_validate.py` runs the schema, then rejects: duplicate IDs across kinds, unknown references, templates using retired exercises, weeks without 7 entries or without a training day, `daysPerWeek` mismatches, out-of-range sets/reps/rest/duration, prescriptions that do not fit the exercise mode, and (against `catalog/releases.lock.json`) a removed ID, a changed kind, a changed exercise mode, a reused retired slug, or a release number that does not exceed every locked release.
+`scripts/catalog_validate.py` runs the schema, then rejects: duplicate IDs across kinds, unknown references, templates using retired exercises, an active program using a retired template, weeks without 7 entries or without a training day, `daysPerWeek` mismatches, out-of-range sets/reps/rest/duration, prescriptions that do not fit the exercise mode, and (against `catalog/releases.lock.json`) a removed ID, a changed kind, a changed exercise mode, a reused retired slug, or a release number that does not exceed every locked release.
 
 ## Canonical bytes and checksum
 
@@ -55,7 +55,8 @@ Rules that hold for every release:
 - **An exercise's mode is fixed forever.** `reps_load` stays `reps_load`, and `duration` stays `duration`, so past sessions never change meaning. For a different mode, add a new exercise ID. The validator and `releases.lock.json` enforce this.
 - **Mistakes are undone by rollback.** `python3 scripts/catalog_build.py rollback --to N --timestamp YYYYMMDDHHMMSS` writes a migration that points the live release back to N, deployed by the same job. Releases themselves are immutable.
 - **Only new features need an app update.** A breaking format change, such as a new tracking mode like load plus seconds, or a removed or re-typed field, must raise `minAppCatalogSchema` (see [Phone client](#phone-client-stage-2-in-source-not-released)). Older apps then keep their last good catalogue and show "Update the app to get the latest workouts". Additive changes keep `minAppCatalogSchema` as it is.
-- **Templates and programs cannot be retired yet.** There is no `status` on templates or programs, so once published they stay listed. The owner approved adding a retired status for them, planned for stage 8.
+- **Templates and programs can be retired.** Add `"status": "retired"` (optional, defaults to `"active"`) to a template or program. The phone hides a retired item from Workouts and Programs, and its detail route says "no longer available". Copies, added programs and past sessions are never touched. The validator rejects an active program that uses a retired template (a retired program may keep its retired templates), and a retired template must still use only active exercises, because app builds from before stage 8 ignore `status` and still check that. `status` is additive, so `minAppCatalogSchema` stays 1.
+- **Known limit of retiring.** Builds from before stage 8 ignore `status` on templates and programs, so they keep listing a retired item until the user updates the app. Hiding it on those builds would need a `minAppCatalogSchema` bump, which would also freeze their catalogue. Retire for housekeeping, and do not rely on it to withdraw content from older builds.
 
 ## Phone client (stage 2, in source, not released)
 

@@ -30,6 +30,7 @@ CatalogProgram _program(
   List<String?> week, {
   List<String> goals = const ['general'],
   List<String> equipment = const ['barbell', 'dumbbell'],
+  bool retired = false,
 }) => CatalogProgram(
   id: id,
   name: name,
@@ -39,6 +40,7 @@ CatalogProgram _program(
   daysPerWeek: week.whereType<String>().length,
   estimatedMinutes: 40,
   equipment: equipment,
+  retired: retired,
   week: week,
 );
 
@@ -80,6 +82,15 @@ CatalogSnapshot programsSnapshot() {
         goals: const ['hypertrophy'],
         equipment: const ['barbell', 'dumbbell', 'cable'],
       ),
+      _program('prog.old', 'Synthetic retired program', 'beginner', [
+        'tpl.push',
+        null,
+        'tpl.pull',
+        null,
+        null,
+        null,
+        null,
+      ], retired: true),
     ],
   );
 }

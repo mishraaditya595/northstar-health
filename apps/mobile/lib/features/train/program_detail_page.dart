@@ -95,10 +95,14 @@ class _ProgramDetailPageState extends ConsumerState<ProgramDetailPage> {
     final snapshot = safeCatalogState(() => ref.watch(catalogStateProvider))
         .snapshot;
     CatalogProgram? program;
+    var retired = false;
     if (snapshot != null) {
       for (final p in browsablePrograms(snapshot)) {
         if (p.id == widget.programId) program = p;
       }
+      retired = snapshot.programs.any(
+        (p) => p.id == widget.programId && p.retired,
+      );
     }
     return Scaffold(
       appBar: AppBar(
@@ -109,9 +113,13 @@ class _ProgramDetailPageState extends ConsumerState<ProgramDetailPage> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 900),
           child: program == null || snapshot == null
-              ? const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text("This program isn't available."),
+              ? Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    retired
+                        ? 'This program is no longer available.'
+                        : "This program isn't available.",
+                  ),
                 )
               : _body(context, program, snapshot),
         ),

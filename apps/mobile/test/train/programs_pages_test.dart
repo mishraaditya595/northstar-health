@@ -308,6 +308,15 @@ void main() {
       expect(find.textContaining('Synthetic hidden'), findsOneWidget);
     });
 
+    testWidgets('a retired program is hidden and says it is no longer '
+        'available', (tester) async {
+      await open(tester, '/train/programs');
+      expect(find.text('Synthetic retired program'), findsNothing);
+      await open(tester, '/train/programs/prog.old');
+      expect(find.text('This program is no longer available.'), findsOneWidget);
+      expect(find.text('Add program'), findsNothing);
+    });
+
     testWidgets('an unknown program is not available', (tester) async {
       await open(tester, '/train/programs/prog.nope');
       expect(find.text("This program isn't available."), findsOneWidget);

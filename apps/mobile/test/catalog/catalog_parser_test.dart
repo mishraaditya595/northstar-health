@@ -143,6 +143,35 @@ void main() {
       expect(snapshot.exercises.last.retired, isTrue);
     });
 
+    test('template and program status: missing is active, retired parses', () {
+      final plain = parseCatalogSnapshot(validSnapshot());
+      expect(plain.templates.single.retired, isFalse);
+      expect(plain.programs.single.retired, isFalse);
+
+      final json = validSnapshot();
+      ((json['templates']! as List).first as Map<String, Object?>)['status'] =
+          'retired';
+      ((json['programs']! as List).first as Map<String, Object?>)['status'] =
+          'retired';
+      final retired = parseCatalogSnapshot(json);
+      expect(retired.templates.single.retired, isTrue);
+      expect(retired.programs.single.retired, isTrue);
+
+      ((json['templates']! as List).first as Map<String, Object?>)['status'] =
+          'active';
+      expect(parseCatalogSnapshot(json).templates.single.retired, isFalse);
+    });
+
+    test('an unknown template or program status is rejected', () {
+      for (final key in ['templates', 'programs']) {
+        for (final bad in ['archived', 3, '']) {
+          final json = validSnapshot();
+          ((json[key]! as List).first as Map<String, Object?>)['status'] = bad;
+          expectCode(json, 'shape');
+        }
+      }
+    });
+
     test('checksum mismatch', () {
       expectCode(validSnapshot(), 'checksum', expectedSha256: 'a' * 64);
     });

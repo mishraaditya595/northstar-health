@@ -151,6 +151,12 @@ void main() {
     });
   }
 
+  testWidgets('a retired template is not listed', (tester) async {
+    await open(tester, readyTemplates());
+    expect(find.text('Synthetic retired'), findsNothing);
+    expect(find.text('Synthetic push'), findsOneWidget);
+  });
+
   group('filters', () {
     Future<void> openSheet(WidgetTester tester) async {
       await tester.tap(find.byTooltip('Filters'));
