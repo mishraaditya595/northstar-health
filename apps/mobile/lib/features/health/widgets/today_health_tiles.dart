@@ -131,7 +131,7 @@ TodayTile _restingHrData(
 ) {
   final today = _dayOf(o.readAt);
   final isToday = hr.day == today;
-  final usual = usualFrom(heart.restingHrDaily, today, todayValue: hr.value);
+  final usual = usualFrom(heart.restingHrDaily, today, reading: hr);
   var caption = isToday ? 'Today' : formatHealthDate(hr.day);
   if (usual != null && isToday) {
     final diff = (hr.value - (usual.low + usual.high) / 2).round();

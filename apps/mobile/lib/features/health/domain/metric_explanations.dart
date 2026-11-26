@@ -77,18 +77,25 @@ class MetricUsual {
 }
 
 /// Mean plus or minus one sd of the 30 days before [today]; null with fewer
-/// than 14 of them. Today's own value never enters the baseline.
+/// than 14 of them. Today's own value never enters the baseline. [reading]
+/// becomes the "today" marker only when it was taken on [today]; an older
+/// latest reading is not shown as today's.
 MetricUsual? usualFrom(
   List<DayValue> daily,
   DateTime today, {
-  double? todayValue,
+  DayValue? reading,
 }) {
   final base = baselineOf(daily, today, sdFloor: (_) => 0);
   if (base == null) return null;
+  final isToday =
+      reading != null &&
+      reading.day.year == today.year &&
+      reading.day.month == today.month &&
+      reading.day.day == today.day;
   return MetricUsual(
     low: base.mean - base.sd,
     high: base.mean + base.sd,
-    today: todayValue,
+    today: isToday ? reading.value : null,
   );
 }
 

@@ -150,7 +150,7 @@ class _BodyView extends ConsumerWidget {
         context,
         MetricKey.weight,
         platform: overview.platform,
-        usual: usualFrom(body.weightDaily, today, todayValue: latest?.value),
+        usual: usualFrom(body.weightDaily, today, reading: latest),
         unit: 'kg',
       ),
       children: [

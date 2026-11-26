@@ -75,6 +75,23 @@ void main() {
     expect(tile.caption, 'Today · 2 below usual');
   });
 
+  test('a resting HR from an earlier day has the range but no today mark', () {
+    final heart = HeartOverview(
+      restingHr: (day: DateTime(2026, 11, 22), value: 58),
+      restingHrDaily: daily(30, (i) => 60.0),
+      hrv: null,
+      hrvDaily: const [],
+      vo2Max: null,
+      vo2MaxDaily: const [],
+      restingHrVsMonth: null,
+      hrvVsNormal: null,
+      hrvIsSdnn: true,
+    );
+    final tile = restingHrTile(overview(heart: SectionData(heart)));
+    expect(tile.usual, isNotNull);
+    expect(tile.usual!.today, isNull);
+  });
+
   test('restingHrTile says above and about usual', () {
     expect(
       restingHrTile(overview(heart: SectionData(_heart(today: 63, days: 30))))

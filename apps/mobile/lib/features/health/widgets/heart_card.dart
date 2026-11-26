@@ -85,7 +85,7 @@ class HeartCard extends StatelessWidget {
           usual: usualFrom(
             value.restingHrDaily,
             today,
-            todayValue: value.restingHr?.value,
+            reading: value.restingHr,
           ),
           unit: 'bpm',
         ),
@@ -93,18 +93,14 @@ class HeartCard extends StatelessWidget {
           context,
           MetricKey.hrv,
           platform: platform,
-          usual: usualFrom(value.hrvDaily, today, todayValue: value.hrv?.value),
+          usual: usualFrom(value.hrvDaily, today, reading: value.hrv),
           unit: 'ms',
         ),
         metricInfoButton(
           context,
           MetricKey.vo2Max,
           platform: platform,
-          usual: usualFrom(
-            value.vo2MaxDaily,
-            today,
-            todayValue: value.vo2Max?.value,
-          ),
+          usual: usualFrom(value.vo2MaxDaily, today, reading: value.vo2Max),
         ),
       ],
       children: [

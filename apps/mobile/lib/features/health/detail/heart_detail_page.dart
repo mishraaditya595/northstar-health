@@ -163,11 +163,7 @@ class _HeartView extends ConsumerWidget {
         context,
         MetricKey.restingHeartRate,
         platform: overview.platform,
-        usual: usualFrom(
-          heart.restingHrDaily,
-          _today,
-          todayValue: latest?.value,
-        ),
+        usual: usualFrom(heart.restingHrDaily, _today, reading: latest),
         unit: 'bpm',
       ),
       children: [
@@ -218,7 +214,7 @@ class _HeartView extends ConsumerWidget {
         context,
         MetricKey.hrv,
         platform: overview.platform,
-        usual: usualFrom(heart.hrvDaily, _today, todayValue: latest?.value),
+        usual: usualFrom(heart.hrvDaily, _today, reading: latest),
         unit: 'ms',
       ),
       children: [

@@ -600,6 +600,51 @@ void main() {
     expect(find.text('Today 54'), findsOneWidget);
   });
 
+  testWidgets('stale readings show the usual range but no Today line', (
+    tester,
+  ) async {
+    final stale = DateTime(2026, 11, 22);
+    await pumpHealth(
+      tester,
+      overview(
+        heart: SectionData(
+          HeartOverview(
+            restingHr: (day: stale, value: 54),
+            restingHrDaily: fullHeart.restingHrDaily,
+            hrv: (day: stale, value: 52),
+            hrvDaily: fullHeart.hrvDaily,
+            vo2Max: null,
+            vo2MaxDaily: const [],
+            restingHrVsMonth: null,
+            hrvVsNormal: null,
+            hrvIsSdnn: true,
+          ),
+        ),
+        body: SectionData(
+          BodyOverview(
+            weight: (day: stale, value: 78.4),
+            weightDaily: fullBody.weightDaily,
+            bodyFat: null,
+            weightVsMonth: null,
+          ),
+        ),
+      ),
+    );
+    for (final title in [
+      'Resting heart rate',
+      'Heart rate variability (HRV)',
+      'Weight',
+    ]) {
+      await tester.tap(find.bySemanticsLabel('About $title'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Your usual'), findsOneWidget, reason: title);
+      expect(find.textContaining('Today '), findsNothing, reason: title);
+      expect(find.byKey(const Key('ns-range-marker')), findsNothing);
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+    }
+  });
+
   testWidgets('activity card steps sheet shows Your daily average', (
     tester,
   ) async {

@@ -470,6 +470,68 @@ void main() {
       expect(find.text('Your usual 53 to 57 bpm'), findsOneWidget);
     });
 
+    testWidgets('stale readings show the usual range but no Today line', (
+      tester,
+    ) async {
+      final stale = DateTime(2026, 11, 22);
+      final heart = HeartOverview(
+        restingHr: (day: stale, value: 57),
+        restingHrDaily: daily(30, (i) => i.isEven ? 53 : 57),
+        hrv: (day: stale, value: 50),
+        hrvDaily: daily(30, (i) => i.isEven ? 41 : 50),
+        vo2Max: null,
+        vo2MaxDaily: const [],
+        restingHrVsMonth: null,
+        hrvVsNormal: null,
+        hrvIsSdnn: true,
+      );
+      await _pump(
+        tester,
+        const HeartDetailPage(),
+        overview(heart: SectionData(heart)),
+      );
+      for (final title in [
+        'Resting heart rate',
+        'Heart rate variability (HRV)',
+      ]) {
+        await tester.tap(find.bySemanticsLabel('About $title'));
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining('Your usual'),
+          findsOneWidget,
+          reason: title,
+        );
+        expect(find.textContaining('Today '), findsNothing, reason: title);
+        await tester.tapAt(const Offset(5, 5));
+        await tester.pumpAndSettle();
+      }
+    });
+
+    testWidgets('a stale weight shows the usual range but no Today line', (
+      tester,
+    ) async {
+      final stale = DateTime(2026, 11, 22);
+      final weights = daily(30, (i) => 79.0 - i * 0.03);
+      await _pump(
+        tester,
+        const BodyDetailPage(),
+        overview(
+          body: SectionData(
+            BodyOverview(
+              weight: (day: stale, value: 78.4),
+              weightDaily: weights,
+              bodyFat: null,
+              weightVsMonth: null,
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.bySemanticsLabel('About Weight'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Your usual'), findsOneWidget);
+      expect(find.textContaining('Today '), findsNothing);
+    });
+
     testWidgets('Activity panels have About buttons with a daily average', (
       tester,
     ) async {

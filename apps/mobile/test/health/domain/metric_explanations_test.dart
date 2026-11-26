@@ -76,13 +76,27 @@ void main() {
 
   test('usualFrom returns null with 13 days and a range with 14', () {
     expect(usualFrom(series(13), today), isNull);
-    final usual = usualFrom(series(14), today, todayValue: 58)!;
+    final usual = usualFrom(
+      series(14),
+      today,
+      reading: (day: today, value: 58),
+    )!;
     const mean = 56.5;
     final sd = sqrt((14 * 14 - 1) / 12);
     expect(usual.low, closeTo(mean - sd, 1e-9));
     expect(usual.high, closeTo(mean + sd, 1e-9));
     expect(usual.today, 58);
     expect(usual.dailyAverage, isFalse);
+  });
+
+  test('usualFrom keeps the range but drops a reading from another day', () {
+    final usual = usualFrom(
+      series(14),
+      today,
+      reading: (day: today.subtract(const Duration(days: 2)), value: 58),
+    )!;
+    expect(usual.today, isNull);
+    expect(usual.low, lessThan(usual.high));
   });
 
   test("usualFrom ignores today's own value in the baseline", () {

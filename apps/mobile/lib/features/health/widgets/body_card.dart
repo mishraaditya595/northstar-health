@@ -88,7 +88,7 @@ class BodyCard extends StatelessWidget {
           context,
           MetricKey.weight,
           platform: platform,
-          usual: usualFrom(value.weightDaily, today, todayValue: weight?.value),
+          usual: usualFrom(value.weightDaily, today, reading: weight),
           unit: 'kg',
         ),
         if (fatText != null)
