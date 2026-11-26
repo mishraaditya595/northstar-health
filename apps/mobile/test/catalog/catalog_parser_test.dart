@@ -566,7 +566,7 @@ void main() {
         final json = validSnapshot();
         at(json, 'exercises')[field] = value;
         final snapshot = parseCatalogSnapshot(json);
-        expect(snapshot.exercises.first.retired, isTrue, reason: '$field');
+        expect(snapshot.exercises.first.retired, isTrue, reason: field);
         expect(snapshot.exercises, hasLength(2));
       }
     });
