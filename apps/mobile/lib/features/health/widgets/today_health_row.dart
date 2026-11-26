@@ -87,7 +87,11 @@ class _TodayHealthRowState extends ConsumerState<TodayHealthRow>
       sleepTile(overview),
       stepsTile(overview),
       restingHrTile(overview),
-      workoutsTile(sessions, now),
+      workoutsTile(
+        sessions,
+        ref.watch(workoutMergeProvider)?.standalone ?? const [],
+        now,
+      ),
     ];
     final theme = Theme.of(context);
     final narrow =

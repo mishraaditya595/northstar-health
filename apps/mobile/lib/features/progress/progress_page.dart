@@ -9,6 +9,12 @@ import '../../core/design/section.dart';
 import '../../core/units/load_units.dart';
 
 import '../../core/design/stats.dart';
+import '../health/application/health_overview.dart';
+import '../health/application/health_summary_controller.dart';
+import '../health/application/workout_heart_rate.dart';
+import '../health/domain/outside_workouts.dart';
+import '../health/health_format.dart';
+import '../health/widgets/outside_workout_ui.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
 import '../workouts/domain/workout_models.dart';
 import 'domain/progress_overview.dart';
@@ -197,6 +203,63 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
     );
   }
 
+  Widget _outsideRow(BuildContext context, OutsideWorkout w) {
+    final start = w.start.toLocal();
+    final km = w.distanceMeters;
+    final kcal = w.activeKcal;
+    return WorkoutRowCard(
+      icon: outsideWorkoutIcon(w.kind),
+      title: outsideWorkoutName(w.kind),
+      subtitle: [
+        formatHealthDate(start),
+        formatClockTime(start),
+        '${w.minutes} min',
+        if (km != null) '${(km / 1000).toStringAsFixed(1)} km',
+        if (kcal != null) '${kcal.round()} kcal',
+      ].join(' · '),
+      source: w.source,
+      onTap: () => context.push('/progress/health-workouts/${w.id}'),
+    );
+  }
+
+  /// BeyondRep session cards with outside workouts between them by start,
+  /// newest first; the sessions keep their own order.
+  List<Widget> _trainingList(
+    BuildContext context,
+    List<WorkoutSessionRecord> sessions,
+    List<OutsideWorkout> outside,
+    Map<String, List<OutsideWorkout>> merged,
+    LoadUnit unit,
+  ) {
+    final rows = <Widget>[];
+    var next = 0;
+    void addOutsideBefore(DateTime? startUtc) {
+      while (next < outside.length &&
+          (startUtc == null || outside[next].start.isAfter(startUtc))) {
+        rows
+          ..add(_outsideRow(context, outside[next++]))
+          ..add(const SizedBox(height: 12));
+      }
+    }
+
+    for (final session in sessions) {
+      addOutsideBefore(session.startedAtUtc);
+      rows
+        ..add(
+          _SessionSummaryCard(
+            session: session,
+            unit: unit,
+            syncFlag: ref.watch(workoutSyncFlagsProvider)[session.uuid],
+            merged: merged[session.uuid] ?? const [],
+            onOpen: () => context.push('/progress/workouts/${session.uuid}'),
+          ),
+        )
+        ..add(const SizedBox(height: 12));
+    }
+    addOutsideBefore(null);
+    return rows;
+  }
+
   Widget _content(BuildContext context, WorkoutHistorySnapshot data) {
     final sessions = workoutsInPeriod(
       data,
@@ -211,6 +274,32 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
             (t) => t.key == _selectedExerciseKey,
             orElse: () => trends.first,
           );
+    // Workouts from other apps show only when the overview for this account
+    // holds them; otherwise the page is exactly what it was without health.
+    final overview = ref.watch(healthOverviewProvider).value;
+    final merge = ref.watch(workoutMergeProvider);
+    final showOutside =
+        overview != null &&
+        overview.ownerId == ref.watch(healthOwnerIdProvider) &&
+        overview.workouts is SectionData &&
+        merge != null;
+    final nowUtc = ref.watch(progressNowProvider);
+    final outside = [
+      if (showOutside)
+        for (final w in merge.standalone)
+          if (_outsideInPeriod(w, _period, nowUtc)) w,
+    ];
+    List<Widget> outsideRows() => [
+      for (final w in outside) ...[
+        _outsideRow(context, w),
+        const SizedBox(height: 12),
+      ],
+      if (_period == WorkoutHistoryPeriod.all && outside.isNotEmpty)
+        Text(
+          'Workouts from other apps go back 90 days.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+    ];
     final theme = Theme.of(context);
     final displayUnit =
         _selectedLoadUnit ??
@@ -264,12 +353,22 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
                 'Finish your first workout in Train to see real '
                 'history, strength and consistency here.',
           ),
+          if (outside.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            const SectionHeading('From other apps'),
+            ...outsideRows(),
+          ],
         ] else if (sessions.isEmpty) ...[
           const _EmptyProgress(
             title: 'No sessions in this period',
             message:
                 'Try 90 days or All time to find older completed workouts.',
           ),
+          if (outside.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            const SectionHeading('From other apps'),
+            ...outsideRows(),
+          ],
         ] else ...[
           LayoutBuilder(
             builder: (context, box) {
@@ -389,26 +488,50 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
             'Training summary',
             action: '${sessions.length} finished',
           ),
-          for (final session in sessions) ...[
-            _SessionSummaryCard(
-              session: session,
-              unit: displayUnit,
-              syncFlag: ref.watch(workoutSyncFlagsProvider)[session.uuid],
-              onOpen: () => context.push('/progress/workouts/${session.uuid}'),
+          ..._trainingList(
+            context,
+            sessions,
+            outside,
+            merge?.mergedIntoSession ?? const {},
+            displayUnit,
+          ),
+          if (_period == WorkoutHistoryPeriod.all && outside.isNotEmpty)
+            Text(
+              'Workouts from other apps go back 90 days.',
+              style: theme.textTheme.bodySmall,
             ),
-            const SizedBox(height: 12),
-          ],
         ],
         const SizedBox(height: 18),
         Text(
-          'Only finished BeyondRep workouts appear here. '
-          'Paused, discarded and imported health workouts are excluded. '
-          'Finished workouts back up to your account when you are online.',
+          showOutside
+              ? 'Only finished BeyondRep workouts count towards your totals '
+                    'and back up to your account. Workouts from other apps '
+                    'are read from ${healthPlatformName(overview.platform)} '
+                    'for the last 90 days, never saved, and shown here for '
+                    'reference.'
+              : 'Only finished BeyondRep workouts appear here. '
+                    'Paused, discarded and imported health workouts are '
+                    'excluded. Finished workouts back up to your account '
+                    'when you are online.',
           style: theme.textTheme.bodySmall,
         ),
       ],
     );
   }
+}
+
+bool _outsideInPeriod(
+  OutsideWorkout w,
+  WorkoutHistoryPeriod period,
+  DateTime nowUtc,
+) {
+  final days = switch (period) {
+    WorkoutHistoryPeriod.last30Days => 30,
+    WorkoutHistoryPeriod.last90Days => 90,
+    WorkoutHistoryPeriod.all => null,
+  };
+  return days == null ||
+      !w.start.isBefore(nowUtc.toUtc().subtract(Duration(days: days)));
 }
 
 /// User-facing values are rounded for readability. Integer grams remain the
@@ -502,9 +625,13 @@ class _SessionSummaryCard extends StatelessWidget {
     required this.unit,
     required this.onOpen,
     this.syncFlag,
+    this.merged = const [],
   });
 
   final WorkoutSessionRecord session;
+
+  /// Workouts from other apps that merged into this session.
+  final List<OutsideWorkout> merged;
   final LoadUnit unit;
   final VoidCallback onOpen;
   final WorkoutSyncFlag? syncFlag;
@@ -549,6 +676,7 @@ class _SessionSummaryCard extends StatelessWidget {
                   color: theme.mutedColor,
                 ),
               ),
+              if (merged.isNotEmpty) _MergedLine(session, merged),
               const Divider(height: 24),
               Row(
                 children: [
@@ -589,6 +717,42 @@ class _SessionSummaryCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// `From Apple Watch · 131 kcal · avg 112 bpm` under a session that absorbed
+/// outside workouts; each part is left out when unknown. The average comes
+/// from heart rate samples inside the session's own window.
+class _MergedLine extends ConsumerWidget {
+  const _MergedLine(this.session, this.merged);
+
+  final WorkoutSessionRecord session;
+  final List<OutsideWorkout> merged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summary = mergedSummary(merged);
+    if (summary == null) return const SizedBox.shrink();
+    final hr = ref
+        .watch(
+          workoutAverageHrProvider((
+            start: session.startedAtUtc,
+            end: session.completedAtUtc!,
+          )),
+        )
+        .value;
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Text(
+        [
+          'From ${summary.source}',
+          if (summary.kcal != null) '${summary.kcal!.round()} kcal',
+          if (hr != null) 'avg ${hr.round()} bpm',
+        ].join(' · '),
+        style: theme.textTheme.bodySmall?.copyWith(color: theme.mutedColor),
       ),
     );
   }

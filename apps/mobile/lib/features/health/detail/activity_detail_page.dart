@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/design/charts/bar_series.dart';
-import '../../../core/design/page_header.dart';
 import '../../progress/workout_history_state.dart';
 import '../../workouts/domain/workout_models.dart';
 import '../application/health_overview.dart';
@@ -329,23 +328,12 @@ class _WorkoutsPanel extends ConsumerWidget {
       for (final e in entries.take(_maxRows))
         Padding(
           padding: const EdgeInsets.only(top: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              NsListCard(
-                icon: e.icon,
-                title: e.title,
-                subtitle: [e.when, ?e.merged].join('\n'),
-                onTap: () => context.push(e.route),
-              ),
-              if (e.source != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6, left: 14),
-                  child: Row(
-                    children: [Flexible(child: NsTag('From ${e.source}'))],
-                  ),
-                ),
-            ],
+          child: WorkoutRowCard(
+            icon: e.icon,
+            title: e.title,
+            subtitle: [e.when, ?e.merged].join('\n'),
+            source: e.source,
+            onTap: () => context.push(e.route),
           ),
         ),
       if (entries.length > _maxRows)

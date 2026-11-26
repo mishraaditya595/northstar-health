@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/design/page_header.dart';
 import '../domain/outside_workouts.dart';
 import '../health_format.dart';
 
@@ -36,4 +37,38 @@ String workoutDayLabel(DateTime at, DateTime now) {
 String workoutWhen(DateTime startUtc, int minutes, DateTime now) {
   final local = startUtc.toLocal();
   return '${workoutDayLabel(local, now)} ${formatClockTime(local)} · $minutes min';
+}
+
+/// A workout row: a kit [NsListCard] and, for a workout from another app, its
+/// source tag under the card (a trailing tag overflows at large text).
+class WorkoutRowCard extends StatelessWidget {
+  const WorkoutRowCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.source,
+    super.key,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  /// Shown as `From <source>`.
+  final String? source;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      NsListCard(icon: icon, title: title, subtitle: subtitle, onTap: onTap),
+      if (source != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 6, left: 14),
+          child: Row(children: [Flexible(child: NsTag('From $source'))]),
+        ),
+    ],
+  );
 }
