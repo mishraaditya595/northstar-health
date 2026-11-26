@@ -135,7 +135,9 @@ class _Today extends StatelessWidget {
               "Readiness compares today's $hrvName and resting heart rate "
               'with your own normal, their average over the 30 days before '
               "today, and adds last night's sleep. A measure counts once it "
-              'has 14 days of data. The 7 and 30 day comparison scores the '
+              'has 14 days of data. Training load, your last 7 days of '
+              'workouts against your usual week, counts once you have 14 '
+              'days of workout history. The 7 and 30 day comparison scores the '
               'days before the period without sleep heart rate. Readiness '
               'is a suggestion for planning your training, not medical '
               'advice.',
@@ -255,7 +257,7 @@ class _Today extends StatelessWidget {
         ReadinessInput.restingHr => MetricKey.restingHeartRate,
         ReadinessInput.sleep ||
         ReadinessInput.sleepDebt => MetricKey.timeAsleep,
-        ReadinessInput.trainingLoad => MetricKey.readiness,
+        ReadinessInput.trainingLoad => MetricKey.trainingLoad,
       },
       platform: overview.platform,
       showUsualPlaceholder:

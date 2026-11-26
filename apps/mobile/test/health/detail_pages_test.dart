@@ -9,6 +9,10 @@ import 'package:beyondrep/features/health/detail/body_detail_page.dart';
 import 'package:beyondrep/features/health/detail/heart_detail_page.dart';
 import 'package:beyondrep/features/health/domain/health_types.dart';
 import 'package:beyondrep/features/health/domain/metric_explanations.dart';
+import 'package:beyondrep/features/health/domain/outside_workouts.dart';
+import 'package:beyondrep/features/progress/data/objectbox_workout_history_repository.dart';
+import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 import 'package:beyondrep/features/health/domain/trend.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,6 +32,49 @@ class _Owner extends Notifier<String?> {
 }
 
 final _ownerProvider = NotifierProvider<_Owner, String?>(_Owner.new);
+
+class _History implements WorkoutHistoryRepository {
+  _History(this.sessions);
+  final List<WorkoutSessionRecord> sessions;
+
+  @override
+  WorkoutHistorySnapshot readCompleted() =>
+      WorkoutHistorySnapshot(sessions: sessions);
+
+  @override
+  Future<WorkoutHistorySnapshot> readCompletedAsync() async => readCompleted();
+}
+
+WorkoutSessionRecord _logged(
+  String id,
+  DateTime start,
+  int minutes, {
+  String name = 'Push day',
+}) => WorkoutSessionRecord(
+  uuid: id,
+  name: name,
+  status: WorkoutStatus.completed,
+  startedAtUtc: start.toUtc(),
+  completedAtUtc: start.add(Duration(minutes: minutes)).toUtc(),
+  originalOffsetMinutes: 0,
+  revision: 1,
+);
+
+OutsideWorkout _outsideWorkout(
+  String id,
+  DateTime start,
+  int minutes, {
+  OutsideWorkoutKind kind = OutsideWorkoutKind.running,
+  double? kcal,
+  String source = 'Synthetic app',
+}) => OutsideWorkout(
+  id: id,
+  kind: kind,
+  start: start.toUtc(),
+  end: start.add(Duration(minutes: minutes)).toUtc(),
+  activeKcal: kcal,
+  source: source,
+);
 
 HealthSample _sample(DateTime at, double value) =>
     (from: at, to: at, value: value, source: 'Synthetic watch');
@@ -67,6 +114,7 @@ Future<void> _pump(
   FakeHealthReader? reader,
   double textScale = 1,
   Brightness brightness = Brightness.light,
+  List<WorkoutSessionRecord>? logged,
 }) async {
   tester.view.physicalSize = const Size(390, 2400);
   tester.view.devicePixelRatio = 1;
@@ -77,6 +125,8 @@ Future<void> _pump(
       overrides: [
         fakeHealthOverview(FakeHealthOverviewController(overview)),
         healthReaderProvider.overrideWithValue(reader ?? FakeHealthReader()),
+        if (logged != null)
+          workoutHistoryRepositoryProvider.overrideWithValue(_History(logged)),
         healthOwnerIdProvider.overrideWithValue(_owner),
         healthClockProvider.overrideWithValue(() => overviewReadAt),
       ],
@@ -282,6 +332,136 @@ void main() {
       );
       expect(find.text('Not allowed · Manage'), findsOneWidget);
       expect(find.textContaining('need a watch'), findsNothing);
+    });
+
+    // Yesterday's 10:02 session absorbs the 10:00 Apple Watch workout; the
+    // 06:00 run today stands alone.
+    final yesterday = DateTime(2026, 11, 23, 10, 2);
+    final session = _logged('s1', yesterday, 48);
+    final merged = _outsideWorkout(
+      'o1',
+      DateTime(2026, 11, 23, 10),
+      30,
+      kind: OutsideWorkoutKind.strength,
+      kcal: 131,
+      source: 'Apple Watch',
+    );
+    final run = _outsideWorkout('o2', DateTime(2026, 11, 24, 6), 45, kcal: 286);
+    HealthOverview withWorkouts() => overview(
+      workouts: SectionData(WorkoutsOverview(outside: [merged, run])),
+    );
+
+    testWidgets('Workouts panel has bars, a merged BeyondRep row and a '
+        'standalone Running row', (tester) async {
+      await _pump(
+        tester,
+        const ActivityDetailPage(),
+        withWorkouts(),
+        logged: [session],
+      );
+      expect(find.text('Workouts'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel('About Workouts from other apps'),
+        findsOneWidget,
+      );
+      expect(find.byType(NsBarChart), findsNWidgets(3));
+      expect(find.text('2 workouts · 93 min'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Running'), 300);
+      expect(find.text('Running'), findsOneWidget);
+      expect(find.textContaining('Today 6:00 AM · 45 min'), findsOneWidget);
+      expect(find.textContaining('286 kcal'), findsOneWidget);
+      expect(find.text('From Synthetic app'), findsOneWidget);
+      expect(find.text('Push day'), findsOneWidget);
+      expect(
+        find.textContaining('Yesterday 10:02 AM · 48 min'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('From Apple Watch · 131 kcal'),
+        findsOneWidget,
+      );
+      // The merged workout is not listed on its own.
+      expect(find.text('Strength training'), findsNothing);
+    });
+
+    testWidgets('the 30-day chip widens the workouts chart', (tester) async {
+      await _pump(
+        tester,
+        const ActivityDetailPage(),
+        withWorkouts(),
+        logged: [session],
+      );
+      expect(
+        tester.widget<NsBarChart>(find.byType(NsBarChart).last).bars,
+        hasLength(30),
+      );
+      await tester.tap(find.text('7 days'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<NsBarChart>(find.byType(NsBarChart).last).bars,
+        hasLength(7),
+      );
+      await tester.tap(find.text('30 days'));
+      await tester.pumpAndSettle();
+      final bars = tester.widget<NsBarChart>(find.byType(NsBarChart).last).bars;
+      expect(bars, hasLength(30));
+      expect(bars.last.total, 45);
+      expect(bars[28].total, 48);
+    });
+
+    testWidgets('workouts not allowed shows the gap panel and still lists '
+        'BeyondRep sessions', (tester) async {
+      await _pump(
+        tester,
+        const ActivityDetailPage(),
+        overview(workouts: const SectionGap(MetricGap.notAllowed)),
+        logged: [session],
+      );
+      expect(find.text('Not allowed · Manage'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Push day'), 300);
+      expect(find.text('Push day'), findsOneWidget);
+      expect(find.byType(NsBarChart), findsNWidgets(2));
+    });
+
+    testWidgets('Workouts panel has no overflow at text scale 2.0 in dark '
+        'mode', (tester) async {
+      await _pump(
+        tester,
+        const ActivityDetailPage(),
+        withWorkouts(),
+        logged: [session],
+        textScale: 2,
+        brightness: Brightness.dark,
+      );
+      expect(tester.takeException(), isNull);
+      final list = find.byType(Scrollable).first;
+      for (var i = 0; i < 8; i++) {
+        await tester.drag(list, const Offset(0, -400));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      }
+    });
+
+    testWidgets('lists at most 10 workouts, then See all in Progress', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const ActivityDetailPage(),
+        overview(workouts: SectionData(const WorkoutsOverview(outside: []))),
+        logged: [
+          for (var i = 1; i <= 12; i++)
+            _logged(
+              's$i',
+              DateTime(2026, 11, 24, 6).subtract(Duration(days: i)),
+              30,
+              name: 'Day $i',
+            ),
+        ],
+      );
+      await tester.scrollUntilVisible(find.text('See all in Progress'), 400);
+      expect(find.text('Day 10'), findsOneWidget);
+      expect(find.text('Day 11'), findsNothing);
     });
 
     testWidgets('no overflow at text scale 2.0 in dark mode', (tester) async {

@@ -23,6 +23,8 @@ enum MetricKey {
   weight,
   bodyFat,
   muscleRecovery,
+  trainingLoad,
+  otherAppWorkouts,
 }
 
 /// Plain-language copy for one metric. [summary] is the glossary line.
@@ -55,6 +57,19 @@ MetricExplanation explanationFor(MetricKey key, HealthPlatformKind platform) {
       what: copy.what,
       tells: copy.tells,
       inBeyondRep: copy.inBeyondRep,
+    );
+  }
+  if (key == MetricKey.otherAppWorkouts) {
+    final name = platform == HealthPlatformKind.appleHealth
+        ? 'Apple Health'
+        : 'Health Connect';
+    String named(String text) => text.replaceAll('<platform>', name);
+    return MetricExplanation(
+      title: copy.title,
+      summary: named(copy.summary),
+      what: named(copy.what),
+      tells: named(copy.tells),
+      inBeyondRep: named(copy.inBeyondRep),
     );
   }
   return copy;
@@ -250,5 +265,19 @@ const _copy = <MetricKey, MetricExplanation>{
     what: 'How recently each muscle group was worked, from the sets you logged in BeyondRep. Small muscles recover in about 48 hours and larger ones in about 72.',
     tells: 'Shaded muscles are still recovering. Training them hard again soon is fine now and then, but recovered muscles are the better fit today.',
     inBeyondRep: 'Used for the "Better fit today" suggestion on Train. Uses only your logged workouts.',
+  ),
+  MetricKey.trainingLoad: MetricExplanation(
+    title: 'Training load',
+    summary: 'How much you\'ve trained lately compared with usual',
+    what: 'How much you trained over the past 7 days compared with your usual week over the past 28 days. Each workout counts its minutes, weighted by effort: your logged RPE for BeyondRep workouts, and a moderate effort for workouts from other apps.',
+    tells: 'A week well above your usual can leave you less recovered. A steady or slightly lighter week usually means you\'re fresh.',
+    inBeyondRep: 'One of the inputs to readiness once you have 14 days of workout history. Today\'s workouts count from tomorrow.',
+  ),
+  MetricKey.otherAppWorkouts: MetricExplanation(
+    title: 'Workouts from other apps',
+    summary: 'Workouts other apps saved to <platform>',
+    what: 'Workouts that your watch or other apps saved to <platform>, such as runs, rides or classes. BeyondRep reads them fresh each time and never saves or backs them up.',
+    tells: 'When one overlaps a workout you logged in BeyondRep, they show as one session, with the calories from the other app added.',
+    inBeyondRep: 'Shown in Activity and Progress history and counted in training load. They don\'t change muscle recovery, your workout count or volume.',
   ),
 };

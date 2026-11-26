@@ -174,6 +174,7 @@ HealthOverview _overview(
 HealthOverview _todayOverview({
   HealthPlatformKind platform = HealthPlatformKind.appleHealth,
   bool restingHr = true,
+  double? loadRatio,
   DateTime? readAt,
 }) {
   // sleepOverview's vsWeek is 36 min under the 7-night average: 6h 48m.
@@ -217,7 +218,14 @@ HealthOverview _todayOverview({
                 score: 60,
                 weight: 0.1,
               ),
+              if (loadRatio != null)
+                const ReadinessPart(
+                  input: ReadinessInput.trainingLoad,
+                  score: 80,
+                  weight: 0.15,
+                ),
             ],
+            loadRatio: loadRatio,
           ),
         ),
         hasHrv: true,
@@ -313,6 +321,24 @@ void main() {
       expect(find.text('How readiness works'), findsOneWidget);
       expect(find.textContaining('not medical advice'), findsOneWidget);
       expect(find.textContaining('14 days'), findsOneWidget);
+    });
+
+    testWidgets('lists Training load with its About button when the part '
+        'exists', (tester) async {
+      await _pump(tester, _todayOverview(loadRatio: 1.1), FakeHealthReader());
+      expect(find.text('Training load'), findsOneWidget);
+      expect(
+        find.text('Last 7 days at 110% of your usual · 15% of the score'),
+        findsOneWidget,
+      );
+      expect(find.bySemanticsLabel('About Training load'), findsOneWidget);
+      expect(find.textContaining('14 days of workout history'), findsOneWidget);
+    });
+
+    testWidgets('has no Training load row without the part', (tester) async {
+      await _pump(tester, _todayOverview(), FakeHealthReader());
+      expect(find.text('Training load'), findsNothing);
+      expect(find.bySemanticsLabel('About Training load'), findsNothing);
     });
 
     testWidgets('About buttons on the how-it-works panel and each input', (

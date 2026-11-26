@@ -65,6 +65,28 @@ void main() {
     }
   });
 
+  test('training load and other-app workouts copy', () {
+    final load = explanationFor(
+      MetricKey.trainingLoad,
+      HealthPlatformKind.appleHealth,
+    );
+    expect(load.title, 'Training load');
+    expect(load.summary, "How much you've trained lately compared with usual");
+    expect(load.inBeyondRep, contains('14 days of workout history'));
+    for (final (platform, name) in [
+      (HealthPlatformKind.appleHealth, 'Apple Health'),
+      (HealthPlatformKind.healthConnect, 'Health Connect'),
+    ]) {
+      final w = explanationFor(MetricKey.otherAppWorkouts, platform);
+      expect(w.title, 'Workouts from other apps');
+      expect(w.summary, 'Workouts other apps saved to $name');
+      expect(w.what, contains('saved to $name, such as runs'));
+      expect(w.what, isNot(contains('<platform>')));
+      expect(w.tells, isNot(contains('<platform>')));
+      expect(w.inBeyondRep, isNot(contains('<platform>')));
+    }
+  });
+
   test('hrv what mentions both Apple and Android', () {
     final what = explanationFor(
       MetricKey.hrv,
