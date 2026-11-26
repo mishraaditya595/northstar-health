@@ -21,9 +21,16 @@ import 'workout_templates_page.dart';
 /// One template: every exercise with its sets, reps or seconds and rest, and
 /// two ways to use it, starting now or copying it into My Plans.
 class TemplateDetailPage extends ConsumerStatefulWidget {
-  const TemplateDetailPage({required this.templateId, super.key});
+  const TemplateDetailPage({
+    required this.templateId,
+    this.embedded = false,
+    super.key,
+  });
 
   final String templateId;
+
+  /// Shown inside the workouts list's detail pane: no back button.
+  final bool embedded;
 
   @override
   ConsumerState<TemplateDetailPage> createState() => _TemplateDetailPageState();
@@ -151,7 +158,8 @@ class _TemplateDetailPageState extends ConsumerState<TemplateDetailPage> {
     }
     return Scaffold(
       appBar: AppBar(
-        leading: const NsBackButton(),
+        automaticallyImplyLeading: false,
+        leading: widget.embedded ? null : const NsBackButton(),
         title: const Text('Workout'),
       ),
       body: Center(

@@ -30,7 +30,7 @@ import 'package:beyondrep/objectbox.g.dart';
 void tallView(WidgetTester tester, {double? width}) {
   final view = tester.view;
   view.devicePixelRatio = 1;
-  view.physicalSize = Size(width ?? 900, 4200);
+  view.physicalSize = Size(width ?? 800, 4200);
   addTearDown(view.resetPhysicalSize);
   addTearDown(view.resetDevicePixelRatio);
 }

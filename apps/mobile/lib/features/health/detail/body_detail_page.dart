@@ -113,8 +113,7 @@ class _BodyView extends ConsumerWidget {
           formatHealthDate(lean.day),
         ),
     ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return DetailPanels(
       children: [
         _weight(context),
         if (tiles.isNotEmpty) DetailPanel(children: [DetailPairs(tiles)]),

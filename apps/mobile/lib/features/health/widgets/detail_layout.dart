@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/design/beyondrep_theme.dart';
 import '../../../core/design/inputs.dart';
+import '../../../core/design/layout.dart';
 import '../../../core/design/page_header.dart';
 import '../application/health_overview.dart';
 import '../application/health_summary_controller.dart';
@@ -65,6 +66,26 @@ class HealthDetailScaffold extends ConsumerWidget {
     }
     if (async.isLoading) return const DetailLoading();
     return const HealthCaption('Connect health on the Health tab first.');
+  }
+}
+
+/// The panels of a detail screen: one column on a phone; on a wide window the
+/// first panel (the chart) takes the main column and the rest sit beside it.
+/// [DetailPanel] already spaces itself 12 dp below.
+class DetailPanels extends StatelessWidget {
+  const DetailPanels({required this.children, super.key});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isWideWindow(context) || children.length < 2) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      );
+    }
+    return NsSplitColumns(main: [children.first], side: children.sublist(1));
   }
 }
 

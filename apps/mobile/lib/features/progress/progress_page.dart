@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/design/inputs.dart';
+import '../../core/design/layout.dart';
 import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
@@ -14,11 +15,14 @@ import '../health/application/health_summary_controller.dart';
 import '../health/application/workout_heart_rate.dart';
 import '../health/domain/outside_workouts.dart';
 import '../health/health_format.dart';
+import '../health/widgets/health_card_frame.dart';
 import '../health/widgets/outside_workout_ui.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
 import '../workouts/domain/workout_models.dart';
 import 'domain/progress_overview.dart';
 import 'muscle_map.dart';
+import 'outside_workout_detail_page.dart';
+import 'workout_history_detail_page.dart';
 import 'domain/workout_history_models.dart';
 import 'workout_history_state.dart';
 
@@ -35,6 +39,10 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
   String? _selectedExerciseKey;
   LoadUnit? _selectedLoadUnit;
   DateTime? _month;
+
+  /// Wide windows: the history item open in the detail pane
+  /// (`/progress/workouts/<uuid>` or `/progress/health-workouts/<id>`).
+  String? _selectedRoute;
 
   @override
   void initState() {
@@ -63,7 +71,9 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 920),
+        constraints: BoxConstraints(
+          maxWidth: isWideWindow(context) ? double.infinity : 920,
+        ),
         child: history.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (_, _) => ListView(
@@ -82,10 +92,70 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
               ),
             ],
           ),
-          data: (data) => _content(context, data),
+          data: (data) => NsListDetail(
+            list: _content(context, data),
+            detail: _detail(data),
+            emptyDetail: const Center(
+              child: HealthCaption('Pick a workout to see its sets.'),
+            ),
+            selectedRoute: _selectedRoute,
+            onCollapsed: _collapse,
+          ),
         ),
       ),
     );
+  }
+
+  void _select(String route) => setState(() => _selectedRoute = route);
+
+  /// The window narrowed with an item open: it becomes a pushed page.
+  void _collapse(String route) {
+    if (!mounted) return;
+    setState(() => _selectedRoute = null);
+    context.push(route);
+  }
+
+  /// The pane's page for [_selectedRoute], or null (clearing the selection)
+  /// when that item is gone.
+  Widget? _detail(WorkoutHistorySnapshot data) {
+    final route = _selectedRoute;
+    if (route == null) return null;
+    final id = route.split('/').last;
+    final Widget? page;
+    if (route.startsWith('/progress/health-workouts/')) {
+      final overview = ref.watch(healthOverviewProvider).value;
+      var gone = false;
+      if (overview != null &&
+          overview.ownerId == ref.watch(healthOwnerIdProvider)) {
+        final workouts = overview.workouts;
+        gone =
+            workouts is SectionData<WorkoutsOverview> &&
+            !workouts.value.outside.any((w) => w.id == id);
+      }
+      page = gone
+          ? null
+          : OutsideWorkoutDetailPage(
+              key: ValueKey(route),
+              workoutId: id,
+              embedded: true,
+            );
+    } else {
+      page = data.sessions.any((s) => s.uuid == id)
+          ? WorkoutHistoryDetailPage(
+              key: ValueKey(route),
+              sessionUuid: id,
+              embedded: true,
+            )
+          : null;
+    }
+    if (page == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _selectedRoute == route) {
+          setState(() => _selectedRoute = null);
+        }
+      });
+    }
+    return page;
   }
 
   Widget _overview(
@@ -218,7 +288,11 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
         if (kcal != null) '${kcal.round()} kcal',
       ].join(' · '),
       source: w.source,
-      onTap: () => context.push('/progress/health-workouts/${w.id}'),
+      onTap: () => openListItem(
+        context,
+        route: '/progress/health-workouts/${w.id}',
+        select: () => _select('/progress/health-workouts/${w.id}'),
+      ),
     );
   }
 
@@ -251,7 +325,11 @@ class _ProgressPageState extends ConsumerState<ProgressPage>
             unit: unit,
             syncFlag: ref.watch(workoutSyncFlagsProvider)[session.uuid],
             merged: merged[session.uuid] ?? const [],
-            onOpen: () => context.push('/progress/workouts/${session.uuid}'),
+            onOpen: () => openListItem(
+              context,
+              route: '/progress/workouts/${session.uuid}',
+              select: () => _select('/progress/workouts/${session.uuid}'),
+            ),
           ),
         )
         ..add(const SizedBox(height: 12));

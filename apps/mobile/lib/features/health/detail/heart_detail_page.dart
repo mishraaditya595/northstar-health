@@ -102,8 +102,7 @@ class _HeartView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return DetailPanels(
       children: [
         _restingHr(context, ref),
         _hrv(context, ref),

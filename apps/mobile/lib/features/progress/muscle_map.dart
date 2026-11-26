@@ -321,19 +321,23 @@ class MuscleRecoveryCard extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 14),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _Legend(
-                  color: theme.colorScheme.onSurface.withValues(alpha: .2),
-                  label: 'Recovered',
-                ),
-                const SizedBox(width: 20),
-                _Legend(
-                  color: theme.colorScheme.primary,
-                  label: 'Recently trained',
-                ),
-              ],
+            SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 20,
+                runSpacing: 6,
+                children: [
+                  _Legend(
+                    color: theme.colorScheme.onSurface.withValues(alpha: .2),
+                    label: 'Recovered',
+                  ),
+                  _Legend(
+                    color: theme.colorScheme.primary,
+                    label: 'Recently trained',
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 10),
             Center(
@@ -378,7 +382,9 @@ class _Legend extends StatelessWidget {
         decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       ),
       const SizedBox(width: 6),
-      Text(label, style: Theme.of(context).textTheme.labelMedium),
+      Flexible(
+        child: Text(label, style: Theme.of(context).textTheme.labelMedium),
+      ),
     ],
   );
 }

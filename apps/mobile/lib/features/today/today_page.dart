@@ -7,6 +7,7 @@ import '../../core/date_labels.dart';
 import '../../core/design/dialogs.dart';
 import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/hero_frame.dart';
+import '../../core/design/layout.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 import '../account/account_auth_provider.dart';
@@ -145,37 +146,8 @@ class _TodayPageState extends ConsumerState<TodayPage> {
     final history = ref.watch(completedWorkoutHistoryProvider);
     final active = ref.watch(activeWorkoutProvider);
     final unfinished = active.value;
-    return ListView(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        16,
-        16,
-        32 + MediaQuery.paddingOf(context).bottom,
-      ),
-      children: [
-        PageHeader(
-          title: 'Today',
-          eyebrow: todayEyebrow(now),
-          actions: [
-            SquareButton(
-              tooltip: 'Account and backup',
-              onPressed: () => context.push('/today/account'),
-              child: const Icon(Icons.manage_accounts_outlined, size: 20),
-            ),
-          ],
-        ),
-        BackupStatusNotice(
-          controller: ref.watch(accountAuthControllerProvider),
-          blockedCount: ref.watch(blockedWorkoutCountProvider),
-          unsyncedCount: _count(WorkoutSyncFlag.notSynced),
-          reviewCount: _count(WorkoutSyncFlag.needsReview),
-          restoreBlocked: ref.watch(workoutRestoreBlockedCodeProvider) != null,
-          onSyncNow: ref.watch(workoutUploadKickProvider),
-          onReview: () => context.push('/today/sync/review'),
-        ),
-        const SizedBox(height: 24),
-        if (unfinished != null)
-          NsHeroFrame(
+    final Widget hero = unfinished != null
+        ? NsHeroFrame(
             eyebrow: 'UNFINISHED WORKOUT',
             title: unfinished.session.name,
             subtitle: 'Saved on this device. Pick up where you left off.',
@@ -184,15 +156,15 @@ class _TodayPageState extends ConsumerState<TodayPage> {
             ],
           )
         // Starting would fail while an unfinished workout can't be recovered.
-        else if (active.hasError)
-          NsHeroFrame(
+        : active.hasError
+        ? NsHeroFrame(
             eyebrow: 'UNFINISHED WORKOUT',
             title: 'Workout recovery needs attention',
             subtitle: 'No local data has been deleted.',
             actions: [NsHeroAction('Open Train', () => context.go('/train'))],
           )
-        else if (week != null)
-          TodayProgramHero(
+        : week != null
+        ? TodayProgramHero(
             week: week,
             onStart: (planUuid) => _startProgramDay(week.program, planUuid),
             onOpenProgram: () async {
@@ -201,15 +173,15 @@ class _TodayPageState extends ConsumerState<TodayPage> {
             },
           )
         // A reload keeps showing the last value instead of a spinner.
-        else if (library.hasValue && history.hasValue)
-          _Hero(
+        : library.hasValue && history.hasValue
+        ? _Hero(
             next: nextPlan(library.value!.plans, history.value!.sessions),
             onStart: _startPlan,
             onOpen: _open,
             onTrain: () => context.go('/train'),
           )
-        else if (library.hasError || history.hasError)
-          NsHeroFrame(
+        : library.hasError || history.hasError
+        ? NsHeroFrame(
             eyebrow: 'NEXT UP',
             title: 'Could not load your plans',
             subtitle: 'Your local plans and workouts were not changed.',
@@ -220,31 +192,86 @@ class _TodayPageState extends ConsumerState<TodayPage> {
               }),
             ],
           )
-        else
-          const NsHeroFrame(
+        : const NsHeroFrame(
             eyebrow: 'NEXT UP',
             title: null,
             subtitle: null,
             actions: [],
-          ),
-        if (week != null && unfinished == null && !active.hasError)
-          TodayMissedLine(
+          );
+    final missed = week != null && unfinished == null && !active.hasError
+        ? TodayMissedLine(
             week: week,
             onTap: (date, planUuid, workout) =>
                 _confirmMissed(week, date, planUuid, workout),
+          )
+        : null;
+    final weekCard = _WeekCard(
+      today: today,
+      perDay: history.hasValue ? sessionsPerDay(history.value!, today) : null,
+      failed: !history.hasValue && history.hasError,
+    );
+    final header = PageHeader(
+      title: 'Today',
+      eyebrow: todayEyebrow(now),
+      actions: [
+        SquareButton(
+          tooltip: 'Account and backup',
+          onPressed: () => context.push('/today/account'),
+          child: const Icon(Icons.manage_accounts_outlined, size: 20),
+        ),
+      ],
+    );
+    final backup = BackupStatusNotice(
+      controller: ref.watch(accountAuthControllerProvider),
+      blockedCount: ref.watch(blockedWorkoutCountProvider),
+      unsyncedCount: _count(WorkoutSyncFlag.notSynced),
+      reviewCount: _count(WorkoutSyncFlag.needsReview),
+      restoreBlocked: ref.watch(workoutRestoreBlockedCodeProvider) != null,
+      onSyncNow: ref.watch(workoutUploadKickProvider),
+      onReview: () => context.push('/today/sync/review'),
+    );
+    final padding = EdgeInsets.fromLTRB(
+      16,
+      16,
+      16,
+      32 + MediaQuery.paddingOf(context).bottom,
+    );
+    if (isWideWindow(context)) {
+      return ListView(
+        padding: padding,
+        children: [
+          header,
+          backup,
+          const SizedBox(height: 24),
+          NsSplitColumns(
+            mainFlex: 1,
+            sideFlex: 1,
+            main: [
+              hero,
+              ?missed,
+              const SizedBox(height: 27),
+              const SectionHeading('This week'),
+              weekCard,
+            ],
+            side: const [SectionHeading('Recent health'), TodayHealthRow()],
           ),
+        ],
+      );
+    }
+    return ListView(
+      padding: padding,
+      children: [
+        header,
+        backup,
+        const SizedBox(height: 24),
+        hero,
+        ?missed,
         const SizedBox(height: 27),
         const SectionHeading('Recent health'),
         const TodayHealthRow(),
         const SizedBox(height: 27),
         const SectionHeading('This week'),
-        _WeekCard(
-          today: today,
-          perDay: history.hasValue
-              ? sessionsPerDay(history.value!, today)
-              : null,
-          failed: !history.hasValue && history.hasError,
-        ),
+        weekCard,
       ],
     );
   }
@@ -296,16 +323,20 @@ class _WeekCard extends StatelessWidget {
             ),
             if (counts != null) ...[
               const SizedBox(height: 13),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  for (var i = 0; i < days.length; i++)
-                    _Day(
-                      name: weekdayName(days[i]),
-                      isToday: days[i] == today,
-                      trained: counts[i] > 0,
-                    ),
-                ],
+              SizedBox(
+                width: double.infinity,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  runSpacing: 8,
+                  children: [
+                    for (var i = 0; i < days.length; i++)
+                      _Day(
+                        name: weekdayName(days[i]),
+                        isToday: days[i] == today,
+                        trained: counts[i] > 0,
+                      ),
+                  ],
+                ),
               ),
             ],
           ],

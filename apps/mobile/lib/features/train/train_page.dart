@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/clock.dart';
 import '../../core/date_labels.dart';
 import '../../core/design/inputs.dart';
+import '../../core/design/layout.dart';
 import '../../core/design/dialogs.dart';
 import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
@@ -123,6 +124,75 @@ class TrainPage extends ConsumerWidget {
         !card.unavailable &&
         card.todayWorkout != null &&
         !todayDone;
+    final startSection = <Widget>[
+      const SectionHeading('Start training'),
+      Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: programToday
+              ? _programStart(context, ref, card, colors)
+              : _quickStart(context, ref, colors),
+        ),
+      ),
+      const SizedBox(height: 10),
+      Consumer(
+        builder: (context, ref, _) {
+          final current = ref.watch(activeWorkoutProvider);
+          return current.when(
+            loading: () => const SizedBox(
+              height: 32,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (_, _) => Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  children: [
+                    const Text(
+                      'Workout recovery needs attention. '
+                      'No local data has been deleted.',
+                    ),
+                    TextButton(
+                      onPressed: () => ref.invalidate(activeWorkoutProvider),
+                      child: const Text('Retry recovery'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            data: (view) => view == null
+                ? const SizedBox.shrink()
+                : Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.restore),
+                      title: Text('Resume: ${view.session.name}'),
+                      subtitle: Text(
+                        view.session.status.name == 'paused'
+                            ? 'Paused workout saved on this device'
+                            : 'Unfinished workout saved on this device',
+                      ),
+                      trailing: const Icon(Icons.arrow_forward),
+                      onTap: () => context.push('/train/workout'),
+                    ),
+                  ),
+          );
+        },
+      ),
+    ];
+    final programSection = <Widget>[
+      if (card != null) ...[
+        const SectionHeading('Your program'),
+        NsListCard(
+          icon: Icons.event_repeat_outlined,
+          title: card.program.name,
+          subtitle:
+              'Today: ${card.unavailable ? 'Workout unavailable' : card.todayWorkout ?? 'Rest day'}',
+          onTap: () =>
+              _open(context, ref, '/train/program/${card.program.uuid}'),
+        ),
+      ],
+    ];
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
@@ -172,73 +242,21 @@ class TrainPage extends ConsumerWidget {
             const SizedBox(height: 18),
             _WeekStrip(today: DateTime.utc(now.year, now.month, now.day)),
             const SizedBox(height: 27),
-            const SectionHeading('Start training'),
-            Card(
-              margin: EdgeInsets.zero,
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: programToday
-                    ? _programStart(context, ref, card, colors)
-                    : _quickStart(context, ref, colors),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Consumer(
-              builder: (context, ref, _) {
-                final current = ref.watch(activeWorkoutProvider);
-                return current.when(
-                  loading: () => const SizedBox(
-                    height: 32,
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                  error: (_, _) => Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        children: [
-                          const Text(
-                            'Workout recovery needs attention. '
-                            'No local data has been deleted.',
-                          ),
-                          TextButton(
-                            onPressed: () =>
-                                ref.invalidate(activeWorkoutProvider),
-                            child: const Text('Retry recovery'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  data: (view) => view == null
-                      ? const SizedBox.shrink()
-                      : Card(
-                          child: ListTile(
-                            leading: const Icon(Icons.restore),
-                            title: Text('Resume: ${view.session.name}'),
-                            subtitle: Text(
-                              view.session.status.name == 'paused'
-                                  ? 'Paused workout saved on this device'
-                                  : 'Unfinished workout saved on this device',
-                            ),
-                            trailing: const Icon(Icons.arrow_forward),
-                            onTap: () => context.push('/train/workout'),
-                          ),
-                        ),
-                );
-              },
-            ),
-            const SizedBox(height: 17),
-            if (card != null) ...[
-              const SectionHeading('Your program'),
-              NsListCard(
-                icon: Icons.event_repeat_outlined,
-                title: card.program.name,
-                subtitle:
-                    'Today: ${card.unavailable ? 'Workout unavailable' : card.todayWorkout ?? 'Rest day'}',
-                onTap: () =>
-                    _open(context, ref, '/train/program/${card.program.uuid}'),
+            if (card != null && isWideWindow(context)) ...[
+              NsSplitColumns(
+                mainFlex: 1,
+                sideFlex: 1,
+                main: startSection,
+                side: programSection,
               ),
               const SizedBox(height: 17),
+            ] else ...[
+              ...startSection,
+              const SizedBox(height: 17),
+              if (card != null) ...[
+                ...programSection,
+                const SizedBox(height: 17),
+              ],
             ],
             const SectionHeading('Your plans'),
             state.when(
@@ -418,46 +436,49 @@ class TrainPage extends ConsumerWidget {
         : data.plans
               .where((p) => p.uuid == fit!.suggestion!.plan.planUuid)
               .firstOrNull;
+    Widget planCard(WorkoutPlanRecord plan) => NsListCard(
+      icon: Icons.fitness_center,
+      title: plan.name,
+      subtitle:
+          (plan.exercises.isEmpty
+              ? 'No exercises added'
+              : plan.exercises
+                    .map((e) => labels[e.exerciseUuid] ?? 'Archived exercise')
+                    .take(3)
+                    .join(' · ')) +
+          _recoveryLine(fit?.byPlan[plan.uuid]),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'Start ${plan.name}',
+            icon: const Icon(Icons.play_circle_fill),
+            onPressed: () => _startPlan(context, ref, plan.uuid),
+          ),
+          IconButton(
+            tooltip: 'Edit ${plan.name}',
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () =>
+                _open(context, ref, '/train/plans/${plan.uuid}/edit'),
+          ),
+        ],
+      ),
+      onTap: () => _open(context, ref, '/train/plans/${plan.uuid}/edit'),
+    );
     return Column(
       children: [
         if (suggested != null) _betterFit(context, ref, suggested, fit!),
-        for (final plan in data.plans)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: NsListCard(
-              icon: Icons.fitness_center,
-              title: plan.name,
-              subtitle:
-                  (plan.exercises.isEmpty
-                      ? 'No exercises added'
-                      : plan.exercises
-                            .map(
-                              (e) =>
-                                  labels[e.exerciseUuid] ?? 'Archived exercise',
-                            )
-                            .take(3)
-                            .join(' · ')) +
-                  _recoveryLine(fit?.byPlan[plan.uuid]),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: 'Start ${plan.name}',
-                    icon: const Icon(Icons.play_circle_fill),
-                    onPressed: () => _startPlan(context, ref, plan.uuid),
-                  ),
-                  IconButton(
-                    tooltip: 'Edit ${plan.name}',
-                    icon: const Icon(Icons.edit_outlined),
-                    onPressed: () =>
-                        _open(context, ref, '/train/plans/${plan.uuid}/edit'),
-                  ),
-                ],
-              ),
-              onTap: () =>
-                  _open(context, ref, '/train/plans/${plan.uuid}/edit'),
+        if (isWideWindow(context))
+          NsResponsiveGrid(
+            maxColumns: 2,
+            children: [for (final plan in data.plans) planCard(plan)],
+          )
+        else
+          for (final plan in data.plans)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: planCard(plan),
             ),
-          ),
       ],
     );
   }

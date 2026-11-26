@@ -113,6 +113,18 @@ Workouts from other apps and the training-load readiness input are implemented i
 | Account switch: sign in as another account, no workout or load from the first account appears | not run | not run |
 | No outside workout, kcal, heart rate or load appears in Account > export, Supabase, logs or an iCloud/Android backup | not run | not run |
 
+## Phase 4 stage 1: tablet layouts (owner actions, none done)
+
+Wide-window layouts (window width 840 dp or more) are implemented in source, **not released or device-verified**. The automated sweep (`test/accessibility/wide_layout_sweep_test.dart`) checks for overflow at five sizes, both themes and 200 % text in the test font; it does not replace these checks. Every row is not run.
+
+| Check | iPad | Phone |
+| --- | --- | --- |
+| iPad simulator landscape (Today, Train, Exercises, Workouts, Programs, Progress, Health and each Health detail) in light and dark: two columns or grids as designed, nothing clipped | not run | n/a |
+| Split view dragged across 840 dp with a Progress workout, an exercise, a workout or a program open: the open item stays open as a pushed page when the window narrows, and the list stays when it widens | not run | n/a |
+| 200 % text on iPad landscape: grids drop to fewer columns, nothing overflows | not run | n/a |
+| iPad portrait (820 wide) and phone: every screen looks as before, one column | not run | not run |
+| Add program from the programs detail pane: the program opens on top and back returns to the Programs list | not run | n/a |
+
 ## Training library stage 2 device QA (ADR-0010, owner actions, none done)
 
 The catalogue cache and exercise pickers are implemented in source, **not released or device-verified**, and need the stage 1 catalogue migrations applied to the project under test. Every row is not run.
