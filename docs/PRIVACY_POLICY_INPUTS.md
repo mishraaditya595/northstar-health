@@ -125,13 +125,13 @@ Under India's DPDP Act 2023 (the likely home jurisdiction, with a `.in` domain a
 | Deletion tombstones | Lifetime of the account (needed so other devices learn of the deletion) |
 | Sync receipts | 90 days, purged daily |
 | Auth user, sessions, refresh tokens, identities | Until account deletion (cascades in Supabase Auth) |
-| Supabase `auth.audit_log_entries` (IP, actor email/ID) | **Not covered by the FK cascade.** Needs a decision and possibly a cleanup job (Q3) |
-| Supabase platform/API logs | Per Supabase plan (verify; free plan retention is short) |
-| Brevo email logs and contact record | Per Brevo settings (Q3) |
+| Supabase `auth.audit_log_entries` (IP, actor email/ID) | Not written on the hosted project: checked 2026-11-26, 0 rows with 2 users who have signed in, so "write auth audit logs to project database" is off. Auth audit events go only to Supabase log storage. If that setting is turned on again, rows would survive account deletion (no FK cascade), and a purge job and policy update are needed first. |
+| Supabase platform/API/Auth logs | Per Supabase plan; the policy states 1 day for the free plan (owner to confirm in the dashboard; update if the plan changes) |
+| Brevo email logs and contact record | Per Brevo's own retention rules (policy says "a limited period") |
 | On-device data | Until the account is deleted (local directory erased), or the app is uninstalled |
 | Health readings (Phase 3) | Not retained; memory only |
 
-**Account deletion (Shipped, main, PR #29):** in-app at Account > Delete account. The user sees a warning about unsynced data, is offered an export first, re-verifies with a fresh email code, and the `delete-account` Edge Function hard-deletes the Supabase Auth user. FK cascades remove `workout_records`, `workout_sync_operations` and `workout_owner_cursors`. The app then erases that account's local ObjectBox directory. Details and uncertain-outcome handling: `supabase/ACCOUNT_DELETION_RUNBOOK.md`. Database backups held by Supabase roll off per Supabase's backup window (free plan has no PITR; verify, Q3).
+**Account deletion (Shipped, main, PR #29):** in-app at Account > Delete account. The user sees a warning about unsynced data, is offered an export first, re-verifies with a fresh email code, and the `delete-account` Edge Function hard-deletes the Supabase Auth user. FK cascades remove `workout_records`, `workout_sync_operations` and `workout_owner_cursors`. The app then erases that account's local ObjectBox directory. Details and uncertain-outcome handling: `supabase/ACCOUNT_DELETION_RUNBOOK.md`. The free plan keeps no automatic database backups (Supabase docs: daily backups start on Pro), so deleted rows are not kept in a backup. Upgrading the plan needs a policy update.
 
 Deleting a single completed workout (history detail > Delete workout) uploads a tombstone that removes its contents from the cloud copy.
 
@@ -207,15 +207,15 @@ The policy and the app must show that:
 - **Changes to the policy:** "last updated" date at the top; announce material changes in the app or by email before they take effect.
 - **No medical advice:** the health summary is informational, not diagnosis (also matches ADR-0008).
 
-## 10. Open questions for Adi
+## 10. Owner answers (2026-11-26)
 
-1. **Jurisdictions:** which countries will the app be released in? Drives whether GDPR/UK GDPR and US state law sections are needed on top of DPDP.
-2. **Minimum age:** 18+, 16+ or 13+? Drives store age rating and policy wording.
-3. **Post-deletion retention:** what to do with Supabase `auth.audit_log_entries`, Supabase platform logs and backups, and Brevo contact/log copies after an account is deleted, and for how long. The cleanest answer is a scheduled purge of audit entries for deleted users plus a stated maximum (e.g. 30 days) for logs/backups.
-4. **In-app policy link:** add a "Privacy policy" row on the sign-in and Account screens (needed for HealthKit review and good practice for Play).
-5. **DPAs:** accept Supabase's and Brevo's data processing agreements.
-6. **Email change:** support changing the account email, or document that users delete and recreate the account.
-7. **Controller identity and contact address** for the policy (section 1).
+1. **Jurisdictions:** India first. The policy is written for the DPDP Act 2023. Add GDPR or US sections before releasing elsewhere.
+2. **Minimum age:** 13. Because DPDP treats under-18s as children, the policy says under-18s may use the app only with a parent's or guardian's consent. The app has no verifiable parental-consent flow; this is an accepted risk, and 18+ would remove it.
+3. **Post-deletion retention:** no database audit rows (see section 5); Supabase logs for 1 day on the free plan; Brevo per its own rules; no database backups on the free plan.
+4. **In-app policy link:** yes, a Privacy policy button on the sign-in and Account screens (PR #81).
+5. **DPAs:** the owner has accepted Supabase's and Brevo's.
+6. **Email change:** not supported. The policy tells users to export, delete the account and sign up again.
+7. **Controller:** Aditya Mishra, Brahmapur, Odisha, India. The privacy contact is the owner's Zoho Mail address until privacy@beyondrep.in routing is set up; then switch `privacyEmail` in `apps/website/src/site.ts`.
 
 ## 11. Change triggers
 

@@ -12,6 +12,7 @@ import '../workouts/data/objectbox_workout_outbox.dart';
 import 'account_auth_controller.dart';
 import 'account_auth_provider.dart';
 import 'account_sync_overview.dart';
+import 'privacy_policy_link.dart';
 import 'workout_export_file_writer.dart';
 import 'workout_history_export.dart';
 
@@ -453,6 +454,11 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
                       : () => _signOut(context, auth, overview),
                   icon: const Icon(Icons.logout),
                   label: const Text('Sign out of this device'),
+                ),
+                const SizedBox(height: 8),
+                const Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: PrivacyPolicyLink(),
                 ),
               ],
             ),

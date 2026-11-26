@@ -16,6 +16,7 @@ dependencies:
   objectbox_flutter_libs: ^5.3.2
   health: 14.0.0
   crypto: 3.0.7
+  url_launcher: ^6.3.3
 dev_dependencies:
   flutter_test:
     sdk: flutter
