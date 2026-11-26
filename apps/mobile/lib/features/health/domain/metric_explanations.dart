@@ -126,7 +126,7 @@ const _copy = <MetricKey, MetricExplanation>{
   MetricKey.readiness: MetricExplanation(
     title: 'Readiness',
     summary: 'How ready your body is to train today',
-    what: 'A 0 to 100 score for today, worked out on your phone from your HRV, resting heart rate, last night\'s sleep and your sleep over the past week.',
+    what: 'A 0 to 100 score for today, worked out on your phone from your HRV, resting heart rate, last night\'s sleep and your sleep over the past week, plus your recent training load once you have 14 days of workout history.',
     tells: '70 and up is Good: train as planned. 50 to 69 is Fair: train, but watch your effort. Under 50 is Low: consider an easier session. It compares you only with your own last 30 days.',
     inBeyondRep: 'Shown on Today, Health and Train. It never changes your plans. It is guidance, not medical advice.',
   ),

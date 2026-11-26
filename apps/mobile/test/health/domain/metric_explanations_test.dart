@@ -65,6 +65,17 @@ void main() {
     }
   });
 
+  test('readiness copy names the training load input', () {
+    expect(
+      explanationFor(MetricKey.readiness, HealthPlatformKind.appleHealth).what,
+      endsWith(
+        "your HRV, resting heart rate, last night's sleep and your sleep over "
+        'the past week, plus your recent training load once you have 14 days '
+        'of workout history.',
+      ),
+    );
+  });
+
   test('training load and other-app workouts copy', () {
     final load = explanationFor(
       MetricKey.trainingLoad,
