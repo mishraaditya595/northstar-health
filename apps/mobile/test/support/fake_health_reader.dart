@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/health/domain/health_types.dart';
+import 'package:beyondrep/features/health/domain/outside_workouts.dart';
 
 class FakeHealthReader implements HealthReader {
   FakeHealthReader({
@@ -120,6 +121,19 @@ class FakeHealthReader implements HealthReader {
   ) async {
     totalsCalls.add((type, from, to));
     return totalsResults[type] ?? SeriesData(totals[type] ?? const []);
+  }
+
+  /// What [readWorkouts] returns.
+  SeriesResult<List<OutsideWorkout>> workouts = const SeriesData([]);
+  final List<(DateTime, DateTime)> workoutCalls = [];
+
+  @override
+  Future<SeriesResult<List<OutsideWorkout>>> readWorkouts(
+    DateTime from,
+    DateTime to,
+  ) async {
+    workoutCalls.add((from, to));
+    return workouts;
   }
 
   @override

@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/health/data/platform_health_reader.dart';
 import 'package:beyondrep/features/health/domain/health_types.dart';
+import 'package:beyondrep/features/health/domain/outside_workouts.dart';
 import 'package:beyondrep/features/health/domain/sleep_nights.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -159,6 +162,34 @@ HealthDataPoint _point(
   sourceName: source,
 );
 
+HealthDataPoint _workout(
+  HealthWorkoutActivityType type, {
+  String uuid = 'w1',
+  int? kcal = 131,
+  int? meters,
+  String sourceName = 'Aditi Watch',
+  String sourceId = 'com.apple.health.watch',
+  DateTime? from,
+  DateTime? to,
+}) => HealthDataPoint(
+  uuid: uuid,
+  value: WorkoutHealthValue(
+    workoutActivityType: type,
+    totalEnergyBurned: kcal,
+    totalEnergyBurnedUnit: kcal == null ? null : HealthDataUnit.KILOCALORIE,
+    totalDistance: meters,
+    totalDistanceUnit: meters == null ? null : HealthDataUnit.METER,
+  ),
+  type: HealthDataType.WORKOUT,
+  unit: HealthDataUnit.NO_UNIT,
+  dateFrom: from ?? DateTime.utc(2026, 11, 20, 9),
+  dateTo: to ?? DateTime.utc(2026, 11, 20, 9, 30),
+  sourcePlatform: HealthPlatformType.appleHealth,
+  sourceDeviceId: 'd',
+  sourceId: sourceId,
+  sourceName: sourceName,
+);
+
 const _commonTypes = [
   HealthDataType.SLEEP_ASLEEP,
   HealthDataType.STEPS,
@@ -175,6 +206,7 @@ const _commonTypes = [
   HealthDataType.ACTIVE_ENERGY_BURNED,
   HealthDataType.BODY_FAT_PERCENTAGE,
   HealthDataType.LEAN_BODY_MASS,
+  HealthDataType.WORKOUT,
 ];
 
 const _androidTypes = [
@@ -830,5 +862,146 @@ void main() {
       friendlySource('com.vendor.app', HealthPlatformKind.appleHealth),
       'Apple Health',
     );
+  });
+
+  group('readWorkouts', () {
+    final from = DateTime(2026, 8, 28);
+
+    test('WORKOUT is in the request list on both platforms', () async {
+      await ios().requestAccess();
+      expect(health.requested, contains(HealthDataType.WORKOUT));
+      await android().requestAccess();
+      expect(health.requested, contains(HealthDataType.WORKOUT));
+    });
+
+    test('maps a TRADITIONAL_STRENGTH_TRAINING workout to strength with '
+        '131 kcal on iOS', () async {
+      health.points = [
+        _workout(
+          HealthWorkoutActivityType.TRADITIONAL_STRENGTH_TRAINING,
+          meters: 0,
+        ),
+      ];
+      final r = await ios().readWorkouts(from, now);
+      final w = (r as SeriesData<List<OutsideWorkout>>).data.single;
+      expect(w.kind, OutsideWorkoutKind.strength);
+      expect(w.activeKcal, 131);
+      expect(w.id, 'w1');
+      expect(w.source, 'Aditi Watch');
+      expect(w.minutes, 30);
+      expect(health.calls.last.types, [HealthDataType.WORKOUT]);
+    });
+
+    test('keeps distance and null when absent', () async {
+      health.points = [
+        _workout(HealthWorkoutActivityType.RUNNING, kcal: null, meters: 5000),
+      ];
+      final w = ((await ios().readWorkouts(
+        from,
+        now,
+      )) as SeriesData<List<OutsideWorkout>>).data.single;
+      expect(w.kind, OutsideWorkoutKind.running);
+      expect(w.distanceMeters, 5000);
+      expect(w.activeKcal, isNull);
+    });
+
+    test('maps activity types to friendly kinds', () async {
+      final cases = {
+        HealthWorkoutActivityType.FUNCTIONAL_STRENGTH_TRAINING:
+            OutsideWorkoutKind.strength,
+        HealthWorkoutActivityType.WEIGHTLIFTING: OutsideWorkoutKind.strength,
+        HealthWorkoutActivityType.RUNNING_TREADMILL: OutsideWorkoutKind.running,
+        HealthWorkoutActivityType.BIKING_STATIONARY: OutsideWorkoutKind.cycling,
+        HealthWorkoutActivityType.HIGH_INTENSITY_INTERVAL_TRAINING:
+            OutsideWorkoutKind.hiit,
+        HealthWorkoutActivityType.SOCIAL_DANCE: OutsideWorkoutKind.dance,
+        HealthWorkoutActivityType.SWIMMING_POOL: OutsideWorkoutKind.swimming,
+        HealthWorkoutActivityType.YOGA: OutsideWorkoutKind.yoga,
+        HealthWorkoutActivityType.OTHER: OutsideWorkoutKind.other,
+      };
+      for (final e in cases.entries) {
+        health.points = [_workout(e.key)];
+        final w = ((await ios().readWorkouts(
+          from,
+          now,
+        )) as SeriesData<List<OutsideWorkout>>).data.single;
+        expect(w.kind, e.value, reason: e.key.name);
+      }
+    });
+
+    test('Android kcal is null even when the plugin returns a total', () async {
+      health.points = [
+        _workout(
+          HealthWorkoutActivityType.RUNNING,
+          kcal: 300,
+          sourceName: 'com.example.app',
+        ),
+      ];
+      final w = ((await android().readWorkouts(
+        from,
+        now,
+      )) as SeriesData<List<OutsideWorkout>>).data.single;
+      expect(w.activeKcal, isNull);
+      expect(w.source, 'Health Connect');
+    });
+
+    test('an empty uuid falls back to source and start', () async {
+      health.points = [
+        _workout(HealthWorkoutActivityType.RUNNING, uuid: '', sourceId: 'src'),
+      ];
+      final w = ((await ios().readWorkouts(
+        from,
+        now,
+      )) as SeriesData<List<OutsideWorkout>>).data.single;
+      expect(
+        w.id,
+        'src-${DateTime.utc(2026, 11, 20, 9).millisecondsSinceEpoch}',
+      );
+    });
+
+    test('drops workouts from in.beyondrep.app', () async {
+      health.points = [
+        _workout(
+          HealthWorkoutActivityType.RUNNING,
+          uuid: 'own',
+          sourceId: 'in.beyondrep.app',
+        ),
+        _workout(
+          HealthWorkoutActivityType.RUNNING,
+          uuid: 'own2',
+          sourceName: 'in.beyondrep.app',
+        ),
+        _workout(HealthWorkoutActivityType.RUNNING, uuid: 'other'),
+      ];
+      final r = await ios().readWorkouts(from, now);
+      expect((r as SeriesData<List<OutsideWorkout>>).data.map((w) => w.id), [
+        'other',
+      ]);
+    });
+
+    test('permission denied on Android is SeriesNotAllowed', () async {
+      health.deniedTypes = {HealthDataType.WORKOUT};
+      expect(
+        await android().readWorkouts(from, now),
+        isA<SeriesNotAllowed<List<OutsideWorkout>>>(),
+      );
+    });
+
+    test('the Android manifest asks for READ_EXERCISE only, no calories or '
+        'distance permission', () {
+      final manifest = File('android/app/src/main/AndroidManifest.xml')
+          .readAsStringSync();
+      expect(manifest, contains('android.permission.health.READ_EXERCISE"'));
+      expect(manifest, isNot(contains('READ_TOTAL_CALORIES_BURNED')));
+      expect(manifest, isNot(contains('READ_DISTANCE')));
+    });
+
+    test('a platform failure never throws', () async {
+      health.dataError = StateError('private detail');
+      expect(
+        await ios().readWorkouts(from, now),
+        isA<SeriesFailed<List<OutsideWorkout>>>(),
+      );
+    });
   });
 }

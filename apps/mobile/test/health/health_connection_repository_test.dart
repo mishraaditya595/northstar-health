@@ -14,6 +14,10 @@ const _accountA = '11111111-1111-4111-8111-111111111111';
 const _accountB = '22222222-2222-4222-8222-222222222222';
 
 void main() {
+  test('the current access scope includes workouts', () {
+    expect(currentHealthAccessScope, 3);
+  });
+
   late Directory root;
 
   setUp(() {
