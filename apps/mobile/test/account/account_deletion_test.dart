@@ -70,6 +70,38 @@ void main() {
   );
 
   test(
+    'onAccountDeleted fires once, only for a server-confirmed deletion',
+    () async {
+      final deleted = <String>[];
+      final api = FakeAuthApi()..sessionId = accountA;
+      final bound = FakeBoundAccountStore()..saved = accountA;
+      final auth = controller(api, bound, onAccountDeleted: deleted.add);
+      addTearDown(auth.dispose);
+      addTearDown(api.dispose);
+      await auth.restore();
+      await auth.requestDeletionCode();
+      await auth.confirmAccountDeletion('123456');
+      expect(deleted, [accountA]);
+
+      final lost = FakeAuthApi()
+        ..sessionId = accountA
+        ..failDeletionTransport = true;
+      final other = <String>[];
+      final auth2 = controller(
+        lost,
+        FakeBoundAccountStore()..saved = accountA,
+        onAccountDeleted: other.add,
+      );
+      addTearDown(auth2.dispose);
+      addTearDown(lost.dispose);
+      await auth2.restore();
+      await auth2.requestDeletionCode();
+      await auth2.confirmAccountDeletion('123456');
+      expect(other, isEmpty);
+    },
+  );
+
+  test(
     'uncertain network receipt does not unlock owner after app restart',
     () async {
       final api = FakeAuthApi()

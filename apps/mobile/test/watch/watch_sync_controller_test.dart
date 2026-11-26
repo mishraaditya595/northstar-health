@@ -1,0 +1,340 @@
+import 'dart:convert';
+
+import 'package:beyondrep/core/clock.dart';
+import 'package:beyondrep/core/ids/uuid_factory.dart';
+import 'package:beyondrep/features/account/account_auth_controller.dart';
+import 'package:beyondrep/features/account/account_auth_provider.dart';
+import 'package:beyondrep/features/health/application/health_overview.dart';
+import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
+import 'package:beyondrep/features/progress/workout_history_state.dart';
+import 'package:beyondrep/features/programs/application/program_providers.dart';
+import 'package:beyondrep/features/train/train_library_state.dart';
+import 'package:beyondrep/features/watch/application/watch_sync_controller.dart';
+import 'package:beyondrep/features/watch/data/watch_link.dart';
+import 'package:beyondrep/features/watch/domain/watch_account_key.dart';
+import 'package:beyondrep/features/watch/domain/watch_message.dart';
+import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleState;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import '../support/fake_account_auth.dart';
+import '../support/fake_health_overview.dart';
+import '../support/health_overview_fixtures.dart';
+
+class _Call {
+  _Call(this.kind, this.payload);
+  final String kind;
+  final Object? payload;
+}
+
+class _FakeLink implements WatchLink {
+  _FakeLink({this.reachable = true});
+  bool reachable;
+  final calls = <_Call>[];
+
+  @override
+  Future<bool> isReachableForUpdates() async => reachable;
+
+  @override
+  Future<void> updateContext(Map<String, String> latestByType) async =>
+      calls.add(_Call('context', Map<String, String>.of(latestByType)));
+
+  @override
+  Future<void> transfer(String json) async =>
+      calls.add(_Call('transfer', json));
+
+  List<_Call> get contexts => [
+    for (final c in calls)
+      if (c.kind == 'context') c,
+  ];
+
+  Map<String, Object?> bodyOf(_Call call, String type) =>
+      (jsonDecode((call.payload! as Map<String, String>)[type]!)
+              as Map<String, Object?>)['body']!
+          as Map<String, Object?>;
+
+  WatchMessage transferred(int index) => WatchMessage.fromJson(
+    jsonDecode(
+      calls.where((c) => c.kind == 'transfer').toList()[index].payload!
+          as String,
+    ) as Map<String, Object?>,
+  );
+}
+
+class _Ids implements UuidFactory {
+  int n = 0;
+  @override
+  String newId() =>
+      '77777777-3333-4333-8333-${(n++).toString().padLeft(12, '0')}';
+}
+
+final _library = WorkoutLibrarySnapshot(
+  exercises: const [],
+  plans: [
+    WorkoutPlanRecord(
+      uuid: 'plan-1',
+      name: 'Synthetic push day',
+      description: '',
+      updatedAtMs: 0,
+      exercises: const [],
+    ),
+  ],
+);
+
+class _Harness {
+  _Harness(WidgetTester tester, {bool reachable = true, bool signedIn = true}) {
+    link = _FakeLink(reachable: reachable);
+    api = FakeAuthApi()..sessionId = signedIn ? accountA : null;
+    bound = FakeBoundAccountStore()..saved = signedIn ? accountA : null;
+    auth = controller(api, bound);
+    health = FakeHealthOverviewController(
+      overview(ownerId: accountA, readAt: DateTime(2026, 11, 24, 7, 42)),
+    );
+    container = ProviderContainer(
+      overrides: [
+        accountAuthControllerProvider.overrideWithValue(auth),
+        watchLinkProvider.overrideWithValue(link),
+        watchMessageIdsProvider.overrideWithValue(_Ids()),
+        wallClockProvider.overrideWithValue(() => DateTime(2026, 11, 24, 8)),
+        localNowProvider.overrideWithValue(DateTime(2026, 11, 24, 8)),
+        trainLibraryProvider.overrideWith((ref) async => _library),
+        programWeekProvider.overrideWithValue(null),
+        completedWorkoutHistoryProvider.overrideWith(
+          (ref) async => const WorkoutHistorySnapshot(sessions: []),
+        ),
+        fakeHealthOverview(health),
+      ],
+    );
+    addTearDown(() async {
+      container.dispose();
+      auth.dispose();
+      await api.dispose();
+    });
+  }
+
+  late final _FakeLink link;
+  late final FakeAuthApi api;
+  late final FakeBoundAccountStore bound;
+  late final AccountAuthController auth;
+  late final FakeHealthOverviewController health;
+  late final ProviderContainer container;
+
+  Future<void> start() async {
+    await auth.restore();
+    container.read(watchSyncControllerProvider);
+    await container.read(trainLibraryProvider.future);
+    await container.read(completedWorkoutHistoryProvider.future);
+    await container.read(healthOverviewProvider.future);
+  }
+}
+
+Future<void> _elapse(WidgetTester tester, Duration d) async {
+  await tester.pump(d);
+  for (var i = 0; i < 5; i++) {
+    await tester.pump();
+  }
+}
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('signed in sends binding, plans and health in one context', (
+    tester,
+  ) async {
+    final h = _Harness(tester);
+    await h.start();
+    await _elapse(tester, const Duration(milliseconds: 1900));
+    expect(h.link.calls, isEmpty, reason: 'debounced for 2 s');
+    await _elapse(tester, const Duration(milliseconds: 200));
+    expect(h.link.contexts, hasLength(1));
+    final ctx = h.link.contexts.single.payload! as Map<String, String>;
+    expect(ctx.keys.toSet(), {
+      'account_binding',
+      'plans_snapshot',
+      'health_snapshot',
+    });
+    for (final json in ctx.values) {
+      final m = WatchMessage.fromJson(jsonDecode(json) as Map<String, Object?>);
+      expect(m.accountKey, watchAccountKey(accountA));
+    }
+    expect(
+      h.link.bodyOf(h.link.contexts.single, 'plans_snapshot')['plans'],
+      hasLength(1),
+    );
+  });
+
+  testWidgets('identical rebuild does not resend', (tester) async {
+    final h = _Harness(tester);
+    await h.start();
+    await _elapse(tester, const Duration(seconds: 3));
+    expect(h.link.contexts, hasLength(1));
+    // Same content again (a provider rebuild): a new object, equal value.
+    h.health.replace(
+      overview(ownerId: accountA, readAt: DateTime(2026, 11, 24, 7, 42)),
+    );
+    await _elapse(tester, const Duration(seconds: 3));
+    expect(h.link.contexts, hasLength(1));
+  });
+
+  testWidgets('health refresh resends only after 2 s', (tester) async {
+    final h = _Harness(tester);
+    await h.start();
+    await _elapse(tester, const Duration(seconds: 3));
+    expect(h.link.contexts, hasLength(1));
+    h.health.replace(
+      overview(
+        ownerId: accountA,
+        readAt: DateTime(2026, 11, 24, 7, 55),
+        activity: SectionData(
+          ActivityOverview(
+            stepsToday: 9000,
+            stepsDaily: const [],
+            activeEnergyToday: null,
+            activeEnergyDaily: const [],
+            stepsWeekAverage: null,
+          ),
+        ),
+      ),
+    );
+    await _elapse(tester, const Duration(milliseconds: 1900));
+    expect(h.link.contexts, hasLength(1));
+    await _elapse(tester, const Duration(milliseconds: 200));
+    expect(h.link.contexts, hasLength(2));
+    expect(
+      h.link.bodyOf(h.link.contexts.last, 'health_snapshot')['steps'],
+      9000,
+    );
+  });
+
+  testWidgets('sign out sends account_cleared for the old key first', (
+    tester,
+  ) async {
+    final h = _Harness(tester);
+    await h.start();
+    await _elapse(tester, const Duration(seconds: 3));
+    h.link.calls.clear();
+    await h.auth.signOut();
+    await _elapse(tester, const Duration(milliseconds: 10));
+    expect(h.link.calls.first.kind, 'transfer');
+    final cleared = h.link.transferred(0) as AccountCleared;
+    expect(cleared.accountKey, watchAccountKey(accountA));
+    expect(cleared.wipeUnsent, isFalse);
+    // The context is emptied too, and nothing else is sent for a signed-out phone.
+    expect(h.link.contexts.single.payload, isEmpty);
+    await _elapse(tester, const Duration(seconds: 3));
+    expect(h.link.contexts, hasLength(1));
+  });
+
+  testWidgets('account switch A to B: cleared(A) then B binding', (
+    tester,
+  ) async {
+    final h = _Harness(tester);
+    await h.start();
+    await _elapse(tester, const Duration(seconds: 3));
+    h.link.calls.clear();
+    await h.auth.signOut();
+    h.api.verifiedId = accountB;
+    await h.auth.requestCode('b@example.invalid');
+    await h.auth.verifyCode('123456');
+    expect(h.auth.userId, accountB);
+    await _elapse(tester, const Duration(seconds: 3));
+    final kinds = [for (final c in h.link.calls) c.kind];
+    expect(kinds.first, 'transfer');
+    expect((h.link.transferred(0)).accountKey, watchAccountKey(accountA));
+    final last = h.link.contexts.last.payload! as Map<String, String>;
+    final binding = WatchMessage.fromJson(
+      jsonDecode(last['account_binding']!) as Map<String, Object?>,
+    );
+    expect(binding.accountKey, watchAccountKey(accountB));
+    // B's context never carries A's key.
+    for (final json in last.values) {
+      expect(json, isNot(contains(watchAccountKey(accountA))));
+    }
+  });
+
+  testWidgets('disposing the scope clears the watch like a sign out', (
+    tester,
+  ) async {
+    final h = _Harness(tester);
+    await h.start();
+    await _elapse(tester, const Duration(seconds: 3));
+    h.link.calls.clear();
+    h.container.dispose();
+    await _elapse(tester, const Duration(milliseconds: 10));
+    final cleared = h.link.transferred(0) as AccountCleared;
+    expect(cleared.accountKey, watchAccountKey(accountA));
+    expect(cleared.wipeUnsent, isFalse);
+  });
+
+  testWidgets('account deletion sends wipe true', (tester) async {
+    final h = _Harness(tester);
+    await h.start();
+    await _elapse(tester, const Duration(seconds: 3));
+    h.link.calls.clear();
+    await h.container
+        .read(watchSyncControllerProvider)
+        .accountDeleted(accountA);
+    final cleared = h.link.transferred(0) as AccountCleared;
+    expect(cleared.wipeUnsent, isTrue);
+    expect(cleared.accountKey, watchAccountKey(accountA));
+  });
+
+  testWidgets('not reachable sends nothing', (tester) async {
+    final h = _Harness(tester, reachable: false);
+    await h.start();
+    await _elapse(tester, const Duration(seconds: 5));
+    expect(h.link.calls, isEmpty);
+    await h.auth.signOut();
+    await _elapse(tester, const Duration(seconds: 5));
+    expect(h.link.calls, isEmpty);
+    await h.container
+        .read(watchSyncControllerProvider)
+        .accountDeleted(accountA);
+    expect(h.link.calls, isEmpty);
+  });
+
+  testWidgets('becoming reachable sends on the next resume', (tester) async {
+    final h = _Harness(tester, reachable: false);
+    await h.start();
+    await _elapse(tester, const Duration(seconds: 3));
+    expect(h.link.calls, isEmpty);
+    h.link.reachable = true;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await _elapse(tester, const Duration(seconds: 3));
+    expect(h.link.contexts, hasLength(1));
+  });
+
+  testWidgets('noop link on Android sends nothing and throws nothing', (
+    tester,
+  ) async {
+    final h = _Harness(tester);
+    final noop = ProviderContainer(
+      overrides: [
+        accountAuthControllerProvider.overrideWithValue(h.auth),
+        watchLinkProvider.overrideWithValue(const NoopWatchLink()),
+        wallClockProvider.overrideWithValue(() => DateTime(2026, 11, 24, 8)),
+        localNowProvider.overrideWithValue(DateTime(2026, 11, 24, 8)),
+        trainLibraryProvider.overrideWith((ref) async => _library),
+        programWeekProvider.overrideWithValue(null),
+        completedWorkoutHistoryProvider.overrideWith(
+          (ref) async => const WorkoutHistorySnapshot(sessions: []),
+        ),
+        fakeHealthOverview(h.health),
+      ],
+    );
+    addTearDown(noop.dispose);
+    await h.auth.restore();
+    final c = noop.read(watchSyncControllerProvider);
+    await _elapse(tester, const Duration(seconds: 3));
+    await c.accountDeleted(accountA);
+    await h.auth.signOut();
+    await _elapse(tester, const Duration(seconds: 3));
+    expect(tester.takeException(), isNull);
+  });
+}
