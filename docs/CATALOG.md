@@ -124,3 +124,18 @@ All text is original BeyondRep writing under MPL-2.0 (`catalog/PROVENANCE.md`). 
 ## Release gate
 
 `scripts/p2_08_hosted_rls.py` includes `run_catalog_audit` (anonymous denied, authenticated manifest and live snapshot, stale release refused, tables unreachable, `northstar_private` schema not exposed through the API). It **requires the catalogue migrations to be applied** to the project under test, and responses are capped at 2 MiB. The live hosted run is a manual release gate and has not been run; see [p2-08-hosted-release-plan.md](implementation/phase-2/p2-08-hosted-release-plan.md).
+
+## Measured performance (stage 9)
+
+Release 4 (`supabase/migrations/20261126050000_catalog_release_4.sql`: 240 exercises, 38 templates, 17 programs), measured by `apps/mobile/test/catalog/catalog_performance_test.dart` (`flutter test --tags performance`, prints the numbers). These are **cloud-container numbers** (a Linux VM, JIT-compiled Dart test run, not a release build), so they only show that nothing is anywhere near a limit. Device timings are not measured: they are a row in the release verification script in [RELEASE.md](RELEASE.md) (first download and cold cache load on a physical phone, search and scroll on low-end Android).
+
+| What | Measured | Budget asserted in the test |
+| --- | --- | --- |
+| Raw snapshot (canonical JSON) | 154,237 bytes | under 2 MiB, the validator limit |
+| Gzip of the same bytes | 22,549 bytes (14.6 %) | none |
+| `jsonDecode` + SHA-256 + parse + reference validation, median of 20 | 5.8 ms | under 500 ms |
+| Cold cache load (read `snapshot.json` and `meta.json`, parse in an isolate, publish state), median of 5 | 12.3 ms | under 500 ms |
+| Exercise search over 240 exercises (prefixes, aliases, no matches), 50 queries | median 0.22 ms, worst 1.19 ms | worst under 20 ms |
+| Template and program filters (16 templates, 17 programs), 50 applications | median 0.009 ms, worst 0.58 ms | worst under 20 ms |
+
+First-download bandwidth. One download per user per release is the raw JSON, about 154 KB, or about 22.5 KB if the API response is gzip-compressed (the phone does not request or verify compression, so treat 22.5 KB as the best case and 154 KB as the planning figure). The daily manifest check is a few hundred bytes. The spec's constraint says the Supabase free plan can pause and that bandwidth per release is roughly users times snapshot size. The free plan's monthly egress allowance (5 GB when this was written; confirm against the current Supabase pricing page, it is not read from the project) therefore covers about 32,000 uncompressed or 220,000 compressed first downloads a month, before any other API traffic. With no real users yet that is far above the need. If it ever matters, the manifest URL allows moving the file to Storage or a CDN, as the spec notes.
