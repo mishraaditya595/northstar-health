@@ -892,6 +892,24 @@ void main() {
       expect(health.calls.last.types, [HealthDataType.WORKOUT]);
     });
 
+    test('zero or negative kcal and distance are null, not 0', () async {
+      for (final (kcal, meters) in [(0, 0), (-5, -1)]) {
+        health.points = [
+          _workout(
+            HealthWorkoutActivityType.RUNNING,
+            kcal: kcal,
+            meters: meters,
+          ),
+        ];
+        final w = ((await ios().readWorkouts(
+          from,
+          now,
+        )) as SeriesData<List<OutsideWorkout>>).data.single;
+        expect(w.activeKcal, isNull);
+        expect(w.distanceMeters, isNull);
+      }
+    });
+
     test('keeps distance and null when absent', () async {
       health.points = [
         _workout(HealthWorkoutActivityType.RUNNING, kcal: null, meters: 5000),

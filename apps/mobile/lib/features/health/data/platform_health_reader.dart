@@ -93,25 +93,27 @@ OutsideWorkoutKind _kindOf(HealthWorkoutActivityType type) {
   };
 }
 
-/// Kilocalories, or null for a missing or unknown unit.
+/// Kilocalories, or null for a missing, zero or unknown value.
 double? _kcalOf(int? value, HealthDataUnit? unit) {
   if (value == null) return null;
-  return switch (unit) {
+  final kcal = switch (unit) {
     null || HealthDataUnit.KILOCALORIE => value.toDouble(),
     HealthDataUnit.JOULE => value / 4184,
     _ => null,
   };
+  return kcal != null && kcal > 0 ? kcal : null;
 }
 
-/// Metres, or null for a missing or unknown unit.
+/// Metres, or null for a missing, zero or unknown value.
 double? _metersOf(int? value, HealthDataUnit? unit) {
   if (value == null) return null;
-  return switch (unit) {
+  final meters = switch (unit) {
     null || HealthDataUnit.METER => value.toDouble(),
     HealthDataUnit.CENTIMETER => value / 100,
     HealthDataUnit.MILE => value * 1609.344,
     _ => null,
   };
+  return meters != null && meters > 0 ? meters : null;
 }
 
 const _settingsChannel = MethodChannel('northstar/health_settings');
