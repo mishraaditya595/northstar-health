@@ -12,6 +12,7 @@ import '../../core/design/section.dart';
 import '../health/widgets/readiness_note.dart';
 import '../health/widgets/readiness_strip.dart';
 import '../programs/application/program_providers.dart';
+import '../programs/domain/program_status.dart';
 import '../programs/presentation/start_program_day.dart';
 import '../progress/domain/progress_overview.dart';
 import '../workouts/domain/workout_library_models.dart';
@@ -114,8 +115,14 @@ class TrainPage extends ConsumerWidget {
     final now = ref.watch(localNowProvider);
     final colors = Theme.of(context).extension<BeyondRepColors>()!;
     final card = ref.watch(activeProgramCardProvider);
+    final todayDone =
+        ref.watch(programWeekProvider)?.todayRow?.status ==
+        ProgramDayStatus.done;
     final programToday =
-        card != null && !card.unavailable && card.todayWorkout != null;
+        card != null &&
+        !card.unavailable &&
+        card.todayWorkout != null &&
+        !todayDone;
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(

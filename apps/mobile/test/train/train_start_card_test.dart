@@ -359,6 +359,34 @@ void main() {
       expect(store.box<WorkoutSessionEntity>().count(), 1);
     });
 
+    testWidgets('after today is done the card falls back to Quick workout', (
+      tester,
+    ) async {
+      seedProgram();
+      final programUuid = store
+          .box<TrainingProgramEntity>()
+          .getAll()
+          .first
+          .uuid;
+      store.box<WorkoutSessionEntity>().put(
+        WorkoutSessionEntity(
+          uuid: 'done-today',
+          name: 'Synthetic push',
+          status: WorkoutStatus.completed.name,
+          startedAtMs: _wednesday.millisecondsSinceEpoch,
+          completedAtMs: _wednesday.millisecondsSinceEpoch,
+          originalOffsetMinutes: 0,
+          updatedAtMs: _wednesday.millisecondsSinceEpoch,
+          programUuid: programUuid,
+          programDayLocalDate: '2026-11-25',
+        ),
+      );
+      await open(tester, health: _today(_ready(82)));
+      expect(find.text('Start Synthetic push'), findsNothing);
+      expect(find.text('Build the work.'), findsOneWidget);
+      expect(find.text('Quick workout'), findsOneWidget);
+    });
+
     testWidgets('Your program row is still shown', (tester) async {
       seedProgram();
       await open(tester, health: _today(_ready(82)));
@@ -394,10 +422,12 @@ void main() {
     tester,
   ) async {
     seedProgram();
+    final errors = <FlutterErrorDetails>[];
+    final previous = FlutterError.onError;
+    FlutterError.onError = errors.add;
+    addTearDown(() => FlutterError.onError = previous);
     await open(tester, health: _today(_ready(41)), textScale: 2, width: 320);
-    // The Train header overflows at this size already (a known bug the
-    // header tests cover), so only the start card's layout is checked.
-    tester.takeException();
+    expect(errors.map((e) => e.toString()), isEmpty);
     for (final text in [
       'Low readiness. Recovery low.',
       'Start Synthetic push',
