@@ -191,6 +191,44 @@ Today and scheduling (Today program card, missed days, filters, retiring) is imp
 | Filters: goal, equipment I have and days per week narrow Workouts and Programs, "Filters (n)" and Clear work, and nothing is remembered after leaving the page | not run | not run |
 | Text size 200 percent on Today with the missed line, Your program with tags, and both filter sheets in light and dark: nothing overflows and the buttons can be reached | not run | not run |
 
+## Training library release verification (ADR-0010, owner actions, none done)
+
+One ordered script for the open rows of the stage 2 to 8 sections above, grouped so one sitting works on one device. It does not repeat those rows: each step names the row it closes ("S5 picker scroll" is the "Picker scroll and filter at large text" row of the stage 5 section). The automated part of stage 9 (accessibility guidelines, tablet and split-view layout, process-death store tests, catalogue performance in a container) is in [stage-9-verification.md](implementation/training-library/stage-9-verification.md); everything below is what that cannot show. Every cell is **not run**; nothing here is a device result.
+
+Neither Account > Sync nor a debug log reports catalogue download time or size today. Use a stopwatch and the platform's network profiler (Xcode Instruments network, Android Studio Network Inspector or a proxy you trust) for steps 1.1 and 1.2.
+
+| Step | What to do and what it closes | iOS | Android |
+| --- | --- | --- | --- |
+| **1. Fresh install** | | | |
+| 1.1 | Sign in once, then wipe the catalogue cache (reinstall and sign in again), turn airplane mode on and relaunch: "hasn't downloaded yet" with Retry (S2 offline fresh install) | not run | not run |
+| 1.2 | Go online and Retry: record seconds to a usable list and bytes downloaded (expect about 154 KB raw, up to 22.5 KB gzip, see [CATALOG.md](CATALOG.md)) (S2 first download, S5 first download of release 2) | not run | not run |
+| 1.3 | Force-quit and relaunch with the cache present, no network: record seconds from tap to a populated Exercises page (cold cache load) | not run | not run |
+| **2. Browse and search** | | | |
+| 2.1 | Exercises page: type prefixes and an alias such as "hip bridge"; note any lag typing (S5 search by muscle) | not run | not run |
+| 2.2 | Muscle group and equipment filters, then the picker at large text (S5 picker scroll and filter) | not run | not run |
+| 2.3 | Open an exercise detail and a template detail; body maps match the lists (S3 exercise detail, S6 template screen) | not run | not run |
+| **3. Workouts** | | | |
+| 3.1 | Start now from a template; the workout logs and no plan is created (S6 start now) | not run | not run |
+| 3.2 | Copy to My Plans, double-tap the button: one plan, editable, independent of the catalogue (S6 copy to My Plans, S6 double tap) | not run | not run |
+| **4. Programs** | | | |
+| 4.1 | Add a program on a Wednesday, set active, open Your program (S7 add program, set active) | not run | not run |
+| 4.2 | Today card on a training day, rest day and after finishing; Start, Open program (S8 Today rows) | not run | not run |
+| 4.3 | Skip a training day: the missed line, confirm, finish, the day is Done (S8 missed line, older misses) | not run | not run |
+| 4.4 | Start at 23:50 and finish after midnight (S8 session across midnight) | not run | not run |
+| 4.5 | Change the device time zone mid-workout (S8 time-zone change) | not run | not run |
+| 4.6 | Edit a day, change the start day, switch the active program (S8 schedule edit, program switch) | not run | not run |
+| **5. Process death** | | | |
+| 5.1 | On a program day start the workout, log a set, force-quit, reopen: the Resume card is above the program card and finishing marks the day Done (S8 unfinished workout) | not run | not run |
+| 5.2 | Tap Add program and force-quit within a second, reopen: either no program or exactly one, never a partial one; adding again gives one program or "(2)" only by choice (S7 kill during add) | not run | not run |
+| **6. Accessibility** | | | |
+| 6.1 | VoiceOver (iOS) and TalkBack (Android) through Today, Programs, Your program and the filter sheet: each day is read with its status and the filter button with its count | not run | not run |
+| 6.2 | Text size 200 percent on Today with the missed line, Your program and both filter sheets, light and dark (S8 text size) | not run | not run |
+| 6.3 | Reduced motion on, and dark mode: sheets and cards behave and nothing is unreadable | not run | not run |
+| **7. Tablet** | | | |
+| 7.1 | iPad portrait, landscape and split view; Android tablet or large-screen emulator where available: Today, Train, Programs, Your program, template detail; nothing stretches or overflows and the sheet buttons clear the bottom bar | not run | not run |
+| **8. Low-end Android** | | | |
+| 8.1 | A low-end phone with the 240 exercises: scroll the Exercises page and type in search; note dropped frames or lag | not run | not run |
+
 ## Feature and privacy readiness
 
 - ObjectBox real sessions/sets with generated model UID fixture migration, durable offline writes and recovery through process death.
