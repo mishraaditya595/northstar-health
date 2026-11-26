@@ -109,8 +109,7 @@ class _Today extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hrvName = readinessHrvName(readiness.hrvIsSdnn);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return DetailPanels(
       children: [
         ...switch (readiness.result) {
           ReadinessReady(:final readiness) => [

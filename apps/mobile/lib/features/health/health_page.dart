@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/clock.dart';
 import '../../core/design/beyondrep_theme.dart';
+import '../../core/design/layout.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 import 'application/health_overview.dart';
@@ -203,6 +204,18 @@ class _HealthPageState extends ConsumerState<HealthPage>
       ];
     }
 
+    final readinessCard = ReadinessCard(
+      overview: overview,
+      now: ref.watch(localNowProvider),
+      refreshing: async.isLoading,
+      onTap: overview == null
+          ? null
+          : hasStaleReadiness(overview, ref.watch(localNowProvider))
+          ? guardedOverview(busy, (c) => c.refresh())
+          : tapFor(overview.readiness, '/health/readiness'),
+      onAllowMore: allowMore,
+    );
+
     return [
       if (overview != null) ...[
         Text(
@@ -234,44 +247,42 @@ class _HealthPageState extends ConsumerState<HealthPage>
         const SizedBox(height: 14),
       ],
       if (overview != null || !async.hasError) ...[
-        ReadinessCard(
-          overview: overview,
-          now: ref.watch(localNowProvider),
-          refreshing: async.isLoading,
-          onTap: overview == null
-              ? null
-              : hasStaleReadiness(overview, ref.watch(localNowProvider))
-              ? guardedOverview(busy, (c) => c.refresh())
-              : tapFor(overview.readiness, '/health/readiness'),
-          onAllowMore: allowMore,
-        ),
-        const SizedBox(height: 10),
-        LayoutBuilder(
-          builder: (context, box) {
-            final wide = box.maxWidth >= 560;
-            // Activity and Body pair up on phones too, unless large text
-            // leaves each half too narrow.
-            final pairSmall =
-                box.maxWidth >= MediaQuery.textScalerOf(context).scale(300);
-            Widget pair(Widget a, Widget b, bool side) => side
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: a),
-                      const SizedBox(width: 10),
-                      Expanded(child: b),
-                    ],
-                  )
-                : Column(children: [a, const SizedBox(height: 10), b]);
-            return Column(
-              children: [
-                pair(cards[0], cards[1], wide),
-                const SizedBox(height: 10),
-                pair(cards[2], cards[3], wide || pairSmall),
-              ],
-            );
-          },
-        ),
+        if (isWideWindow(context))
+          NsResponsiveGrid(
+            minItemWidth: 320,
+            spacing: 10,
+            children: [readinessCard, ...cards],
+          )
+        else ...[
+          readinessCard,
+          const SizedBox(height: 10),
+          LayoutBuilder(
+            builder: (context, box) {
+              final wide = box.maxWidth >= 560;
+              // Activity and Body pair up on phones too, unless large text
+              // leaves each half too narrow.
+              final pairSmall =
+                  box.maxWidth >= MediaQuery.textScalerOf(context).scale(300);
+              Widget pair(Widget a, Widget b, bool side) => side
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: a),
+                        const SizedBox(width: 10),
+                        Expanded(child: b),
+                      ],
+                    )
+                  : Column(children: [a, const SizedBox(height: 10), b]);
+              return Column(
+                children: [
+                  pair(cards[0], cards[1], wide),
+                  const SizedBox(height: 10),
+                  pair(cards[2], cards[3], wide || pairSmall),
+                ],
+              );
+            },
+          ),
+        ],
       ],
       if (insightLine != null) ...[
         const SizedBox(height: 24),

@@ -127,8 +127,7 @@ class _LastNight extends ConsumerWidget {
     // is not shown.
     final extras = extrasAsync.isLoading ? null : extrasAsync.value;
     final score = sleep.score;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return DetailPanels(
       children: [
         _summary(context, night, score),
         _stages(context, night),
@@ -456,8 +455,7 @@ class _RangeView extends ConsumerWidget {
           ? heart.value.restingHrDaily
           : const [],
     );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return DetailPanels(
       children: [
         _timeAsleep(context, stats),
         if (hr == null)

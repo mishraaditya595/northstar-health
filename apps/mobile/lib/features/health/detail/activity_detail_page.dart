@@ -87,8 +87,7 @@ class _ActivityView extends StatelessWidget {
   Widget build(BuildContext context) {
     final first = DateTime(_today.year, _today.month, _today.day - (days - 1));
     final range = '${formatHealthDate(first)} – ${formatHealthDate(_today)}';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return DetailPanels(
       children: [
         _steps(context, range, first),
         _energy(context, range),
