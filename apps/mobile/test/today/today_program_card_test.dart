@@ -158,6 +158,7 @@ void main() {
     double textScale = 1,
     Brightness brightness = Brightness.dark,
     List<WorkoutPlanRecord> libraryPlans = const [],
+    void Function()? onWeekBuilt,
   }) async {
     actions = _FakeActions();
     tester.view.physicalSize = const Size(390, 844);
@@ -196,7 +197,10 @@ void main() {
           localNowProvider.overrideWithValue(week?.localToday ?? _wednesday),
           activeWorkoutProvider.overrideWithValue(unfinished),
           workoutActionsProvider.overrideWithValue(actions),
-          programWeekProvider.overrideWithValue(week),
+          programWeekProvider.overrideWith((ref) {
+            onWeekBuilt?.call();
+            return week;
+          }),
           trainLibraryProvider.overrideWith(
             (ref) async => WorkoutLibrarySnapshot(
               exercises: const [],
@@ -338,6 +342,44 @@ void main() {
       findsOneWidget,
     );
     expect(pushed, isEmpty);
+  });
+
+  testWidgets('any other start failure also refreshes the program state', (
+    tester,
+  ) async {
+    var builds = 0;
+    await show(tester, week: _week(), onWeekBuilt: () => builds++);
+    final before = builds;
+    actions.failWith = StateError('could not start');
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Could not start this workout'), findsOneWidget);
+    expect(builds, greaterThan(before));
+  });
+
+  testWidgets('a double tap on Start starts once', (tester) async {
+    await show(tester, week: _week());
+    await tester.tap(find.text('Start'));
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+    expect(actions.calls, hasLength(1));
+    expect(pushed, ['/train/workout']);
+    expect(find.textContaining('Could not start'), findsNothing);
+  });
+
+  testWidgets('a double tap on the missed line confirms and starts once', (
+    tester,
+  ) async {
+    await show(tester, week: _week());
+    await tester.tap(find.text('Missed Monday: Push day'));
+    await tester.tap(find.text('Missed Monday: Push day'));
+    await tester.pumpAndSettle();
+    expect(find.text('Start Push day for Monday?'), findsOneWidget);
+    await tester.tap(
+      find.descendant(of: find.byType(NsDialog), matching: find.text('Start')),
+    );
+    await tester.pumpAndSettle();
+    expect(actions.calls, hasLength(1));
   });
 
   testWidgets('a changed missed day shows the day message', (tester) async {

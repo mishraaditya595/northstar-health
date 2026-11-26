@@ -5,7 +5,6 @@ import 'package:beyondrep/features/catalog/domain/catalog_programs.dart';
 import 'package:beyondrep/features/programs/application/program_providers.dart';
 import 'package:beyondrep/features/programs/domain/program_models.dart';
 import 'package:beyondrep/features/programs/domain/program_status.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
 import 'package:beyondrep/features/catalog/domain/catalog_templates.dart';

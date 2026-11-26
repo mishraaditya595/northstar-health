@@ -34,6 +34,10 @@ class TodayPage extends ConsumerStatefulWidget {
 }
 
 class _TodayPageState extends ConsumerState<TodayPage> {
+  /// A program-day start is in flight, or its logger is still open: a second
+  /// tap must not start again or show an error over the logger.
+  var _starting = false;
+
   int _count(WorkoutSyncFlag flag) => ref
       .watch(workoutSyncFlagsProvider)
       .values
@@ -66,6 +70,20 @@ class _TodayPageState extends ConsumerState<TodayPage> {
     String planUuid, {
     DateTime? missedDate,
   }) async {
+    if (_starting) return;
+    _starting = true;
+    try {
+      await _startProgramDayGuarded(program, planUuid, missedDate);
+    } finally {
+      _starting = false;
+    }
+  }
+
+  Future<void> _startProgramDayGuarded(
+    TrainingProgramRecord program,
+    String planUuid,
+    DateTime? missedDate,
+  ) async {
     if (!await confirmReadinessBeforeStart(context, ref) || !mounted) return;
     try {
       ref
@@ -77,8 +95,9 @@ class _TodayPageState extends ConsumerState<TodayPage> {
           );
       ref.invalidate(activeWorkoutProvider);
       ref.invalidate(programWeekProvider);
-      context.push('/train/workout');
+      await context.push<void>('/train/workout');
     } on ProgramDayChanged {
+      if (!mounted) return;
       // The day rolled over or the schedule changed since this was built.
       ref.invalidate(localNowProvider);
       ref.invalidate(programWeekProvider);
@@ -89,12 +108,14 @@ class _TodayPageState extends ConsumerState<TodayPage> {
             : 'This day changed. Check it and try again.',
       );
     } catch (_) {
+      if (!mounted) return;
       showNsMessage(
         context,
         'Could not start this workout. Check the plan and any unfinished '
         'workout.',
       );
       ref.invalidate(activeWorkoutProvider);
+      invalidatePrograms(ref);
     }
   }
 
@@ -104,6 +125,7 @@ class _TodayPageState extends ConsumerState<TodayPage> {
     String planUuid,
     String workout,
   ) async {
+    if (_starting) return;
     final yes = await showNsConfirm(
       context,
       title: 'Start $workout for ${weekdayName(date)}?',
