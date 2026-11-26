@@ -184,7 +184,7 @@ The policy and the app must show that:
 
 ### 7.2 Google Health Connect
 
-- The privacy policy must describe the handling of each Health Connect data type and is linked from the Health Connect permission screen through the rationale intent / `ViewPermissionUsageActivity` alias. The branch currently opens the app there (`TODO(#52)` in `AndroidManifest.xml`); it must show the policy before release.
+- The privacy policy must describe the handling of each Health Connect data type and is linked from the Health Connect permission screen through the rationale intent / `ViewPermissionUsageActivity` alias. `PermissionsRationaleActivity` now opens `https://beyondrep.in/privacy` there; the page must be final, not Draft, before release.
 - Complete the Play Console **Health apps declaration** listing each permission (`READ_SLEEP`, `READ_STEPS`, `READ_RESTING_HEART_RATE`, `READ_WEIGHT`) with its justification.
 - Follow the Health Connect **Limited Use** requirements: use only to provide the user-facing feature; no transfer except as needed for that feature, legal compliance or a merger; no ads; no human reading except with consent, for security or legal reasons. The policy should contain a Limited Use statement.
 - Request only needed permissions (no history or background permissions requested).

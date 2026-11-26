@@ -73,22 +73,96 @@ workflows:
           exit 1
 
   mobile-android-release:
-    name: "TEMPLATE - Mobile Android - Release AAB"
+    name: "MANUAL - Mobile Android - Play release AAB"
     instance_type: mac_mini_m2
-    max_build_duration: 30
+    max_build_duration: 60
     working_directory: apps/mobile
+    # Manual only: no triggering block. Builds an AAB signed with the upload
+    # key and, only if play_track is internal or alpha, uploads it to that
+    # Google Play track as a DRAFT release; nothing reaches testers or
+    # production until the owner rolls it out in Play Console.
+    # Setup and limits: docs/ANDROID_PLAY_CODEMAGIC.md.
+    inputs:
+      version_name:
+        description: "Version name such as 1.2.0, or AUTO for the pubspec version"
+        type: string
+        # Codemagic environment.vars rejects empty interpolated input values.
+        default: "AUTO"
+      build_number:
+        description: "versionCode above the latest Google Play build, or AUTO for latest + 1"
+        type: string
+        default: "AUTO"
+      play_track:
+        description: "Upload as a draft to this Play track, or none for the AAB only"
+        type: choice
+        options: [none, internal, alpha]
+        default: none
     environment:
       flutter: "3.47.7"
-    # No triggering block: manual-only; do NOT add push/PR triggers yet.
-    # TODO command example (commented-out; verify before enabling):
-    #   flutter pub get --enforce-lockfile && flutter build appbundle --release
-    # artifacts: [apps/mobile/build/app/outputs/bundle/release/*.aab]
+      android_signing:
+        - beyondrep_upload
+      groups:
+        - ns_mobile_supabase_public
+        - ns_google_play
+      vars:
+        NS_VERSION_NAME: "${{ inputs.version_name }}"
+        NS_BUILD_NUMBER: "${{ inputs.build_number }}"
+        NS_PLAY_TRACK: "${{ inputs.play_track }}"
+        BEYONDREP_REQUIRE_RELEASE_SIGNING: "true"
     scripts:
-      - name: "Not configured - do not treat as a build"
+      - name: "Check public Supabase client settings"
         script: |
-          echo "TEMPLATE ONLY: Release AAB. Configure signing and Play credentials separately."
-          echo "No artifact has been built or published. See docs/CODEMAGIC.md."
-          exit 1
+          set -euo pipefail
+          case "${SUPABASE_URL:-}" in
+            https://*.supabase.co) ;;
+            *) echo "SUPABASE_URL must be the https://<ref>.supabase.co project URL."; exit 1 ;;
+          esac
+          case "${SUPABASE_PUBLISHABLE_KEY:-}" in
+            sb_publishable_*) ;;
+            *) echo "SUPABASE_PUBLISHABLE_KEY must be a publishable (public) key."; exit 1 ;;
+          esac
+      - name: "Resolve version name and build number"
+        script: |
+          python3 ../../scripts/codemagic_android_version.py pubspec.yaml
+      - name: "Install locked dependencies"
+        script: |
+          flutter pub get --enforce-lockfile
+      - name: "Build signed AAB"
+        script: |
+          set -euo pipefail
+          defines="$(mktemp)"
+          trap 'rm -f "$defines"' EXIT
+          python3 -c 'import json, os; print(json.dumps({k: os.environ[k] for k in ("SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY")}))' > "$defines"
+          flutter build appbundle --release \
+            --build-name="$BEYONDREP_VERSION_NAME" \
+            --build-number="$BEYONDREP_BUILD_NUMBER" \
+            --dart-define-from-file="$defines"
+      - name: "Refuse a debug-signed AAB"
+        script: |
+          set -euo pipefail
+          aab=build/app/outputs/bundle/release/app-release.aab
+          certs="$(keytool -printcert -jarfile "$aab" 2>&1 || true)"
+          if ! printf '%s\n' "$certs" | grep -q "^Owner:" ||
+             printf '%s\n' "$certs" | grep -q "CN=Android Debug"; then
+            echo "The AAB is unsigned or signed with the debug key; check the beyondrep_upload keystore."
+            exit 1
+          fi
+      - name: "Upload draft release to Google Play"
+        script: |
+          set -euo pipefail
+          case "$NS_PLAY_TRACK" in
+            none) echo "play_track is none: AAB kept as a build artifact only."; exit 0 ;;
+            internal|alpha) ;;
+            *) echo "Unknown play_track $NS_PLAY_TRACK"; exit 1 ;;
+          esac
+          google-play bundles publish \
+            --credentials @env:GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS \
+            --bundle build/app/outputs/bundle/release/app-release.aab \
+            --track "$NS_PLAY_TRACK" \
+            --draft
+    artifacts:
+      - build/app/outputs/bundle/release/*.aab
+      - build/app/outputs/mapping/release/mapping.txt
 
   mobile-ios-simulator:
     name: "TEMPLATE - Mobile iOS - Simulator Debug"
