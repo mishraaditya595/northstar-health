@@ -137,6 +137,23 @@ class CatalogFileStore {
     );
   }
 
+  /// Forgets the recorded identity, keeping every other meta field. Called
+  /// before the snapshot file is replaced, so a crash or failed identity write
+  /// afterwards leaves "no identity" (accepted) instead of the old release's.
+  Future<void> clearSnapshotIdentity() async {
+    final meta = await _readMeta();
+    if (meta == null || !meta.containsKey('snapshotSha256')) return;
+    await _writeAtomically(
+      _meta,
+      'meta.json',
+      jsonEncode(
+        {...meta}
+          ..remove('snapshotRelease')
+          ..remove('snapshotSha256'),
+      ),
+    );
+  }
+
   /// Replaces the check time and the outdated mark (omitting [outdated]
   /// clears it); keeps the snapshot identity.
   Future<void> writeLastCheckedAtMs(

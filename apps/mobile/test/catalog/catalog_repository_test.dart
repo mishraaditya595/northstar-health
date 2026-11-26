@@ -21,6 +21,18 @@ class _FailingWriteStore extends CatalogFileStore {
   }
 }
 
+class _FailingIdentityStore extends CatalogFileStore {
+  _FailingIdentityStore(super.directory);
+
+  @override
+  Future<void> writeSnapshotIdentity({
+    required int release,
+    required String sha256,
+  }) async {
+    throw const FileSystemException('identity write failed');
+  }
+}
+
 class _FailingMetaStore extends CatalogFileStore {
   _FailingMetaStore(super.directory);
 
@@ -814,6 +826,32 @@ void main() {
       expect(await r.refresh(), CatalogRefreshOutcome.updated);
       expect(t.manifestCalls, 1, reason: 'not skipped as fresh');
       expect(r.state.snapshot?.release, 1);
+    });
+
+    test('an identity write that fails after the rename still loads the new '
+        'release on the next start', () async {
+      await seed(r1, checkedAtMs: 1);
+      await store.writeSnapshotIdentity(
+        release: 1,
+        sha256: manifestFor(r1).sha256,
+      );
+      var live = r1;
+      final t = FakeCatalogTransport(
+        manifest: () async => manifestFor(live),
+        snapshot: (_) async => live,
+      );
+      final r = repo(t, withStore: _FailingIdentityStore(dir));
+      await r.load();
+      live = r2;
+      expect(await r.refresh(force: true), CatalogRefreshOutcome.failed);
+      expect(r.state.snapshot?.release, 2);
+      // Release 1's identity must not survive next to release 2's file.
+      expect(await store.readSnapshotIdentity(), isNull);
+
+      final restarted = repo(serving(r2));
+      await restarted.load();
+      expect(restarted.state.status, CatalogStatus.ready);
+      expect(restarted.state.snapshot?.release, 2);
     });
 
     test('a release that disagrees with the identity is dropped', () async {

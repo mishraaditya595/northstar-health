@@ -235,9 +235,13 @@ class CatalogRepository extends ChangeNotifier {
         _reject(manifest);
         return CatalogRefreshOutcome.invalid;
       }
+      // Forget the old identity first: from here until the new one is written
+      // the file and meta disagree, and "no identity" is accepted on load
+      // while the old release's identity would delete the new file.
+      await store.clearSnapshotIdentity();
       await store.writeSnapshotText(text);
-      // Active as soon as the rename succeeded, even if the metadata write
-      // below fails; the next start loads the same file.
+      // Active as soon as the rename succeeded, even if the metadata writes
+      // below fail; the next start loads the same file (no identity yet).
       _rejected = null;
       _set(CatalogState(snapshot: parsed, status: CatalogStatus.ready));
       await store.writeSnapshotIdentity(
