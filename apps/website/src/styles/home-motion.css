@@ -147,7 +147,7 @@
   .motion-ready .cine-bottom { position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 22px 5vw 28px; z-index: 20; }
   .cine-chapters { display: flex; gap: 24px; }
   .cine-chapters button { border: 0; border-top: 1px solid #ffffff35; background: transparent; color: var(--cine-muted); text-align: left; padding: 10px 0 0; min-width: 100px; min-height: 44px; font: inherit; font-size: 11px; cursor: pointer; }
-  .cine-chapters button b { display: block; font-size: 10px; letter-spacing: .1em; margin-bottom: 5px; }
+  .cine-chapters button b { display: block; font-size: 11px; letter-spacing: .1em; margin-bottom: 5px; }
   .cine-chapters button[aria-current] { color: var(--cine-accent); border-color: var(--cine-accent); }
   .cine-hint { font-size: 11px; color: var(--cine-muted); letter-spacing: .08em; text-transform: uppercase; display: flex; gap: 10px; align-items: center; }
   .cine-hint svg { width: 18px; height: 18px; stroke: var(--cine-accent); }
@@ -163,7 +163,7 @@
   .cine-nav .cine-pill { padding: 9px 12px; font-size: 11px; }
   .cine-brand { font-size: 17px; }
   .cine-scene h1, .cine-scene h2 { font-size: clamp(34px,10vw,66px); line-height: .91; margin-bottom: 12px; }
-  .cine-eyebrow { margin-bottom: 9px; font-size: 9px; }
+  .cine-eyebrow { margin-bottom: 9px; font-size: 11px; }
   .cine-scene p:not(.cine-eyebrow) { font-size: 13px; line-height: 1.4; margin-bottom: 12px; max-width: 42ch; }
   .cine-scene .cine-pill { font-size: 11px; padding: 8px 12px; }
   .motion-ready .cine-scene { left: 6vw; top: 13%; width: 88%; max-width: none; transform: none; }
@@ -175,7 +175,7 @@
   .motion-ready .cine-bottom { padding: 12px 6vw 19px; gap: 6px; }
   .cine-chapters { gap: 14px; flex: 1; }
   .cine-chapters button { min-width: 0; flex: 1; font-size: 11px; }
-  .cine-chapters button b { font-size: 10px; margin-bottom: 2px; }
+  .cine-chapters button b { font-size: 11px; margin-bottom: 2px; }
   .cine-hint { display: none; }
   .motion-ready .cine-skip { font-size: 11px; right: 6vw; bottom: 19px; }
   .motion-ready .cine-bottom { padding-right: calc(6vw + 70px); }

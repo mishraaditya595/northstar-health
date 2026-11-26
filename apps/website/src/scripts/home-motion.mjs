@@ -46,6 +46,8 @@ export function settleFactor(dtMs, base = .16) {
 // nav or the chapter bar. Desktop copy is centred; phone copy sits above the
 // phones and gets the top 43% of the stage.
 export function introFits({ sceneHeights, stageHeight, navHeight, bottomHeight, mobile }) {
+  // Phone copy starts at 12% of the stage, so the nav must end above that.
+  if (mobile && navHeight > stageHeight * .12) return false;
   const room = mobile ? stageHeight * .43
     : stageHeight - 2 * Math.max(navHeight, bottomHeight) - 16;
   return sceneHeights.every(h => h <= room);
@@ -73,6 +75,9 @@ export function mountCinematic(root, win) {
   // Layout is measured in reset() only, so scrolling never forces a reflow.
   let trackTop = 0, travel = 1, width = win.innerWidth, height = win.innerHeight;
   let focusAfterSettle = -1;
+  // Chapter in view while the static layout shows, read before a resize
+  // reflows the page so the reader's place survives a layout switch.
+  let staticCh = -1, staticRaf = 0;
 
   function setActive(i) {
     if (i === active) return;
@@ -110,14 +115,17 @@ export function mountCinematic(root, win) {
     draw(current);
     if (current !== target) { raf = win.requestAnimationFrame(loop); return; }
     last = 0;
-    if (focusAfterSettle >= 0) {
+    if (focusAfterSettle >= 0 && focusAfterSettle === active) {
       const heading = scenes[focusAfterSettle].querySelector('h1, h2');
       focusAfterSettle = -1;
       heading?.focus({ preventScroll: true });
     }
   }
   function read() {
-    if (!enabled) return;
+    if (!enabled) {
+      if (!staticRaf) staticRaf = win.requestAnimationFrame(() => { staticRaf = 0; staticCh = staticChapter(); });
+      return;
+    }
     target = clamp((win.scrollY - trackTop) / travel);
     if (!raf) raf = win.requestAnimationFrame(loop);
   }
@@ -137,12 +145,25 @@ export function mountCinematic(root, win) {
     trackTop = root.getBoundingClientRect().top + win.scrollY;
     travel = Math.max(1, root.offsetHeight - stage.offsetHeight);
   }
+  // In the static layout, the last chapter whose text starts in the top 40%
+  // of the screen, or -1 when the intro is off screen.
+  function staticChapter() {
+    const rootBox = root.getBoundingClientRect();
+    if (rootBox.bottom < 0 || rootBox.top > win.innerHeight) return -1;
+    let best = 0;
+    scenes.forEach((el, i) => {
+      if (el.getBoundingClientRect().top <= win.innerHeight * .4) best = i;
+    });
+    return best;
+  }
   function reset() {
-    // Remember where the reader was, so rotating a phone or zooming keeps
-    // the same chapter in view whichever layout comes next.
+    // Remember which chapter the reader was on, so rotating a phone or
+    // zooming keeps it in view whichever layout comes next.
     const wasEnabled = enabled;
-    const before = wasEnabled ? clamp((win.scrollY - trackTop) / travel) : 0;
-    const wasInside = wasEnabled && win.scrollY >= trackTop && win.scrollY < trackTop + travel;
+    const wasInside = wasEnabled ? win.scrollY >= trackTop && win.scrollY < trackTop + travel
+      : staticCh > 0;
+    const chapter = wasEnabled ? Math.round(clamp((win.scrollY - trackTop) / travel) * 2)
+      : Math.max(0, staticCh);
     enabled = false;
     if (raf) win.cancelAnimationFrame(raf);
     raf = 0; last = 0; active = -1;
@@ -157,12 +178,16 @@ export function mountCinematic(root, win) {
     });
     if (!ok) {
       root.classList.remove('motion-ready');
-      if (wasInside) win.scrollTo({ top: trackTop, behavior: 'instant' });
+      if (wasInside) {
+        const top = scenes[chapter].getBoundingClientRect().top + win.scrollY - nav.offsetHeight;
+        win.scrollTo({ top: Math.max(0, top), behavior: 'instant' });
+      }
+      staticCh = wasInside ? chapter : staticChapter();
       return;
     }
     measure();
     enabled = true;
-    if (wasInside) scrollToChapter(Math.round(before * 2), 'instant');
+    if (wasInside) scrollToChapter(chapter, 'instant');
     current = target = clamp((win.scrollY - trackTop) / travel);
     draw(current);
   }
@@ -178,9 +203,18 @@ export function mountCinematic(root, win) {
   }
   buttons.forEach((b, i) => b.addEventListener('click', () => {
     if (!enabled) return;
+    const top = trackTop + travel * i / 2;
+    if (Math.abs(win.scrollY - top) < 2) {
+      scenes[i].querySelector('h1, h2')?.focus({ preventScroll: true });
+      return;
+    }
     focusAfterSettle = i;
     scrollToChapter(i, 'smooth');
   }));
+  // If the reader takes over the scroll, never move focus behind their back.
+  for (const type of ['wheel', 'touchstart', 'keydown', 'pointerdown']) {
+    win.addEventListener(type, () => { focusAfterSettle = -1; }, { passive: true, capture: true });
+  }
   // Keyboard and screen-reader users can reach every chapter's text and links:
   // moving focus into a chapter brings that chapter on screen.
   scenes.forEach((el, i) => el.addEventListener('focusin', () => {

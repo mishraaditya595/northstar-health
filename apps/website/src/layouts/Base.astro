@@ -33,7 +33,7 @@ const nav = [
     <Seo {...props} />
   </head>
   <body>
-    <a class="skip" href="#main">Skip to content</a>
+    <a class="skip" href={cinematic ? '#details' : '#main'}>Skip to content</a>
     {!cinematic && <header class="site-header">
       <div class="wrap header-row">
         <a class="brand" href="/" aria-label="BeyondRep home">

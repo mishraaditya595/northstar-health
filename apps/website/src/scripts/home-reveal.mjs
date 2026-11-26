@@ -18,6 +18,10 @@ export function mountReveals(doc, win) {
   if (!items.length || !('IntersectionObserver' in win)) return;
   const reduce = win.matchMedia?.('(prefers-reduced-motion: reduce)');
   if (reduce?.matches) return;
+  // Content already on screen when the page loads stays as it is; only
+  // sections below the fold wait to play.
+  const startY = win.innerHeight;
+  items.forEach(el => { if (el.getBoundingClientRect().top < startY) el.classList.add('is-in'); });
   doc.documentElement.classList.add('reveal-ready');
   const counters = el => [...el.querySelectorAll('[data-count]')];
   function count(el) {

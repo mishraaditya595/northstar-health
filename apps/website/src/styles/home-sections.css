@@ -1,12 +1,13 @@
 /* Home page sections below the intro. Colours are the global Performance V2
-   tokens, so light and dark both work. Every animation only moves transform
-   and opacity (or an SVG stroke), runs once when the section scrolls into
-   view, and is skipped entirely without JS or with reduced motion: the
-   resting styles below are the finished state. */
+   tokens, so light and dark both work. Animations stick to compositor-cheap
+   properties (transform, opacity, an SVG stroke), run once when a section
+   scrolls into view, and are skipped entirely without JS or with reduced
+   motion: the resting styles below are the finished state. */
 
 /* The intro is always dark; fade from it into the page's own canvas. */
 .seam {
   height: clamp(96px, 16vw, 200px);
+  /* Starts on the intro's pinned dark canvas token (--cine-canvas). */
   background: linear-gradient(#0b0f13, var(--canvas));
 }
 
@@ -97,7 +98,7 @@
 .log-last { font-size: 0.75rem; color: var(--ink-2); }
 .log-last b { color: var(--ink); }
 .log-now { display: flex; align-items: baseline; gap: 10px; margin: 14px 0 10px; font-variant-numeric: tabular-nums; }
-.log-now .big { font-size: 2.5rem; font-weight: 900; letter-spacing: -0.04em; line-height: 1; }
+.log-now .big { min-width: 2ch; font-size: 2.5rem; font-weight: 900; letter-spacing: -0.04em; line-height: 1; }
 .log-now small { font-size: 0.75rem; font-weight: 700; color: var(--ink-2); margin-left: 3px; letter-spacing: 0; }
 .log-now .times { color: var(--ink-2); font-weight: 700; }
 .log-unit { display: inline-flex; border-radius: 999px; background: var(--surface); padding: 3px; font-size: 0.6875rem; font-weight: 800; }
@@ -167,11 +168,11 @@
 .finale-rings i:nth-child(3)::after { content: ''; position: absolute; top: 4%; left: 30%; width: 9px; height: 9px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 24px var(--lime); }
 
 /* ---------- Motion ---------- */
-@media (prefers-reduced-motion: no-preference) {
+@media screen and (prefers-reduced-motion: no-preference) {
   .reveal-ready [data-reveal] {
     opacity: 0;
     transform: translateY(32px);
-    transition: opacity 0.7s ease, transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+    transition: opacity 0.7s ease, transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1), translate 0.3s ease, border-color 0.3s ease;
     transition-delay: calc(var(--i, 0) * 90ms);
   }
   .reveal-ready [data-reveal].is-in { opacity: 1; transform: none; }
@@ -192,8 +193,8 @@
   .is-in .muscles span { animation: pop 0.4s calc(0.9s + var(--j) * 0.15s) both; }
   .is-in .wave i { animation: grow-y 0.6s calc(0.2s + var(--j) * 0.06s) cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .is-in .checklist li { animation: row-in 0.45s calc(0.35s + var(--j) * 0.15s) both; }
-  .is-in .finale-rings i { animation: spin 40s linear infinite; }
-  .is-in .finale-rings i:nth-child(2) { animation-duration: 60s; animation-direction: reverse; }
+  .is-in .finale-rings i { animation: turn 2.4s 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .is-in .finale-rings i:nth-child(2) { animation-name: turn-back; }
 
   .faq summary::after { transition: transform 0.25s ease, background-size 0.25s ease; }
   @supports selector(::details-content) {
@@ -210,7 +211,6 @@
       transition: opacity 0.3s ease;
     }
     [data-glow]:hover::before { opacity: 1; }
-    .tile, .vault { transition: border-color 0.3s ease, translate 0.3s ease; }
     .tile:hover, .vault:hover { border-color: color-mix(in srgb, var(--performance) 45%, var(--border)); translate: 0 -4px; }
   }
 }
@@ -223,4 +223,5 @@
 @keyframes drain { from { stroke-dashoffset: 0; } }
 @keyframes grow { from { transform: scaleY(0); } }
 @keyframes grow-y { from { transform: scaleY(0.1); opacity: 0.2; } }
-@keyframes spin { to { rotate: 360deg; } }
+@keyframes turn { from { rotate: -120deg; opacity: 0; } }
+@keyframes turn-back { from { rotate: 120deg; opacity: 0; } }
