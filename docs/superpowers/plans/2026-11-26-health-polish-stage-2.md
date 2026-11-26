@@ -191,12 +191,12 @@ Rules:
 - **Empty state:** when there are no BeyondRep sessions in the period, keep `_EmptyProgress`; below it show `SectionHeading('From other apps')` and the outside rows if any.
 - **Footer text** replaces the current one: `Only finished BeyondRep workouts count towards your totals and back up to your account. Workouts from other apps are read from <platform> for the last 90 days, never saved, and shown here for reference.` (When the workouts section is a gap or health is disconnected, keep the old footer text and show no outside rows.)
 - **Outside detail page:** title = `outsideWorkoutName`; rows: Date, Time (`10:02 AM – 10:30 AM`), Duration, Distance (if any), Active calories (if any), Average heart rate (from `workoutAverageHrProvider`, `—` while loading or none), Source; caption `Read from <platform>. Read only and not saved in BeyondRep.`; ⓘ `otherAppWorkouts`. Unknown id (e.g. after a refresh) → `This workout is no longer available.` with a back button.
-- **Today tile:** count = BeyondRep completed today + standalone outside workouts whose `end` is on today's local date; caption uses the newest of those (`<name> · <M> min`); `—`/`Finished today` while history is loading stays as in stage 1.
+- **Today tile:** count = BeyondRep completed today + standalone outside workouts whose `end` is on today's local date; caption names the first of those of the day (`<name> · <M> min`), as in stage 1 and the spec; `—`/`Finished today` while history is loading stays as in stage 1.
 
 - [ ] **Step 1: Write failing tests**
   - progress: `outside running row sits between two BeyondRep sessions by date`; `finished count ignores outside workouts`; `merged session shows From Apple Watch · 131 kcal · avg 112 bpm`; `merged session with no kcal and no HR shows From Apple Watch only`; `period 30 days hides an outside workout from 40 days ago`; `no BeyondRep sessions: empty state plus From other apps section`; `disconnected health shows exactly the stage 1 page and footer`; `text scale 2.0 no overflow`.
   - detail: `shows type, duration, kcal, source and read-only caption`; `HR shows — when no samples`; `unknown id shows This workout is no longer available.`
-  - today: `standalone outside workout today raises the count to 2 and the newest names the caption`; `a merged outside workout does not raise the count`.
+  - today: `standalone outside workout today raises the count to 2 and, when it is the first of the day, names the caption`; `a merged outside workout does not raise the count`.
 - [ ] **Step 2: Run** those files — Expected: FAIL.
 - [ ] **Step 3: Implement.**
 - [ ] **Step 4: Run** `flutter test test/progress test/today test/health test/accessibility` — Expected: PASS.
