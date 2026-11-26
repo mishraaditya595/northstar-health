@@ -58,12 +58,19 @@ struct StrictObject {
     func dateTime(_ key: String) throws -> String {
         let value = try string(
             key, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt][0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?([Zz]|[+-][0-9]{2}:[0-9]{2})$")
-        let plain = ISO8601DateFormatter()
-        let fractional = ISO8601DateFormatter()
-        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        guard plain.date(from: value) != nil || fractional.date(from: value) != nil else {
-            throw ContractError("invalid_value")
+        // ISO8601DateFormatter accepts 2026-02-30, so check each part (same as Dart).
+        let d = Array(value.utf8).map { Int($0) - 48 }
+        func num(_ range: Range<Int>) -> Int { range.reduce(0) { $0 * 10 + d[$1] } }
+        let year = num(0..<4), month = num(5..<7), day = num(8..<10)
+        let leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
+        let days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+        var valid = (1...12).contains(month) && day >= 1 && day <= days[month - 1]
+            && num(11..<13) <= 23 && num(14..<16) <= 59 && num(17..<19) <= 59
+        if let last = value.last, last != "Z", last != "z" {
+            let n = d.count
+            valid = valid && num((n - 5)..<(n - 3)) <= 23 && num((n - 2)..<n) <= 59
         }
+        guard valid else { throw ContractError("invalid_value") }
         return value
     }
 

@@ -213,8 +213,8 @@ final class WatchJournalTests: XCTestCase {
             messageId: UUID().uuidString.lowercased(), sentAtUtc: old.sentAtUtc, accountKey: key,
             body: .healthSnapshot(localDate: "2026-10-24", raw: next))
         try journal.saveHealth(newer)
-        XCTAssertNil(try journal.health(accountKey: key, forLocalDate: "2026-10-23"))
         XCTAssertNotNil(try journal.health(accountKey: key, forLocalDate: "2026-10-24"))
+        XCTAssertNil(try journal.health(accountKey: key, forLocalDate: "2026-10-23"))
     }
 
     func testClearAccountWithoutWipeKeepsUnsentOutbox() throws {
