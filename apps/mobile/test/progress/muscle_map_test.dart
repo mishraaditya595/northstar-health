@@ -297,4 +297,20 @@ void main() {
     await pump(0.11);
     expect(find.text('Chest'), findsOneWidget);
   });
+
+  testWidgets('card legend wraps on a phone instead of overflowing', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(home: Scaffold(body: MuscleRecoveryCard())),
+      ),
+    );
+    expect(find.text('Recently trained'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

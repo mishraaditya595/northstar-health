@@ -321,14 +321,15 @@ class MuscleRecoveryCard extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 14),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 20,
+              runSpacing: 6,
               children: [
                 _Legend(
                   color: theme.colorScheme.onSurface.withValues(alpha: .2),
                   label: 'Recovered',
                 ),
-                const SizedBox(width: 20),
                 _Legend(
                   color: theme.colorScheme.primary,
                   label: 'Recently trained',
