@@ -115,6 +115,11 @@ class WatchLinkContractTest(unittest.TestCase):
                     list(self.validator.iter_errors(load(path))), path.name
                 )
 
+    def test_completed_set_cannot_have_reps_and_duration(self):
+        data = load(LINK / "fixtures/valid/completed_workout.json")
+        data["body"]["workout"]["exercises"][0]["sets"][0]["duration_seconds"] = 30
+        self.assertTrue(list(self.validator.iter_errors(data)))
+
     def test_health_values_only_in_health_snapshot(self):
         words = ("sleep", "hrv", "steps", "heart_rate", "resting_hr")
         for path in (LINK / "fixtures/valid").glob("*.json"):
