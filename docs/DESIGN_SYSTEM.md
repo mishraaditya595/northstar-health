@@ -60,6 +60,10 @@ All of these live in `apps/mobile/lib/core/design/`. Look comes from `BeyondRepT
 | Score ring | `NsScoreRing` | `charts/score_ring.dart` |
 | Bars / lines / sparkline | `NsBarChart`, `NsLineChart`, `NsSparkline` | `charts/bar_series.dart`, `charts/line_chart.dart` |
 | Sleep stages | `NsStageBar`, `NsStageTimeline` | `charts/sleep_stages.dart` |
+| Wide-window check (width >= 840 dp) | `isWideWindow` | `layout.dart` |
+| Equal-width card grid (fewer columns at large text) | `NsResponsiveGrid` | `layout.dart` |
+| Main and side columns (stacked when not wide) | `NsSplitColumns` | `layout.dart` |
+| List with detail pane (`openListItem` selects when wide, pushes when narrow) | `NsListDetail` | `layout.dart` |
 
 Deliberate deviation from the prototype: the light-mode inactive nav label uses `BeyondRepPalette.lightMuted` (`#586E62`, 5.04:1 on the nav surface at 10 px) because the prototype's `#647674` is 4.39:1 and fails the 4.5:1 text contrast guideline (`test/accessibility/training_library_a11y_test.dart`).
 
