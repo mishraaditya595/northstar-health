@@ -14,6 +14,7 @@ import '../programs/data/objectbox_program_repository.dart';
 import '../programs/domain/program_models.dart';
 import '../programs/domain/program_repository.dart';
 import '../programs/domain/program_schedule.dart';
+import '../programs/domain/program_status.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
 import 'active_workout_state.dart';
 import 'program_weekday_sheet.dart';
@@ -40,7 +41,11 @@ class _MyProgramPageState extends ConsumerState<MyProgramPage> {
 
   void _failed(String message) => showNsMessage(context, message);
 
-  Future<void> _start(TrainingProgramRecord program) async {
+  Future<void> _start(
+    TrainingProgramRecord program, {
+    DateTime? missedDate,
+    String? missedPlanUuid,
+  }) async {
     if (_busy) return;
     _busy = true;
     setState(() {});
@@ -58,10 +63,10 @@ class _MyProgramPageState extends ConsumerState<MyProgramPage> {
             .read(workoutActionsProvider)
             .startProgramDay(
               program,
-              expectedPlanUuid: dayFor(
-                program,
-                ref.read(localNowProvider),
-              ).planUuid,
+              expectedPlanUuid: missedDate == null
+                  ? dayFor(program, ref.read(localNowProvider)).planUuid
+                  : missedPlanUuid,
+              missedDate: missedDate,
             );
         ref.invalidate(activeWorkoutProvider);
         invalidatePrograms(ref);
@@ -70,7 +75,11 @@ class _MyProgramPageState extends ConsumerState<MyProgramPage> {
         // built: show the current day instead of starting the wrong one.
         ref.invalidate(localNowProvider);
         invalidatePrograms(ref);
-        _failed("Today's workout changed. Check it and try again.");
+        _failed(
+          missedDate == null
+              ? "Today's workout changed. Check it and try again."
+              : 'This day changed. Check it and try again.',
+        );
         return;
       } on Object {
         _startFailed();
@@ -230,6 +239,63 @@ class _MyProgramPageState extends ConsumerState<MyProgramPage> {
     );
   }
 
+  Widget _dayRow(
+    BuildContext context,
+    TrainingProgramRecord program,
+    ({int weekday, ProgramDayRecord day}) entry,
+    int todayIndex,
+    ProgramWeekRow? row,
+  ) {
+    final status =
+        row?.status ??
+        (entry.day.planUuid == null ? ProgramDayStatus.rest : null);
+    final weekday = weekdayNames[entry.weekday - 1];
+    final tag = switch (status) {
+      ProgramDayStatus.rest => 'Rest',
+      ProgramDayStatus.unavailable => 'Unavailable',
+      ProgramDayStatus.done => 'Done',
+      ProgramDayStatus.today => 'Today',
+      ProgramDayStatus.missed => 'Missed',
+      ProgramDayStatus.upcoming => 'Upcoming',
+      null => null,
+    };
+    final name = entry.day.planUuid == null
+        ? 'Rest'
+        : _planName(entry.day.planUuid!);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          NsListCard(
+            onTap: () => _editDay(program, entry),
+            icon: entry.day.planUuid == null
+                ? Icons.hotel_outlined
+                : Icons.fitness_center,
+            title: '$weekday · $name',
+            subtitle:
+                'Day ${entry.day.dayIndex + 1}'
+                '${entry.day.dayIndex == todayIndex ? ' · Today' : ''}',
+            trailing: tag == null
+                ? null
+                : NsTag(tag, warning: status == ProgramDayStatus.missed),
+          ),
+          if (status == ProgramDayStatus.missed)
+            TextButton(
+              onPressed: _busy
+                  ? null
+                  : () => _start(
+                      program,
+                      missedDate: row!.date,
+                      missedPlanUuid: entry.day.planUuid,
+                    ),
+              child: Text('Start for $weekday'),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _body(
     BuildContext context,
     TrainingProgramRecord program,
@@ -242,6 +308,9 @@ class _MyProgramPageState extends ConsumerState<MyProgramPage> {
         todayPlan != null &&
         ref.read(workoutLibraryRepositoryProvider).getPlan(todayPlan) != null;
     final week = calendarWeek(program);
+    final rows = program.isActive ? ref.watch(programWeekProvider)?.rows : null;
+    ProgramWeekRow? rowOf(int dayIndex) =>
+        rows?.where((r) => r.dayIndex == dayIndex).firstOrNull;
     return ListView(
       padding: EdgeInsets.fromLTRB(
         16,
@@ -263,7 +332,12 @@ class _MyProgramPageState extends ConsumerState<MyProgramPage> {
           children: [NsTag(program.isActive ? 'Active' : 'Not active')],
         ),
         const SizedBox(height: 16),
-        if (todayPlan == null || !todayAvailable)
+        if (!program.isActive)
+          Text(
+            'Make this your active program to start its workouts',
+            style: theme.textTheme.bodyMedium,
+          )
+        else if (todayPlan == null || !todayAvailable)
           Text(
             todayPlan == null ? 'Rest day today' : 'Workout unavailable',
             style: theme.textTheme.titleMedium?.copyWith(
@@ -287,20 +361,12 @@ class _MyProgramPageState extends ConsumerState<MyProgramPage> {
             child: Text('No training days'),
           ),
         for (final entry in week)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: NsListCard(
-              onTap: () => _editDay(program, entry),
-              icon: entry.day.planUuid == null
-                  ? Icons.hotel_outlined
-                  : Icons.fitness_center,
-              title:
-                  '${weekdayNames[entry.weekday - 1]} · '
-                  '${entry.day.planUuid == null ? 'Rest' : _planName(entry.day.planUuid!)}',
-              subtitle:
-                  'Day ${entry.day.dayIndex + 1}'
-                  '${entry.day.dayIndex == todayIndex ? ' · Today' : ''}',
-            ),
+          _dayRow(
+            context,
+            program,
+            entry,
+            todayIndex,
+            rowOf(entry.day.dayIndex),
           ),
         const SizedBox(height: 12),
         OutlinedButton(

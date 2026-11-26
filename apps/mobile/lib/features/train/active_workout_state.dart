@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/ids/uuid_factory.dart';
 import '../programs/domain/program_models.dart';
 import '../programs/domain/program_schedule.dart';
+import '../programs/domain/program_status.dart';
 import '../workouts/data/objectbox_live_workout_engine.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
 import '../workouts/data/objectbox_workout_repository.dart';
@@ -51,10 +52,17 @@ abstract interface class WorkoutActions {
   /// the call), recording which program day it was for. [expectedPlanUuid] is
   /// the plan the screen showed; if today's plan differs (the day rolled over
   /// or the schedule changed) nothing starts and [ProgramDayChanged] is
-  /// thrown. A rest day throws [StateError].
+  /// thrown. A rest day throws [StateError], and so does a program that is
+  /// not active (only the active program schedules).
+  ///
+  /// With [missedDate] it starts that earlier day of the current week: the
+  /// date is re-checked against the clock, the schedule and the finished
+  /// sessions at the call, must still be missed with [expectedPlanUuid] as its
+  /// plan, otherwise [ProgramDayChanged]. The session records that date.
   WorkoutSessionRecord startProgramDay(
     TrainingProgramRecord program, {
     required String? expectedPlanUuid,
+    DateTime? missedDate,
   });
 
   /// Materializes the template's exercises, then starts an unsaved workout
@@ -93,7 +101,7 @@ abstract interface class WorkoutActions {
 
 /// Today's schedule changed between showing a program day and starting it.
 class ProgramDayChanged extends StateError {
-  ProgramDayChanged() : super('Today\'s program workout changed');
+  ProgramDayChanged() : super('The program day changed');
 }
 
 final workoutActionsProvider = Provider<WorkoutActions>(
@@ -152,18 +160,47 @@ class RepositoryWorkoutActions implements WorkoutActions {
   WorkoutSessionRecord startProgramDay(
     TrainingProgramRecord program, {
     required String? expectedPlanUuid,
+    DateTime? missedDate,
   }) {
+    if (!program.isActive) throw StateError('Program is not active');
     final localNow = clock();
-    final planUuid = dayFor(program, localNow).planUuid;
-    if (planUuid != expectedPlanUuid) throw ProgramDayChanged();
-    if (planUuid == null) throw StateError('Today is a rest day');
+    final String planUuid;
+    final DateTime day;
+    if (missedDate == null) {
+      final today = dayFor(program, localNow).planUuid;
+      if (today != expectedPlanUuid) throw ProgramDayChanged();
+      if (today == null) throw StateError('Today is a rest day');
+      planUuid = today;
+      day = localNow;
+    } else {
+      final target = DateTime(
+        missedDate.year,
+        missedDate.month,
+        missedDate.day,
+      );
+      final available = {
+        for (final d in program.days)
+          if (d.planUuid != null && library.getPlan(d.planUuid!) != null)
+            d.planUuid!,
+      };
+      final row = programWeekStatus(
+        program: program,
+        localToday: localNow,
+        sessions: repository.listProgramSessions(program.uuid),
+        availablePlanUuids: available,
+      ).where((r) => r.date == target).firstOrNull;
+      if (row == null ||
+          row.status != ProgramDayStatus.missed ||
+          row.day.planUuid != expectedPlanUuid) {
+        throw ProgramDayChanged();
+      }
+      planUuid = row.day.planUuid!;
+      day = target;
+    }
     return engine.startWorkout(
       sessionUuid: ids.newId(),
       planUuid: planUuid,
-      programDay: (
-        programUuid: program.uuid,
-        localDate: localDateKey(localNow),
-      ),
+      programDay: (programUuid: program.uuid, localDate: localDateKey(day)),
       startedAtUtc: localNow.toUtc(),
       originalOffsetMinutes: localNow.timeZoneOffset.inMinutes,
     );

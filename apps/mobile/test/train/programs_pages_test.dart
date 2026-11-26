@@ -405,6 +405,90 @@ void main() {
       expect(find.text("Start today's workout"), findsNothing);
     });
 
+    group('status and missed days', () {
+      // Monday first, activated Wednesday 2026-11-25, now Friday 2026-11-27:
+      // Mon push is before activation, Wed pull is missed, Fri hidden is today.
+      final friday = DateTime(2026, 11, 27, 10);
+
+      Future<String> openMissed(
+        WidgetTester tester, {
+        DateTime Function()? clock,
+        double textScale = 1,
+        Brightness brightness = Brightness.light,
+      }) async {
+        final uuid = seed('prog.three', firstDay: 1);
+        await open(
+          tester,
+          '/train/program/$uuid',
+          now: friday,
+          clock: clock,
+          textScale: textScale,
+          brightness: brightness,
+        );
+        return uuid;
+      }
+
+      testWidgets('each row carries a status tag', (tester) async {
+        await openMissed(tester);
+        expect(find.text('Upcoming'), findsOneWidget); // Monday
+        expect(find.text('Missed'), findsOneWidget); // Wednesday
+        expect(find.text('Today'), findsOneWidget); // Friday
+        expect(find.text('Rest'), findsWidgets);
+        expect(find.text('Start for Wednesday'), findsOneWidget);
+      });
+
+      testWidgets('Start for Wednesday opens the logger and records that '
+          'date', (tester) async {
+        final uuid = await openMissed(tester);
+        await tapLow(tester, 'Start for Wednesday');
+        final session = store.box<WorkoutSessionEntity>().getAll().single;
+        expect(session.programUuid, uuid);
+        expect(session.programDayLocalDate, '2026-11-25');
+        expect(session.name, 'Synthetic pull');
+        expect(find.text('LOGGER'), findsOneWidget);
+      });
+
+      testWidgets('a day that stopped being missed before the tap does not '
+          'start', (tester) async {
+        var clock = friday;
+        await openMissed(tester, clock: () => clock);
+        clock = DateTime(2026, 11, 30, 0, 5); // next Monday: a new week
+        await tapLow(tester, 'Start for Wednesday');
+        expect(store.box<WorkoutSessionEntity>().count(), 0);
+        expect(
+          find.text('This day changed. Check it and try again.'),
+          findsOneWidget,
+        );
+      });
+
+      testWidgets('text scale 2.0, light and dark: tags and start rows '
+          'do not overflow', (tester) async {
+        for (final brightness in Brightness.values) {
+          await openMissed(tester, textScale: 2, brightness: brightness);
+          await tester.scrollUntilVisible(
+            find.text('Start for Wednesday'),
+            200,
+            scrollable: find.byType(Scrollable).first,
+          );
+          expect(tester.takeException(), isNull);
+          expect(find.text('Start for Wednesday'), findsOneWidget);
+        }
+      });
+
+      testWidgets('an inactive program shows no Start and says how to get '
+          'one', (tester) async {
+        final uuid = seed('prog.three', firstDay: 3, active: false);
+        await open(tester, '/train/program/$uuid', now: wednesday);
+        expect(
+          find.text('Make this your active program to start its workouts'),
+          findsOneWidget,
+        );
+        expect(find.text("Start today's workout"), findsNothing);
+        expect(find.textContaining('Start for'), findsNothing);
+        expect(find.text('Missed'), findsNothing);
+      });
+    });
+
     testWidgets('a day can be changed to Rest', (tester) async {
       final uuid = seed('prog.three');
       await open(tester, '/train/program/$uuid', now: wednesday);
