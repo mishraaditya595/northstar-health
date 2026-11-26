@@ -39,6 +39,24 @@ python3 scripts/catalog_build.py rollback --to N --timestamp YYYYMMDDHHMMSS
 
 Open a pull request with the generated migration, the lock and the changelog. CI replays every migration and runs the pgTAP tests (`supabase/tests/catalog.test.sql`). After merge, the owner runs the `supabase-database` Codemagic job (preview, then deploy), see [SUPABASE_CODEMAGIC_DEPLOY.md](SUPABASE_CODEMAGIC_DEPLOY.md). Nothing is deployed from a branch.
 
+## Changing content after launch
+
+Exercises, workout templates and programs live on the server, not in the app binary. Adding or editing content never needs an App Store or Play Store update.
+
+1. Edit the JSON under `catalog/` to add or change content: sets, reps, rest, notes and descriptions.
+2. Run `python3 scripts/catalog_build.py check`, then `publish` to write the next release migration, the lock and the changelog. Open a pull request. CI and the content tests check it, and the owner reviews a sheet of every changed entry.
+3. Merge the pull request and run the `supabase-database` Codemagic job (see [Deploying](#deploying)). The live pointer moves to the new release.
+4. Phones pick it up on their next check. That happens at most once every 24 hours, on start or resume, or at once with pull to refresh or Retry (see [Phone client](#phone-client-stage-2-in-source-not-released)).
+
+Rules that hold for every release:
+
+- **User copies never change.** A copied template or an added program is the user's own local data, with fresh IDs. A later release, retirement or rollback does not touch it, or any past workout. Edits reach only new copies and new adds. A user who wants the new version adds it again.
+- **IDs are permanent.** An ID's contents may change in a later release, but the ID is never deleted, renamed or reused, and the validator rejects a removed ID. To take an exercise out of browse and "add exercise", set `"status": "retired"`. Its local copies keep working.
+- **An exercise's mode is fixed forever.** `reps_load` stays `reps_load`, and `duration` stays `duration`, so past sessions never change meaning. For a different mode, add a new exercise ID. The validator and `releases.lock.json` enforce this.
+- **Mistakes are undone by rollback.** `python3 scripts/catalog_build.py rollback --to N --timestamp YYYYMMDDHHMMSS` writes a migration that points the live release back to N, deployed by the same job. Releases themselves are immutable.
+- **Only new features need an app update.** A breaking format change, such as a new tracking mode like load plus seconds, or a removed or re-typed field, must raise `minAppCatalogSchema` (see [Phone client](#phone-client-stage-2-in-source-not-released)). Older apps then keep their last good catalogue and show "Update the app to get the latest workouts". Additive changes keep `minAppCatalogSchema` as it is.
+- **Templates and programs cannot be retired yet.** There is no `status` on templates or programs, so once published they stay listed. The owner approved adding a retired status for them, planned for stage 8.
+
 ## Phone client (stage 2, in source, not released)
 
 Code lives in `apps/mobile/lib/features/catalog/`. The app is read-only against the catalogue: it never writes to Supabase and the refresh never writes to ObjectBox.
