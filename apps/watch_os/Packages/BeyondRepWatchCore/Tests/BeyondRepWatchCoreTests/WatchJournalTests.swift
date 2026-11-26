@@ -245,4 +245,36 @@ final class WatchJournalTests: XCTestCase {
         let reopened = try WatchJournal(url: url)
         XCTAssertEqual(try reopened.pendingOutbox(limit: 100).count, 3)
     }
+
+    func testBindingRoundTripsAndClearAccountRemovesItOnlyForItsKey() throws {
+        let journal = try WatchJournal(url: url)
+        XCTAssertNil(try journal.binding())
+        try journal.saveBinding(TestMessages.binding(TestMessages.keyA, unit: "lb"))
+        XCTAssertEqual(try journal.binding()?.accountKey, TestMessages.keyA)
+        XCTAssertEqual(try journal.binding()?.unit, "lb")
+        try journal.clearAccount(TestMessages.keyB, wipeUnsent: false)
+        XCTAssertNotNil(try journal.binding())
+        try journal.clearAccount(TestMessages.keyA, wipeUnsent: false)
+        XCTAssertNil(try journal.binding())
+    }
+
+    func testJournalMigratesUserVersion2To3KeepingOutboxRows() throws {
+        // A database written before the binding table existed.
+        let old = try SQLiteDatabase(url: url)
+        try old.execute("CREATE TABLE outbox(message_id TEXT PRIMARY KEY, account_key TEXT NOT NULL, json TEXT NOT NULL, created_at TEXT NOT NULL)")
+        let message = try fixture("completed_workout")
+        try old.execute(
+            "INSERT INTO outbox(message_id, account_key, json, created_at) VALUES(?,?,?,?)",
+            [.text(message.messageId.lowercased()), .text(message.accountKey),
+             .text(String(decoding: try message.jsonData(), as: UTF8.self)), .text("2026-10-23T00:00:00Z")])
+        try old.setUserVersion(2)
+
+        let journal = try WatchJournal(url: url)
+        XCTAssertEqual(try journal.pendingOutbox(limit: 10).count, 1)
+        XCTAssertNil(try journal.binding())
+        try journal.saveBinding(TestMessages.binding())
+        XCTAssertEqual(try journal.binding()?.accountKey, TestMessages.keyA)
+        let check = try SQLiteDatabase(url: url)
+        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(3))
+    }
 }
