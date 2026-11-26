@@ -2,7 +2,7 @@ name: WatchOS standalone build proof (manual)
 
 # Runs on every PR so the `watch` check can be required in branch rules.
 # The macOS job is skipped (which counts as passing) only when path detection
-# succeeded and found no change under apps/watch_os/ or this workflow. A manual
+# succeeded and found no change under apps/watch_os/, contracts/ or this workflow. A manual
 # run, or failed detection, runs the full build (fail closed).
 on:
   workflow_dispatch:
@@ -33,6 +33,7 @@ jobs:
           filters: |
             watch:
               - "apps/watch_os/**"
+              - "contracts/**"
               - ".github/workflows/watchos_smoke.yml"
 
   watch:
@@ -45,6 +46,8 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Test BeyondRepWatchCore package
+        run: swift test --package-path apps/watch_os/Packages/BeyondRepWatchCore
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate watchOS proof project
