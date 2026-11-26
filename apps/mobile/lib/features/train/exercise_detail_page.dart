@@ -14,16 +14,24 @@ import 'train_library_state.dart';
 /// One exercise: its muscles on the body map, equipment, category, input mode
 /// and technique cues. Custom exercises have no muscle mapping yet.
 class ExerciseDetailPage extends ConsumerWidget {
-  const ExerciseDetailPage({required this.exerciseId, super.key});
+  const ExerciseDetailPage({
+    required this.exerciseId,
+    this.embedded = false,
+    super.key,
+  });
 
   final String exerciseId;
+
+  /// Shown inside the exercise list's detail pane: no back button.
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(exerciseChoicesProvider);
     return Scaffold(
       appBar: AppBar(
-        leading: const NsBackButton(),
+        automaticallyImplyLeading: false,
+        leading: embedded ? null : const NsBackButton(),
         title: const Text('Exercise'),
       ),
       body: Center(

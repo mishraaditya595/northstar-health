@@ -21,9 +21,17 @@ import 'workout_templates_page.dart' show levelLabel;
 /// One program: the 7-day week with every day's prescriptions, and "Add
 /// program".
 class ProgramDetailPage extends ConsumerStatefulWidget {
-  const ProgramDetailPage({required this.programId, super.key});
+  const ProgramDetailPage({
+    required this.programId,
+    this.embedded = false,
+    super.key,
+  });
 
   final String programId;
+
+  /// Shown inside the programs list's detail pane: no back button, and a
+  /// finished add opens the new program on top instead of replacing this page.
+  final bool embedded;
 
   @override
   ConsumerState<ProgramDetailPage> createState() => _ProgramDetailPageState();
@@ -80,7 +88,12 @@ class _ProgramDetailPageState extends ConsumerState<ProgramDetailPage> {
       invalidatePrograms(ref);
       if (!mounted) return;
       showNsMessage(context, 'Added ${created.name}');
-      context.pushReplacement('/train/program/${created.uuid}');
+      final route = '/train/program/${created.uuid}';
+      if (widget.embedded) {
+        context.push(route);
+      } else {
+        context.pushReplacement(route);
+      }
     } on Object {
       if (mounted) {
         showNsMessage(context, 'Could not add this program. Try again.');
@@ -106,7 +119,8 @@ class _ProgramDetailPageState extends ConsumerState<ProgramDetailPage> {
     }
     return Scaffold(
       appBar: AppBar(
-        leading: const NsBackButton(),
+        automaticallyImplyLeading: false,
+        leading: widget.embedded ? null : const NsBackButton(),
         title: const Text('Program'),
       ),
       body: Center(

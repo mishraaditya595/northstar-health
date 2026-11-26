@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/design/inputs.dart';
+import '../../core/design/layout.dart';
 import '../../core/design/dialogs.dart';
 import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
@@ -17,6 +18,7 @@ import '../catalog/domain/exercise_filter.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
 import '../workouts/domain/workout_library_models.dart';
 import 'exercise_filter_bar.dart';
+import 'exercise_detail_page.dart';
 import 'exercise_picker_sheet.dart';
 import 'train_library_state.dart';
 
@@ -32,6 +34,29 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
   String query = '';
   final searchController = TextEditingController();
   bool customOnly = false;
+
+  /// Wide windows: id of the item open in the detail pane.
+  String? _selectedId;
+
+  String _routeFor(String id) => '/train/exercises/${Uri.encodeComponent(id)}';
+
+  /// The pane's page, or null (clearing the selection) when the item is gone.
+  Widget? _detail(bool Function(String id) exists) {
+    final id = _selectedId;
+    if (id == null) return null;
+    if (!exists(id)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _selectedId == id) setState(() => _selectedId = null);
+      });
+      return null;
+    }
+    return ExerciseDetailPage(
+      key: ValueKey(id),
+      exerciseId: id,
+      embedded: true,
+    );
+  }
+
   String? group;
   String? equipment;
 
@@ -176,8 +201,11 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
   Widget _row(ExerciseChoice choice) => Padding(
     padding: const EdgeInsets.only(bottom: 10),
     child: NsListCard(
-      onTap: () =>
-          context.push('/train/exercises/${Uri.encodeComponent(choice.id)}'),
+      onTap: () => openListItem(
+        context,
+        route: _routeFor(choice.id),
+        select: () => setState(() => _selectedId = choice.id),
+      ),
       icon: choice.isCustom ? Icons.edit_note : Icons.fitness_center,
       title: choice.name,
       subtitle: [
@@ -305,26 +333,40 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
           label: const Text('Custom exercise'),
         ),
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900),
-          child: RefreshIndicator(
-            onRefresh: _refreshCatalog,
-            child: ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.fromLTRB(
-                16,
-                8,
-                16,
-                100 + MediaQuery.paddingOf(context).bottom,
+      body: NsListDetail(
+        list: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: RefreshIndicator(
+              onRefresh: _refreshCatalog,
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  8,
+                  16,
+                  100 + MediaQuery.paddingOf(context).bottom,
+                ),
+                itemCount: headers.length + rows.length,
+                itemBuilder: (context, index) => index < headers.length
+                    ? headers[index]
+                    : rows[index - headers.length](context),
               ),
-              itemCount: headers.length + rows.length,
-              itemBuilder: (context, index) => index < headers.length
-                  ? headers[index]
-                  : rows[index - headers.length](context),
             ),
           ),
         ),
+        detail: _detail((id) => !async.hasValue || all.any((c) => c.id == id)),
+        emptyDetail: Center(
+          child: Text(
+            'Pick an exercise to see how it\'s done.',
+            style: TextStyle(color: muted),
+          ),
+        ),
+        selectedRoute: _selectedId == null ? null : _routeFor(_selectedId!),
+        onCollapsed: (route) {
+          setState(() => _selectedId = null);
+          context.push(route);
+        },
       ),
     );
   }
