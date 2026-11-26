@@ -37,6 +37,9 @@ class ReadinessHero extends StatelessWidget {
       if (reasons.isNotEmpty) '$reasons.',
       'See why',
     ].join(' ');
+    // At large text the explain button and chevron get their own strip under
+    // the text instead of sitting over the eyebrow and title.
+    final large = MediaQuery.textScalerOf(context).scale(1) >= 1.3;
     // The label node stays outermost; ExcludeSemantics (not excludeSemantics)
     // hides the hero's content so the info button keeps its own node.
     return Semantics(
@@ -62,11 +65,13 @@ class ReadinessHero extends StatelessWidget {
                     caption: 'Readiness',
                   ),
                 ),
+                child: large ? const SizedBox(height: 48) : null,
               ),
             ),
           ),
           Positioned(
-            top: 4,
+            top: large ? null : 4,
+            bottom: large ? 8 : null,
             right: 4,
             child: Theme(
               data: heroTheme,
@@ -77,13 +82,17 @@ class ReadinessHero extends StatelessWidget {
                     MetricKey.readiness,
                     platform: platform,
                   ),
-                  const ExcludeSemantics(
-                    child: Padding(
-                      padding: EdgeInsets.only(right: 12),
-                      child: Icon(
-                        Icons.chevron_right,
-                        size: 20,
-                        color: Color(0xFFBCCFC1),
+                  ExcludeSemantics(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: onOpen,
+                      child: const Padding(
+                        padding: EdgeInsets.fromLTRB(4, 14, 12, 14),
+                        child: Icon(
+                          Icons.chevron_right,
+                          size: 20,
+                          color: Color(0xFFBCCFC1),
+                        ),
                       ),
                     ),
                   ),

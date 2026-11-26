@@ -7,6 +7,7 @@ import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
+import 'package:beyondrep/features/health/widgets/readiness_hero.dart';
 import 'package:beyondrep/features/health/widgets/today_health_row.dart';
 import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
 import 'package:beyondrep/features/progress/workout_history_state.dart';
@@ -429,6 +430,60 @@ void main() {
     await tester.tap(find.text('Good to train'));
     await tester.pumpAndSettle();
     expect(pushed, ['/health/readiness']);
+  });
+
+  testWidgets('tapping the hero chevron opens /health/readiness', (
+    tester,
+  ) async {
+    final pushed = <String>[];
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      pushed: pushed,
+      overviewController: FakeHealthOverviewController(
+        overview(readiness: _ready(82)),
+      ),
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byType(ReadinessHero),
+        matching: find.byIcon(Icons.chevron_right),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(pushed, ['/health/readiness']);
+  });
+
+  testWidgets('the hero at 2x text has no overflow and no overlap', (
+    tester,
+  ) async {
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      textScale: 2,
+      overviewController: FakeHealthOverviewController(
+        overview(readiness: _ready(55)),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    final text = [
+      tester.getRect(find.text('READINESS · FAIR')),
+      tester.getRect(find.text('Train as planned, watch effort')),
+    ];
+    final controls = [
+      tester.getRect(find.bySemanticsLabel('About Readiness')),
+      tester.getRect(
+        find.descendant(
+          of: find.byType(ReadinessHero),
+          matching: find.byIcon(Icons.chevron_right),
+        ),
+      ),
+    ];
+    for (final rect in controls) {
+      for (final t in text) {
+        expect(rect.overlaps(t), isFalse);
+      }
+    }
   });
 
   testWidgets('Low hero uses the red ring colour', (tester) async {
