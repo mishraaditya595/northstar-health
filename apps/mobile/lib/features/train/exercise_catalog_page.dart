@@ -325,6 +325,10 @@ class _ExerciseCatalogPageState extends ConsumerState<ExerciseCatalogPage> {
         leading: const NsBackButton(),
         title: const Text('Exercise library'),
       ),
+      // Wide: over the list column, not the detail pane.
+      floatingActionButtonLocation: isWideWindow(context)
+          ? FloatingActionButtonLocation.startFloat
+          : null,
       floatingActionButton: Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
         child: FloatingActionButton.extended(

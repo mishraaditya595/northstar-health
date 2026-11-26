@@ -217,7 +217,9 @@ class _WorkoutTemplatesPageState extends ConsumerState<WorkoutTemplatesPage> {
             ),
           ),
         ),
-        detail: _detail((id) => all.any((t) => t.id == id)),
+        detail: _detail(
+          (id) => status == CatalogStatus.loading || all.any((t) => t.id == id),
+        ),
         emptyDetail: Center(
           child: Text(
             'Pick a workout to see every exercise.',

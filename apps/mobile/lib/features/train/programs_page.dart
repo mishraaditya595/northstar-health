@@ -225,7 +225,9 @@ class _ProgramsPageState extends ConsumerState<ProgramsPage> {
             ),
           ),
         ),
-        detail: _detail((id) => all.any((p) => p.id == id)),
+        detail: _detail(
+          (id) => status == CatalogStatus.loading || all.any((p) => p.id == id),
+        ),
         emptyDetail: Center(
           child: Text(
             'Pick a program to see its weeks.',
