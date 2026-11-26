@@ -88,9 +88,15 @@ jobs:
       - name: Resolve from committed lockfile
         working-directory: apps/mobile
         run: flutter pub get --enforce-lockfile
+      - name: Pick an iPhone simulator
+        # Flutter needs a device id to build an app that has a watchOS companion.
+        run: |
+          udid="$(xcrun simctl list devices available iPhone -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for k in sorted(d) if "iOS" in k for x in d[k] if x["name"].startswith("iPhone")))')"
+          echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
+          echo "Using simulator $udid"
       - name: Build the iPhone simulator app (unsigned)
         working-directory: apps/mobile
-        run: flutter build ios --simulator --debug --no-codesign
+        run: flutter build ios --simulator --debug --no-codesign -d "$SIMULATOR_UDID"
       - name: Assert the watch app is embedded
         working-directory: apps/mobile
         run: |
