@@ -39,4 +39,17 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('phone Today spreads the seven days across the card', (
+    tester,
+  ) async {
+    await pumpTodayProgram(tester, week: programWeekFixture());
+    final days = find.byWidgetPredicate(
+      (w) => w.runtimeType.toString() == '_Day',
+    );
+    expect(days, findsNWidgets(7));
+    // As with the old Row: first day at the card's left, last at its right.
+    expect(tester.getRect(days.last).right, greaterThan(390 - 40));
+    expect(tester.getRect(days.first).left, lessThan(50));
+  });
 }

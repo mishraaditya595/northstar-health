@@ -313,4 +313,23 @@ void main() {
     expect(find.text('Recently trained'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('card legend fills the card width on a phone', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(home: Scaffold(body: MuscleRecoveryCard())),
+      ),
+    );
+    // The legend fills the card's width, so centring is relative to the card.
+    final wrap = find.ancestor(
+      of: find.text('Recovered'),
+      matching: find.byType(Wrap),
+    );
+    expect(tester.getRect(wrap).center.dx, closeTo(195, 1));
+    expect(tester.getSize(wrap).width, greaterThan(300));
+  });
 }

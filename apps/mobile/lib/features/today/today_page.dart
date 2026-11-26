@@ -323,17 +323,20 @@ class _WeekCard extends StatelessWidget {
             ),
             if (counts != null) ...[
               const SizedBox(height: 13),
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                runSpacing: 8,
-                children: [
-                  for (var i = 0; i < days.length; i++)
-                    _Day(
-                      name: weekdayName(days[i]),
-                      isToday: days[i] == today,
-                      trained: counts[i] > 0,
-                    ),
-                ],
+              SizedBox(
+                width: double.infinity,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  runSpacing: 8,
+                  children: [
+                    for (var i = 0; i < days.length; i++)
+                      _Day(
+                        name: weekdayName(days[i]),
+                        isToday: days[i] == today,
+                        trained: counts[i] > 0,
+                      ),
+                  ],
+                ),
               ),
             ],
           ],
