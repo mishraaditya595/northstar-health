@@ -241,6 +241,14 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
     required List<String> primaryMuscles,
     required List<String> secondaryMuscles,
   }) {
+    // The workout outbox rejects a snapshot name that is empty or over 160
+    // characters, which would block cloud backup of every workout using it.
+    if (name.trim().isEmpty) {
+      throw ArgumentError('A catalogue exercise needs a name');
+    }
+    name = _clamp(name);
+    muscleGroup = _clamp(muscleGroup);
+    equipment = _clamp(equipment);
     final muscles = _validated(primaryMuscles, secondaryMuscles);
     primaryMuscles = muscles.primary;
     secondaryMuscles = muscles.secondary;
@@ -284,6 +292,13 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
     return _exercise(existing);
   }
 
+  /// At most 160 characters (code points), the outbox limit for the exercise
+  /// name, group and equipment snapshots. Never splits a surrogate pair.
+  String _clamp(String value) {
+    final runes = value.runes;
+    return runes.length <= 160 ? value : String.fromCharCodes(runes.take(160));
+  }
+
   /// Catalogue muscles that break the cloud contract (an unknown name, say)
   /// are dropped, so workouts keep the coarse path and uploads are never
   /// blocked by catalogue content.
@@ -319,9 +334,9 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
   }) {
     if (existing.catalogVersion < release) {
       existing
-        ..name = name
-        ..muscleGroup = muscleGroup
-        ..equipment = equipment
+        ..name = _clamp(name)
+        ..muscleGroup = _clamp(muscleGroup)
+        ..equipment = _clamp(equipment)
         ..movementCategory = category
         ..catalogVersion = release;
     }
@@ -344,6 +359,7 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
           item.id,
         );
         final muscles = _validated(item.primaryMuscles, item.secondaryMuscles);
+        if (item.name.trim().isEmpty) continue;
         if (existing == null ||
             !existing.isBuiltIn ||
             existing.inputMode != item.mode ||

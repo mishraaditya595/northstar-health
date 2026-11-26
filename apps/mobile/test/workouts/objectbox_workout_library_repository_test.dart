@@ -466,6 +466,46 @@ void main() {
       expect(library.listExercises().map((e) => e.uuid), contains(record.uuid));
     });
 
+    test('catalogue text never exceeds what the outbox accepts (1-160)', () {
+      // 159 BMP characters then an emoji: a cut at 160 units would split it.
+      final long = '${'a' * 159}\u{1F4AA}${'b' * 40}';
+      final record = materialize(
+        id: 'builtin.v1.long',
+        name: long,
+        muscleGroup: 'g' * 300,
+        equipment: 'e' * 300,
+      );
+      for (final value in [record.name, record.muscleGroup, record.equipment]) {
+        expect(value.runes.length, lessThanOrEqualTo(160));
+        expect(value, isNotEmpty);
+        // No lone surrogate: re-encoding is lossless.
+        expect(String.fromCharCodes(value.runes), value);
+      }
+      expect(record.name.runes.length, 160);
+    });
+
+    test('a blank catalogue name is refused and writes nothing', () {
+      final before = store.box<ExerciseDefinitionEntity>().count();
+      expect(
+        () => materialize(id: 'builtin.v1.blank', name: '  '),
+        throwsArgumentError,
+      );
+      expect(store.box<ExerciseDefinitionEntity>().count(), before);
+    });
+
+    test('a newer release refreshes with the same limits', () {
+      materialize(id: 'builtin.v1.later', release: 1);
+      final record = materialize(
+        id: 'builtin.v1.later',
+        name: 'n' * 400,
+        equipment: 'e' * 400,
+        release: 2,
+      );
+      expect(record.name.runes.length, 160);
+      expect(record.equipment.runes.length, 160);
+      expect(stored('builtin.v1.later').catalogVersion, 2);
+    });
+
     test('is idempotent for the same release', () {
       final first = materialize(release: 2);
       final again = materialize(release: 2, name: 'Renamed but same release');
@@ -662,6 +702,46 @@ void main() {
         .query(ExerciseDefinitionEntity_.uuid.equals(id))
         .build()
         .findFirst()!;
+
+    test('a long catalogue name is clamped on a release update', () {
+      library.ensureCatalogSeeded();
+      final long = item('builtin.v1.squat');
+      library.syncCatalogDefinitions([
+        (
+          id: long.id,
+          name: 'n' * 400,
+          muscleGroup: 'g' * 400,
+          equipment: 'e' * 400,
+          category: long.category,
+          mode: long.mode,
+          primaryMuscles: long.primaryMuscles,
+          secondaryMuscles: long.secondaryMuscles,
+        ),
+      ], 9);
+      final row = stored('builtin.v1.squat');
+      expect(row.name.runes.length, 160);
+      expect(row.muscleGroup.runes.length, 160);
+      expect(row.equipment.runes.length, 160);
+    });
+
+    test('a blank catalogue name leaves the stored row alone', () {
+      library.ensureCatalogSeeded();
+      final before = stored('builtin.v1.squat').name;
+      final blank = item('builtin.v1.squat');
+      library.syncCatalogDefinitions([
+        (
+          id: blank.id,
+          name: '   ',
+          muscleGroup: blank.muscleGroup,
+          equipment: blank.equipment,
+          category: blank.category,
+          mode: blank.mode,
+          primaryMuscles: blank.primaryMuscles,
+          secondaryMuscles: blank.secondaryMuscles,
+        ),
+      ], 9);
+      expect(stored('builtin.v1.squat').name, before);
+    });
 
     test('updates seeded rows only', () {
       library.ensureCatalogSeeded();

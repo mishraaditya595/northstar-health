@@ -412,4 +412,208 @@ void main() {
       }
     });
   });
+
+  group('schema limits', () {
+    Map<String, Object?> at(Map<String, Object?> json, String key) =>
+        (json[key]! as List).first as Map<String, Object?>;
+
+    void expectRejected(
+      String reason,
+      void Function(Map<String, Object?> json) edit,
+    ) {
+      final json = validSnapshot();
+      edit(json);
+      expect(
+        () => parseCatalogSnapshot(json),
+        throwsA(isA<CatalogFormatException>()),
+        reason: reason,
+      );
+    }
+
+    test('text lengths are enforced like the schema', () {
+      expectRejected(
+        'exercise name 81',
+        (j) => at(j, 'exercises')['name'] = 'a' * 81,
+      );
+      expectRejected(
+        'exercise name empty',
+        (j) => at(j, 'exercises')['name'] = '',
+      );
+      expectRejected(
+        'alias 61',
+        (j) => at(j, 'exercises')['aliases'] = ['a' * 61],
+      );
+      expectRejected(
+        '11 aliases',
+        (j) => at(j, 'exercises')['aliases'] = [
+          for (var i = 0; i < 11; i++) 'a$i',
+        ],
+      );
+      expectRejected(
+        'cue 161',
+        (j) => at(j, 'exercises')['cues'] = ['a' * 161],
+      );
+      expectRejected(
+        '7 cues',
+        (j) => at(j, 'exercises')['cues'] = [for (var i = 0; i < 7; i++) 'c$i'],
+      );
+      expectRejected(
+        'template name 81',
+        (j) => at(j, 'templates')['name'] = 'a' * 81,
+      );
+      expectRejected(
+        'template description 1001',
+        (j) => at(j, 'templates')['description'] = 'a' * 1001,
+      );
+      expectRejected(
+        'program name 81',
+        (j) => at(j, 'programs')['name'] = 'a' * 81,
+      );
+      expectRejected(
+        'program description 1001',
+        (j) => at(j, 'programs')['description'] = 'a' * 1001,
+      );
+      expectRejected(
+        'note 301',
+        (j) => firstPrescription(j)['note'] = 'a' * 301,
+      );
+      // The limits themselves are fine.
+      final json = validSnapshot();
+      at(json, 'exercises')['name'] = 'a' * 80;
+      at(json, 'templates')['description'] = 'a' * 1000;
+      firstPrescription(json)['note'] = 'a' * 300;
+      expect(parseCatalogSnapshot(json).exercises.first.name, hasLength(80));
+    });
+
+    test('ids follow the schema pattern and length', () {
+      expectRejected(
+        'exercise id case',
+        (j) => at(j, 'exercises')['id'] = 'builtin.v1.Squat',
+      );
+      expectRejected(
+        'exercise id prefix',
+        (j) => at(j, 'exercises')['id'] = 'custom.squat',
+      );
+      expectRejected(
+        'exercise id double dash',
+        (j) => at(j, 'exercises')['id'] = 'builtin.v1.a--b',
+      );
+      expectRejected(
+        'exercise id 121',
+        (j) => at(j, 'exercises')['id'] = 'builtin.v1.${'a' * 109}',
+      );
+      expectRejected(
+        'template id',
+        (j) => at(j, 'templates')['id'] = 'tpl.Bad Id',
+      );
+      expectRejected(
+        'program id',
+        (j) => at(j, 'programs')['id'] = 'program.a',
+      );
+    });
+
+    test('vocabularies are closed', () {
+      expectRejected(
+        'muscleGroup',
+        (j) => at(j, 'exercises')['muscleGroup'] = 'Neck',
+      );
+      expectRejected(
+        'primary muscle',
+        (j) => at(j, 'exercises')['primaryMuscles'] = ['neck'],
+      );
+      expectRejected(
+        'secondary muscle',
+        (j) => at(j, 'exercises')['secondaryMuscles'] = ['neck'],
+      );
+      expectRejected(
+        'equipment',
+        (j) => at(j, 'exercises')['equipment'] = ['rocket'],
+      );
+      expectRejected(
+        'category',
+        (j) => at(j, 'exercises')['category'] = 'yoga',
+      );
+      expectRejected(
+        'template level',
+        (j) => (at(j, 'templates')['tags']! as Map)['level'] = 'expert',
+      );
+      expectRejected(
+        'template goal',
+        (j) => (at(j, 'templates')['tags']! as Map)['goal'] = ['fame'],
+      );
+      expectRejected(
+        'template equipment',
+        (j) => (at(j, 'templates')['tags']! as Map)['equipment'] = ['rocket'],
+      );
+      expectRejected(
+        'program level',
+        (j) => at(j, 'programs')['level'] = 'expert',
+      );
+      expectRejected(
+        'program goal',
+        (j) => at(j, 'programs')['goals'] = ['fame'],
+      );
+      expectRejected(
+        'program equipment',
+        (j) => at(j, 'programs')['equipment'] = ['rocket'],
+      );
+    });
+
+    test('control characters and lone surrogates are rejected', () {
+      for (final bad in [
+        'a\u0000b',
+        'tab\there',
+        'x\u007f',
+        'new\nline',
+        'lone\ud800',
+        'lone\udc00x',
+      ]) {
+        expectRejected(
+          'name ${bad.codeUnits}',
+          (j) => at(j, 'exercises')['name'] = bad,
+        );
+        expectRejected(
+          'cue ${bad.codeUnits}',
+          (j) => at(j, 'exercises')['cues'] = [bad],
+        );
+        expectRejected(
+          'description ${bad.codeUnits}',
+          (j) => at(j, 'templates')['description'] = bad,
+        );
+        expectRejected(
+          'note ${bad.codeUnits}',
+          (j) => firstPrescription(j)['note'] = bad,
+        );
+        expectRejected(
+          'program ${bad.codeUnits}',
+          (j) => at(j, 'programs')['name'] = bad,
+        );
+      }
+      // A valid surrogate pair (an emoji) and accents stay accepted.
+      final json = validSnapshot();
+      at(json, 'exercises')['name'] = 'Curl \u{1F4AA} Zoë';
+      expect(
+        parseCatalogSnapshot(json).exercises.first.name,
+        'Curl \u{1F4AA} Zoë',
+      );
+    });
+
+    test('every published release still parses', () {
+      for (final file in [
+        '20261126000100_catalog_release_1.sql',
+        '20261126030000_catalog_release_2.sql',
+        '20261126040000_catalog_release_3.sql',
+        '20261126050000_catalog_release_4.sql',
+      ]) {
+        final sql = File('../../supabase/migrations/$file').readAsStringSync();
+        final start = sql.indexOf(r'$catalog$') + r'$catalog$'.length;
+        final end = sql.indexOf(r'$catalog$', start);
+        expect(
+          () => parseCatalogSnapshot(jsonDecode(sql.substring(start, end))),
+          returnsNormally,
+          reason: file,
+        );
+      }
+    });
+  });
 }

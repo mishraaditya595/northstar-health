@@ -6,6 +6,28 @@ const supportedCatalogSchema = 1;
 const _modes = {'reps_load', 'reps', 'duration', 'duration_load'};
 const _durationModes = {'duration', 'duration_load'};
 
+// The closed vocabularies and limits of catalog/schema/catalog.schema.json.
+const _muscles = {
+  'chest', 'shoulders', 'biceps', 'forearms', 'abs', 'obliques', 'quads', //
+  'calves', 'traps', 'lats', 'lowerBack', 'triceps', 'glutes', 'hamstrings',
+};
+const _muscleGroups = {'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'};
+const _equipment = {
+  'barbell', 'dumbbell', 'kettlebell', 'machine', 'cable', 'band', //
+  'bodyweight', 'bench', 'pull_up_bar', 'ez_bar', 'trap_bar', 'plate', 'box',
+  'rings', 'other',
+};
+const _categories = {
+  'squat', 'hinge', 'lunge', 'push_horizontal', 'push_vertical', //
+  'pull_horizontal', 'pull_vertical', 'carry', 'core', 'isolation', 'calf',
+  'conditioning', 'mobility',
+};
+const _levels = {'beginner', 'intermediate', 'advanced'};
+const _goals = {'strength', 'hypertrophy', 'general', 'endurance', 'fat_loss'};
+final _exerciseId = RegExp(r'^builtin\.v1\.[a-z0-9]+(-[a-z0-9]+)*$');
+final _templateId = RegExp(r'^tpl\.[a-z0-9]+(-[a-z0-9]+)*$');
+final _programId = RegExp(r'^prog\.[a-z0-9]+(-[a-z0-9]+)*$');
+
 CatalogSnapshot parseCatalogSnapshot(Object? json, {String? expectedSha256}) {
   final root = _map(json);
   final List<int> bytes;
@@ -18,6 +40,9 @@ CatalogSnapshot parseCatalogSnapshot(Object? json, {String? expectedSha256}) {
   if (expectedSha256 != null && expectedSha256 != digest) {
     throw const CatalogFormatException('checksum');
   }
+  // Canonicalisation already bounded the depth; now reject any control
+  // character or lone surrogate in a key or a value.
+  _checkText(json);
 
   final schemaVersion = _int(root, 'schemaVersion');
   final minAppCatalogSchema = _int(root, 'minAppCatalogSchema');
@@ -98,16 +123,16 @@ CatalogExercise _exercise(Object? value) {
     throw const CatalogFormatException('shape');
   }
   return CatalogExercise(
-    id: _string(map, 'id'),
-    name: _string(map, 'name'),
-    aliases: _strings(map, 'aliases'),
-    muscleGroup: _string(map, 'muscleGroup'),
-    primaryMuscles: _strings(map, 'primaryMuscles'),
-    secondaryMuscles: _strings(map, 'secondaryMuscles'),
-    equipment: _strings(map, 'equipment'),
-    category: _string(map, 'category'),
+    id: _id(map, _exerciseId),
+    name: _text(map, 'name', min: 1, max: 80),
+    aliases: _strings(map, 'aliases', maxItems: 10, min: 1, max: 60),
+    muscleGroup: _oneOf(map, 'muscleGroup', _muscleGroups),
+    primaryMuscles: _vocab(map, 'primaryMuscles', _muscles),
+    secondaryMuscles: _vocab(map, 'secondaryMuscles', _muscles),
+    equipment: _vocab(map, 'equipment', _equipment),
+    category: _oneOf(map, 'category', _categories),
     mode: mode,
-    cues: _strings(map, 'cues'),
+    cues: _strings(map, 'cues', maxItems: 6, min: 1, max: 160),
     retired: status == 'retired',
   );
 }
@@ -131,12 +156,12 @@ CatalogTemplate _template(
     throw const CatalogFormatException('shape');
   }
   return CatalogTemplate(
-    id: _string(map, 'id'),
-    name: _string(map, 'name'),
-    description: _string(map, 'description'),
-    goals: _strings(tags, 'goal'),
-    level: _string(tags, 'level'),
-    equipment: _strings(tags, 'equipment'),
+    id: _id(map, _templateId),
+    name: _text(map, 'name', min: 1, max: 80),
+    description: _text(map, 'description', max: 1000),
+    goals: _vocab(tags, 'goal', _goals),
+    level: _oneOf(tags, 'level', _levels),
+    equipment: _vocab(tags, 'equipment', _equipment),
     estimatedMinutes: _int(map, 'estimatedMinutes'),
     standalone: standalone as bool? ?? true,
     retired: _retired(map),
@@ -163,14 +188,14 @@ CatalogProgram _program(Map<String, Object?> map, Set<String> templateIds) {
     throw const CatalogFormatException('range');
   }
   return CatalogProgram(
-    id: _string(map, 'id'),
-    name: _string(map, 'name'),
-    description: _string(map, 'description'),
-    goals: _strings(map, 'goals'),
-    level: _string(map, 'level'),
+    id: _id(map, _programId),
+    name: _text(map, 'name', min: 1, max: 80),
+    description: _text(map, 'description', max: 1000),
+    goals: _vocab(map, 'goals', _goals),
+    level: _oneOf(map, 'level', _levels),
     daysPerWeek: daysPerWeek,
     estimatedMinutes: _int(map, 'estimatedMinutes'),
-    equipment: _strings(map, 'equipment'),
+    equipment: _vocab(map, 'equipment', _equipment),
     retired: _retired(map),
     week: List.unmodifiable(week.cast<String?>()),
   );
@@ -199,8 +224,9 @@ CatalogPrescription _prescription(
     throw const CatalogFormatException('mode');
   }
   final note = item['note'];
-  if (note != null && note is! String) {
-    throw const CatalogFormatException('shape');
+  if (note != null) {
+    if (note is! String) throw const CatalogFormatException('shape');
+    if (note.runes.length > 300) throw const CatalogFormatException('range');
   }
   int? seconds;
   int? low;
@@ -245,12 +271,95 @@ List<Object?> _list(Map<String, Object?> map, String key) {
   return value;
 }
 
-List<String> _strings(Map<String, Object?> map, String key) {
+List<String> _strings(
+  Map<String, Object?> map,
+  String key, {
+  int? maxItems,
+  int min = 0,
+  int? max,
+}) {
   final values = _list(map, key);
   if (values.any((value) => value is! String)) {
     throw const CatalogFormatException('shape');
   }
+  if (maxItems != null && values.length > maxItems) {
+    throw const CatalogFormatException('range');
+  }
+  for (final value in values.cast<String>()) {
+    _checkLength(value, min, max);
+  }
   return List.unmodifiable(values.cast<String>());
+}
+
+void _checkLength(String value, int min, int? max) {
+  final length = value.runes.length;
+  if (length < min || (max != null && length > max)) {
+    throw const CatalogFormatException('range');
+  }
+}
+
+/// A string within the schema's length limits (in code points).
+String _text(Map<String, Object?> map, String key, {int min = 0, int? max}) {
+  final value = _string(map, key);
+  _checkLength(value, min, max);
+  return value;
+}
+
+String _id(Map<String, Object?> map, RegExp pattern) {
+  final value = _text(map, 'id', min: 1, max: 120);
+  if (!pattern.hasMatch(value)) throw const CatalogFormatException('shape');
+  return value;
+}
+
+String _oneOf(Map<String, Object?> map, String key, Set<String> allowed) {
+  final value = _string(map, key);
+  if (!allowed.contains(value)) throw const CatalogFormatException('shape');
+  return value;
+}
+
+List<String> _vocab(Map<String, Object?> map, String key, Set<String> allowed) {
+  final values = _strings(map, key);
+  if (values.any((value) => !allowed.contains(value))) {
+    throw const CatalogFormatException('shape');
+  }
+  return values;
+}
+
+/// Rejects ASCII control characters (U+0000-U+001F, U+007F) and unpaired
+/// surrogates in every key and string, like the publisher's validator.
+void _checkText(Object? node) {
+  if (node is String) {
+    _checkString(node);
+  } else if (node is List) {
+    node.forEach(_checkText);
+  } else if (node is Map) {
+    for (final entry in node.entries) {
+      _checkText(entry.key);
+      _checkText(entry.value);
+    }
+  }
+}
+
+void _checkString(String value) {
+  final units = value.codeUnits;
+  for (var i = 0; i < units.length; i++) {
+    final unit = units[i];
+    if (unit < 0x20 || unit == 0x7f) {
+      throw const CatalogFormatException('shape');
+    }
+    if (unit >= 0xD800 && unit <= 0xDBFF) {
+      if (i + 1 < units.length &&
+          units[i + 1] >= 0xDC00 &&
+          units[i + 1] <= 0xDFFF) {
+        i++;
+        continue;
+      }
+      throw const CatalogFormatException('shape');
+    }
+    if (unit >= 0xDC00 && unit <= 0xDFFF) {
+      throw const CatalogFormatException('shape');
+    }
+  }
 }
 
 int _int(Map<String, Object?> map, String key) {
