@@ -96,7 +96,7 @@ void main() {
       ],
     );
     expect(w.latestMissed!.date, DateTime(2026, 11, 23));
-    expect(w.planNames.length, 3);
+    expect(w.plans.length, 3);
   });
 
   test('finishing a program-day workout flips that day to done; '

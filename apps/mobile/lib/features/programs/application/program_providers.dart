@@ -13,6 +13,7 @@ import '../domain/program_schedule.dart';
 import '../domain/program_status.dart';
 import '../../train/active_workout_state.dart';
 import '../../workouts/data/objectbox_workout_repository.dart';
+import '../../workouts/domain/workout_library_models.dart';
 
 /// Programs the phone can show from the cached catalogue.
 final catalogProgramsProvider = Provider<List<CatalogProgram>>((ref) {
@@ -94,7 +95,7 @@ class ProgramWeek {
     required this.program,
     required this.localToday,
     required this.rows,
-    required this.planNames,
+    required this.plans,
     required this.latestMissed,
     required this.nextTraining,
   });
@@ -102,8 +103,8 @@ class ProgramWeek {
   final DateTime localToday;
   final List<ProgramWeekRow> rows;
 
-  /// Name of each of the program's available plans by UUID.
-  final Map<String, String> planNames;
+  /// The program's available plans by UUID.
+  final Map<String, WorkoutPlanRecord> plans;
   final ({DateTime date, ProgramDayRecord day})? latestMissed;
   final ({DateTime date, ProgramDayRecord day})? nextTraining;
 
@@ -145,7 +146,7 @@ final programWeekProvider = Provider.autoDispose<ProgramWeek?>((ref) {
         sessions: sessions,
         availablePlanUuids: available,
       ),
-      planNames: {for (final p in plans) p.uuid: p.name},
+      plans: {for (final p in plans) p.uuid: p},
       latestMissed: latestMissed(
         program: active,
         localToday: localToday,
