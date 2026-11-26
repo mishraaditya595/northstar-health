@@ -134,9 +134,10 @@ TodayTile _restingHrData(
   final usual = usualFrom(heart.restingHrDaily, today, reading: hr);
   var caption = isToday ? 'Today' : formatHealthDate(hr.day);
   if (usual != null && isToday) {
-    final diff = (hr.value - (usual.low + usual.high) / 2).round();
+    final exact = hr.value - (usual.low + usual.high) / 2;
+    final diff = exact.round();
     caption +=
-        ' · ${diff == 0
+        ' · ${exact.abs() < 1
             ? 'about usual'
             : diff < 0
             ? '${-diff} below usual'

@@ -92,6 +92,13 @@ void main() {
     expect(tile.usual!.today, isNull);
   });
 
+  test('a difference under 1 bpm reads about usual before rounding', () {
+    final tile = restingHrTile(
+      overview(heart: SectionData(_heart(today: 60.6, days: 30))),
+    );
+    expect(tile.caption, 'Today · about usual');
+  });
+
   test('restingHrTile says above and about usual', () {
     expect(
       restingHrTile(overview(heart: SectionData(_heart(today: 63, days: 30))))

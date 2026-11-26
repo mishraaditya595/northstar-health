@@ -209,11 +209,9 @@ class ReadinessCard extends StatelessWidget {
       for (final c in chips) '${c.spoken}.',
     ].join(' ');
 
-    final ringColor = readiness.band == ReadinessBand.good
-        ? BeyondRepPalette.lime
-        : BeyondRepPalette.amberDark;
     // The hero is dark green in both themes, so its slots use dark colours.
     final heroTheme = BeyondRepTheme.build(Brightness.dark);
+    final ringColor = readinessBandColor(heroTheme, readiness.band);
     // The label node stays outermost; ExcludeSemantics (not excludeSemantics)
     // hides the hero's content so the info button keeps its own node.
     return Semantics(
