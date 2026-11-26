@@ -9,4 +9,6 @@ Inherited rules: ../../AGENTS.md. This folder is the static marketing and legal 
 - No secrets or hosted identifiers in this folder. Contact addresses are role addresses on the project domain, never a personal email.
 - Every page uses `layouts/Base.astro` (or `Legal.astro`) so it gets a title, description, canonical URL, share image and JSON-LD. `npm run check-links` fails the build otherwise.
 - Colours come from the Performance V2 tokens in `docs/DESIGN_SYSTEM.md`; light and dark both supported. Check 320 px, 390 px and desktop widths.
+- The home page intro (`CinematicIntro.astro`) is always dark, using the dark token values pinned in `home-motion.css`; the rest of every page follows the reader's theme.
+- Motion only animates compositor-cheap properties (transform, opacity, SVG strokes), plays once when it scrolls into view, and is off with `prefers-reduced-motion` or without JS. The resting styles must show the finished, readable state. Demo panels with sample values say so in text of at least 11 px.
 - Pin exact dependency versions and commit `package-lock.json`.

@@ -8,9 +8,10 @@ interface Props {
   description: string;
   jsonLd?: Record<string, unknown>[];
   noindex?: boolean;
+  cinematic?: boolean;
 }
 
-const props = Astro.props;
+const { cinematic = false, ...props } = Astro.props;
 const path = Astro.url.pathname.replace(/\.html$/, '');
 const nav = [
   { href: '/features', label: 'Features' },
@@ -32,8 +33,8 @@ const nav = [
     <Seo {...props} />
   </head>
   <body>
-    <a class="skip" href="#main">Skip to content</a>
-    <header class="site-header">
+    <a class="skip" href={cinematic ? '#details' : '#main'}>Skip to content</a>
+    {!cinematic && <header class="site-header">
       <div class="wrap header-row">
         <a class="brand" href="/" aria-label="BeyondRep home">
           <img src="/favicon.svg" alt="" width="28" height="28" />
@@ -47,7 +48,7 @@ const nav = [
           </ul>
         </nav>
       </div>
-    </header>
+    </header>}
     <main id="main">
       <slot />
     </main>
