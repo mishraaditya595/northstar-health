@@ -28,11 +28,12 @@ CatalogTemplate _tpl(
   List<CatalogPrescription> rows, {
   bool standalone = true,
   List<String> equipment = const ['barbell'],
+  List<String> goals = const ['general'],
 }) => CatalogTemplate(
   id: id,
   name: name,
   description: 'Synthetic description for $name.',
-  goals: const ['general'],
+  goals: goals,
   level: level,
   equipment: equipment,
   estimatedMinutes: 40,
@@ -83,6 +84,7 @@ CatalogSnapshot templatesSnapshot() {
           _rx('builtin.v1.synthetic-move-3', repsMin: 10, repsMax: 10),
         ],
         equipment: const ['dumbbell'],
+        goals: const ['strength', 'hypertrophy'],
       ),
       _tpl('tpl.hidden', 'Synthetic hidden', 'beginner', [
         _rx('builtin.v1.synthetic-move-1'),

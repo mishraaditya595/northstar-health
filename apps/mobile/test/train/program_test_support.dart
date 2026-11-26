@@ -27,16 +27,18 @@ CatalogProgram _program(
   String id,
   String name,
   String level,
-  List<String?> week,
-) => CatalogProgram(
+  List<String?> week, {
+  List<String> goals = const ['general'],
+  List<String> equipment = const ['barbell', 'dumbbell'],
+}) => CatalogProgram(
   id: id,
   name: name,
   description: 'Synthetic description for $name.',
-  goals: const ['general'],
+  goals: goals,
   level: level,
   daysPerWeek: week.whereType<String>().length,
   estimatedMinutes: 40,
-  equipment: const ['barbell', 'dumbbell'],
+  equipment: equipment,
   week: week,
 );
 
@@ -62,15 +64,22 @@ CatalogSnapshot programsSnapshot() {
         null,
         null,
       ]),
-      _program('prog.six', 'Synthetic six-day', 'intermediate', [
-        'tpl.push',
-        'tpl.pull',
-        'tpl.big',
-        'tpl.push',
-        'tpl.pull',
-        'tpl.hidden',
-        null,
-      ]),
+      _program(
+        'prog.six',
+        'Synthetic six-day',
+        'intermediate',
+        [
+          'tpl.push',
+          'tpl.pull',
+          'tpl.big',
+          'tpl.push',
+          'tpl.pull',
+          'tpl.hidden',
+          null,
+        ],
+        goals: const ['hypertrophy'],
+        equipment: const ['barbell', 'dumbbell', 'cable'],
+      ),
     ],
   );
 }

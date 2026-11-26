@@ -10,8 +10,10 @@ import '../catalog/application/catalog_providers.dart';
 import '../catalog/application/exercise_choices_provider.dart';
 import '../catalog/application/templates_provider.dart';
 import '../catalog/data/catalog_repository.dart';
+import '../catalog/domain/catalog_filter.dart';
 import '../catalog/domain/catalog_models.dart';
 import '../catalog/domain/exercise_choices.dart';
+import 'catalog_filter_sheet.dart';
 import 'exercise_picker_sheet.dart';
 
 const _levels = ['beginner', 'intermediate', 'advanced'];
@@ -23,13 +25,6 @@ String levelLabel(String level) =>
 String templateEquipment(CatalogTemplate template) =>
     equipmentLabel(template.equipment);
 
-bool _matches(CatalogTemplate template, String query, String? level) {
-  if (level != null && template.level != level) return false;
-  if (query.isEmpty) return true;
-  return template.name.toLowerCase().contains(query) ||
-      template.description.toLowerCase().contains(query);
-}
-
 class WorkoutTemplatesPage extends ConsumerStatefulWidget {
   const WorkoutTemplatesPage({super.key});
 
@@ -39,8 +34,7 @@ class WorkoutTemplatesPage extends ConsumerStatefulWidget {
 }
 
 class _WorkoutTemplatesPageState extends ConsumerState<WorkoutTemplatesPage> {
-  String query = '';
-  String? level;
+  CatalogFilter filter = const CatalogFilter();
   final searchController = TextEditingController();
 
   @override
@@ -65,7 +59,7 @@ class _WorkoutTemplatesPageState extends ConsumerState<WorkoutTemplatesPage> {
     final muted = Theme.of(context).extension<BeyondRepColors>()!.muted;
     final visible = [
       for (final t in all)
-        if (_matches(t, query, level)) t,
+        if (matchesTemplate(t, filter)) t,
     ];
     final headers = <Widget>[
       const SectionHeading('Ready-made workouts'),
@@ -94,8 +88,9 @@ class _WorkoutTemplatesPageState extends ConsumerState<WorkoutTemplatesPage> {
       const SizedBox(height: 16),
       NsTextField(
         controller: searchController,
-        onChanged: (value) =>
-            setState(() => query = value.trim().toLowerCase()),
+        onChanged: (value) => setState(
+          () => filter = filter.withQuery(value.trim().toLowerCase()),
+        ),
         prefixIcon: Icons.search,
         hint: 'Search workouts',
       ),
@@ -106,19 +101,25 @@ class _WorkoutTemplatesPageState extends ConsumerState<WorkoutTemplatesPage> {
           children: [
             NsChip(
               label: 'All',
-              selected: level == null,
-              onSelected: (_) => setState(() => level = null),
+              selected: filter.level == null,
+              onSelected: (_) =>
+                  setState(() => filter = filter.withLevel(null)),
             ),
             for (final name in _levels) ...[
               const SizedBox(width: 8),
               NsChip(
                 label: levelLabel(name),
-                selected: level == name,
-                onSelected: (on) => setState(() => level = on ? name : null),
+                selected: filter.level == name,
+                onSelected: (on) =>
+                    setState(() => filter = filter.withLevel(on ? name : null)),
               ),
             ],
           ],
         ),
+      ),
+      CatalogFilterSummary(
+        filter: filter,
+        onClear: () => setState(() => filter = filter.clearedSheetFilters()),
       ),
       const SizedBox(height: 14),
     ];
@@ -151,6 +152,21 @@ class _WorkoutTemplatesPageState extends ConsumerState<WorkoutTemplatesPage> {
       appBar: AppBar(
         leading: const NsBackButton(),
         title: const Text('Workouts'),
+        actions: [
+          CatalogFilterButton(
+            onPressed: () async {
+              final next = await showCatalogFilterSheet(
+                context,
+                filter: filter,
+                goals: goalOptions([for (final t in all) t.goals]),
+                equipment: equipmentFilterOptions([
+                  for (final t in all) t.equipment,
+                ]),
+              );
+              if (next != null && mounted) setState(() => filter = next);
+            },
+          ),
+        ],
       ),
       body: Center(
         child: ConstrainedBox(

@@ -145,6 +145,89 @@ void main() {
       expect(find.text('No matching programs.'), findsOneWidget);
     });
 
+    group('filters', () {
+      Future<void> pick(WidgetTester tester, List<String> labels) async {
+        await tester.tap(find.byTooltip('Filters'));
+        await tester.pumpAndSettle();
+        for (final label in labels) {
+          await tester.tap(find.text(label));
+          await tester.pumpAndSettle();
+        }
+        await tester.tap(find.text('Show results'));
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets('goal, equipment and days per week narrow the list', (
+        tester,
+      ) async {
+        await open(tester, '/train/programs');
+        await pick(tester, ['Hypertrophy']);
+        expect(find.text('Synthetic six-day'), findsOneWidget);
+        expect(find.text('Synthetic three-day'), findsNothing);
+        expect(find.text('Filters (1)'), findsOneWidget);
+        await tester.tap(find.text('Clear'));
+        await tester.pumpAndSettle();
+        expect(find.text('Synthetic three-day'), findsOneWidget);
+
+        // Cable is only needed by the six-day program.
+        await pick(tester, ['Barbell', 'Dumbbell']);
+        expect(find.text('Synthetic three-day'), findsOneWidget);
+        expect(find.text('Synthetic six-day'), findsNothing);
+        await tester.tap(find.text('Clear'));
+        await tester.pumpAndSettle();
+
+        await pick(tester, ['6']);
+        expect(find.text('Synthetic six-day'), findsOneWidget);
+        expect(find.text('Synthetic three-day'), findsNothing);
+      });
+
+      testWidgets('days per week is single select and can be unselected', (
+        tester,
+      ) async {
+        await open(tester, '/train/programs');
+        await pick(tester, ['3', '6']);
+        expect(find.text('Synthetic six-day'), findsOneWidget);
+        expect(find.text('Synthetic three-day'), findsNothing);
+        await pick(tester, ['6']);
+        expect(find.text('Synthetic three-day'), findsOneWidget);
+        expect(find.text('Synthetic six-day'), findsOneWidget);
+      });
+
+      testWidgets('no match says so', (tester) async {
+        await open(tester, '/train/programs');
+        await pick(tester, ['Hypertrophy', '3']);
+        expect(find.text('Filters (2)'), findsOneWidget);
+        expect(find.text('No matching programs.'), findsOneWidget);
+      });
+
+      for (final brightness in Brightness.values) {
+        testWidgets('the sheet at text scale 2.0 (${brightness.name})', (
+          tester,
+        ) async {
+          await open(
+            tester,
+            '/train/programs',
+            textScale: 2,
+            brightness: brightness,
+          );
+          await tester.tap(find.byTooltip('Filters'));
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          await tester.scrollUntilVisible(
+            find.text('Show results'),
+            100,
+            scrollable: find
+                .descendant(
+                  of: find.byType(BottomSheet),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          );
+          expect(tester.takeException(), isNull);
+        });
+      }
+    });
+
     testWidgets('your programs are listed first and open', (tester) async {
       final uuid = seed('prog.three');
       await open(tester, '/train/programs');
