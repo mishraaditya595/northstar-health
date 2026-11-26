@@ -5,6 +5,7 @@ import UIKit
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate, UIDocumentPickerDelegate, UIAdaptivePresentationControllerDelegate {
   private var exportResult: FlutterResult?
   private var exportDirectory: URL?
+  private var watchLink: WatchLinkBridge?
 
   private func purgeAbandonedExports() {
     let temporary = FileManager.default.temporaryDirectory
@@ -151,6 +152,7 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    watchLink = WatchLinkBridge.register(messenger: engineBridge.applicationRegistrar.messenger())
     let channel = FlutterMethodChannel(
       name: "northstar/workout_export",
       binaryMessenger: engineBridge.applicationRegistrar.messenger()

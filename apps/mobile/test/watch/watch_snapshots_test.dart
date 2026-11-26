@@ -146,7 +146,7 @@ WorkoutSessionRecord _session(
       ),
   ],
   sets: [
-    for (final (i, e) in exerciseUuids.indexed)
+    for (var i = 0; i < exerciseUuids.length; i++)
       WorkoutSetRecord(
         uuid: '$uuid-s-$i',
         exerciseUuid: '$uuid-we-$i',
