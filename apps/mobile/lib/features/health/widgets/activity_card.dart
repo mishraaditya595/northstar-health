@@ -4,8 +4,10 @@ import '../../../core/design/beyondrep_theme.dart';
 import '../../../core/design/charts/bar_series.dart';
 import '../application/health_overview.dart';
 import '../data/health_reader.dart';
+import '../domain/metric_explanations.dart';
 import '../health_format.dart';
 import 'health_card_frame.dart';
+import 'metric_info_sheet.dart';
 import 'metric_unavailable.dart';
 
 const _title = 'Activity';
@@ -86,8 +88,28 @@ class ActivityCard extends StatelessWidget {
       icon: _icon,
       onTap: onTap,
       semanticsLabel: label,
+      bodyInfos: [
+        metricInfoButton(
+          context,
+          MetricKey.steps,
+          platform: platform,
+          usual: dailyAverageFrom(value.stepsDaily, today),
+        ),
+        if (energyText != null)
+          metricInfoButton(
+            context,
+            MetricKey.activeCalories,
+            platform: platform,
+            usual: dailyAverageFrom(value.activeEnergyDaily, today),
+          ),
+      ],
       children: [
-        HealthValue(stepsText),
+        Row(
+          children: [
+            Flexible(child: HealthValue(stepsText)),
+            const HealthInfoAnchor(index: 0),
+          ],
+        ),
         HealthCaption(caption),
         const SizedBox(height: 8),
         NsBarChart(
@@ -112,7 +134,12 @@ class ActivityCard extends StatelessWidget {
         ),
         if (energyText != null) ...[
           const SizedBox(height: 6),
-          HealthCaption(energyText),
+          Row(
+            children: [
+              Flexible(child: HealthCaption(energyText)),
+              const HealthInfoAnchor(index: 1),
+            ],
+          ),
         ],
       ],
     );

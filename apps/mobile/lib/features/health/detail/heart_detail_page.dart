@@ -8,11 +8,13 @@ import '../application/health_overview.dart';
 import '../application/training_insights.dart';
 import '../domain/daily_series.dart';
 import '../domain/health_types.dart';
+import '../domain/metric_explanations.dart';
 import '../domain/series_stats.dart';
 import '../domain/trend.dart';
 import '../health_format.dart';
 import '../widgets/detail_layout.dart';
 import '../widgets/health_card_frame.dart';
+import '../widgets/metric_info_sheet.dart';
 import '../widgets/training_insight_line.dart';
 
 const _vo2Name = 'Cardio fitness (VO₂ max)';
@@ -103,9 +105,9 @@ class _HeartView extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _restingHr(ref),
-        _hrv(ref),
-        _tiles(ref),
+        _restingHr(context, ref),
+        _hrv(context, ref),
+        _tiles(context, ref),
         if (ref.watch(trainingInsightsProvider)?.restingHr case final rhr?)
           TrainingInsightLine.restingHr(rhr),
       ],
@@ -139,7 +141,7 @@ class _HeartView extends ConsumerWidget {
     ];
   }
 
-  Widget _restingHr(WidgetRef ref) {
+  Widget _restingHr(BuildContext context, WidgetRef ref) {
     final latest = heart.restingHr;
     if (latest == null && heart.restingHrGap != null) {
       return DetailGapPanel(
@@ -157,6 +159,17 @@ class _HeartView extends ConsumerWidget {
     return DetailPanel(
       title: 'Resting heart rate',
       trailing: 'Lower is better',
+      info: metricInfoButton(
+        context,
+        MetricKey.restingHeartRate,
+        platform: overview.platform,
+        usual: usualFrom(
+          heart.restingHrDaily,
+          _today,
+          todayValue: latest?.value,
+        ),
+        unit: 'bpm',
+      ),
       children: [
         DetailHeadline(
           value?.toString(),
@@ -178,7 +191,7 @@ class _HeartView extends ConsumerWidget {
     );
   }
 
-  Widget _hrv(WidgetRef ref) {
+  Widget _hrv(BuildContext context, WidgetRef ref) {
     final latest = heart.hrv;
     if (latest == null && heart.hrvGap != null) {
       return DetailGapPanel(
@@ -201,6 +214,13 @@ class _HeartView extends ConsumerWidget {
     return DetailPanel(
       title: 'Heart rate variability',
       trailing: 'Higher is better',
+      info: metricInfoButton(
+        context,
+        MetricKey.hrv,
+        platform: overview.platform,
+        usual: usualFrom(heart.hrvDaily, _today, todayValue: latest?.value),
+        unit: 'ms',
+      ),
       children: [
         DetailHeadline(
           value?.toString(),
@@ -233,11 +253,11 @@ class _HeartView extends ConsumerWidget {
     );
   }
 
-  Widget _tiles(WidgetRef ref) {
+  Widget _tiles(BuildContext context, WidgetRef ref) {
     final ios = overview.platform == HealthPlatformKind.appleHealth;
     return DetailPanel(
       children: [
-        DetailPairs([_vo2(ref), if (ios) ?_walking(ref)]),
+        DetailPairs([_vo2(ref), if (ios) ?_walking(context, ref)]),
       ],
     );
   }
@@ -286,7 +306,7 @@ class _HeartView extends ConsumerWidget {
   }
 
   /// Null when there is nothing for this account (e.g. while switching).
-  Widget? _walking(WidgetRef ref) {
+  Widget? _walking(BuildContext context, WidgetRef ref) {
     final async = ref.watch(walkingHrProvider);
     // While a reload (e.g. after an account switch) runs, the previous value
     // is not shown.
@@ -297,6 +317,12 @@ class _HeartView extends ConsumerWidget {
         _walkingName,
         '${value.value.round()} bpm',
         'avg ${_when(value.day)}',
+        null,
+        metricInfoButton(
+          context,
+          MetricKey.walkingHeartRate,
+          platform: overview.platform,
+        ),
       ),
       SectionGap(:final gap) => DetailUnavailableTile(
         label: _walkingName,

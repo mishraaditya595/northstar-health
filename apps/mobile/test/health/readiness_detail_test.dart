@@ -291,6 +291,28 @@ void main() {
       expect(find.textContaining('14 days'), findsOneWidget);
     });
 
+    testWidgets('About buttons on the how-it-works panel and each input', (
+      tester,
+    ) async {
+      await _pump(tester, _todayOverview(), FakeHealthReader());
+      expect(find.bySemanticsLabel('About Readiness'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel('About Heart rate variability (HRV)'),
+        findsOneWidget,
+      );
+      expect(find.bySemanticsLabel('About Resting heart rate'), findsOneWidget);
+      // The sleep row and the sleep-vs-week row both explain time asleep.
+      expect(find.bySemanticsLabel('About Time asleep'), findsNWidgets(2));
+      await tester.tap(
+        find.bySemanticsLabel('About Heart rate variability (HRV)'),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.text("We'll show your usual range after 14 days of data."),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('Android names RMSSD', (tester) async {
       await _pump(
         tester,

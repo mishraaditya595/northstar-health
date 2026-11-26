@@ -255,11 +255,15 @@ class DetailPanel extends StatelessWidget {
     required this.children,
     this.title,
     this.trailing,
+    this.info,
     super.key,
   });
 
   final String? title;
   final String? trailing;
+
+  /// Explain button right of [title].
+  final Widget? info;
   final List<Widget> children;
 
   @override
@@ -281,11 +285,19 @@ class DetailPanel extends StatelessWidget {
                   alignment: WrapAlignment.spaceBetween,
                   spacing: 8,
                   children: [
-                    Text(
-                      title!,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            title!,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        ?info,
+                      ],
                     ),
                     if (trailing != null) HealthCaption(trailing!),
                   ],
@@ -303,10 +315,13 @@ class DetailPanel extends StatelessWidget {
 
 /// Label on the left, value on the right; wraps under large text.
 class DetailRow extends StatelessWidget {
-  const DetailRow(this.label, this.value, {super.key});
+  const DetailRow(this.label, this.value, {this.info, super.key});
 
   final String label;
   final String value;
+
+  /// Explain button right of [label].
+  final Widget? info;
 
   @override
   Widget build(BuildContext context) {
@@ -314,9 +329,22 @@ class DetailRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: info == null
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.center,
         children: [
-          Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
+          Expanded(
+            child: info == null
+                ? Text(label, style: theme.textTheme.bodyMedium)
+                : Row(
+                    children: [
+                      Flexible(
+                        child: Text(label, style: theme.textTheme.bodyMedium),
+                      ),
+                      info!,
+                    ],
+                  ),
+          ),
           const SizedBox(width: 12),
           Flexible(
             child: Text(
@@ -335,12 +363,15 @@ class DetailRow extends StatelessWidget {
 
 /// Small label, bold value, optional caption.
 class DetailStat extends StatelessWidget {
-  const DetailStat(this.label, this.value, [this.caption, Key? key])
+  const DetailStat(this.label, this.value, [this.caption, Key? key, this.info])
     : super(key: key);
 
   final String label;
   final String value;
   final String? caption;
+
+  /// Explain button right of [label].
+  final Widget? info;
 
   @override
   Widget build(BuildContext context) {
@@ -348,9 +379,18 @@ class DetailStat extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(color: theme.mutedColor),
+        Row(
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.mutedColor,
+                ),
+              ),
+            ),
+            ?info,
+          ],
         ),
         Text(
           value,

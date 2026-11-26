@@ -6,6 +6,7 @@ import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
+import 'package:beyondrep/features/health/domain/metric_explanations.dart';
 import 'package:beyondrep/features/health/domain/trend.dart';
 import 'package:beyondrep/features/health/health_page.dart';
 import 'package:beyondrep/features/health/widgets/sleep_card.dart';
@@ -549,6 +550,63 @@ void main() {
       find.bySemanticsLabel(RegExp(r'^Body: weight 78.4 kg')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('every card row has an About button', (tester) async {
+    await pumpHealth(tester, overview());
+    for (final title in [
+      'Sleep score',
+      'Deep sleep',
+      'REM sleep',
+      'Resting heart rate',
+      'Heart rate variability (HRV)',
+      'VO₂ max',
+      'Steps',
+      'Active calories',
+      'Weight',
+      'Body fat',
+    ]) {
+      expect(
+        find.bySemanticsLabel('About $title'),
+        findsOneWidget,
+        reason: title,
+      );
+    }
+  });
+
+  testWidgets('About buttons keep a 48 dp target and do not open the card', (
+    tester,
+  ) async {
+    await pumpHealth(tester, overview());
+    final size = tester.getSize(find.bySemanticsLabel('About Steps'));
+    expect(size.width, greaterThanOrEqualTo(48));
+    expect(size.height, greaterThanOrEqualTo(48));
+    await tester.tap(find.bySemanticsLabel('About Steps'));
+    await tester.pumpAndSettle();
+    expect(find.text('detail activity'), findsNothing);
+    expect(
+      find.text(
+        explanationFor(MetricKey.steps, HealthPlatformKind.appleHealth).what,
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('heart card RHR sheet shows Your usual', (tester) async {
+    await pumpHealth(tester, overview());
+    await tester.tap(find.bySemanticsLabel('About Resting heart rate'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Your usual'), findsOneWidget);
+    expect(find.text('Today 54'), findsOneWidget);
+  });
+
+  testWidgets('activity card steps sheet shows Your daily average', (
+    tester,
+  ) async {
+    await pumpHealth(tester, overview());
+    await tester.tap(find.bySemanticsLabel('About Steps'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Your daily average 9,'), findsOneWidget);
   });
 
   testWidgets('app routes register the four detail pages under Health', (

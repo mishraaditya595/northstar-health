@@ -8,11 +8,13 @@ import '../../../core/design/charts/score_ring.dart';
 import '../../../core/design/charts/trend_label.dart';
 import '../application/health_details.dart';
 import '../application/health_overview.dart';
+import '../domain/metric_explanations.dart';
 import '../domain/readiness.dart';
 import '../domain/trend.dart';
 import '../health_format.dart';
 import '../widgets/detail_layout.dart';
 import '../widgets/health_card_frame.dart';
+import '../widgets/metric_info_sheet.dart';
 import '../widgets/readiness_card.dart';
 
 const _reference = 70;
@@ -122,7 +124,7 @@ class _Today extends StatelessWidget {
         ...switch (readiness.result) {
           ReadinessReady(:final readiness) => [
             _summary(context, readiness),
-            _parts(readiness, hrvName),
+            _parts(context, readiness, hrvName),
           ],
           // The card's copy for what is missing.
           ReadinessNotReady() => [
@@ -132,6 +134,11 @@ class _Today extends StatelessWidget {
         },
         DetailPanel(
           title: 'How readiness works',
+          info: metricInfoButton(
+            context,
+            MetricKey.readiness,
+            platform: overview.platform,
+          ),
           children: [
             HealthCaption(
               "Readiness compares today's $hrvName and resting heart rate "
@@ -175,7 +182,7 @@ class _Today extends StatelessWidget {
     );
   }
 
-  Widget _parts(Readiness r, String hrvName) {
+  Widget _parts(BuildContext context, Readiness r, String hrvName) {
     final heart = switch (overview.heart) {
       SectionData(:final value) => value,
       SectionGap() => null,
@@ -243,16 +250,29 @@ class _Today extends StatelessWidget {
       ReadinessInput.sleep: 'Sleep',
       ReadinessInput.sleepDebt: 'Sleep vs your week',
     };
+    // HRV and resting HR say when their usual range will appear.
+    Widget about(ReadinessInput input) => metricInfoButton(
+      context,
+      switch (input) {
+        ReadinessInput.hrv => MetricKey.hrv,
+        ReadinessInput.restingHr => MetricKey.restingHeartRate,
+        ReadinessInput.sleep ||
+        ReadinessInput.sleepDebt => MetricKey.timeAsleep,
+      },
+      platform: overview.platform,
+      showUsualPlaceholder:
+          input == ReadinessInput.hrv || input == ReadinessInput.restingHr,
+    );
     return DetailPanel(
       title: 'What made the score',
       children: [
         for (final input in ReadinessInput.values)
           if (parts[input] case final p?) ...[
-            DetailRow(names[input]!, '${p.score.round()}'),
+            DetailRow(names[input]!, '${p.score.round()}', info: about(input)),
             HealthCaption([?today(input), share(p)].join(' · ')),
             const SizedBox(height: 6),
           ] else ...[
-            DetailRow(names[input]!, 'Not counted'),
+            DetailRow(names[input]!, 'Not counted', info: about(input)),
             HealthCaption(whyNot(input)),
             const SizedBox(height: 6),
           ],

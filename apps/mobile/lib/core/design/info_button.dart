@@ -14,6 +14,7 @@ class NsInfoButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final muted = Theme.of(context).mutedColor;
     return Semantics(
+      container: true, // its own node, even inside a labelled card
       button: true,
       label: label,
       excludeSemantics: true,

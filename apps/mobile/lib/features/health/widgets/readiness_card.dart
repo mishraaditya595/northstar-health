@@ -6,10 +6,12 @@ import '../../../core/design/charts/trend_label.dart';
 import '../../../core/design/hero_frame.dart';
 import '../../../core/design/page_header.dart';
 import '../application/health_overview.dart';
+import '../domain/metric_explanations.dart';
 import '../domain/readiness.dart';
 import '../domain/trend.dart';
 import '../health_format.dart';
 import 'health_card_frame.dart';
+import 'metric_info_sheet.dart';
 import 'metric_unavailable.dart';
 
 const _eyebrow = 'READINESS';
@@ -103,7 +105,7 @@ class ReadinessCard extends StatelessWidget {
             );
     }
     return switch (overview.readiness) {
-      SectionGap(gap: MetricGap.noData) => _notEnough(overview, null),
+      SectionGap(gap: MetricGap.noData) => _notEnough(context, overview, null),
       SectionGap(:final gap) => _OutlinedCard(
         onTap: onTap,
         children: [
@@ -116,18 +118,25 @@ class ReadinessCard extends StatelessWidget {
         ],
       ),
       SectionData(:final value) => switch (value.result) {
-        ReadinessReady(:final readiness) => _ready(overview, value, readiness),
+        ReadinessReady(:final readiness) => _ready(
+          context,
+          overview,
+          value,
+          readiness,
+        ),
         ReadinessNotReady(:final daysUntilBaseline?) => _building(
+          context,
           overview,
           value,
           daysUntilBaseline,
         ),
-        ReadinessNotReady() => _notEnough(overview, value),
+        ReadinessNotReady() => _notEnough(context, overview, value),
       },
     };
   }
 
   Widget _ready(
+    BuildContext context,
     HealthOverview overview,
     ReadinessOverview value,
     Readiness readiness,
@@ -174,45 +183,62 @@ class ReadinessCard extends StatelessWidget {
         : BeyondRepPalette.amberDark;
     // The hero is dark green in both themes, so its slots use dark colours.
     final heroTheme = BeyondRepTheme.build(Brightness.dark);
+    // The label node stays outermost; ExcludeSemantics (not excludeSemantics)
+    // hides the hero's content so the info button keeps its own node.
     return Semantics(
       container: true,
       button: onTap != null,
       label: label,
       onTap: onTap,
-      excludeSemantics: true,
-      child: GestureDetector(
-        onTap: onTap,
-        child: NsHeroFrame(
-          eyebrow: _eyebrow,
-          title: words,
-          subtitle: [sentence, ?basedOn].join('\n'),
-          leading: Theme(
-            data: heroTheme,
-            child: NsScoreRing(
-              value: readiness.value,
-              size: 76,
-              color: ringColor,
-              caption: 'Readiness',
+      child: Stack(
+        children: [
+          ExcludeSemantics(
+            child: GestureDetector(
+              onTap: onTap,
+              child: NsHeroFrame(
+                eyebrow: _eyebrow,
+                title: words,
+                subtitle: [sentence, ?basedOn].join('\n'),
+                leading: Theme(
+                  data: heroTheme,
+                  child: NsScoreRing(
+                    value: readiness.value,
+                    size: 76,
+                    color: ringColor,
+                    caption: 'Readiness',
+                  ),
+                ),
+                child: Theme(
+                  data: heroTheme,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final (i, chip) in chips.indexed) ...[
+                        if (i > 0) const SizedBox(width: 8),
+                        Expanded(child: chip),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
-          child: Theme(
-            data: heroTheme,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final (i, chip) in chips.indexed) ...[
-                  if (i > 0) const SizedBox(width: 8),
-                  Expanded(child: chip),
-                ],
-              ],
-            ),
+          Positioned(
+            top: 4,
+            right: 4,
+            child: Theme(data: heroTheme, child: _info(context, overview)),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _building(HealthOverview overview, ReadinessOverview value, int days) {
+  Widget _building(
+    BuildContext context,
+    HealthOverview overview,
+    ReadinessOverview value,
+    int days,
+  ) {
     final title =
         'Readiness starts after $days more ${days == 1 ? 'day' : 'days'} '
         'with data.';
@@ -225,6 +251,7 @@ class ReadinessCard extends StatelessWidget {
         : 'Building your normal for ${measures.join(' and ')}.';
     final tags = _inputTags(overview, value);
     return _OutlinedCard(
+      info: _info(context, overview),
       semanticsLabel: [
         'Readiness: $title',
         ?body,
@@ -241,7 +268,11 @@ class ReadinessCard extends StatelessWidget {
 
   /// No sleep last night or no HRV / resting HR today; [value] is null when
   /// neither sleep nor heart has any data.
-  Widget _notEnough(HealthOverview overview, ReadinessOverview? value) {
+  Widget _notEnough(
+    BuildContext context,
+    HealthOverview overview,
+    ReadinessOverview? value,
+  ) {
     const title = 'Not enough data for a score';
     final body =
         "Readiness needs last night's sleep plus HRV or resting heart rate. "
@@ -249,6 +280,7 @@ class ReadinessCard extends StatelessWidget {
         '${healthPlatformName(overview.platform)} provides these.';
     final tags = _inputTags(overview, value);
     return _OutlinedCard(
+      info: _info(context, overview),
       semanticsLabel: 'Readiness: $title. $body ${tags.join(', ')}.',
       children: [
         const _OutlinedTitle(title),
@@ -259,6 +291,13 @@ class ReadinessCard extends StatelessWidget {
       ],
     );
   }
+
+  Widget _info(BuildContext context, HealthOverview overview) =>
+      metricInfoButton(
+        context,
+        MetricKey.readiness,
+        platform: overview.platform,
+      );
 
   /// `Sleep: 7h 12m`, `HRV: none`, `Resting HR: none`.
   List<String> _inputTags(HealthOverview overview, ReadinessOverview? value) {
@@ -371,11 +410,15 @@ class _OutlinedCard extends StatelessWidget {
     required this.children,
     this.semanticsLabel,
     this.onTap,
+    this.info,
   });
 
   final List<Widget> children;
   final String? semanticsLabel;
   final VoidCallback? onTap;
+
+  /// Explain button in the top right corner, above the card's content.
+  final Widget? info;
 
   @override
   Widget build(BuildContext context) {
@@ -399,16 +442,26 @@ class _OutlinedCard extends StatelessWidget {
       ),
     );
     final label = semanticsLabel;
+    final tappable = onTap == null
+        ? content
+        : InkWell(onTap: onTap, child: content);
     return Semantics(
       container: true,
       label: label,
       button: onTap != null,
       onTap: label == null ? null : onTap,
-      excludeSemantics: label != null,
+      excludeSemantics: label != null && info == null,
       child: Card(
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
-        child: onTap == null ? content : InkWell(onTap: onTap, child: content),
+        child: info == null
+            ? tappable
+            : Stack(
+                children: [
+                  ExcludeSemantics(excluding: label != null, child: tappable),
+                  Positioned(top: 4, right: 4, child: info!),
+                ],
+              ),
       ),
     );
   }

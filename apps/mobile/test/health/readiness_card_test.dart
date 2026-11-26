@@ -388,4 +388,22 @@ void main() {
       }
     });
   }
+
+  testWidgets('ready readiness card has an About Readiness button', (
+    tester,
+  ) async {
+    await pump(tester, overview(readiness: ready()));
+    expect(find.bySemanticsLabel('About Readiness'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('About Readiness'));
+    await tester.pumpAndSettle();
+    expect(find.text('What it tells you'), findsOneWidget);
+    expect(find.text('detail readiness'), findsNothing);
+  });
+
+  testWidgets('not enough data card has an About Readiness button', (
+    tester,
+  ) async {
+    await pump(tester, overview());
+    expect(find.bySemanticsLabel('About Readiness'), findsOneWidget);
+  });
 }

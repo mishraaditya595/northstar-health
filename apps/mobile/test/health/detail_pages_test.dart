@@ -8,6 +8,7 @@ import 'package:beyondrep/features/health/detail/activity_detail_page.dart';
 import 'package:beyondrep/features/health/detail/body_detail_page.dart';
 import 'package:beyondrep/features/health/detail/heart_detail_page.dart';
 import 'package:beyondrep/features/health/domain/health_types.dart';
+import 'package:beyondrep/features/health/domain/metric_explanations.dart';
 import 'package:beyondrep/features/health/domain/trend.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -431,5 +432,67 @@ void main() {
     final result = await c.read(walkingHrProvider.future);
     expect((result! as SectionGap<DayValue>).gap, MetricGap.unsupported);
     expect(reader.seriesCalls, isEmpty);
+  });
+
+  group('About buttons', () {
+    final apple = HealthPlatformKind.appleHealth;
+
+    testWidgets('Heart panels and the walking row have About buttons', (
+      tester,
+    ) async {
+      final reader = FakeHealthReader()
+        ..series[HealthSeriesType.walkingHeartRate] = [
+          _sample(DateTime(2026, 11, 24, 7), 94),
+        ];
+      await _pump(
+        tester,
+        const HeartDetailPage(),
+        overview(heart: SectionData(_heart())),
+        reader: reader,
+      );
+      for (final title in [
+        'Resting heart rate',
+        'Heart rate variability (HRV)',
+        'Walking heart rate',
+      ]) {
+        expect(
+          find.bySemanticsLabel('About $title'),
+          findsOneWidget,
+          reason: title,
+        );
+      }
+      await tester.tap(find.bySemanticsLabel('About Resting heart rate'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(explanationFor(MetricKey.restingHeartRate, apple).what),
+        findsOneWidget,
+      );
+      expect(find.text('Your usual 53 to 57 bpm'), findsOneWidget);
+    });
+
+    testWidgets('Activity panels have About buttons with a daily average', (
+      tester,
+    ) async {
+      await _pump(tester, const ActivityDetailPage(), overview());
+      expect(find.bySemanticsLabel('About Steps'), findsOneWidget);
+      expect(find.bySemanticsLabel('About Active calories'), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel('About Steps'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Your daily average 9,'), findsOneWidget);
+    });
+
+    testWidgets('Body weight panel and body fat tile have About buttons', (
+      tester,
+    ) async {
+      await _pump(tester, const BodyDetailPage(), overview());
+      expect(find.bySemanticsLabel('About Weight'), findsOneWidget);
+      expect(find.bySemanticsLabel('About Body fat'), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel('About Body fat'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(explanationFor(MetricKey.bodyFat, apple).what),
+        findsOneWidget,
+      );
+    });
   });
 }

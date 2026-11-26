@@ -4,9 +4,11 @@ import '../../../core/design/beyondrep_theme.dart';
 import '../../../core/design/charts/line_chart.dart';
 import '../application/health_overview.dart';
 import '../data/health_reader.dart';
+import '../domain/metric_explanations.dart';
 import '../domain/trend.dart';
 import '../health_format.dart';
 import 'health_card_frame.dart';
+import 'metric_info_sheet.dart';
 import 'metric_unavailable.dart';
 
 const _title = 'Body';
@@ -81,8 +83,24 @@ class BodyCard extends StatelessWidget {
       icon: _icon,
       onTap: onTap,
       semanticsLabel: label,
+      bodyInfos: [
+        metricInfoButton(
+          context,
+          MetricKey.weight,
+          platform: platform,
+          usual: usualFrom(value.weightDaily, today, todayValue: weight?.value),
+          unit: 'kg',
+        ),
+        if (fatText != null)
+          metricInfoButton(context, MetricKey.bodyFat, platform: platform),
+      ],
       children: [
-        HealthValue(weightText, unit: 'kg'),
+        Row(
+          children: [
+            Flexible(child: HealthValue(weightText, unit: 'kg')),
+            const HealthInfoAnchor(index: 0),
+          ],
+        ),
         HealthCaption(
           weight == null
               ? weightNone
@@ -104,7 +122,12 @@ class BodyCard extends StatelessWidget {
         ],
         if (fatText != null) ...[
           const SizedBox(height: 6),
-          HealthCaption(fatText),
+          Row(
+            children: [
+              Flexible(child: HealthCaption(fatText)),
+              const HealthInfoAnchor(index: 1),
+            ],
+          ),
         ],
       ],
     );
