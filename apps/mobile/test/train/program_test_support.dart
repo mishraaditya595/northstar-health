@@ -111,6 +111,7 @@ Future<List<String>> pumpPrograms(
   DateTime? now,
   DateTime Function()? clock,
   ProgramRepository? programRepository,
+  FakeHealthOverviewController? health,
   List<Override> overrides = const [],
 }) async {
   tester.view.physicalSize = const Size(390, 844);
@@ -120,7 +121,10 @@ Future<List<String>> pumpPrograms(
   final router = GoRouter(
     initialLocation: initial,
     routes: [
-      GoRoute(path: '/train', builder: (_, _) => const TrainPage()),
+      GoRoute(
+        path: '/train',
+        builder: (_, _) => const Scaffold(body: TrainPage()),
+      ),
       GoRoute(path: '/train/programs', builder: (_, _) => const ProgramsPage()),
       GoRoute(
         path: '/train/programs/:id',
@@ -155,7 +159,7 @@ Future<List<String>> pumpPrograms(
         objectBoxStoreProvider.overrideWithValue(store),
         if (programRepository != null)
           programRepositoryProvider.overrideWithValue(programRepository),
-        fakeHealthOverview(FakeHealthOverviewController(null)),
+        fakeHealthOverview(health ?? FakeHealthOverviewController(null)),
         localNowProvider.overrideWithValue(now ?? DateTime(2026, 11, 25, 10)),
         workoutClockProvider.overrideWithValue(
           clock ?? () => now ?? DateTime(2026, 11, 25, 10),

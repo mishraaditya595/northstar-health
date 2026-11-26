@@ -63,7 +63,16 @@ class _HealthPageState extends ConsumerState<HealthPage>
           32 + MediaQuery.paddingOf(context).bottom,
         ),
         children: [
-          const PageHeader(title: 'Health'),
+          PageHeader(
+            title: 'Health',
+            actions: [
+              SquareButton(
+                tooltip: 'Health terms',
+                onPressed: () => context.push('/health/terms'),
+                child: const Icon(Icons.help_outline, size: 20),
+              ),
+            ],
+          ),
           const SizedBox(height: 24),
           if (state == null && async.hasError)
             InsightCard(

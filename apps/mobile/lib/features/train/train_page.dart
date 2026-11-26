@@ -10,7 +10,10 @@ import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 import '../health/widgets/readiness_note.dart';
+import '../health/widgets/readiness_strip.dart';
 import '../programs/application/program_providers.dart';
+import '../programs/domain/program_status.dart';
+import '../programs/presentation/start_program_day.dart';
 import '../progress/domain/progress_overview.dart';
 import '../workouts/domain/workout_library_models.dart';
 import 'active_workout_state.dart';
@@ -111,6 +114,15 @@ class TrainPage extends ConsumerWidget {
     final state = ref.watch(trainLibraryProvider);
     final now = ref.watch(localNowProvider);
     final colors = Theme.of(context).extension<BeyondRepColors>()!;
+    final card = ref.watch(activeProgramCardProvider);
+    final todayDone =
+        ref.watch(programWeekProvider)?.todayRow?.status ==
+        ProgramDayStatus.done;
+    final programToday =
+        card != null &&
+        !card.unavailable &&
+        card.todayWorkout != null &&
+        !todayDone;
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
@@ -160,43 +172,14 @@ class TrainPage extends ConsumerWidget {
             const SizedBox(height: 18),
             _WeekStrip(today: DateTime.utc(now.year, now.month, now.day)),
             const SizedBox(height: 27),
-            const ReadinessNote(),
             const SectionHeading('Start training'),
             Card(
               margin: EdgeInsets.zero,
               child: Padding(
                 padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const NsTag('Strength'),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Build the work.',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.8,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Start recording reps and weights offline, or build a plan.',
-                      style: TextStyle(color: colors.muted),
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: () => _startQuick(context, ref),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 46),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                      ),
-                      icon: const Icon(Icons.play_arrow),
-                      label: const Text('Quick workout'),
-                    ),
-                  ],
-                ),
+                child: programToday
+                    ? _programStart(context, ref, card, colors)
+                    : _quickStart(context, ref, colors),
               ),
             ),
             const SizedBox(height: 10),
@@ -245,7 +228,7 @@ class TrainPage extends ConsumerWidget {
               },
             ),
             const SizedBox(height: 17),
-            if (ref.watch(activeProgramCardProvider) case final card?) ...[
+            if (card != null) ...[
               const SectionHeading('Your program'),
               NsListCard(
                 icon: Icons.event_repeat_outlined,
@@ -312,6 +295,93 @@ class TrainPage extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _quickStart(
+    BuildContext context,
+    WidgetRef ref,
+    BeyondRepColors colors,
+  ) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const NsTag('Strength'),
+      const SizedBox(height: 10),
+      Text(
+        'Build the work.',
+        style: Theme.of(context).textTheme.titleLarge
+            ?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.8),
+      ),
+      const SizedBox(height: 6),
+      Text(
+        'Start recording reps and weights offline, or build a plan.',
+        style: TextStyle(color: colors.muted),
+      ),
+      const SizedBox(height: 16),
+      const ReadinessStrip(),
+      FilledButton.icon(
+        onPressed: () => _startQuick(context, ref),
+        style: _startButtonStyle,
+        icon: const Icon(Icons.play_arrow),
+        label: const Text('Quick workout'),
+      ),
+    ],
+  );
+
+  /// Today's workout of the active program, started the same way as on My
+  /// program; Quick workout stays one tap away.
+  Widget _programStart(
+    BuildContext context,
+    WidgetRef ref,
+    ActiveProgramCard card,
+    BeyondRepColors colors,
+  ) {
+    final workout = card.todayWorkout!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const NsTag('Program'),
+        const SizedBox(height: 10),
+        Text(
+          workout,
+          style: Theme.of(context).textTheme.titleLarge
+              ?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.8),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Today in ${card.program.name}',
+          style: TextStyle(color: colors.muted),
+        ),
+        const SizedBox(height: 16),
+        const ReadinessStrip(),
+        FilledButton.icon(
+          onPressed: () => startProgramDay(
+            context,
+            ref,
+            card.program,
+            onFailed: (message) => showNsMessage(context, message),
+          ),
+          style: _startButtonStyle,
+          icon: const Icon(Icons.play_arrow),
+          label: Text(
+            'Start $workout',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Center(
+          child: TextButton(
+            onPressed: () => _startQuick(context, ref),
+            child: const Text('Quick workout'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  static final _startButtonStyle = FilledButton.styleFrom(
+    minimumSize: const Size(double.infinity, 46),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+  );
 
   Widget _planList(
     BuildContext context,

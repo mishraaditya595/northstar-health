@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../core/design/beyondrep_theme.dart';
 import '../features/health/detail/activity_detail_page.dart';
 import '../features/health/detail/body_detail_page.dart';
+import '../features/health/detail/health_terms_page.dart';
 import '../features/health/detail/heart_detail_page.dart';
 import '../features/health/detail/readiness_detail_page.dart';
 import '../features/health/detail/sleep_detail_page.dart';
@@ -157,6 +158,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/health/body',
             builder: (_, _) => const BodyDetailPage(),
+          ),
+          GoRoute(
+            path: '/health/terms',
+            builder: (_, _) => const HealthTermsPage(),
           ),
         ],
       ),

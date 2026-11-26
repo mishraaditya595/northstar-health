@@ -12,12 +12,14 @@ import '../application/health_overview.dart';
 import '../application/training_insights.dart';
 import '../domain/daily_series.dart';
 import '../domain/health_types.dart';
+import '../domain/metric_explanations.dart';
 import '../domain/sleep_nights.dart';
 import '../domain/sleep_score.dart';
 import '../domain/trend.dart';
 import '../health_format.dart';
 import '../widgets/detail_layout.dart';
 import '../widgets/health_card_frame.dart';
+import '../widgets/metric_info_sheet.dart';
 import '../widgets/metric_unavailable.dart';
 import '../widgets/training_insight_line.dart';
 
@@ -32,6 +34,10 @@ Color _sleepColor(ThemeData theme) => theme.brightness == Brightness.dark
 String _percent(Duration part, Duration whole) => whole == Duration.zero
     ? '—'
     : '${(100 * part.inSeconds / whole.inSeconds).round()}%';
+
+/// Explain button for [key] on this page's platform.
+Widget _about(BuildContext context, MetricKey key, HealthPlatformKind p) =>
+    metricInfoButton(context, key, platform: p);
 
 /// Asleep share of time in bed, or of the sleep span without an in-bed
 /// record. Never over 100%: an in-bed record can be shorter than the sleep.
@@ -125,10 +131,10 @@ class _LastNight extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _summary(context, night, score),
-        _stages(night),
-        _heartRate(ref, extrasAsync.isLoading, extras),
+        _stages(context, night),
+        _heartRate(context, ref, extrasAsync.isLoading, extras),
         if (score != null) _contributors(night, score),
-        if (extras != null) ?_extras(extras),
+        if (extras != null) ?_extras(context, extras),
       ],
     );
   }
@@ -174,6 +180,8 @@ class _LastNight extends ConsumerWidget {
                 ],
               ),
             ),
+            if (score != null)
+              _about(context, MetricKey.sleepScore, overview.platform),
           ],
         ),
         if (score == null) ...[
@@ -184,7 +192,7 @@ class _LastNight extends ConsumerWidget {
     );
   }
 
-  Widget _stages(SleepNight night) {
+  Widget _stages(BuildContext context, SleepNight night) {
     if (!night.hasStages) {
       return const DetailPanel(
         title: 'Stages',
@@ -222,21 +230,29 @@ class _LastNight extends ConsumerWidget {
             'Deep',
             formatDuration(night.deep),
             '${_percent(night.deep, night.asleep)} · normal 15–25%',
+            null,
+            _about(context, MetricKey.deepSleep, overview.platform),
           ),
           DetailStat(
             'REM',
             formatDuration(night.rem),
             '${_percent(night.rem, night.asleep)} · normal 20–25%',
+            null,
+            _about(context, MetricKey.remSleep, overview.platform),
           ),
           DetailStat(
             light,
             formatDuration(night.light),
             _percent(night.light, night.asleep),
+            null,
+            _about(context, MetricKey.lightSleep, overview.platform),
           ),
           DetailStat(
             'Awake',
             formatDuration(night.awake),
             awakeTimes == 1 ? '1 time' : '$awakeTimes times',
+            null,
+            _about(context, MetricKey.awake, overview.platform),
           ),
         ]),
       ],
@@ -251,7 +267,12 @@ class _LastNight extends ConsumerWidget {
     SleepStage.asleepUnspecified || SleepStage.inBed => null,
   };
 
-  Widget _heartRate(WidgetRef ref, bool loading, SleepNightExtras? extras) {
+  Widget _heartRate(
+    BuildContext context,
+    WidgetRef ref,
+    bool loading,
+    SleepNightExtras? extras,
+  ) {
     const title = 'Heart rate while asleep';
     final samples = extras?.heartRate ?? const <HealthSample>[];
     if (loading) {
@@ -286,6 +307,7 @@ class _LastNight extends ConsumerWidget {
         '${formatClockTime(lowest.from)}';
     return DetailPanel(
       title: title,
+      info: _about(context, MetricKey.sleepHeartRate, overview.platform),
       children: [
         HealthCaption(text),
         const SizedBox(height: 8),
@@ -352,22 +374,53 @@ class _LastNight extends ConsumerWidget {
     );
   }
 
-  Widget? _extras(SleepNightExtras extras) {
+  Widget? _extras(BuildContext context, SleepNightExtras extras) {
     final temp = extras.wristTemp;
     final deviation = extras.wristTempDeviation;
     String signed(double d) =>
         '${d < 0 ? '−' : '+'}${d.abs().toStringAsFixed(1)} °C';
+    Widget about(MetricKey key) => _about(context, key, overview.platform);
     final tiles = [
       if (extras.respiratoryRate case final v?)
-        DetailStat('Breathing', '${v.toStringAsFixed(1)} /min'),
+        DetailStat(
+          'Breathing',
+          '${v.toStringAsFixed(1)} /min',
+          null,
+          null,
+          about(MetricKey.respiratoryRate),
+        ),
       if (extras.bloodOxygen case final v?)
-        DetailStat('Blood oxygen', '${v.round()}%'),
+        DetailStat(
+          'Blood oxygen',
+          '${v.round()}%',
+          null,
+          null,
+          about(MetricKey.bloodOxygen),
+        ),
       if (temp != null)
         deviation == null
-            ? DetailStat('Wrist temp', '${temp.toStringAsFixed(1)} °C')
-            : DetailStat('Wrist temp', signed(deviation), 'vs your usual'),
+            ? DetailStat(
+                'Wrist temp',
+                '${temp.toStringAsFixed(1)} °C',
+                null,
+                null,
+                about(MetricKey.wristTemperature),
+              )
+            : DetailStat(
+                'Wrist temp',
+                signed(deviation),
+                'vs your usual',
+                null,
+                about(MetricKey.wristTemperature),
+              ),
       if (extras.skinTempDelta case final d?)
-        DetailStat('Skin temp', signed(d), 'vs baseline'),
+        DetailStat(
+          'Skin temp',
+          signed(d),
+          'vs baseline',
+          null,
+          about(MetricKey.wristTemperature),
+        ),
     ];
     if (tiles.isEmpty) return null;
     return DetailPanel(children: [DetailPairs(tiles)]);
@@ -410,7 +463,7 @@ class _RangeView extends ConsumerWidget {
         if (hr == null)
           const DetailPanel(title: 'Averages', children: [DetailLoading()])
         else
-          _averages(stats, hr.gap),
+          _averages(context, stats, hr.gap),
         if (ref.watch(trainingInsightsProvider)?.sleep case final sleep?)
           TrainingInsightLine.sleep(sleep),
       ],
@@ -465,6 +518,7 @@ class _RangeView extends ConsumerWidget {
     return DetailPanel(
       title: 'Time asleep',
       trailing: label,
+      info: _about(context, MetricKey.timeAsleep, overview.platform),
       children: [
         Wrap(
           crossAxisAlignment: WrapCrossAlignment.end,
@@ -520,7 +574,11 @@ class _RangeView extends ConsumerWidget {
     );
   }
 
-  Widget _averages(SleepRangeStats stats, MetricGap? hrGap) {
+  Widget _averages(
+    BuildContext context,
+    SleepRangeStats stats,
+    MetricGap? hrGap,
+  ) {
     String minutes(double? m) =>
         m == null ? '—' : formatDuration(Duration(minutes: m.round()));
     final bedtime = stats.bedtime;
@@ -531,12 +589,22 @@ class _RangeView extends ConsumerWidget {
         DetailRow(
           'Sleep score',
           stats.score == null ? '—' : '${stats.score!.round()}',
+          info: _about(context, MetricKey.sleepScore, overview.platform),
         ),
-        DetailRow('Deep', minutes(stats.deep)),
-        DetailRow('REM', minutes(stats.rem)),
+        DetailRow(
+          'Deep',
+          minutes(stats.deep),
+          info: _about(context, MetricKey.deepSleep, overview.platform),
+        ),
+        DetailRow(
+          'REM',
+          minutes(stats.rem),
+          info: _about(context, MetricKey.remSleep, overview.platform),
+        ),
         DetailRow(
           'Sleep heart rate',
           stats.sleepHr == null ? '—' : '${stats.sleepHr!.round()} bpm',
+          info: _about(context, MetricKey.sleepHeartRate, overview.platform),
         ),
         DetailRow(
           'Usual bedtime',

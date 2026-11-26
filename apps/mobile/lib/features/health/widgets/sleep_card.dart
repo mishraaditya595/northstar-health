@@ -5,8 +5,10 @@ import '../../../core/design/charts/sleep_stages.dart';
 import '../application/health_overview.dart';
 import '../data/health_reader.dart';
 import '../domain/trend.dart';
+import '../domain/metric_explanations.dart';
 import '../health_format.dart';
 import 'health_card_frame.dart';
+import 'metric_info_sheet.dart';
 import 'metric_unavailable.dart';
 
 const _title = 'Sleep';
@@ -116,17 +118,30 @@ class SleepCard extends StatelessWidget {
       sleepTint: true,
       onTap: onTap,
       semanticsLabel: label,
+      info: score == null
+          ? null
+          : metricInfoButton(context, MetricKey.sleepScore, platform: platform),
+      bodyInfos: night.hasStages
+          ? [
+              metricInfoButton(
+                context,
+                MetricKey.deepSleep,
+                platform: platform,
+              ),
+              metricInfoButton(context, MetricKey.remSleep, platform: platform),
+            ]
+          : const [],
       trailing: score == null
           ? null
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
+          : Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Text(
                   'Score',
                   style: theme.textTheme.bodySmall?.copyWith(color: muted),
                 ),
-                const SizedBox(width: 6),
                 Text(
                   '$score',
                   style: theme.textTheme.titleMedium?.copyWith(
@@ -172,11 +187,21 @@ class SleepCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        name,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: muted,
-                        ),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              name,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: muted,
+                              ),
+                            ),
+                          ),
+                          if (name == 'Deep')
+                            const HealthInfoAnchor(index: 0)
+                          else if (name == 'REM')
+                            const HealthInfoAnchor(index: 1),
+                        ],
                       ),
                       Text(
                         v,

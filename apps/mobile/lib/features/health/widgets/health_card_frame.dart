@@ -6,7 +6,12 @@ import '../domain/health_types.dart';
 /// Shared shell of the overview cards: icon, title, optional trailing text
 /// and chevron, then [children]. [semanticsLabel] replaces the children for
 /// screen readers when set; leave it null when a child has its own action.
-class HealthCardFrame extends StatelessWidget {
+///
+/// [info] is the card's header explain button; [bodyInfos] are explain
+/// buttons placed inside [children] with a [HealthInfoAnchor] of the same
+/// index. They are drawn above the card and keep their own semantics nodes,
+/// so a [semanticsLabel] that hides the card's content does not hide them.
+class HealthCardFrame extends StatefulWidget {
   const HealthCardFrame({
     required this.title,
     required this.icon,
@@ -15,6 +20,8 @@ class HealthCardFrame extends StatelessWidget {
     this.trailing,
     this.semanticsLabel,
     this.onTap,
+    this.info,
+    this.bodyInfos = const [],
     super.key,
   });
 
@@ -26,20 +33,36 @@ class HealthCardFrame extends StatelessWidget {
   final String? semanticsLabel;
   final VoidCallback? onTap;
 
+  /// Explain button right of the title, before any chevron.
+  final Widget? info;
+  final List<Widget> bodyInfos;
+
+  @override
+  State<HealthCardFrame> createState() => _HealthCardFrameState();
+}
+
+class _HealthCardFrameState extends State<HealthCardFrame> {
+  final _header = LayerLink();
+  final _body = <LayerLink>[];
+
   @override
   Widget build(BuildContext context) {
+    while (_body.length < widget.bodyInfos.length) {
+      _body.add(LayerLink());
+    }
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
-    final iconBg = sleepTint
+    final iconBg = widget.sleepTint
         ? (dark
               ? BeyondRepPalette.sleepSoftDark
               : BeyondRepPalette.sleepSoftLight)
         : (dark
               ? BeyondRepPalette.forestSoftDark
               : BeyondRepPalette.forestSoftLight);
-    final iconColor = sleepTint
+    final iconColor = widget.sleepTint
         ? (dark ? BeyondRepPalette.sleepDark : BeyondRepPalette.sleepLight)
         : theme.colorScheme.primary;
+    final onTap = widget.onTap;
     final content = Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -54,40 +77,123 @@ class HealthCardFrame extends StatelessWidget {
                   color: iconBg,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, size: 16, color: iconColor),
+                child: Icon(widget.icon, size: 16, color: iconColor),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  title,
+                  widget.title,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              ?trailing,
+              if (widget.trailing != null)
+                // Shares the row with the title instead of pushing the info
+                // button and chevron out at large text.
+                Flexible(
+                  flex: 2,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: widget.trailing,
+                  ),
+                ),
+              if (widget.info != null)
+                CompositedTransformTarget(
+                  link: _header,
+                  child: const SizedBox(width: 24, height: 32),
+                ),
               if (onTap != null)
                 Icon(Icons.chevron_right, size: 20, color: theme.mutedColor),
             ],
           ),
           const SizedBox(height: 10),
-          ...children,
+          ...widget.children,
         ],
       ),
     );
-    final label = semanticsLabel;
+    final label = widget.semanticsLabel;
+    final hasInfo = widget.info != null || widget.bodyInfos.isNotEmpty;
+    final tappable = onTap == null
+        ? content
+        : InkWell(onTap: onTap, child: content);
+    Widget follower(LayerLink link, Widget child) => Positioned(
+      left: 0,
+      top: 0,
+      child: CompositedTransformFollower(
+        link: link,
+        showWhenUnlinked: false,
+        targetAnchor: Alignment.center,
+        followerAnchor: Alignment.center,
+        child: child,
+      ),
+    );
+    // The label node stays outermost, as without buttons. The content is
+    // hidden from screen readers by ExcludeSemantics instead of
+    // excludeSemantics, so the buttons above it keep their own nodes.
     return Semantics(
       container: true,
       label: label,
       button: onTap != null,
       onTap: label == null ? null : onTap,
-      excludeSemantics: label != null,
+      excludeSemantics: label != null && !hasInfo,
       child: Card(
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
-        child: onTap == null ? content : InkWell(onTap: onTap, child: content),
+        child: !hasInfo
+            ? tappable
+            : Stack(
+                children: [
+                  _InfoLinks(
+                    body: _body,
+                    child: ExcludeSemantics(
+                      excluding: label != null,
+                      child: tappable,
+                    ),
+                  ),
+                  if (widget.info != null) follower(_header, widget.info!),
+                  for (final (i, info) in widget.bodyInfos.indexed)
+                    follower(_body[i], info),
+                ],
+              ),
       ),
     );
+  }
+}
+
+class _InfoLinks extends InheritedWidget {
+  const _InfoLinks({required this.body, required super.child});
+
+  final List<LayerLink> body;
+
+  @override
+  bool updateShouldNotify(_InfoLinks old) => false;
+}
+
+/// Marks where a [HealthCardFrame.bodyInfos] button sits inside the card's
+/// content: reserves [width] x [height] and the button is centred on it.
+class HealthInfoAnchor extends StatelessWidget {
+  const HealthInfoAnchor({
+    required this.index,
+    this.width = 24,
+    this.height = 20,
+    super.key,
+  });
+
+  final int index;
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = context.getInheritedWidgetOfExactType<_InfoLinks>();
+    final link = scope == null || index >= scope.body.length
+        ? null
+        : scope.body[index];
+    final box = SizedBox(width: width, height: height);
+    return link == null
+        ? box
+        : CompositedTransformTarget(link: link, child: box);
   }
 }
 

@@ -1,5 +1,6 @@
 import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
+import 'package:beyondrep/core/design/charts/score_ring.dart';
 import 'package:beyondrep/core/design/hero_frame.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
@@ -148,6 +149,12 @@ Future<(FakeHealthOverviewController, FakeHealthSummaryController)> pump(
 }
 
 void main() {
+  testWidgets('the Low ring is red on the Health tab', (tester) async {
+    await pump(tester, overview(readiness: ready(value: 41)));
+    final ring = tester.widget<NsScoreRing>(find.byType(NsScoreRing));
+    expect(ring.color, BeyondRepPalette.redDark);
+  });
+
   testWidgets('ready: ring, band words, reasons and three chips', (
     tester,
   ) async {
@@ -388,4 +395,22 @@ void main() {
       }
     });
   }
+
+  testWidgets('ready readiness card has an About Readiness button', (
+    tester,
+  ) async {
+    await pump(tester, overview(readiness: ready()));
+    expect(find.bySemanticsLabel('About Readiness'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('About Readiness'));
+    await tester.pumpAndSettle();
+    expect(find.text('What it tells you'), findsOneWidget);
+    expect(find.text('detail readiness'), findsNothing);
+  });
+
+  testWidgets('not enough data card has an About Readiness button', (
+    tester,
+  ) async {
+    await pump(tester, overview());
+    expect(find.bySemanticsLabel('About Readiness'), findsOneWidget);
+  });
 }

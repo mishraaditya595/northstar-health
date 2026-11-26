@@ -8,6 +8,7 @@ import 'package:beyondrep/features/health/health_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import '../support/fake_health_overview.dart';
 import '../support/fake_health_summary.dart';
@@ -357,6 +358,43 @@ void main() {
     await tester.tap(find.text('Try again'));
     await tester.pumpAndSettle();
     expect(o.refreshCalls, 1);
+  });
+
+  testWidgets('Health terms action navigates to /health/terms', (tester) async {
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => const Scaffold(body: HealthPage()),
+        ),
+        GoRoute(
+          path: '/health/terms',
+          builder: (_, _) => const Scaffold(body: Text('terms page')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    tester.view.physicalSize = const Size(390, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          fakeHealthSummary(FakeHealthSummaryController(connected())),
+          fakeHealthOverview(FakeHealthOverviewController(overview())),
+          healthClockProvider.overrideWithValue(() => now),
+        ],
+        child: MaterialApp.router(
+          theme: BeyondRepTheme.build(Brightness.light),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Health terms'));
+    await tester.pumpAndSettle();
+    expect(find.text('terms page'), findsOneWidget);
   });
 }
 

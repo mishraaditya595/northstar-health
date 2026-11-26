@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/design/charts/bar_series.dart';
 import '../application/health_overview.dart';
 import '../domain/daily_series.dart';
+import '../domain/metric_explanations.dart';
 import '../domain/health_types.dart';
 import '../health_format.dart';
 import '../widgets/detail_layout.dart';
 import '../widgets/health_card_frame.dart';
+import '../widgets/metric_info_sheet.dart';
 
 /// Daily steps and active calories over 7 or 30 days, read fresh and held in
 /// memory only.
@@ -134,6 +136,12 @@ class _ActivityView extends StatelessWidget {
     return DetailPanel(
       title: 'Steps',
       trailing: range,
+      info: metricInfoButton(
+        context,
+        MetricKey.steps,
+        platform: overview.platform,
+        usual: dailyAverageFrom(activity.stepsDaily, _today),
+      ),
       children: [
         DetailHeadline(todayText, unit: 'today'),
         if (today == null) const HealthCaption('No steps yet today'),
@@ -177,6 +185,12 @@ class _ActivityView extends StatelessWidget {
     return DetailPanel(
       title: 'Active calories',
       trailing: range,
+      info: metricInfoButton(
+        context,
+        MetricKey.activeCalories,
+        platform: overview.platform,
+        usual: dailyAverageFrom(activity.activeEnergyDaily, _today),
+      ),
       children: [
         DetailHeadline(today?.round().toString(), unit: 'kcal today'),
         if (today == null) const HealthCaption('None yet today'),

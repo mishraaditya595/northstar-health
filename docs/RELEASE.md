@@ -86,6 +86,17 @@ Training tie-ins are implemented in source, **not released or device-verified**.
 | Fewer than the minimum nights or sessions: no insight line shown | not run | not run |
 | No wearable: Better fit and recovery lines still work, no insight lines | not run | not run |
 
+## Health polish stage 1 device QA (ADR-0009, owner actions, none done)
+
+The Today readiness hero and tiles, explain sheets, Health terms page and the Train start-card readiness strip are implemented in source, **not released or device-verified**. Every row is not run.
+
+| Check | iOS | Android |
+| --- | --- | --- |
+| Today health row (hero or slim card, 2x2 tiles) in light, dark, 2x text and tablet split screen | not run | not run |
+| Train start card with and without a program workout today; readiness strip opens the readiness detail; Low shows "Your plans are not changed" | not run | not run |
+| Every explain (i) sheet and Health terms entry opens, reads correctly and closes with the screen reader on | not run | not run |
+| Core vs Light sleep stage naming on Android | not run | not run |
+
 ## Training library stage 2 device QA (ADR-0010, owner actions, none done)
 
 The catalogue cache and exercise pickers are implemented in source, **not released or device-verified**, and need the stage 1 catalogue migrations applied to the project under test. Every row is not run.

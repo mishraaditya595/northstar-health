@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/design/charts/line_chart.dart';
 import '../application/health_details.dart';
 import '../application/health_overview.dart';
+import '../domain/metric_explanations.dart';
 import '../domain/series_stats.dart';
 import '../domain/trend.dart';
 import '../domain/daily_series.dart';
 import '../health_format.dart';
 import '../widgets/detail_layout.dart';
 import '../widgets/health_card_frame.dart';
+import '../widgets/metric_info_sheet.dart';
 
 /// Signed kg per week; neutral, as goals differ.
 String _rate(double perWeek) {
@@ -89,6 +91,12 @@ class _BodyView extends ConsumerWidget {
           'Body fat',
           '${fat.value.toStringAsFixed(1)}%',
           formatHealthDate(fat.day),
+          null,
+          metricInfoButton(
+            context,
+            MetricKey.bodyFat,
+            platform: overview.platform,
+          ),
         )
       else if (body.bodyFatGap case final gap?)
         DetailUnavailableTile(
@@ -108,13 +116,13 @@ class _BodyView extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _weight(),
+        _weight(context),
         if (tiles.isNotEmpty) DetailPanel(children: [DetailPairs(tiles)]),
       ],
     );
   }
 
-  Widget _weight() {
+  Widget _weight(BuildContext context) {
     final today = dayOf(overview.readAt);
     final first = DateTime(today.year, today.month, today.day - (days - 1));
     final range = '${formatHealthDate(first)} – ${formatHealthDate(today)}';
@@ -138,6 +146,13 @@ class _BodyView extends ConsumerWidget {
     return DetailPanel(
       title: 'Weight',
       trailing: range,
+      info: metricInfoButton(
+        context,
+        MetricKey.weight,
+        platform: overview.platform,
+        usual: usualFrom(body.weightDaily, today, reading: latest),
+        unit: 'kg',
+      ),
       children: [
         DetailHeadline(
           latestText,

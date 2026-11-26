@@ -1,10 +1,17 @@
+import 'dart:async';
+
 import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
+import 'package:beyondrep/core/design/charts/score_ring.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
+import 'package:beyondrep/features/health/widgets/readiness_hero.dart';
 import 'package:beyondrep/features/health/widgets/today_health_row.dart';
+import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
+import 'package:beyondrep/features/progress/workout_history_state.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,6 +31,10 @@ Future<void> pumpRow(
   FakeHealthReader? reader,
   FakeHealthOverviewController? overviewController,
   List<String>? pushed,
+  double width = 390,
+  Brightness brightness = Brightness.dark,
+  List<WorkoutSessionRecord> sessions = const [],
+  Future<WorkoutHistorySnapshot> Function()? history,
 }) async {
   final router = GoRouter(
     routes: [
@@ -33,17 +44,24 @@ Future<void> pumpRow(
           body: SingleChildScrollView(child: TodayHealthRow()),
         ),
       ),
-      GoRoute(
-        path: '/health/readiness',
-        builder: (_, state) {
-          pushed?.add(state.uri.path);
-          return const Scaffold(body: Text('Readiness route'));
-        },
-      ),
+      for (final path in [
+        '/health/readiness',
+        '/health/sleep',
+        '/health/activity',
+        '/health/heart',
+        '/progress',
+      ])
+        GoRoute(
+          path: path,
+          builder: (_, state) {
+            pushed?.add(state.uri.path);
+            return Scaffold(body: Text('route $path'));
+          },
+        ),
     ],
   );
   addTearDown(router.dispose);
-  tester.view.physicalSize = const Size(390, 844);
+  tester.view.physicalSize = Size(width, 1200);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
@@ -57,10 +75,15 @@ Future<void> pumpRow(
         healthReaderProvider.overrideWithValue(reader ?? FakeHealthReader()),
         healthClockProvider.overrideWithValue(() => now),
         localNowProvider.overrideWithValue(now),
+        completedWorkoutHistoryProvider.overrideWith(
+          (ref) =>
+              history?.call() ??
+              Future.value(WorkoutHistorySnapshot(sessions: sessions)),
+        ),
       ],
       child: MaterialApp.router(
         routerConfig: router,
-        theme: BeyondRepTheme.build(Brightness.dark),
+        theme: BeyondRepTheme.build(brightness),
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context)
               .copyWith(textScaler: TextScaler.linear(textScale)),
@@ -132,14 +155,13 @@ void main() {
     expect(c.connectCalls, 1);
   });
 
-  testWidgets('connected renders sleep, steps and resting HR from the '
+  testWidgets('grid shows Sleep, Steps, Resting HR and Workouts from the '
       'overview without its own reads', (tester) async {
     final reader = FakeHealthReader();
     final overviewController = FakeHealthOverviewController(overview());
     await pumpRow(
       tester,
       FakeHealthSummaryController(connectedAt(now)),
-      textScale: 2,
       reader: reader,
       overviewController: overviewController,
     );
@@ -147,17 +169,103 @@ void main() {
     expect(find.text('Sleep'), findsOneWidget);
     expect(find.text('Steps'), findsOneWidget);
     expect(find.text('Resting HR'), findsOneWidget);
+    expect(find.text('Workouts'), findsOneWidget);
     expect(find.text('Weight'), findsNothing);
     expect(find.text('6h 12m'), findsOneWidget);
     expect(find.text('8,214'), findsOneWidget);
     expect(find.text('54 bpm'), findsOneWidget);
-    expect(find.text('Apple Watch · ended 6:31 AM'), findsOneWidget);
-    expect(find.text('Apple Health · as of 7:42 AM'), findsOneWidget);
-    expect(find.text('Today'), findsOneWidget);
+    expect(find.text('Ended 6:31 AM'), findsOneWidget);
+    expect(find.text('As of 7:42 AM'), findsOneWidget);
+    expect(find.text('None yet today'), findsOneWidget);
+    expect(find.text('From Apple Health · Apple Watch'), findsOneWidget);
     expect(reader.seriesCalls, isEmpty);
     expect(reader.sleepCalls, isEmpty);
     expect(reader.totalsCalls, isEmpty);
     expect(overviewController.refreshIfStaleCalls, 1);
+  });
+
+  testWidgets('Workouts shows a dash and no claim while history loads', (
+    tester,
+  ) async {
+    final never = Completer<WorkoutHistorySnapshot>();
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      history: () => never.future,
+    );
+    expect(find.text('Workouts'), findsOneWidget);
+    expect(find.text('None yet today'), findsNothing);
+  });
+
+  testWidgets('Workouts shows no claim after a history error', (tester) async {
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      history: () => Future.error(StateError('synthetic')),
+    );
+    expect(find.text('Workouts'), findsOneWidget);
+    expect(find.text('None yet today'), findsNothing);
+  });
+
+  testWidgets('the footer names no device when sleep and steps differ', (
+    tester,
+  ) async {
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      overviewController: FakeHealthOverviewController(
+        overview(
+          activity: SectionData(
+            ActivityOverview(
+              stepsToday: 8214,
+              stepsDaily: fullActivity.stepsDaily,
+              activeEnergyToday: null,
+              activeEnergyDaily: const [],
+              stepsWeekAverage: 9480,
+              stepsSource: 'Synthetic phone',
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('From Apple Health'), findsOneWidget);
+  });
+
+  testWidgets('the footer names no device that is the platform name', (
+    tester,
+  ) async {
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      overviewController: FakeHealthOverviewController(
+        overview(
+          platform: HealthPlatformKind.healthConnect,
+          sleep: SectionData(sleepOverview(night(source: 'Health Connect'))),
+          activity: SectionData(
+            ActivityOverview(
+              stepsToday: 8214,
+              stepsDaily: fullActivity.stepsDaily,
+              activeEnergyToday: null,
+              activeEnergyDaily: const [],
+              stepsWeekAverage: 9480,
+              stepsSource: 'Health Connect',
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('From Health Connect'), findsOneWidget);
+  });
+
+  testWidgets('the footer names Health Connect on Android', (tester) async {
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      overviewController: FakeHealthOverviewController(
+        overview(platform: HealthPlatformKind.healthConnect),
+      ),
+    );
+    expect(find.textContaining('From Health Connect'), findsOneWidget);
   });
 
   testWidgets('gaps show a dash and a reason, never 0', (tester) async {
@@ -173,10 +281,12 @@ void main() {
         ),
       ),
     );
-    expect(find.text('—'), findsNWidgets(3));
+    // Three gaps plus Workouts with none today.
+    expect(find.text('—'), findsNWidgets(4));
     expect(find.text('No sleep recorded last night'), findsOneWidget);
     expect(find.text('Not allowed · Manage'), findsOneWidget);
     expect(find.text("Couldn't read · Try again"), findsOneWidget);
+    expect(find.text('0'), findsNothing);
   });
 
   testWidgets('an older night or resting HR is not shown as today', (
@@ -288,49 +398,140 @@ void main() {
     expect(c.buildCalls, before + 1);
   });
 
-  testWidgets('a ready readiness leads the row and replaces resting HR', (
+  testWidgets('ready readiness shows hero with READINESS · FAIR and advice', (
+    tester,
+  ) async {
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      overviewController: FakeHealthOverviewController(
+        overview(readiness: _ready(55)),
+      ),
+    );
+    expect(find.text('READINESS · FAIR'), findsOneWidget);
+    expect(find.text('55'), findsOneWidget);
+    expect(find.text('Train as planned, watch effort'), findsOneWidget);
+    expect(find.bySemanticsLabel('About Readiness'), findsOneWidget);
+    // The grid keeps all four tiles beside the hero.
+    expect(find.text('Resting HR'), findsOneWidget);
+    expect(find.text('Workouts'), findsOneWidget);
+  });
+
+  testWidgets('hero tap navigates to /health/readiness', (tester) async {
+    final pushed = <String>[];
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      pushed: pushed,
+      overviewController: FakeHealthOverviewController(
+        overview(readiness: _ready(82)),
+      ),
+    );
+    await tester.tap(find.text('Good to train'));
+    await tester.pumpAndSettle();
+    expect(pushed, ['/health/readiness']);
+  });
+
+  testWidgets('tapping the hero chevron opens /health/readiness', (
     tester,
   ) async {
     final pushed = <String>[];
     await pumpRow(
       tester,
       FakeHealthSummaryController(connectedAt(now)),
-      textScale: 2,
       pushed: pushed,
       overviewController: FakeHealthOverviewController(
         overview(readiness: _ready(82)),
       ),
     );
-    expect(tester.takeException(), isNull);
-    expect(find.text('Readiness'), findsOneWidget);
-    expect(find.text('82'), findsOneWidget);
-    expect(find.text('Good to train'), findsOneWidget);
-    expect(find.text('Sleep'), findsOneWidget);
-    expect(find.text('Steps'), findsOneWidget);
-    expect(find.text('Resting HR'), findsNothing);
-    double x(String t) => tester.getTopLeft(find.text(t)).dx;
-    expect(x('Readiness') < x('Sleep') && x('Sleep') < x('Steps'), isTrue);
-
-    await tester.tap(find.text('82'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(ReadinessHero),
+        matching: find.byIcon(Icons.chevron_right),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(pushed, ['/health/readiness']);
   });
 
-  testWidgets('a readiness read yesterday keeps the stage-1 slots', (
+  testWidgets('the hero at 2x text has no overflow and no overlap', (
+    tester,
+  ) async {
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      textScale: 2,
+      overviewController: FakeHealthOverviewController(
+        overview(readiness: _ready(55)),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    final text = [
+      tester.getRect(find.text('READINESS · FAIR')),
+      tester.getRect(find.text('Train as planned, watch effort')),
+    ];
+    final controls = [
+      tester.getRect(find.bySemanticsLabel('About Readiness')),
+      tester.getRect(
+        find.descendant(
+          of: find.byType(ReadinessHero),
+          matching: find.byIcon(Icons.chevron_right),
+        ),
+      ),
+    ];
+    for (final rect in controls) {
+      for (final t in text) {
+        expect(rect.overlaps(t), isFalse);
+      }
+    }
+  });
+
+  testWidgets('Low hero uses the red ring colour', (tester) async {
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      overviewController: FakeHealthOverviewController(
+        overview(readiness: _ready(41)),
+      ),
+    );
+    expect(find.text('READINESS · LOW'), findsOneWidget);
+    final ring = tester.widget<NsScoreRing>(find.byType(NsScoreRing));
+    expect(ring.color, BeyondRepPalette.redDark);
+  });
+
+  testWidgets('building baseline shows the N more days row and no number', (
     tester,
   ) async {
     await pumpRow(
       tester,
       FakeHealthSummaryController(connectedAt(now)),
       overviewController: FakeHealthOverviewController(
-        overview(readiness: _ready(82), readAt: DateTime(2026, 11, 23, 22)),
+        overview(
+          readiness: const SectionData(
+            ReadinessOverview(
+              result: ReadinessNotReady(daysUntilBaseline: 4),
+              hasHrv: true,
+              hasRestingHr: false,
+              hasSleep: true,
+              hrvVsNormal: null,
+              restingHrVsNormal: null,
+              hrvBaseline: null,
+              restingHrBaseline: null,
+              hrvIsSdnn: true,
+            ),
+          ),
+        ),
       ),
     );
-    expect(find.text('Readiness'), findsNothing);
-    expect(find.text('Resting HR'), findsOneWidget);
+    expect(
+      find.text('Readiness starts after 4 more days with data.'),
+      findsOneWidget,
+    );
+    expect(find.byType(NsScoreRing), findsNothing);
+    expect(find.textContaining('READINESS'), findsNothing);
   });
 
-  testWidgets('a gap or not-ready readiness keeps sleep, steps, resting HR', (
+  testWidgets('not enough data and gaps show no hero and no row', (
     tester,
   ) async {
     for (final r in <Section<ReadinessOverview>>[
@@ -356,10 +557,134 @@ void main() {
           overview(readiness: r),
         ),
       );
-      expect(find.text('Readiness'), findsNothing);
+      expect(find.byType(NsScoreRing), findsNothing);
+      expect(find.textContaining('Readiness starts'), findsNothing);
       expect(find.text('Sleep'), findsOneWidget);
-      expect(find.text('Steps'), findsOneWidget);
       expect(find.text('Resting HR'), findsOneWidget);
     }
+  });
+
+  testWidgets('a readiness read yesterday shows no hero', (tester) async {
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      overviewController: FakeHealthOverviewController(
+        overview(readiness: _ready(82), readAt: DateTime(2026, 11, 23, 22)),
+      ),
+    );
+    expect(find.byType(NsScoreRing), findsNothing);
+  });
+
+  testWidgets("Workouts counts today's finished sessions and opens Progress", (
+    tester,
+  ) async {
+    final pushed = <String>[];
+    final started = DateTime(2026, 11, 24, 7, 30);
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      pushed: pushed,
+      sessions: [
+        WorkoutSessionRecord(
+          uuid: 'a',
+          name: 'Push day',
+          status: WorkoutStatus.completed,
+          startedAtUtc: started.toUtc(),
+          originalOffsetMinutes: 0,
+          revision: 1,
+          completedAtUtc: started.add(const Duration(minutes: 32)).toUtc(),
+        ),
+      ],
+    );
+    expect(find.text('Push day · 32 min'), findsOneWidget);
+    await tester.tap(find.text('Push day · 32 min'));
+    await tester.pumpAndSettle();
+    expect(pushed, ['/progress']);
+  });
+
+  testWidgets('data tiles open their Health detail', (tester) async {
+    final pushed = <String>[];
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      pushed: pushed,
+    );
+    await tester.tap(find.text('Steps'));
+    await tester.pumpAndSettle();
+    expect(pushed, ['/health/activity']);
+  });
+
+  testWidgets('About Steps opens the sheet without opening the tile', (
+    tester,
+  ) async {
+    final pushed = <String>[];
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      pushed: pushed,
+    );
+    await tester.tap(find.bySemanticsLabel('About Steps'));
+    await tester.pumpAndSettle();
+    expect(find.text('What it tells you'), findsOneWidget);
+    expect(find.textContaining('Your daily average 9,'), findsOneWidget);
+    expect(pushed, isEmpty);
+  });
+
+  testWidgets('text scale 2.0 uses one column and has no overflow', (
+    tester,
+  ) async {
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      textScale: 2,
+      overviewController: FakeHealthOverviewController(
+        overview(readiness: _ready(55)),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    final sleep = tester.getTopLeft(find.text('Sleep'));
+    final steps = tester.getTopLeft(find.text('Steps'));
+    expect(steps.dx, sleep.dx);
+    expect(steps.dy, greaterThan(sleep.dy));
+  });
+
+  testWidgets('320 dp width uses one column and has no overflow', (
+    tester,
+  ) async {
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      width: 320,
+      overviewController: FakeHealthOverviewController(
+        overview(readiness: _ready(55)),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    final sleep = tester.getTopLeft(find.text('Sleep'));
+    final steps = tester.getTopLeft(find.text('Steps'));
+    expect(steps.dx, sleep.dx);
+  });
+
+  testWidgets('390 dp at normal text shows two columns', (tester) async {
+    await pumpRow(tester, FakeHealthSummaryController(connectedAt(now)));
+    final sleep = tester.getTopLeft(find.text('Sleep'));
+    final steps = tester.getTopLeft(find.text('Steps'));
+    expect(steps.dx, greaterThan(sleep.dx));
+    expect(steps.dy, sleep.dy);
+    final resting = tester.getTopLeft(find.text('Resting HR'));
+    expect(resting.dy, greaterThan(sleep.dy));
+  });
+
+  testWidgets('the light theme renders without overflow', (tester) async {
+    await pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      brightness: Brightness.light,
+      textScale: 1.3,
+      overviewController: FakeHealthOverviewController(
+        overview(readiness: _ready(41)),
+      ),
+    );
+    expect(tester.takeException(), isNull);
   });
 }

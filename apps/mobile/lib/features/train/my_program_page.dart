@@ -8,15 +8,14 @@ import '../../core/design/dialogs.dart';
 import '../../core/design/inputs.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
-import '../health/widgets/readiness_note.dart';
 import '../programs/application/program_providers.dart';
 import '../programs/data/objectbox_program_repository.dart';
 import '../programs/domain/program_models.dart';
 import '../programs/domain/program_repository.dart';
 import '../programs/domain/program_schedule.dart';
 import '../programs/domain/program_status.dart';
+import '../programs/presentation/start_program_day.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
-import 'active_workout_state.dart';
 import 'program_weekday_sheet.dart';
 
 const _rest = '';
@@ -50,53 +49,17 @@ class _MyProgramPageState extends ConsumerState<MyProgramPage> {
     _busy = true;
     setState(() {});
     try {
-      final active = ref.read(activeWorkoutProvider);
-      if (active.value != null || active.hasError) {
-        _startFailed();
-        return;
-      }
-      if (!await confirmReadinessBeforeStart(context, ref) || !mounted) {
-        return;
-      }
-      try {
-        ref
-            .read(workoutActionsProvider)
-            .startProgramDay(
-              program,
-              expectedPlanUuid: missedDate == null
-                  ? dayFor(program, ref.read(localNowProvider)).planUuid
-                  : missedPlanUuid,
-              missedDate: missedDate,
-            );
-        ref.invalidate(activeWorkoutProvider);
-        invalidatePrograms(ref);
-      } on ProgramDayChanged {
-        // The day rolled over or the schedule changed since the screen was
-        // built: show the current day instead of starting the wrong one.
-        ref.invalidate(localNowProvider);
-        invalidatePrograms(ref);
-        _failed(
-          missedDate == null
-              ? "Today's workout changed. Check it and try again."
-              : 'This day changed. Check it and try again.',
-        );
-        return;
-      } on Object {
-        _startFailed();
-        return;
-      }
-      await context.push<void>('/train/workout');
+      await startProgramDay(
+        context,
+        ref,
+        program,
+        missedDate: missedDate,
+        missedPlanUuid: missedPlanUuid,
+        onFailed: _failed,
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
-  }
-
-  void _startFailed() {
-    _failed(
-      'Could not start this workout. Check the plan and any unfinished '
-      'workout.',
-    );
-    ref.invalidate(activeWorkoutProvider);
   }
 
   void _write(void Function(ProgramRepository) action) {

@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import '../../../core/design/beyondrep_theme.dart';
 import '../../../core/design/charts/line_chart.dart';
 import '../application/health_overview.dart';
-import '../data/health_reader.dart';
 import '../domain/health_types.dart';
+import '../domain/metric_explanations.dart';
 import '../domain/trend.dart';
 import '../health_format.dart';
 import 'health_card_frame.dart';
+import 'metric_info_sheet.dart';
 import 'metric_unavailable.dart';
 
 const _title = 'Heart';
@@ -76,6 +77,32 @@ class HeartCard extends StatelessWidget {
       icon: _icon,
       onTap: onTap,
       semanticsLabel: label,
+      bodyInfos: [
+        metricInfoButton(
+          context,
+          MetricKey.restingHeartRate,
+          platform: platform,
+          usual: usualFrom(
+            value.restingHrDaily,
+            today,
+            reading: value.restingHr,
+          ),
+          unit: 'bpm',
+        ),
+        metricInfoButton(
+          context,
+          MetricKey.hrv,
+          platform: platform,
+          usual: usualFrom(value.hrvDaily, today, reading: value.hrv),
+          unit: 'ms',
+        ),
+        metricInfoButton(
+          context,
+          MetricKey.vo2Max,
+          platform: platform,
+          usual: usualFrom(value.vo2MaxDaily, today, reading: value.vo2Max),
+        ),
+      ],
       children: [
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,6 +117,7 @@ class HeartCard extends StatelessWidget {
                 daily: value.restingHrDaily,
                 today: today,
                 none: rhrNone,
+                infoIndex: 0,
               ),
             ),
             const SizedBox(width: 12),
@@ -103,13 +131,19 @@ class HeartCard extends StatelessWidget {
                 daily: value.hrvDaily,
                 today: today,
                 none: hrvNone,
+                infoIndex: 1,
               ),
             ),
           ],
         ),
         if (vo2 != null) ...[
           const SizedBox(height: 6),
-          HealthCaption('VO₂ max $vo2'),
+          Row(
+            children: [
+              Flexible(child: HealthCaption('VO₂ max $vo2')),
+              const HealthInfoAnchor(index: 2),
+            ],
+          ),
         ],
       ],
     );
@@ -126,6 +160,7 @@ class _Metric extends StatelessWidget {
     required this.daily,
     required this.today,
     required this.none,
+    required this.infoIndex,
   });
 
   final String name;
@@ -139,6 +174,9 @@ class _Metric extends StatelessWidget {
   /// Caption when [value] is null.
   final String none;
 
+  /// Index of this metric's [HealthCardFrame.bodyInfos] button.
+  final int infoIndex;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -146,9 +184,18 @@ class _Metric extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          name,
-          style: theme.textTheme.labelSmall?.copyWith(color: theme.mutedColor),
+        Row(
+          children: [
+            Flexible(
+              child: Text(
+                name,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.mutedColor,
+                ),
+              ),
+            ),
+            HealthInfoAnchor(index: infoIndex),
+          ],
         ),
         HealthValue(value, unit: unit),
         if (value == null)

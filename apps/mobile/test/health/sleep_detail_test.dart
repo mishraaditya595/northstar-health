@@ -537,6 +537,81 @@ void main() {
     expect(find.text('11:00 PM ± 0 min'), findsOneWidget);
   });
 
+  testWidgets('last night has About buttons on stages, score and extras', (
+    tester,
+  ) async {
+    final reader = FakeHealthReader()
+      ..series[HealthSeriesType.heartRate] = [
+        _sample(DateTime(2026, 11, 24, 1), 50),
+        _sample(DateTime(2026, 11, 24, 3, 10), 46),
+      ]
+      ..series[HealthSeriesType.respiratoryRate] = [
+        _sample(DateTime(2026, 11, 24, 2), 14.0),
+      ]
+      ..series[HealthSeriesType.bloodOxygen] = [
+        _sample(DateTime(2026, 11, 24, 3), 96),
+      ]
+      ..series[HealthSeriesType.sleepingWristTemperature] = [
+        for (var i = -8; i < 0; i++)
+          _sample(_day(i).add(const Duration(hours: 3)), 36.0),
+        _sample(DateTime(2026, 11, 24, 3), 36.2),
+      ];
+    await _pump(tester, _overview(_history(14)), reader);
+    for (final title in [
+      'Sleep score',
+      'Deep sleep',
+      'Core sleep',
+      'REM sleep',
+      'Awake',
+      'Sleeping heart rate',
+      'Respiratory rate',
+      'Blood oxygen',
+      'Wrist temperature',
+    ]) {
+      expect(
+        find.bySemanticsLabel('About $title'),
+        findsOneWidget,
+        reason: title,
+      );
+    }
+    await tester.tap(find.bySemanticsLabel('About Deep sleep'));
+    await tester.pumpAndSettle();
+    expect(find.text('Repair and recovery'), findsNothing);
+    expect(find.textContaining('slowest, most restful stage'), findsOneWidget);
+  });
+
+  testWidgets('Android calls the light stage Light sleep in its About', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _overview(_history(14), platform: HealthPlatformKind.healthConnect),
+      FakeHealthReader(),
+    );
+    expect(find.bySemanticsLabel('About Light sleep'), findsOneWidget);
+    expect(find.bySemanticsLabel('About Core sleep'), findsNothing);
+  });
+
+  testWidgets('7 days has About buttons on time asleep and averages', (
+    tester,
+  ) async {
+    await _pump(tester, _overview(_history(14)), FakeHealthReader());
+    await _selectRange(tester, '7 days');
+    for (final title in [
+      'Time asleep',
+      'Sleep score',
+      'Deep sleep',
+      'REM sleep',
+      'Sleeping heart rate',
+    ]) {
+      expect(
+        find.bySemanticsLabel('About $title'),
+        findsOneWidget,
+        reason: title,
+      );
+    }
+  });
+
   testWidgets('no overflow at text scale 2.0 in dark mode', (tester) async {
     await _pump(
       tester,

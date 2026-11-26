@@ -2,30 +2,23 @@ import 'package:flutter/material.dart' hide Baseline;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/clock.dart';
-import '../../../core/design/beyondrep_theme.dart';
 import '../../../core/design/charts/bar_series.dart';
 import '../../../core/design/charts/score_ring.dart';
 import '../../../core/design/charts/trend_label.dart';
 import '../application/health_details.dart';
 import '../application/health_overview.dart';
+import '../domain/metric_explanations.dart';
 import '../domain/readiness.dart';
 import '../domain/trend.dart';
 import '../health_format.dart';
 import '../widgets/detail_layout.dart';
 import '../widgets/health_card_frame.dart';
+import '../widgets/metric_info_sheet.dart';
 import '../widgets/readiness_card.dart';
 
 const _reference = 70;
 const _sleepReference = Duration(hours: 7, minutes: 30);
 const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-/// The ring and bar colour for [band]: green when good, amber otherwise.
-Color _bandColor(ThemeData theme, ReadinessBand band) =>
-    band == ReadinessBand.good
-    ? theme.colorScheme.primary
-    : theme.brightness == Brightness.dark
-    ? BeyondRepPalette.amberDark
-    : BeyondRepPalette.amberLight;
 
 /// Today's readiness and its parts, or 7 / 30 days of it; read fresh and
 /// held in memory only.
@@ -122,7 +115,7 @@ class _Today extends StatelessWidget {
         ...switch (readiness.result) {
           ReadinessReady(:final readiness) => [
             _summary(context, readiness),
-            _parts(readiness, hrvName),
+            _parts(context, readiness, hrvName),
           ],
           // The card's copy for what is missing.
           ReadinessNotReady() => [
@@ -132,6 +125,11 @@ class _Today extends StatelessWidget {
         },
         DetailPanel(
           title: 'How readiness works',
+          info: metricInfoButton(
+            context,
+            MetricKey.readiness,
+            platform: overview.platform,
+          ),
           children: [
             HealthCaption(
               "Readiness compares today's $hrvName and resting heart rate "
@@ -157,7 +155,7 @@ class _Today extends StatelessWidget {
             NsScoreRing(
               value: r.value,
               size: 88,
-              color: _bandColor(theme, r.band),
+              color: readinessBandColor(theme, r.band),
               caption: 'Readiness',
             ),
             const SizedBox(width: 16),
@@ -175,7 +173,7 @@ class _Today extends StatelessWidget {
     );
   }
 
-  Widget _parts(Readiness r, String hrvName) {
+  Widget _parts(BuildContext context, Readiness r, String hrvName) {
     final heart = switch (overview.heart) {
       SectionData(:final value) => value,
       SectionGap() => null,
@@ -243,16 +241,29 @@ class _Today extends StatelessWidget {
       ReadinessInput.sleep: 'Sleep',
       ReadinessInput.sleepDebt: 'Sleep vs your week',
     };
+    // HRV and resting HR say when their usual range will appear.
+    Widget about(ReadinessInput input) => metricInfoButton(
+      context,
+      switch (input) {
+        ReadinessInput.hrv => MetricKey.hrv,
+        ReadinessInput.restingHr => MetricKey.restingHeartRate,
+        ReadinessInput.sleep ||
+        ReadinessInput.sleepDebt => MetricKey.timeAsleep,
+      },
+      platform: overview.platform,
+      showUsualPlaceholder:
+          input == ReadinessInput.hrv || input == ReadinessInput.restingHr,
+    );
     return DetailPanel(
       title: 'What made the score',
       children: [
         for (final input in ReadinessInput.values)
           if (parts[input] case final p?) ...[
-            DetailRow(names[input]!, '${p.score.round()}'),
+            DetailRow(names[input]!, '${p.score.round()}', info: about(input)),
             HealthCaption([?today(input), share(p)].join(' · ')),
             const SizedBox(height: 6),
           ] else ...[
-            DetailRow(names[input]!, 'Not counted'),
+            DetailRow(names[input]!, 'Not counted', info: about(input)),
             HealthCaption(whyNot(input)),
             const SizedBox(height: 6),
           ],
@@ -349,7 +360,7 @@ class _RangeView extends ConsumerWidget {
                     : [
                         (
                           value: v.toDouble(),
-                          color: _bandColor(theme, readinessBandOf(v)),
+                          color: readinessBandColor(theme, readinessBandOf(v)),
                         ),
                       ],
               ),
