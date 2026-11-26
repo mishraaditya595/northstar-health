@@ -3,118 +3,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/clock.dart';
+import '../../../core/design/beyondrep_theme.dart';
 import '../../../core/design/page_header.dart';
 import '../../../core/design/stats.dart';
+import '../../progress/workout_history_state.dart';
 import '../application/health_overview.dart';
 import '../application/health_summary_controller.dart';
+import '../data/health_reader.dart';
+import '../domain/metric_explanations.dart';
 import '../domain/readiness.dart';
 import '../health_format.dart';
 import 'health_actions_mixin.dart';
 import 'health_connect_card.dart';
+import 'metric_info_sheet.dart';
 import 'readiness_card.dart';
+import 'readiness_hero.dart';
+import 'today_health_tiles.dart';
 
-typedef _Tile = ({
-  String label,
-  String? value,
-  String? unit,
-  String caption,
-  MetricGap? gap,
-  String? route,
-});
-
-_Tile _gapTile(String label, MetricGap gap, String noData) => (
-  label: label,
-  value: null,
-  unit: null,
-  caption: switch (gap) {
-    MetricGap.noData => noData,
-    MetricGap.needsAccess => 'Allow more data',
-    MetricGap.notAllowed => 'Not allowed · Manage',
-    MetricGap.failed => "Couldn't read · Try again",
-    MetricGap.unsupported => 'Not available on this device',
-  },
-  gap: gap,
-  route: null,
-);
-
-const _noSleep = 'No sleep recorded last night';
-const _noSteps = 'No steps yet today';
-const _noRestingHr = 'None in the last 30 days';
-
-_Tile _sleep(HealthOverview o) => switch (o.sleep) {
-  SectionGap(:final gap) => _gapTile('Sleep', gap, _noSleep),
-  SectionData(:final value) =>
-    value.lastNight.date ==
-            DateTime(o.readAt.year, o.readAt.month, o.readAt.day)
-        ? (
-            label: 'Sleep',
-            value: formatDuration(value.lastNight.asleep),
-            unit: null,
-            caption:
-                '${value.lastNight.source} · ended '
-                '${formatClockTime(value.lastNight.end)}',
-            gap: null,
-            route: null,
-          )
-        : _gapTile('Sleep', MetricGap.noData, _noSleep),
-};
-
-_Tile _steps(HealthOverview o) => switch (o.activity) {
-  SectionGap(:final gap) => _gapTile('Steps', gap, _noSteps),
-  SectionData(value: ActivityOverview(stepsToday: final steps?)) => (
-    label: 'Steps',
-    value: formatCount(steps),
-    unit: null,
-    caption:
-        '${healthPlatformName(o.platform)} · as of '
-        '${formatClockTime(o.readAt)}',
-    gap: null,
-    route: null,
-  ),
-  SectionData(value: ActivityOverview(stepsGap: final gap?)) => _gapTile(
-    'Steps',
-    gap,
-    _noSteps,
-  ),
-  SectionData() => _gapTile('Steps', MetricGap.noData, _noSteps),
-};
-
-_Tile _restingHr(HealthOverview o) => switch (o.heart) {
-  SectionGap(:final gap) => _gapTile('Resting HR', gap, _noRestingHr),
-  SectionData(value: HeartOverview(restingHr: final hr?)) => (
-    label: 'Resting HR',
-    value: '${hr.value.round()}',
-    unit: 'bpm',
-    caption: hr.day == DateTime(o.readAt.year, o.readAt.month, o.readAt.day)
-        ? 'Today'
-        : formatHealthDate(hr.day),
-    gap: null,
-    route: null,
-  ),
-  SectionData(value: HeartOverview(restingHrGap: final gap?)) => _gapTile(
-    'Resting HR',
-    gap,
-    _noRestingHr,
-  ),
-  SectionData() => _gapTile('Resting HR', MetricGap.noData, _noRestingHr),
-};
-
-/// Only a ready readiness earns a slot; any other state keeps stage 1's row.
-_Tile? _readiness(HealthOverview o, DateTime now) =>
-    switch (todaysReadiness(o, now)?.result) {
-      ReadinessReady(:final readiness) => (
-        label: 'Readiness',
-        value: '${readiness.value}',
-        unit: null,
-        caption: readinessBandWords(readiness.band),
-        gap: null,
-        route: '/health/readiness',
-      ),
-      _ => null,
-    };
-
-/// Today tab "Recent health": a Connect card, or sleep, steps and resting HR
-/// from the Health overview (no reads of its own).
+/// Today tab "Recent health": a Connect card, or today's readiness and a grid
+/// of sleep, steps, resting HR and finished workouts from the Health overview
+/// and local history (no health reads of its own).
 class TodayHealthRow extends ConsumerStatefulWidget {
   const TodayHealthRow({super.key});
 
@@ -172,33 +80,94 @@ class _TodayHealthRowState extends ConsumerState<TodayHealthRow>
       }
       return const _Loading();
     }
-    final readiness = _readiness(overview, ref.watch(localNowProvider));
+    final now = ref.watch(localNowProvider);
+    final today = todaysReadiness(overview, now);
+    final sessions =
+        ref.watch(completedWorkoutHistoryProvider).value?.sessions ?? const [];
     final tiles = [
-      ?readiness,
-      _sleep(overview),
-      _steps(overview),
-      if (readiness == null) _restingHr(overview),
+      sleepTile(overview),
+      stepsTile(overview),
+      restingHrTile(overview),
+      workoutsTile(sessions, now),
     ];
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    final theme = Theme.of(context);
+    final narrow =
+        MediaQuery.textScalerOf(context).scale(1) >= 1.6 ||
+        MediaQuery.sizeOf(context).width < 360;
+    Widget tile(TodayTile t) => _tile(t, overview.platform, busy);
+    final hero = switch (today?.result) {
+      ReadinessReady(:final readiness) => ReadinessHero(
+        readiness: readiness,
+        reasons: readinessReasons(overview, today!, readiness),
+        platform: overview.platform,
+        onOpen: () => context.push('/health/readiness'),
+      ),
+      ReadinessNotReady(:final daysUntilBaseline?) => InsightCard(
+        icon: Icons.bolt_outlined,
+        text: TextSpan(text: readinessBuildingText(daysUntilBaseline)),
+      ),
+      _ => null,
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (hero != null) ...[hero, const SizedBox(height: 10)],
+        if (narrow)
           for (final (i, t) in tiles.indexed) ...[
-            if (i > 0) const SizedBox(width: 10),
-            Expanded(
-              child: StatTile(
-                label: t.label,
-                value: t.value ?? '—',
-                unit: t.value == null ? null : t.unit,
-                caption: t.caption,
-                onTap: t.route != null
-                    ? () => context.push(t.route!)
-                    : _actionFor(t.gap, busy),
+            if (i > 0) const SizedBox(height: 10),
+            tile(t),
+          ]
+        else
+          for (var i = 0; i < tiles.length; i += 2) ...[
+            if (i > 0) const SizedBox(height: 10),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: tile(tiles[i])),
+                  const SizedBox(width: 10),
+                  Expanded(child: tile(tiles[i + 1])),
+                ],
               ),
             ),
           ],
-        ],
-      ),
+        const SizedBox(height: 10),
+        Text(
+          'From ${healthPlatformName(overview.platform)}',
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.mutedColor),
+        ),
+      ],
+    );
+  }
+
+  Widget _tile(TodayTile t, HealthPlatformKind platform, bool busy) {
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final key = t.infoKey;
+    return StatTile(
+      label: t.label,
+      value: t.value ?? '—',
+      unit: t.value == null ? null : t.unit,
+      caption: t.caption,
+      icon: t.icon,
+      iconColor: t.sleepTint
+          ? (dark ? BeyondRepPalette.sleepDark : BeyondRepPalette.sleepLight)
+          : theme.colorScheme.primary,
+      onTap: t.route != null
+          ? () => context.push(t.route!)
+          : _actionFor(t.gap, busy),
+      onInfo: key == null
+          ? null
+          : () => showMetricInfo(
+              context,
+              key,
+              platform: platform,
+              usual: t.usual,
+              unit: t.unit,
+            ),
+      infoLabel: key == null
+          ? null
+          : 'About ${explanationFor(key, platform).title}',
     );
   }
 

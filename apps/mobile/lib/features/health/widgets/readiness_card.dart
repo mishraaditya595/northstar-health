@@ -16,6 +16,37 @@ import 'metric_unavailable.dart';
 
 const _eyebrow = 'READINESS';
 
+/// Ring, score and bar colour for [band]: primary when good, amber when
+/// fair, red when low.
+Color readinessBandColor(ThemeData theme, ReadinessBand band) {
+  final dark = theme.brightness == Brightness.dark;
+  return switch (band) {
+    ReadinessBand.good => theme.colorScheme.primary,
+    ReadinessBand.fair =>
+      dark ? BeyondRepPalette.amberDark : BeyondRepPalette.amberLight,
+    ReadinessBand.low =>
+      dark ? BeyondRepPalette.redDark : BeyondRepPalette.redLight,
+  };
+}
+
+/// Soft background that goes with [readinessBandColor].
+Color readinessBandSoftColor(ThemeData theme, ReadinessBand band) {
+  final dark = theme.brightness == Brightness.dark;
+  return switch (band) {
+    ReadinessBand.good =>
+      dark ? BeyondRepPalette.forestSoftDark : BeyondRepPalette.forestSoftLight,
+    ReadinessBand.fair =>
+      dark ? BeyondRepPalette.amberSoftDark : BeyondRepPalette.amberSoftLight,
+    ReadinessBand.low =>
+      dark ? BeyondRepPalette.redSoftDark : BeyondRepPalette.redSoftLight,
+  };
+}
+
+/// `Readiness starts after 4 more days with data.`
+String readinessBuildingText(int days) =>
+    'Readiness starts after $days more ${days == 1 ? 'day' : 'days'} '
+    'with data.';
+
 String readinessBandWords(ReadinessBand band) => switch (band) {
   ReadinessBand.good => 'Good to train',
   ReadinessBand.fair => 'Train as planned, watch effort',
@@ -239,9 +270,7 @@ class ReadinessCard extends StatelessWidget {
     ReadinessOverview value,
     int days,
   ) {
-    final title =
-        'Readiness starts after $days more ${days == 1 ? 'day' : 'days'} '
-        'with data.';
+    final title = readinessBuildingText(days);
     final measures = [
       if (value.hasHrv) readinessHrvName(value.hrvIsSdnn),
       if (value.hasRestingHr) 'resting HR',

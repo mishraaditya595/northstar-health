@@ -69,7 +69,9 @@ class StatTile extends StatelessWidget {
         child: ConstrainedBox(
           constraints: BoxConstraints(minHeight: minHeight ?? 0),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            // The info button's 48 dp target has empty space around its
+            // glyph, so less right padding keeps the glyph in line.
+            padding: EdgeInsets.fromLTRB(16, 16, onInfo == null ? 16 : 4, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -89,7 +91,10 @@ class StatTile extends StatelessWidget {
                     ),
                     if (onInfo != null)
                       NsInfoButton(label: infoLabel!, onPressed: onInfo!),
-                    if (onTap != null) Icon(Icons.chevron_right, color: muted),
+                    // An info button is the tile's right-hand control; a chevron
+                    // beside it would not fit a half-width tile.
+                    if (onTap != null && onInfo == null)
+                      Icon(Icons.chevron_right, color: muted),
                   ],
                 ),
                 const SizedBox(height: 14),

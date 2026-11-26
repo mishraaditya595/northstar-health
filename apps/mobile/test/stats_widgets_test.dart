@@ -64,6 +64,42 @@ void main() {
     expect(taps, 0);
   });
 
+  testWidgets('StatTile with an info button leaves the chevron out', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatTile(
+            label: 'Steps',
+            value: '6,000',
+            onTap: () {},
+            onInfo: () {},
+            infoLabel: 'About Steps',
+          ),
+        ),
+      ),
+    );
+    expect(find.byIcon(Icons.chevron_right), findsNothing);
+  });
+
+  testWidgets('StatTile minHeight lifts a short tile', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: StatTile(label: 'Steps', value: '1', minHeight: 200),
+          ),
+        ),
+      ),
+    );
+    expect(
+      tester.getSize(find.byType(StatTile)).height,
+      greaterThanOrEqualTo(200),
+    );
+  });
+
   testWidgets('month grid starts on the right weekday and marks days', (
     tester,
   ) async {

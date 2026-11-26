@@ -2,7 +2,6 @@ import 'package:flutter/material.dart' hide Baseline;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/clock.dart';
-import '../../../core/design/beyondrep_theme.dart';
 import '../../../core/design/charts/bar_series.dart';
 import '../../../core/design/charts/score_ring.dart';
 import '../../../core/design/charts/trend_label.dart';
@@ -20,14 +19,6 @@ import '../widgets/readiness_card.dart';
 const _reference = 70;
 const _sleepReference = Duration(hours: 7, minutes: 30);
 const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-/// The ring and bar colour for [band]: green when good, amber otherwise.
-Color _bandColor(ThemeData theme, ReadinessBand band) =>
-    band == ReadinessBand.good
-    ? theme.colorScheme.primary
-    : theme.brightness == Brightness.dark
-    ? BeyondRepPalette.amberDark
-    : BeyondRepPalette.amberLight;
 
 /// Today's readiness and its parts, or 7 / 30 days of it; read fresh and
 /// held in memory only.
@@ -164,7 +155,7 @@ class _Today extends StatelessWidget {
             NsScoreRing(
               value: r.value,
               size: 88,
-              color: _bandColor(theme, r.band),
+              color: readinessBandColor(theme, r.band),
               caption: 'Readiness',
             ),
             const SizedBox(width: 16),
@@ -369,7 +360,7 @@ class _RangeView extends ConsumerWidget {
                     : [
                         (
                           value: v.toDouble(),
-                          color: _bandColor(theme, readinessBandOf(v)),
+                          color: readinessBandColor(theme, readinessBandOf(v)),
                         ),
                       ],
               ),
