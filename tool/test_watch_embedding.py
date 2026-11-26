@@ -5,7 +5,10 @@ and (when Ruby and the pinned xcodeproj gem are available) that re-running the
 script changes nothing.
 """
 
+import os
+import re
 import shutil
+import struct
 import subprocess
 import tempfile
 import unittest
@@ -15,6 +18,9 @@ ROOT = Path(__file__).resolve().parents[1]
 IOS = ROOT / "apps" / "mobile" / "ios"
 PBXPROJ = IOS / "Runner.xcodeproj" / "project.pbxproj"
 SCRIPT = ROOT / "tool" / "embed_watch_target.rb"
+WATCH = ROOT / "apps" / "watch_os"
+SOURCE_DIRS = ("Sources", "Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore")
+ICON = WATCH / "Sources" / "Resources" / "Assets.xcassets" / "AppIcon.appiconset" / "AppIcon.png"
 # RunnerTests.swift is the stock Flutter unit-test stub, not watch code.
 ALLOWED_IOS_SWIFT = {
     "AppDelegate.swift",
@@ -52,6 +58,85 @@ class WatchEmbeddingTest(unittest.TestCase):
     def test_no_signing_material_in_the_project(self):
         self.assertNotIn("DEVELOPMENT_TEAM", self.pbx)
         self.assertNotIn("PROVISIONING_PROFILE", self.pbx)
+
+    def _referenced_swift(self, text):
+        found = set()
+        for match in re.finditer(r'path = "?([^;"]+\.swift)"?;', text):
+            path = match.group(1)
+            if path.startswith(SOURCE_DIRS):
+                found.add(path)
+        return found
+
+    def test_watch_swift_files_on_disk_equal_those_in_the_project(self):
+        on_disk = {
+            str(p.relative_to(WATCH))
+            for d in SOURCE_DIRS
+            for p in (WATCH / d).rglob("*.swift")
+        }
+        self.assertEqual(
+            self._referenced_swift(self.pbx), on_disk,
+            "run tool/embed_watch_target.rb to sync the Runner project",
+        )
+
+    def test_runner_keeps_its_watch_link_bridge(self):
+        self.assertIn("WatchLinkBridge.swift in Sources", self.pbx)
+
+    def test_watch_has_an_opaque_1024_app_icon_in_its_resources(self):
+        self.assertIn("ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;", self.pbx)
+        self.assertIn("Sources/Resources/Assets.xcassets", self.pbx)
+        self.assertIn("Assets.xcassets in Resources", self.pbx)
+        data = ICON.read_bytes()
+        self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n")
+        width, height, _depth, color_type = struct.unpack(">IIBB", data[16:26])
+        self.assertEqual((width, height), (1024, 1024))
+        self.assertIn(color_type, (0, 2), "the App Store icon must have no alpha channel")
+        self.assertNotIn(b"tRNS", data)
+
+    def test_watch_info_plist_keys(self):
+        self.assertIn("INFOPLIST_KEY_WKApplication = YES;", self.pbx)
+        self.assertIn(
+            "INFOPLIST_KEY_WKApplication: YES",
+            (WATCH / "project.yml").read_text(encoding="utf-8"),
+        )
+
+    def _bundle_ready(self):
+        ruby, bundle = shutil.which("ruby"), shutil.which("bundle")
+        if not ruby or not bundle:
+            self.skipTest("ruby/bundler not installed")
+        probe = subprocess.run(
+            [bundle, "exec", ruby, "-e", 'require "xcodeproj"'],
+            cwd=ROOT / "tool", capture_output=True, text=True,
+        )
+        if probe.returncode != 0:
+            self.skipTest("the pinned xcodeproj gem is not installed (cd tool && bundle install)")
+        return ruby, bundle
+
+    def test_script_syncs_files_added_and_removed_on_disk(self):
+        ruby, bundle = self._bundle_ready()
+        with tempfile.TemporaryDirectory() as tmp:
+            watch = Path(tmp) / "watch_os"
+            shutil.copytree(WATCH, watch)
+            copy = Path(tmp) / "Runner.xcodeproj"
+            shutil.copytree(IOS / "Runner.xcodeproj", copy)
+            env = dict(os.environ, BEYONDREP_WATCH_DIR=str(watch))
+
+            def run():
+                result = subprocess.run(
+                    [bundle, "exec", ruby, str(SCRIPT), str(copy)],
+                    cwd=ROOT / "tool", capture_output=True, text=True, env=env,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                return (copy / "project.pbxproj").read_text(encoding="utf-8")
+
+            (watch / "Sources" / "App" / "Extra.swift").write_text("import Foundation\n")
+            added = run()
+            self.assertIn("Sources/App/Extra.swift", added)
+            self.assertIn("WatchLinkBridge.swift in Sources", added)
+            self.assertEqual(run(), added, "a second run changes nothing")
+
+            (watch / "Sources" / "App" / "Extra.swift").unlink()
+            removed = run()
+            self.assertNotIn("Extra.swift", removed)
 
     def test_script_is_idempotent(self):
         ruby, bundle = shutil.which("ruby"), shutil.which("bundle")
