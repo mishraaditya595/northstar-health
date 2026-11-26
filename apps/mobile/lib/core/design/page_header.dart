@@ -112,7 +112,7 @@ class SquareButton extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: onPressed,
-          child: SizedBox(width: 44, height: 44, child: Center(child: child)),
+          child: SizedBox(width: 48, height: 48, child: Center(child: child)),
         ),
       ),
     );

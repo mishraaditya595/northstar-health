@@ -451,6 +451,12 @@ void main() {
     ) async {
       await show(tester, week: _week(), textScale: 2, brightness: brightness);
       expect(tester.takeException(), isNull);
+      // The 48 dp header buttons push the line past the first build extent.
+      await tester.scrollUntilVisible(
+        find.text('Missed Monday: Push day'),
+        100,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('Missed Monday: Push day'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('Open program'),
