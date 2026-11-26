@@ -127,6 +127,9 @@ The iPhone app sends the signed-in account's plans and today's numbers to the Be
 | Sign out on the phone: the watch shows "Open BeyondRep on your iPhone to sign in." | not run |
 | Sign in as a second account: no data from the first account appears on the watch, also if the first account's messages arrive late | not run |
 | A metric the phone lacks (no HRV, no steps) shows a dash on the watch, never 0 | not run |
+| Resting HR, HRV and sleep reach the watch only when the phone has a value dated today, so a dash in the morning before today's reading exists is expected, not a fault | not run |
+| Sign out, then force-quit and reopen the watch app: the account does not come back; sign in as the same account again: it binds | not run |
+| The BeyondRep icon shows in the iPhone Watch app and on the watch | not run |
 | Large text and VoiceOver on a small and a large watch: tiles read "Resting heart rate, 54 beats per minute" and "Steps, no data", nothing clipped | not run |
 | Watch signing through the Codemagic job works without the fallback profile (see IOS_TESTFLIGHT_CODEMAGIC.md) | not run |
 

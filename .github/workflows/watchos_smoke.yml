@@ -107,8 +107,28 @@ jobs:
       - name: Assert the watch app is embedded
         working-directory: apps/mobile
         run: |
-          test -d build/ios/iphonesimulator/Runner.app/Watch/BeyondRepWatch.app
-          ls build/ios/iphonesimulator/Runner.app/Watch
+          app=build/ios/iphonesimulator/Runner.app
+          watch="$app/Watch/BeyondRepWatch.app"
+          test -d "$watch"
+          ls "$app/Watch"
+          test -f "$watch/Assets.car"
+          python3 - "$app/Info.plist" "$watch/Info.plist" <<'PY'
+          import plistlib, sys
+          phone = plistlib.load(open(sys.argv[1], "rb"))
+          watch = plistlib.load(open(sys.argv[2], "rb"))
+          expect = {
+              "DTPlatformName": "watchsimulator",
+              "WKApplication": True,
+              "WKCompanionAppBundleIdentifier": "in.beyondrep.app",
+              "CFBundleIdentifier": "in.beyondrep.app.watchkitapp",
+              "CFBundleShortVersionString": phone["CFBundleShortVersionString"],
+              "CFBundleVersion": phone["CFBundleVersion"],
+          }
+          bad = {k: (watch.get(k), v) for k, v in expect.items() if watch.get(k) != v}
+          print({k: watch.get(k) for k in expect})
+          if bad:
+              sys.exit(f"watch Info.plist differs (actual, expected): {bad}")
+          PY
 
 # Important: this does NOT validate signing, TestFlight packaging, watch
 # permissions, background workout or real-device pairing.

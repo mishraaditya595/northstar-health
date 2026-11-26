@@ -256,6 +256,9 @@ workflows:
       - name: "Apply App Store signing profiles"
         script: |
           xcode-project use-profiles
+      - name: "Check the watch app has a signing profile"
+        script: |
+          python3 ../../scripts/codemagic_check_watch_profile.py /Users/builder/export_options.plist
       - name: "Build signed IPA"
         script: |
           set -euo pipefail

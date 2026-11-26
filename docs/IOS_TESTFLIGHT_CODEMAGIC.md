@@ -73,11 +73,11 @@ The `+N` part of the pubspec version is not used for TestFlight builds. To chang
 The watch target is added to `Runner.xcodeproj` by `tool/embed_watch_target.rb` (see `apps/watch_os/README.md`); the sources stay in `apps/watch_os`. Owner steps:
 
 1. In Apple Developer, create the App ID `in.beyondrep.app.watchkitapp` (you may tick HealthKit now; the watch does not use it until stage 4).
-2. Run `mobile-ios-testflight` as above. Codemagic's automatic signing is expected to cover the watch App ID that extends the app's ID. **This is unverified until the first run.**
-3. **If the build fails on watch signing**, create an App Store provisioning profile for `in.beyondrep.app.watchkitapp`, upload it to Codemagic code signing identities as `beyondrep_watch_app_store`, and change the job's `environment` to `ios_signing: provisioning_profiles: [beyondrep_app_store, beyondrep_watch_app_store]` with `certificates: [apple_distribution]` (the iPhone profile keeps its existing identity name). Reference profiles by name only; never commit them.
+2. Run `mobile-ios-testflight` as above. Codemagic's automatic signing is expected to cover the watch App ID that extends the app's ID. **This is unverified until the first run.** The step "Check the watch app has a signing profile" fails the build early, before the archive, if the export options have no profile for `in.beyondrep.app.watchkitapp`.
+3. **If that step or the archive fails on watch signing**, upload **both** App Store profiles to Codemagic code signing identities: the iPhone profile and a new one for `in.beyondrep.app.watchkitapp` (as `beyondrep_watch_app_store`). Then change the job's `environment` to `ios_signing: provisioning_profiles: [beyondrep_app_store, beyondrep_watch_app_store]` with `certificates: [apple_distribution]` (the iPhone profile keeps its existing identity name). Reference profiles by name only; never commit them.
 4. On the iPhone, install from TestFlight, open the Watch app, find BeyondRep and tap Install.
 
-The watch app has no app icon yet; if App Store Connect rejects the upload for a missing watch icon, add an asset catalog to the watch target before the next run.
+The watch target has an App Icon asset catalog (`apps/watch_os/Sources/Resources/Assets.xcassets`, the iPhone 1024 px icon, opaque), so a missing-icon rejection is not expected; whether App Store Connect accepts it is unverified until the first upload.
 
 ## Known limits
 

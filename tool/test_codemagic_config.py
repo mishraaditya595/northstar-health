@@ -184,6 +184,15 @@ class CodemagicTemplateTest(unittest.TestCase):
             names.index("Build signed IPA"),
         )
         self.assertIn("sb_publishable_", scripts)
+        self.assertIn("scripts/codemagic_check_watch_profile.py", scripts)
+        self.assertLess(
+            names.index("Apply App Store signing profiles"),
+            names.index("Check the watch app has a signing profile"),
+        )
+        self.assertLess(
+            names.index("Check the watch app has a signing profile"),
+            names.index("Build signed IPA"),
+        )
         for forbidden in (
             "SERVICE_ROLE",
             "SUPABASE_ACCESS_TOKEN",
