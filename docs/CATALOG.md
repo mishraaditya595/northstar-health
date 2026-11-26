@@ -135,7 +135,7 @@ Release 4 (`supabase/migrations/20261126050000_catalog_release_4.sql`: 240 exerc
 | Gzip of the same bytes | 22,549 bytes (14.6 %) | none |
 | `jsonDecode` + SHA-256 + parse + reference validation, median of 20 | 5.8 ms | under 500 ms |
 | Cold cache load (read `snapshot.json` and `meta.json`, parse in an isolate, publish state), median of 5 | 12.3 ms | under 500 ms |
-| Exercise search over 240 exercises (prefixes, aliases, no matches), 50 queries | median 0.22 ms, worst 1.19 ms | worst under 20 ms |
-| Template and program filters (16 templates, 17 programs), 50 applications | median 0.009 ms, worst 0.58 ms | worst under 20 ms |
+| Exercise search over 240 exercises (prefixes, aliases, no matches), 50 queries | median 0.22 ms, worst 1.19 ms | median under 20 ms, worst under 100 ms (CI stall guard) |
+| Template and program filters (16 templates, 17 programs), 50 applications | median 0.009 ms, worst 0.58 ms | median under 20 ms, worst under 100 ms (CI stall guard) |
 
 First-download bandwidth. One download per user per release is the raw JSON, about 154 KB, or about 22.5 KB if the API response is gzip-compressed (the phone does not request or verify compression, so treat 22.5 KB as the best case and 154 KB as the planning figure). The daily manifest check is a few hundred bytes. The spec's constraint says the Supabase free plan can pause and that bandwidth per release is roughly users times snapshot size. The free plan's monthly egress allowance (5 GB when this was written; confirm against the current Supabase pricing page, it is not read from the project) therefore covers about 32,000 uncompressed or 220,000 compressed first downloads a month, before any other API traffic. With no real users yet that is far above the need. If it ever matters, the manifest URL allows moving the file to Storage or a CDN, as the spec notes.
