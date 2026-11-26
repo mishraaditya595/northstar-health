@@ -189,4 +189,42 @@ void main() {
       );
     }
   });
+
+  test(
+    'snapshot identity round-trips and survives later meta writes',
+    () async {
+      await store.prepare();
+      expect(await store.readSnapshotIdentity(), isNull);
+      await store.writeSnapshotIdentity(release: 4, sha256: 'a' * 64);
+      final identity = await store.readSnapshotIdentity();
+      expect(identity?.release, 4);
+      expect(identity?.sha256, 'a' * 64);
+      await store.writeLastCheckedAtMs(
+        9,
+        outdated: const CatalogOutdatedMark(release: 5, schema: 1),
+      );
+      expect((await store.readSnapshotIdentity())?.sha256, 'a' * 64);
+      expect(await store.readLastCheckedAtMs(), 9);
+      // Writing the identity keeps the check time and the outdated mark.
+      await store.writeSnapshotIdentity(release: 5, sha256: 'b' * 64);
+      expect(await store.readLastCheckedAtMs(), 9);
+      expect((await store.readOutdated())?.release, 5);
+      expect((await store.readSnapshotIdentity())?.release, 5);
+    },
+  );
+
+  test('a meta file from before identity reads as no identity', () async {
+    await store.prepare();
+    file('meta.json').writeAsStringSync('{"lastCheckedAtMs":3}');
+    expect(await store.readSnapshotIdentity(), isNull);
+    expect(await store.readLastCheckedAtMs(), 3);
+    for (final bad in [
+      '{"snapshotRelease":"x","snapshotSha256":"${'a' * 64}"}',
+      '{"snapshotRelease":4,"snapshotSha256":"short"}',
+      '{"snapshotRelease":4}',
+    ]) {
+      file('meta.json').writeAsStringSync(bad);
+      expect(await store.readSnapshotIdentity(), isNull, reason: bad);
+    }
+  });
 }

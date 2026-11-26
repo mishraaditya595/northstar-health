@@ -105,8 +105,22 @@ class CatalogRepository extends ChangeNotifier {
       await store.prepare();
       final text = await store.readSnapshotText();
       if (text != null) {
-        snapshot = await _parse(text);
-        if (snapshot == null) await store.deleteSnapshot();
+        final identity = await store.readSnapshotIdentity();
+        // A file that is not the one we wrote is dropped before it is parsed.
+        if (identity == null ||
+            sha256Hex(utf8.encode(text)) == identity.sha256) {
+          snapshot = await _parse(text);
+          if (snapshot != null &&
+              identity != null &&
+              snapshot.release != identity.release) {
+            snapshot = null;
+          }
+        }
+        if (snapshot == null) {
+          await store.deleteSnapshot();
+          // Nothing cached now: do not wait out the 24 hour window.
+          _recheckDespiteFresh = true;
+        }
       }
       final mark = await store.readOutdated();
       if (mark != null) {
@@ -226,6 +240,10 @@ class CatalogRepository extends ChangeNotifier {
       // below fails; the next start loads the same file.
       _rejected = null;
       _set(CatalogState(snapshot: parsed, status: CatalogStatus.ready));
+      await store.writeSnapshotIdentity(
+        release: parsed.release,
+        sha256: parsed.sha256,
+      );
       await _markChecked();
       return CatalogRefreshOutcome.updated;
     } on CatalogUnauthorized {
@@ -273,11 +291,20 @@ class CatalogRepository extends ChangeNotifier {
     return last <= now && now - last < _freshWindow.inMilliseconds;
   }
 
-  Future<void> _markChecked({CatalogOutdatedMark? outdated}) =>
-      store.writeLastCheckedAtMs(
-        _clock().millisecondsSinceEpoch,
-        outdated: outdated,
+  Future<void> _markChecked({CatalogOutdatedMark? outdated}) async {
+    await store.writeLastCheckedAtMs(
+      _clock().millisecondsSinceEpoch,
+      outdated: outdated,
+    );
+    // A meta file written before the identity existed gets one now.
+    final snapshot = _state.snapshot;
+    if (snapshot != null && await store.readSnapshotIdentity() == null) {
+      await store.writeSnapshotIdentity(
+        release: snapshot.release,
+        sha256: snapshot.sha256,
       );
+    }
+  }
 
   /// A successful check ends an earlier outdated-app or failure display.
   void _clearTransient() {
