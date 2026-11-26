@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../core/design/beyondrep_theme.dart';
 import '../../../core/design/charts/line_chart.dart';
 import '../application/health_overview.dart';
-import '../data/health_reader.dart';
 import '../domain/health_types.dart';
 import '../domain/trend.dart';
 import '../health_format.dart';

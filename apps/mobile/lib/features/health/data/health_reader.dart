@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/health_types.dart';
 
-enum HealthPlatformKind { appleHealth, healthConnect }
+export '../domain/health_types.dart' show HealthPlatformKind;
 
 enum HealthAvailability { available, needsInstall, unsupported }
 

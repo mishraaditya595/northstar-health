@@ -1,5 +1,4 @@
 import 'package:beyondrep/features/health/application/health_overview.dart';
-import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/health/domain/health_types.dart';
 import 'package:beyondrep/features/health/domain/sleep_nights.dart';
 import 'package:beyondrep/features/health/domain/sleep_score.dart';

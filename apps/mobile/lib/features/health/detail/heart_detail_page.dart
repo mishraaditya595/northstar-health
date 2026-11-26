@@ -6,7 +6,6 @@ import '../../../core/design/charts/trend_label.dart';
 import '../application/health_details.dart';
 import '../application/health_overview.dart';
 import '../application/training_insights.dart';
-import '../data/health_reader.dart';
 import '../domain/daily_series.dart';
 import '../domain/health_types.dart';
 import '../domain/series_stats.dart';

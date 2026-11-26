@@ -1,6 +1,5 @@
 import 'dart:math';
 
-import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/health/domain/health_types.dart';
 import 'package:beyondrep/features/health/domain/metric_explanations.dart';
 import 'package:flutter_test/flutter_test.dart';

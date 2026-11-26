@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
 import 'package:beyondrep/features/health/application/training_insights.dart';
-import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/health/domain/health_types.dart';
 import 'package:beyondrep/features/health/domain/sleep_nights.dart';
 import 'package:beyondrep/features/progress/data/objectbox_workout_history_repository.dart';
