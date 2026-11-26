@@ -71,4 +71,16 @@ void main() {
     expect(canonicalJsonBytes(nestedMap(32)), isNotEmpty);
     expect(() => canonicalJsonBytes(nestedMap(33)), throwsArgumentError);
   });
+
+  test('maxBytes stops a hostile document early with ArgumentError', () {
+    final huge = {'k': 'x' * (50 * 1024 * 1024)};
+    expect(() => canonicalJsonBytes(huge, maxBytes: 1000), throwsArgumentError);
+    // Exactly at the cap is fine, one byte over is not (multi-byte aware).
+    final bytes = canonicalJsonBytes({'n': 'ü'});
+    expect(canonicalJsonBytes({'n': 'ü'}, maxBytes: bytes.length), bytes);
+    expect(
+      () => canonicalJsonBytes({'n': 'ü'}, maxBytes: bytes.length - 1),
+      throwsArgumentError,
+    );
+  });
 }

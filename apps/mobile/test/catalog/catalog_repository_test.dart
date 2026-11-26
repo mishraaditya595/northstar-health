@@ -660,6 +660,25 @@ void main() {
       },
     );
 
+    test(
+      'content larger than the manifest says is rejected and backs off',
+      () async {
+        // The manifest advertises r1, the server sends far more.
+        final big = snapshotJson();
+        (big['provenance']! as Map<String, Object?>)['attribution'] =
+            'x' * (200 * 1024);
+        final t = FakeCatalogTransport(
+          manifest: () async => manifestFor(r1),
+          snapshot: (_) async => big,
+        );
+        final r = repo(t);
+        expect(await r.refresh(), CatalogRefreshOutcome.invalid);
+        expect(snapshotFile().existsSync(), isFalse);
+        expect(await r.refresh(), CatalogRefreshOutcome.invalid);
+        expect(t.snapshotRequests, hasLength(1), reason: 'backed off');
+      },
+    );
+
     test('a snapshot of exactly the manifest size is accepted', () async {
       final r = repo(serving(r1));
       expect(await r.refresh(), CatalogRefreshOutcome.updated);

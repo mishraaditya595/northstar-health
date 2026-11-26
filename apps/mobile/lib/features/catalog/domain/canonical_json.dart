@@ -6,10 +6,23 @@ import 'package:crypto/crypto.dart';
 /// Canonical bytes equal to Python's
 /// `json.dumps(v, sort_keys=True, separators=(",", ":"), ensure_ascii=False)`
 /// encoded as UTF-8. Doubles are rejected: the catalogue only has integers.
-Uint8List canonicalJsonBytes(Object? value) {
+///
+/// With [maxBytes] the output is abandoned with [ArgumentError] as soon as it
+/// can no longer fit, so a hostile document is never fully built. UTF-16 code
+/// units never outnumber UTF-8 bytes, which makes the early check exact.
+Uint8List canonicalJsonBytes(Object? value, {int? maxBytes}) {
   final buffer = StringBuffer();
-  _write(buffer, value, 0);
-  return Uint8List.fromList(utf8.encode(buffer.toString()));
+  _write(buffer, value, 0, maxBytes);
+  final bytes = utf8.encode(buffer.toString());
+  if (maxBytes != null && bytes.length > maxBytes) _tooBig(maxBytes);
+  return Uint8List.fromList(bytes);
+}
+
+Never _tooBig(int maxBytes) =>
+    throw ArgumentError('Canonical JSON is larger than $maxBytes bytes');
+
+void _fits(StringBuffer out, int extra, int? maxBytes) {
+  if (maxBytes != null && out.length + extra > maxBytes) _tooBig(maxBytes);
 }
 
 String sha256Hex(List<int> bytes) => sha256.convert(bytes).toString();
@@ -17,7 +30,8 @@ String sha256Hex(List<int> bytes) => sha256.convert(bytes).toString();
 /// Containers may nest at most this deep; a snapshot is about six levels.
 const maxCanonicalDepth = 32;
 
-void _write(StringBuffer out, Object? value, int depth) {
+void _write(StringBuffer out, Object? value, int depth, int? maxBytes) {
+  _fits(out, 0, maxBytes);
   if ((value is List || value is Map) && depth >= maxCanonicalDepth) {
     throw ArgumentError('Canonical JSON nests deeper than $maxCanonicalDepth');
   }
@@ -30,12 +44,12 @@ void _write(StringBuffer out, Object? value, int depth) {
   } else if (value is double) {
     throw ArgumentError('Doubles are not allowed in canonical JSON');
   } else if (value is String) {
-    _writeString(out, value);
+    _writeString(out, value, maxBytes);
   } else if (value is List) {
     out.write('[');
     for (var i = 0; i < value.length; i++) {
       if (i > 0) out.write(',');
-      _write(out, value[i], depth + 1);
+      _write(out, value[i], depth + 1, maxBytes);
     }
     out.write(']');
   } else if (value is Map) {
@@ -50,9 +64,9 @@ void _write(StringBuffer out, Object? value, int depth) {
     out.write('{');
     for (var i = 0; i < keys.length; i++) {
       if (i > 0) out.write(',');
-      _writeString(out, keys[i]);
+      _writeString(out, keys[i], maxBytes);
       out.write(':');
-      _write(out, value[keys[i]], depth + 1);
+      _write(out, value[keys[i]], depth + 1, maxBytes);
     }
     out.write('}');
   } else {
@@ -74,7 +88,8 @@ int _compareCodePoints(String a, String b) {
   }
 }
 
-void _writeString(StringBuffer out, String value) {
+void _writeString(StringBuffer out, String value, int? maxBytes) {
+  _fits(out, value.length, maxBytes);
   out.write('"');
   for (final unit in value.codeUnits) {
     switch (unit) {

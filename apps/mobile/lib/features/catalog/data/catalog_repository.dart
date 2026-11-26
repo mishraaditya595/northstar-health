@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
@@ -42,6 +43,24 @@ class CatalogState {
 
 const _freshWindow = Duration(hours: 24);
 const maxCatalogBytes = 2 * 1024 * 1024;
+
+/// Room above the manifest's size_bytes while canonicalising, so a size lie is
+/// measured and rejected instead of aborting mid-write.
+const _sizeSlack = 1024;
+
+typedef _Canonical = ({String text, String sha256, int length});
+
+/// Canonical bytes, checksum and size, off the main isolate and never past
+/// [maxBytes]. Throws on anything canonicalisation rejects.
+Future<_Canonical> _canonicalizeInIsolate(Object? json, int maxBytes) =>
+    Isolate.run(() {
+      final bytes = canonicalJsonBytes(json, maxBytes: maxBytes);
+      return (
+        text: utf8.decode(bytes),
+        sha256: sha256Hex(bytes),
+        length: bytes.length,
+      );
+    });
 
 Future<CatalogSnapshot?> _parseInIsolate(String text) => Isolate.run(() {
   try {
@@ -177,20 +196,22 @@ class CatalogRepository extends ChangeNotifier {
       }
 
       final json = await transport.fetchSnapshot(manifest.release);
-      final String text;
+      final cap = min(manifest.sizeBytes + _sizeSlack, maxCatalogBytes);
+      final _Canonical canonical;
       try {
-        text = utf8.decode(canonicalJsonBytes(json));
+        canonical = await _canonicalizeInIsolate(json, cap);
       } on Object {
-        // Any error from canonicalisation (too deep, a double, a bad key) is
-        // hostile or broken content: invalid with backoff, not "unexpected".
+        // Any error from canonicalisation (too deep, too big, a double, a bad
+        // key, unsendable) is hostile or broken content: invalid with backoff,
+        // not "unexpected".
         _reject(manifest);
         return CatalogRefreshOutcome.invalid;
       }
-      final length = utf8.encode(text).length;
-      if (length > maxCatalogBytes || length != manifest.sizeBytes) {
+      if (canonical.length != manifest.sizeBytes) {
         _reject(manifest);
         return CatalogRefreshOutcome.invalid;
       }
+      final text = canonical.text;
       final parsed = await _parse(text);
       if (parsed == null ||
           parsed.sha256 != manifest.sha256 ||
