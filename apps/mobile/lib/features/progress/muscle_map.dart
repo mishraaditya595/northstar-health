@@ -379,7 +379,9 @@ class _Legend extends StatelessWidget {
         decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       ),
       const SizedBox(width: 6),
-      Text(label, style: Theme.of(context).textTheme.labelMedium),
+      Flexible(
+        child: Text(label, style: Theme.of(context).textTheme.labelMedium),
+      ),
     ],
   );
 }
