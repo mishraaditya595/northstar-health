@@ -50,15 +50,17 @@ frameworks.files.dup.each do |build_file|
 end
 project.frameworks_group["watchOS"]&.remove_from_project
 
-# Version numbers follow the iPhone app: Flutter's xcconfig defines them.
-xcconfigs = {
-  "Debug" => "Debug.xcconfig",
-  "Release" => "Release.xcconfig",
-  "Profile" => "Release.xcconfig",
-}
+# Version numbers follow the iPhone app through Flutter's generated xcconfig.
+# Flutter's Debug/Release xcconfigs also include the CocoaPods settings that
+# link ObjectBox and the plugins, which the watch must not inherit, so the
+# watch gets its own file that includes only Generated.xcconfig.
+watch_xcconfig = File.join(ios_dir, "Flutter", "Watch.xcconfig")
+File.write(watch_xcconfig, "#include \"Generated.xcconfig\"\n") unless File.exist?(watch_xcconfig)
+flutter_group = project.main_group["Flutter"] or abort("Flutter group not found")
+watch_xcconfig_ref = flutter_group.new_reference("Flutter/Watch.xcconfig")
+watch_xcconfig_ref.name = "Watch.xcconfig"
 watch.build_configurations.each do |config|
-  ref = project.files.find { |f| f.display_name == xcconfigs.fetch(config.name, "Release.xcconfig") }
-  config.base_configuration_reference = ref if ref
+  config.base_configuration_reference = watch_xcconfig_ref
   # The watch target has no asset catalog yet; drop the gem's defaults for one.
   config.build_settings.delete("ASSETCATALOG_COMPILER_APPICON_NAME")
   config.build_settings.delete("ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME")
