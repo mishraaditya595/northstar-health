@@ -61,7 +61,7 @@ All of these live in `apps/mobile/lib/core/design/`. Look comes from `BeyondRepT
 | Bars / lines / sparkline | `NsBarChart`, `NsLineChart`, `NsSparkline` | `charts/bar_series.dart`, `charts/line_chart.dart` |
 | Sleep stages | `NsStageBar`, `NsStageTimeline` | `charts/sleep_stages.dart` |
 | Wide-window check (width >= 840 dp) | `isWideWindow` | `layout.dart` |
-| Equal-width card grid (fewer columns at large text) | `NsResponsiveGrid` | `layout.dart` |
+| Equal-width card grid (fewer columns at large text: the minimum item width grows by half the text-scale growth, so 200% text widens it 1.5x) | `NsResponsiveGrid` | `layout.dart` |
 | Main and side columns (stacked when not wide) | `NsSplitColumns` | `layout.dart` |
 | List with detail pane (`openListItem` selects when wide, pushes when narrow) | `NsListDetail` | `layout.dart` |
 

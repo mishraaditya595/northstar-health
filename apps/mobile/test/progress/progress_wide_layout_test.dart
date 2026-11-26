@@ -148,5 +148,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(_path, '/progress/workouts/s-1');
     expect(find.byType(NsListDetail), findsNothing);
+    // Pushed exactly once: one pop returns to the list.
+    _router.pop();
+    await tester.pumpAndSettle();
+    expect(_path, '/progress');
   });
 }

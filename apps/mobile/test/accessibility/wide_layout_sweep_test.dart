@@ -165,6 +165,29 @@ void main() {
     });
   }
 
+  // Lazy lists build only what is on screen: a very tall window builds it all.
+  for (final location in _locations) {
+    testWidgets('$location has no overflow anywhere down the page', (
+      tester,
+    ) async {
+      for (final size in const [Size(390, 4000), Size(1194, 4000)]) {
+        for (final scale in [1.0, 2.0]) {
+          tester.view.physicalSize = size;
+          tester.view.devicePixelRatio = 1;
+          tester.platformDispatcher.textScaleFactorTestValue = scale;
+          addTearDown(tester.view.reset);
+          addTearDown(tester.platformDispatcher.clearAllTestValues);
+          await pumpApp(tester, location);
+          expect(
+            tester.takeException(),
+            isNull,
+            reason: '$location at $size, x$scale',
+          );
+        }
+      }
+    });
+  }
+
   testWidgets('phone sizes never show a detail pane', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
