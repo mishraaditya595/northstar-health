@@ -290,6 +290,25 @@ void main() {
       expect(r.state.status, CatalogStatus.ready);
     });
 
+    test('a checksum mismatch is found before the structural parse', () async {
+      var parses = 0;
+      final t = FakeCatalogTransport(
+        manifest: () async => manifestFor(r2, sha256: 'c' * 64),
+        snapshot: (_) async => r2,
+      );
+      final r = CatalogRepository(
+        transport: t,
+        store: store,
+        clock: () => now,
+        parseInBackground: (text) {
+          parses++;
+          return _parse(text);
+        },
+      );
+      expect(await r.refresh(), CatalogRefreshOutcome.invalid);
+      expect(parses, 0);
+    });
+
     test('release different from the manifest is invalid', () async {
       final t = FakeCatalogTransport(
         manifest: () async => manifestFor(r2, sha256: manifestFor(r1).sha256),

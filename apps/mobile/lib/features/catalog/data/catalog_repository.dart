@@ -207,7 +207,9 @@ class CatalogRepository extends ChangeNotifier {
         _reject(manifest);
         return CatalogRefreshOutcome.invalid;
       }
-      if (canonical.length != manifest.sizeBytes) {
+      // Size and checksum are settled before any structural parse.
+      if (canonical.length != manifest.sizeBytes ||
+          canonical.sha256 != manifest.sha256) {
         _reject(manifest);
         return CatalogRefreshOutcome.invalid;
       }
