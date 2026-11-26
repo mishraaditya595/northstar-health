@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/ids/uuid_factory.dart';
+import '../programs/domain/program_models.dart';
+import '../programs/domain/program_schedule.dart';
 import '../workouts/data/objectbox_live_workout_engine.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
 import '../workouts/data/objectbox_workout_repository.dart';
@@ -45,6 +47,16 @@ abstract interface class WorkoutActions {
   WorkoutSessionRecord startQuick(String name);
   WorkoutSessionRecord startPlan(String planUuid);
 
+  /// Starts the workout scheduled for the current local date (read now, at
+  /// the call), recording which program day it was for. [expectedPlanUuid] is
+  /// the plan the screen showed; if today's plan differs (the day rolled over
+  /// or the schedule changed) nothing starts and [ProgramDayChanged] is
+  /// thrown. A rest day throws [StateError].
+  WorkoutSessionRecord startProgramDay(
+    TrainingProgramRecord program, {
+    required String? expectedPlanUuid,
+  });
+
   /// Materializes the template's exercises, then starts an unsaved workout
   /// from its rows. Throws the usual "finish or discard" [StateError] and
   /// changes nothing while another workout is unfinished.
@@ -79,13 +91,24 @@ abstract interface class WorkoutActions {
   );
 }
 
+/// Today's schedule changed between showing a program day and starting it.
+class ProgramDayChanged extends StateError {
+  ProgramDayChanged() : super('Today\'s program workout changed');
+}
+
 final workoutActionsProvider = Provider<WorkoutActions>(
   (ref) => RepositoryWorkoutActions(
     ref.watch(liveWorkoutEngineProvider),
     ref.watch(workoutRepositoryProvider),
     ref.watch(workoutLibraryRepositoryProvider),
     SecureUuidFactory(),
+    clock: ref.watch(workoutClockProvider),
   ),
+);
+
+/// The wall clock for starting workouts; tests override it.
+final workoutClockProvider = Provider<DateTime Function()>(
+  (ref) => DateTime.now,
 );
 
 class RepositoryWorkoutActions implements WorkoutActions {
@@ -93,13 +116,15 @@ class RepositoryWorkoutActions implements WorkoutActions {
     this.engine,
     this.repository,
     this.library,
-    this.ids,
-  );
+    this.ids, {
+    this.clock = DateTime.now,
+  });
 
   final LiveWorkoutEngine engine;
   final WorkoutRepository repository;
   final WorkoutLibraryRepository library;
   final UuidFactory ids;
+  final DateTime Function() clock;
 
   @override
   WorkoutSessionRecord startQuick(String name) {
@@ -120,6 +145,27 @@ class RepositoryWorkoutActions implements WorkoutActions {
       planUuid: planUuid,
       startedAtUtc: now.toUtc(),
       originalOffsetMinutes: now.timeZoneOffset.inMinutes,
+    );
+  }
+
+  @override
+  WorkoutSessionRecord startProgramDay(
+    TrainingProgramRecord program, {
+    required String? expectedPlanUuid,
+  }) {
+    final localNow = clock();
+    final planUuid = dayFor(program, localNow).planUuid;
+    if (planUuid != expectedPlanUuid) throw ProgramDayChanged();
+    if (planUuid == null) throw StateError('Today is a rest day');
+    return engine.startWorkout(
+      sessionUuid: ids.newId(),
+      planUuid: planUuid,
+      programDay: (
+        programUuid: program.uuid,
+        localDate: localDateKey(localNow),
+      ),
+      startedAtUtc: localNow.toUtc(),
+      originalOffsetMinutes: localNow.timeZoneOffset.inMinutes,
     );
   }
 

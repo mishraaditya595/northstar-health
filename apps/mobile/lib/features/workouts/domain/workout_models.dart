@@ -119,6 +119,8 @@ class WorkoutSessionRecord {
     this.completedAtUtc,
     this.exercises = const [],
     this.sets = const [],
+    this.programUuid,
+    this.programDayLocalDate,
   });
   final String uuid;
   final String name;
@@ -130,4 +132,8 @@ class WorkoutSessionRecord {
   final DateTime? completedAtUtc;
   final List<WorkoutExerciseRecord> exercises;
   final List<WorkoutSetRecord> sets;
+
+  /// Program day this session was started for (`yyyy-MM-dd`). Local only.
+  final String? programUuid;
+  final String? programDayLocalDate;
 }

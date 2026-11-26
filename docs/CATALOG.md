@@ -39,6 +39,24 @@ python3 scripts/catalog_build.py rollback --to N --timestamp YYYYMMDDHHMMSS
 
 Open a pull request with the generated migration, the lock and the changelog. CI replays every migration and runs the pgTAP tests (`supabase/tests/catalog.test.sql`). After merge, the owner runs the `supabase-database` Codemagic job (preview, then deploy), see [SUPABASE_CODEMAGIC_DEPLOY.md](SUPABASE_CODEMAGIC_DEPLOY.md). Nothing is deployed from a branch.
 
+## Changing content after launch
+
+Exercises, workout templates and programs live on the server, not in the app binary. Adding or editing content never needs an App Store or Play Store update.
+
+1. Edit the JSON under `catalog/` to add or change content: sets, reps, rest, notes and descriptions.
+2. Run `python3 scripts/catalog_build.py check`, then `publish` to write the next release migration, the lock and the changelog. Open a pull request. CI and the content tests check it, and the owner reviews a sheet of every changed entry.
+3. Merge the pull request and run the `supabase-database` Codemagic job (see [Deploying](#deploying)). The live pointer moves to the new release.
+4. Phones pick it up on their next check. That happens at most once every 24 hours, on start or resume, or at once with pull to refresh or Retry (see [Phone client](#phone-client-stage-2-in-source-not-released)).
+
+Rules that hold for every release:
+
+- **User copies never change.** A copied template or an added program is the user's own local data, with fresh IDs. A later release, retirement or rollback does not touch it, or any past workout. Edits reach only new copies and new adds. A user who wants the new version adds it again.
+- **IDs are permanent.** An ID's contents may change in a later release, but the ID is never deleted, renamed or reused, and the validator rejects a removed ID. To take an exercise out of browse and "add exercise", set `"status": "retired"`. Its local copies keep working.
+- **An exercise's mode is fixed forever.** `reps_load` stays `reps_load`, and `duration` stays `duration`, so past sessions never change meaning. For a different mode, add a new exercise ID. The validator and `releases.lock.json` enforce this.
+- **Mistakes are undone by rollback.** `python3 scripts/catalog_build.py rollback --to N --timestamp YYYYMMDDHHMMSS` writes a migration that points the live release back to N, deployed by the same job. Releases themselves are immutable.
+- **Only new features need an app update.** A breaking format change, such as a new tracking mode like load plus seconds, or a removed or re-typed field, must raise `minAppCatalogSchema` (see [Phone client](#phone-client-stage-2-in-source-not-released)). Older apps then keep their last good catalogue and show "Update the app to get the latest workouts". Additive changes keep `minAppCatalogSchema` as it is.
+- **Templates and programs cannot be retired yet.** There is no `status` on templates or programs, so once published they stay listed. The owner approved adding a retired status for them, planned for stage 8.
+
 ## Phone client (stage 2, in source, not released)
 
 Code lives in `apps/mobile/lib/features/catalog/`. The app is read-only against the catalogue: it never writes to Supabase and the refresh never writes to ObjectBox.
@@ -82,6 +100,21 @@ Release 3 adds 16 standalone templates in `catalog/templates/standalone.json` (I
 Phone behaviour (in source, not released): a template is shown only if every exercise is active in the cached snapshot and has a loggable mode. **Copy to My Plans** (`copyCatalogTemplate`) materializes the exercises and writes the plan and its rows in one ObjectBox transaction; the screen's request UUID is the plan UUID, so a repeated tap returns the same plan, and a deliberate second copy gets " (2)", " (3)" in the name while an active plan has it. Any failure leaves no plan, rows or new exercises. The copy has no link back to the template, so later catalogue releases never change it. **Start now** (`startTemplateWorkout`) materializes the exercises, then creates the session and its planned sets in one transaction with no saved plan; an unfinished workout blocks it with the usual message. Targets are not shown inside the logger. No catalogue schema bump: `minAppCatalogSchema` stays 1 and older builds ignore the templates.
 
 Release 3 is in source as `supabase/migrations/20261126040000_catalog_release_3.sql`, **not deployed**.
+
+## Programs (release 4, stage 7)
+
+Release 4 adds 17 programs in `catalog/programs/programs.json` (IDs `prog.<slug>`, never reused) and 22 program-only templates in `catalog/templates/program_sessions.json` (`"standalone": false`, so the Workouts list never shows them and the template routes never open them). Programs also reuse the standalone templates. Rules, enforced by `ProgramContentTest` in `tool/test_catalog_content.py` where a test can check them:
+
+- **Week.** Seven entries, index 0 is the program's first day (the user picks its weekday when adding it), `null` is a rest day, `daysPerWeek` is the number of training days (2 to 6). A template may appear on several days.
+- **Level and time.** The program level is at least as hard as its hardest template (beginner < intermediate < advanced), and `estimatedMinutes` is within 5 of the average of its training days.
+- **Equipment.** The union of its templates' equipment, without `bodyweight` when other equipment is present.
+- **Spacing.** A program with 4 or fewer training days never has 3 training days in a row, counting Sunday to Monday as consecutive. 5 and 6 day splits are exempt.
+- **Text.** One to five sentences for programs (two for templates), no outcome claims. A week that uses its templates unevenly says "twice" and "once", and a program states its equipment setup (rack and safeties, bench safeties, anchors, assisted variations). Every program-only template is used by at least one program.
+- **Content.** The same conservative rules as templates. The 5x5 sessions use fixed sets of five with 3 minute rests on the main lifts. The low volume sessions use one or two hard sets per exercise with long rests. The calisthenics pull-up and chin-up rows carry the assisted-variation note.
+
+Phone behaviour (in source, not released): a program is shown only if every template its week uses is active and loggable in the cached snapshot (program-only templates count). **Add program** (`importProgram`) asks for the weekday of day 1 and whether to make the program active, then in one ObjectBox transaction materializes the exercises, creates one plan per distinct template (hidden from Your plans, edited in the normal plan editor, archived only with the program), the program and its seven days, and deactivates any other active program. The request UUID is the program UUID, so a repeated tap returns the same program and a deliberate second add is named " (2)". Any failure leaves nothing behind. Programs, their days, `programUuid` on plans and the session program fields are local only and never reach the sync payload, snapshot, export or restore. Starting today's workout from **Your program** records `programUuid` and `programDayLocalDate` on the session; the Today card and the done and missed days are stage 8. No catalogue schema bump: `minAppCatalogSchema` stays 1.
+
+Release 4 is in source as `supabase/migrations/20261126050000_catalog_release_4.sql`, **not deployed**. Owner review gate as for release 3: the owner reads a review sheet of every program and every new template before merging, and merging plus the `supabase-database` job publishes it. Rollback: `python3 scripts/catalog_build.py rollback --to 3`.
 
 ## Provenance and licence
 

@@ -1,0 +1,452 @@
+[
+  {
+    "id": "prog.full-body-2-day",
+    "name": "Full body, 2 days",
+    "description": "Two whole body sessions a week, Full body A and Full body B, with at least two rest days between them. It suits people who are new to lifting or have little time. Start with easy loads, and with fewer sets if you are returning from a break.",
+    "goals": [
+      "general"
+    ],
+    "level": "beginner",
+    "daysPerWeek": 2,
+    "estimatedMinutes": 40,
+    "equipment": [
+      "bench",
+      "cable",
+      "dumbbell",
+      "machine"
+    ],
+    "week": [
+      "tpl.full-body-a",
+      null,
+      null,
+      "tpl.full-body-b",
+      null,
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.full-body-3-day",
+    "name": "Full body, 3 days",
+    "description": "Three whole body sessions a week on alternate days: Full body A twice and Full body B once each week. The same seven day week repeats, so it does not rotate across weeks. Use easy starting loads, especially if you are new to lifting.",
+    "goals": [
+      "general",
+      "strength"
+    ],
+    "level": "beginner",
+    "daysPerWeek": 3,
+    "estimatedMinutes": 40,
+    "equipment": [
+      "bench",
+      "cable",
+      "dumbbell",
+      "machine"
+    ],
+    "week": [
+      "tpl.full-body-a",
+      null,
+      "tpl.full-body-b",
+      null,
+      "tpl.full-body-a",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.dumbbell-home-3-day",
+    "name": "Dumbbells at home, 3 days",
+    "description": "Three whole body sessions a week for a home gym with dumbbells: Full body dumbbell twice and Full body dumbbell B once each week. You need a stable bench, and an adjustable or incline bench for the incline press in B. Pick loads that suit each movement, starting light if you are new to lifting. The same seven day week repeats.",
+    "goals": [
+      "general",
+      "hypertrophy"
+    ],
+    "level": "beginner",
+    "daysPerWeek": 3,
+    "estimatedMinutes": 48,
+    "equipment": [
+      "bench",
+      "dumbbell"
+    ],
+    "week": [
+      "tpl.full-body-dumbbell",
+      null,
+      "tpl.dumbbell-full-body-b",
+      null,
+      "tpl.full-body-dumbbell",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.upper-lower-4-day",
+    "name": "Upper and lower, 4 days",
+    "description": "Four sessions a week that alternate upper body and lower body days, with a rest day after each pair. It uses Upper body A and B and Lower body A and B. You need a barbell with a rack and safeties, and safeties or a spotter for heavy bench presses. Keep the barbell rows controlled so you stay fresh for the lower body day.",
+    "goals": [
+      "hypertrophy",
+      "strength"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 4,
+    "estimatedMinutes": 52,
+    "equipment": [
+      "barbell",
+      "bench",
+      "cable",
+      "dumbbell",
+      "machine",
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.upper-a",
+      "tpl.lower-a",
+      null,
+      "tpl.upper-b",
+      "tpl.lower-b",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.push-pull-legs-3-day",
+    "name": "Push, pull, legs, 3 days",
+    "description": "One push day, one pull day and one leg day a week on alternate days. Each workout category is scheduled once per week, with some muscle overlap between sessions. You need a barbell with a rack and safeties, a bench, dumbbells, a cable station and a pull-up bar. Assisted pull-up variations need an optional band or machine.",
+    "goals": [
+      "hypertrophy",
+      "strength"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 3,
+    "estimatedMinutes": 47,
+    "equipment": [
+      "barbell",
+      "bench",
+      "cable",
+      "dumbbell",
+      "machine",
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.push-day",
+      null,
+      "tpl.pull-day",
+      null,
+      "tpl.legs-day",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.push-pull-legs-6-day",
+    "name": "Push, pull, legs, 6 days",
+    "description": "Push, pull and leg days run twice a week with one rest day, using a chest-supported dumbbell row on pull days. It is a high weekly workload for experienced intermediates, so start with fewer sets if you need to, and avoid taking every set close to your limit. You need a barbell with a rack and safeties, a bench, dumbbells, a cable station, machines and a pull-up bar. Assisted pull-up variations need an optional band or machine.",
+    "goals": [
+      "hypertrophy"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 6,
+    "estimatedMinutes": 47,
+    "equipment": [
+      "barbell",
+      "bench",
+      "cable",
+      "dumbbell",
+      "machine",
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.push-day",
+      "tpl.pull-day-supported",
+      "tpl.legs-day",
+      "tpl.push-day",
+      "tpl.pull-day-supported",
+      "tpl.legs-day",
+      null
+    ]
+  },
+  {
+    "id": "prog.strength-5x5",
+    "name": "Strength 5x5, 3 days",
+    "description": "A BeyondRep 5x5-inspired fixed week, not a branded plan: Strength 5x5 A twice and Strength 5x5 B once each week. The same seven day week repeats, so it does not rotate across weeks. Heavy sets add up, so start with controlled loads that leave about 2 to 3 reps in reserve, avoid five rep maximums, and add load only after every set is clean. You need a rack with safeties, a bench, and safeties or a spotter for heavy bench presses. Rest 3 to 5 minutes on the main lifts if you need to.",
+    "goals": [
+      "strength"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 3,
+    "estimatedMinutes": 67,
+    "equipment": [
+      "barbell",
+      "bench",
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.strength-5x5-a",
+      null,
+      "tpl.strength-5x5-b",
+      null,
+      "tpl.strength-5x5-a",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.bodybuilding-5-day",
+    "name": "Bodybuilding split, 5 days",
+    "description": "A five day split with a chest day, a back day, a leg day, a shoulders and arms day and a second lower body day. Program days 1 to 3 train, day 4 is rest, and days 5 and 6 train. You need a barbell, a bench with an incline, dumbbells, an EZ bar, a cable station, machines and a pull-up bar. Assisted pull-up variations need an optional band or machine.",
+    "goals": [
+      "hypertrophy"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 5,
+    "estimatedMinutes": 42,
+    "equipment": [
+      "barbell",
+      "bench",
+      "cable",
+      "dumbbell",
+      "ez_bar",
+      "machine",
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.bodybuilding-chest-triceps",
+      "tpl.bodybuilding-back-biceps",
+      "tpl.legs-day",
+      null,
+      "tpl.bodybuilding-shoulders-arms",
+      "tpl.bodybuilding-lower-b",
+      null
+    ]
+  },
+  {
+    "id": "prog.push-pull-legs-upper-lower-5-day",
+    "name": "Push, pull, legs, upper, lower, 5 days",
+    "description": "Push, pull and leg days early in the week, then an upper body day and a lower body day, with a rest day in the middle and at the end. The pull day uses a chest-supported dumbbell row. This is a higher volume week for intermediates, so start with fewer sets if you need to. You need a barbell with a rack and safeties, a bench, dumbbells, a cable station, machines and a pull-up bar. Assisted pull-up variations need an optional band or machine.",
+    "goals": [
+      "hypertrophy",
+      "strength"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 5,
+    "estimatedMinutes": 50,
+    "equipment": [
+      "barbell",
+      "bench",
+      "cable",
+      "dumbbell",
+      "machine",
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.push-day",
+      "tpl.pull-day-supported",
+      "tpl.legs-day",
+      null,
+      "tpl.upper-a",
+      "tpl.lower-a",
+      null
+    ]
+  },
+  {
+    "id": "prog.low-volume-3-day",
+    "name": "Low volume, 3 days",
+    "description": "Three brief strength-focused sessions each week: A twice and B once. Designed for experienced lifters who can select loads and judge effort reliably. Use one or two challenging working sets after movement-specific warm-ups. Keep roughly 1 to 2 clean reps in reserve on most lifts and about 2 on heavy squats and deadlifts; do not force failure or grind through deteriorating technique. Extend rests when needed.",
+    "goals": [
+      "strength"
+    ],
+    "level": "advanced",
+    "daysPerWeek": 3,
+    "estimatedMinutes": 33,
+    "equipment": [
+      "barbell",
+      "bench",
+      "machine",
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.low-volume-a",
+      null,
+      "tpl.low-volume-b",
+      null,
+      "tpl.low-volume-a",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.calisthenics-3-day",
+    "name": "Calisthenics, 3 days",
+    "description": "Three bodyweight sessions a week that need a pull-up bar and floor space: pulling and core, pushing and legs, and the whole body. Every pulling exercise is vertical, so there is no horizontal pulling. Assisted variations need an optional band or machine, so choose a different program if you cannot yet do clean pull-ups or chin-ups and have no assistance.",
+    "goals": [
+      "general",
+      "strength"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 3,
+    "estimatedMinutes": 40,
+    "equipment": [
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.calisthenics-pull-core",
+      null,
+      "tpl.calisthenics-push-legs",
+      null,
+      "tpl.calisthenics-full-body",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.kettlebell-3-day",
+    "name": "Kettlebell, 3 days",
+    "description": "Three whole body sessions a week with one kettlebell: Kettlebell full body twice and Kettlebell full body B once each week. Use a weight that suits each movement, and scale reps if one bell is too light or too heavy for some of them.",
+    "goals": [
+      "general",
+      "strength"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 3,
+    "estimatedMinutes": 57,
+    "equipment": [
+      "kettlebell"
+    ],
+    "week": [
+      "tpl.kettlebell-full-body",
+      null,
+      "tpl.kettlebell-full-body-b",
+      null,
+      "tpl.kettlebell-full-body",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.push-pull-4-day",
+    "name": "Push and pull, 4 days",
+    "description": "Four sessions a week that alternate push and pull days, each with a lower body lift and calf or hamstring work. It uses four balanced sessions, Push A, Pull A, Push B and Pull B, with a rest day after each pair. You need a barbell with a rack and safeties, safeties or a spotter for heavy bench presses, a bench, dumbbells, a cable station, a leg press, a leg curl machine and a pull-up bar. Assisted pull-up variations need an optional band or machine.",
+    "goals": [
+      "hypertrophy",
+      "strength"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 4,
+    "estimatedMinutes": 46,
+    "equipment": [
+      "barbell",
+      "bench",
+      "cable",
+      "dumbbell",
+      "ez_bar",
+      "machine",
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.push-pull-push-a",
+      "tpl.push-pull-pull-a",
+      null,
+      "tpl.push-pull-push-b",
+      "tpl.push-pull-pull-b",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.glute-focus-4-day",
+    "name": "Glute focus, 4 days",
+    "description": "Four sessions a week that pair two glute focused lower body days with two upper body days. It uses Glute focus and Glute focus B, and Upper body A and B. Glute focus B has fewer sets than Glute focus to leave room for the upper body days. You need a barbell with a rack and safeties, a bench, dumbbells, a cable station, machines and a pull-up bar for Upper body B.",
+    "goals": [
+      "hypertrophy"
+    ],
+    "level": "intermediate",
+    "daysPerWeek": 4,
+    "estimatedMinutes": 49,
+    "equipment": [
+      "barbell",
+      "bench",
+      "cable",
+      "dumbbell",
+      "machine",
+      "pull_up_bar"
+    ],
+    "week": [
+      "tpl.glute-focus",
+      "tpl.upper-a",
+      null,
+      "tpl.glute-focus-b",
+      "tpl.upper-b",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.bodyweight-3-day",
+    "name": "Bodyweight, 3 days",
+    "description": "Three beginner sessions a week that need no equipment: Bodyweight full body twice and Bodyweight full body B once each week. There is no pulling exercise, so it does not replace rows or pull-ups. The endurance goal here is muscular endurance, not a replacement for aerobic exercise. Start with one or two sets per exercise if you are new to training, and build toward the full prescription.",
+    "goals": [
+      "general",
+      "endurance"
+    ],
+    "level": "beginner",
+    "daysPerWeek": 3,
+    "estimatedMinutes": 38,
+    "equipment": [
+      "bodyweight"
+    ],
+    "week": [
+      "tpl.bodyweight-full-body",
+      null,
+      "tpl.bodyweight-full-body-b",
+      null,
+      "tpl.bodyweight-full-body",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.band-3-day",
+    "name": "Resistance band, 3 days",
+    "description": "Three beginner whole body sessions a week with long resistance bands: Resistance band full body twice and Resistance band full body B once each week. You need a secure anchor at both a high and a low position, and you should check the bands for damage first. The band rows, pulldowns and face pulls cover pulling. Use a lighter band or fewer sets at first if you are new to training.",
+    "goals": [
+      "general"
+    ],
+    "level": "beginner",
+    "daysPerWeek": 3,
+    "estimatedMinutes": 40,
+    "equipment": [
+      "band"
+    ],
+    "week": [
+      "tpl.band-full-body",
+      null,
+      "tpl.band-full-body-b",
+      null,
+      "tpl.band-full-body",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "prog.hotel-room-2-day",
+    "name": "Hotel room, 2 days",
+    "description": "Two short sessions a week for travel that need only floor space, Hotel room starter and Bodyweight full body. There is no pulling exercise, so it does not replace rows or pull-ups. Use the easier push-up variations and a conservative number of sets at first.",
+    "goals": [
+      "general",
+      "endurance"
+    ],
+    "level": "beginner",
+    "daysPerWeek": 2,
+    "estimatedMinutes": 38,
+    "equipment": [
+      "bodyweight"
+    ],
+    "week": [
+      "tpl.hotel-room-starter",
+      null,
+      null,
+      "tpl.bodyweight-full-body",
+      null,
+      null,
+      null
+    ]
+  }
+]

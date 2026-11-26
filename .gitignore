@@ -61,3 +61,7 @@ google-services.json
 GoogleService-Info.plist
 supabase/.temp/
 supabase/.branches/
+
+# Python bytecode
+__pycache__/
+*.pyc

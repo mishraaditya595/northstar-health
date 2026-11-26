@@ -36,6 +36,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
   bool _dirty = false;
   bool _allowLeave = false;
   bool _editConflict = false;
+  bool _programPlan = false;
 
   // onChanged is a text change, unlike a TextEditingController listener
   // which also fires on caret movement, focus and selection changes.
@@ -112,6 +113,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
           pageError = 'This plan was archived or is unavailable.';
         } else {
           expectedUpdatedAtMs = existing.updatedAtMs;
+          _programPlan = existing.programUuid != null;
           name.text = existing.name;
           description.text = existing.description;
           // Plank rows saved before timed sets carry rep targets, which a
@@ -442,7 +444,7 @@ class _PlanEditorPageState extends ConsumerState<PlanEditorPage> {
                 : 'Edit training plan',
           ),
           actions: [
-            if (widget.planUuid != null)
+            if (widget.planUuid != null && !_programPlan)
               IconButton(
                 onPressed: _unavailable ? null : _archive,
                 icon: const Icon(Icons.archive_outlined),

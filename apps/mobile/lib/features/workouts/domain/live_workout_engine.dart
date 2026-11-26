@@ -7,10 +7,15 @@ abstract interface class LiveWorkoutEngine {
   /// Starts a quick empty workout or atomically copies a saved plan's exercises
   /// and planned sets. A repeated session UUID with identical start arguments
   /// returns the already committed session, never duplicate children.
+  ///
+  /// [programDay] marks the session as started for a program day (local only,
+  /// never synced). It requires [planUuid], and the plan must belong to that
+  /// program, otherwise [ArgumentError] and nothing is written.
   WorkoutSessionRecord startWorkout({
     required String sessionUuid,
     String? planUuid,
     String? quickName,
+    ({String programUuid, String localDate})? programDay,
     required DateTime startedAtUtc,
     required int originalOffsetMinutes,
   });

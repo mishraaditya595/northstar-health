@@ -10,6 +10,7 @@ import '../../core/design/beyondrep_theme.dart';
 import '../../core/design/page_header.dart';
 import '../../core/design/section.dart';
 import '../health/widgets/readiness_note.dart';
+import '../programs/application/program_providers.dart';
 import '../progress/domain/progress_overview.dart';
 import '../workouts/domain/workout_library_models.dart';
 import 'active_workout_state.dart';
@@ -21,7 +22,7 @@ class TrainPage extends ConsumerWidget {
 
   Future<void> _open(BuildContext context, WidgetRef ref, String route) async {
     await context.push<void>(route);
-    ref.invalidate(trainLibraryProvider);
+    invalidatePrograms(ref);
   }
 
   Future<void> _startQuick(BuildContext context, WidgetRef ref) async {
@@ -244,6 +245,18 @@ class TrainPage extends ConsumerWidget {
               },
             ),
             const SizedBox(height: 17),
+            if (ref.watch(activeProgramCardProvider) case final card?) ...[
+              const SectionHeading('Your program'),
+              NsListCard(
+                icon: Icons.event_repeat_outlined,
+                title: card.program.name,
+                subtitle:
+                    'Today: ${card.unavailable ? 'Workout unavailable' : card.todayWorkout ?? 'Rest day'}',
+                onTap: () =>
+                    _open(context, ref, '/train/program/${card.program.uuid}'),
+              ),
+              const SizedBox(height: 17),
+            ],
             const SectionHeading('Your plans'),
             state.when(
               loading: () => const Center(
@@ -270,6 +283,13 @@ class TrainPage extends ConsumerWidget {
               title: 'Workouts',
               subtitle: 'Ready-made sessions to start or copy',
               onTap: () => _open(context, ref, '/train/workouts'),
+            ),
+            const SizedBox(height: 10),
+            NsListCard(
+              icon: Icons.event_repeat_outlined,
+              title: 'Programs',
+              subtitle: 'Multi-week plans with a weekly schedule',
+              onTap: () => _open(context, ref, '/train/programs'),
             ),
             const SizedBox(height: 10),
             NsListCard(

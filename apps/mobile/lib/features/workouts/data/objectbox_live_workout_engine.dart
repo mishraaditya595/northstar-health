@@ -86,9 +86,16 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
     required String sessionUuid,
     String? planUuid,
     String? quickName,
+    ({String programUuid, String localDate})? programDay,
     required DateTime startedAtUtc,
     required int originalOffsetMinutes,
   }) {
+    if (programDay != null &&
+        (planUuid == null ||
+            programDay.programUuid.isEmpty ||
+            !RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(programDay.localDate))) {
+      throw ArgumentError('A program day needs a plan and a local date');
+    }
     if (sessionUuid.isEmpty ||
         (planUuid == null) == (quickName == null) ||
         (planUuid != null && planUuid.isEmpty) ||
@@ -107,6 +114,8 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
       if (prior != null) {
         if (prior.deletedAtMs != null ||
             prior.planUuid != planUuid ||
+            prior.programUuid != programDay?.programUuid ||
+            prior.programDayLocalDate != programDay?.localDate ||
             prior.startedAtMs != atMs ||
             prior.originalOffsetMinutes != originalOffsetMinutes ||
             (quickName != null && prior.name != quickName.trim())) {
@@ -124,6 +133,9 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
           : _one(_plans, WorkoutPlanEntity_.uuid, planUuid);
       if (planUuid != null && (plan == null || plan.archivedAtMs != null)) {
         throw StateError('Source training plan is missing or archived');
+      }
+      if (programDay != null && plan!.programUuid != programDay.programUuid) {
+        throw ArgumentError('Plan does not belong to this program');
       }
       final children = plan == null
           ? <PlanExerciseEntity>[]
@@ -158,6 +170,7 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
         originalOffsetMinutes: originalOffsetMinutes,
         nowMs: nowMs,
         template: template,
+        programDay: programDay,
       );
     });
     return _reader.getSession(sessionUuid)!;
@@ -173,6 +186,7 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
     required int originalOffsetMinutes,
     required int nowMs,
     required List<(PlanExerciseEntity, ExerciseDefinitionEntity)> template,
+    ({String programUuid, String localDate})? programDay,
   }) {
     _sessions.put(
       WorkoutSessionEntity(
@@ -182,6 +196,8 @@ class ObjectBoxLiveWorkoutEngine implements LiveWorkoutEngine {
         startedAtMs: atMs,
         originalOffsetMinutes: originalOffsetMinutes,
         updatedAtMs: nowMs,
+        programUuid: programDay?.programUuid,
+        programDayLocalDate: programDay?.localDate,
       ),
     );
     String? firstExerciseUuid;

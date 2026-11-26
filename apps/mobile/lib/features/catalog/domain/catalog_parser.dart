@@ -31,7 +31,7 @@ CatalogSnapshot parseCatalogSnapshot(Object? json, {String? expectedSha256}) {
 
   final exercises = _list(root, 'exercises').map(_exercise).toList();
   final templateMaps = _list(root, 'templates').map(_map).toList();
-  final programs = _list(root, 'programs').map(_map).toList();
+  final programMaps = _list(root, 'programs').map(_map).toList();
 
   final ids = <String>{};
   void claim(String id) {
@@ -44,7 +44,7 @@ CatalogSnapshot parseCatalogSnapshot(Object? json, {String? expectedSha256}) {
   for (final template in templateMaps) {
     claim(_string(template, 'id'));
   }
-  for (final program in programs) {
+  for (final program in programMaps) {
     claim(_string(program, 'id'));
   }
 
@@ -55,17 +55,9 @@ CatalogSnapshot parseCatalogSnapshot(Object? json, {String? expectedSha256}) {
   final templates = [
     for (final template in templateMaps) _template(template, byId),
   ];
-  for (final program in programs) {
-    final week = _list(program, 'week');
-    if (week.length != 7) throw const CatalogFormatException('range');
-    for (final entry in week) {
-      if (entry == null) continue;
-      if (entry is! String) throw const CatalogFormatException('shape');
-      if (!templateIds.contains(entry)) {
-        throw const CatalogFormatException('reference');
-      }
-    }
-  }
+  final programs = [
+    for (final program in programMaps) _program(program, templateIds),
+  ];
 
   return CatalogSnapshot(
     release: release,
@@ -142,6 +134,34 @@ CatalogTemplate _template(
       for (final item in _list(map, 'exercises'))
         _prescription(_map(item), exercises),
     ]),
+  );
+}
+
+CatalogProgram _program(Map<String, Object?> map, Set<String> templateIds) {
+  final week = _list(map, 'week');
+  if (week.length != 7) throw const CatalogFormatException('range');
+  for (final entry in week) {
+    if (entry == null) continue;
+    if (entry is! String) throw const CatalogFormatException('shape');
+    if (!templateIds.contains(entry)) {
+      throw const CatalogFormatException('reference');
+    }
+  }
+  final trainingDays = week.where((entry) => entry != null).length;
+  final daysPerWeek = _int(map, 'daysPerWeek');
+  if (trainingDays == 0 || daysPerWeek != trainingDays) {
+    throw const CatalogFormatException('range');
+  }
+  return CatalogProgram(
+    id: _string(map, 'id'),
+    name: _string(map, 'name'),
+    description: _string(map, 'description'),
+    goals: _strings(map, 'goals'),
+    level: _string(map, 'level'),
+    daysPerWeek: daysPerWeek,
+    estimatedMinutes: _int(map, 'estimatedMinutes'),
+    equipment: _strings(map, 'equipment'),
+    week: List.unmodifiable(week.cast<String?>()),
   );
 }
 

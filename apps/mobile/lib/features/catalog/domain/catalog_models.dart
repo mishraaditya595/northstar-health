@@ -81,6 +81,32 @@ class CatalogTemplate {
   final List<CatalogPrescription> exercises;
 }
 
+class CatalogProgram {
+  const CatalogProgram({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.goals,
+    required this.level,
+    required this.daysPerWeek,
+    required this.estimatedMinutes,
+    required this.equipment,
+    required this.week,
+  });
+
+  final String id;
+  final String name;
+  final String description;
+  final List<String> goals;
+  final String level;
+  final int daysPerWeek;
+  final int estimatedMinutes;
+  final List<String> equipment;
+
+  /// Seven entries, index 0 is the program's first day. `null` is a rest day.
+  final List<String?> week;
+}
+
 class CatalogSnapshot {
   const CatalogSnapshot({
     required this.release,
@@ -102,7 +128,7 @@ class CatalogSnapshot {
   final String sha256;
   final List<CatalogExercise> exercises;
   final List<CatalogTemplate> templates;
-  final List<Map<String, Object?>> programs;
+  final List<CatalogProgram> programs;
 
   Iterable<CatalogExercise> get activeExercises =>
       exercises.where((exercise) => !exercise.retired);

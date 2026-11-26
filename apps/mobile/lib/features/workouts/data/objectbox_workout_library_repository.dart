@@ -178,6 +178,7 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
       description: plan.description,
       updatedAtMs: plan.updatedAtMs,
       archivedAtMs: plan.archivedAtMs,
+      programUuid: plan.programUuid,
       exercises: List.unmodifiable(
         exercises.map(
           (e) => PlanExerciseRecord(
@@ -372,6 +373,51 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
   @visibleForTesting
   void Function(String step)? debugCopyHook;
 
+  /// Validated plan rows with fresh UUIDs for [rows], shared by template
+  /// copies and program imports. Throws [ArgumentError] on a row that does not
+  /// fit its exercise mode.
+  List<PlanExerciseRecord> planItemsFromRows(List<TemplateRowInput> rows) {
+    final items = [
+      for (var i = 0; i < rows.length; i++)
+        PlanExerciseRecord(
+          uuid: _ids.newId(),
+          exerciseUuid: rows[i].exercise.id,
+          position: i,
+          targetSets: rows[i].sets,
+          targetRepsMin: rows[i].repsMin,
+          targetRepsMax: rows[i].repsMax,
+          targetDurationSeconds: rows[i].durationSeconds,
+          restSeconds: rows[i].restSeconds,
+          notes: rows[i].note,
+        ),
+    ];
+    for (var i = 0; i < rows.length; i++) {
+      items[i].validate();
+      final timed = rows[i].exercise.mode == 'duration';
+      if (timed != (rows[i].durationSeconds != null)) {
+        throw ArgumentError('Prescription does not fit the exercise mode');
+      }
+    }
+    return items;
+  }
+
+  /// Materializes one catalogue exercise; the caller owns the write
+  /// transaction.
+  ExerciseRecord materializeInTransaction(
+    CatalogDefinitionInput e,
+    int release,
+  ) => _materializeIn(
+    id: e.id,
+    name: e.name,
+    muscleGroup: e.muscleGroup,
+    equipment: e.equipment,
+    category: e.category,
+    mode: e.mode,
+    release: release,
+    primaryMuscles: e.primaryMuscles,
+    secondaryMuscles: e.secondaryMuscles,
+  );
+
   @override
   WorkoutPlanRecord copyCatalogTemplate({
     required String requestUuid,
@@ -396,27 +442,7 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
       cut--;
     }
     final planDescription = description.substring(0, cut);
-    final items = [
-      for (var i = 0; i < rows.length; i++)
-        PlanExerciseRecord(
-          uuid: _ids.newId(),
-          exerciseUuid: rows[i].exercise.id,
-          position: i,
-          targetSets: rows[i].sets,
-          targetRepsMin: rows[i].repsMin,
-          targetRepsMax: rows[i].repsMax,
-          targetDurationSeconds: rows[i].durationSeconds,
-          restSeconds: rows[i].restSeconds,
-          notes: rows[i].note,
-        ),
-    ];
-    for (var i = 0; i < rows.length; i++) {
-      items[i].validate();
-      final timed = rows[i].exercise.mode == 'duration';
-      if (timed != (rows[i].durationSeconds != null)) {
-        throw ArgumentError('Prescription does not fit the exercise mode');
-      }
-    }
+    final items = planItemsFromRows(rows);
     return _store.runInTransaction(TxMode.write, () {
       final existing = _byUuid(_plans, WorkoutPlanEntity_.uuid, requestUuid);
       if (existing != null) return _plan(existing);
@@ -437,7 +463,8 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
       debugCopyHook?.call('exercises');
       final taken = {
         for (final plan in _plans.getAll())
-          if (plan.archivedAtMs == null) plan.name.trim().toLowerCase(),
+          if (plan.archivedAtMs == null && plan.programUuid == null)
+            plan.name.trim().toLowerCase(),
       };
       var unique = label;
       for (var n = 2; taken.contains(unique.toLowerCase()); n++) {
@@ -481,7 +508,7 @@ class ObjectBoxWorkoutLibraryRepository implements WorkoutLibraryRepository {
   List<WorkoutPlanRecord> listPlans() {
     return _store.runInTransaction(TxMode.read, () {
       final list = _plans.getAll()
-        ..removeWhere((e) => e.archivedAtMs != null)
+        ..removeWhere((e) => e.archivedAtMs != null || e.programUuid != null)
         ..sort((a, b) => b.updatedAtMs.compareTo(a.updatedAtMs));
       return List.unmodifiable(list.map(_plan));
     });
