@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:beyondrep/features/catalog/domain/canonical_json.dart';
 import 'package:beyondrep/features/catalog/domain/catalog_models.dart';
 import 'package:beyondrep/features/catalog/domain/catalog_parser.dart';
+import 'package:beyondrep/features/catalog/domain/catalog_programs.dart';
+import 'package:beyondrep/features/catalog/domain/catalog_templates.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, Object?> exercise(String id, {String mode = 'reps_load'}) => {
@@ -436,10 +438,6 @@ void main() {
         (j) => at(j, 'exercises')['name'] = 'a' * 81,
       );
       expectRejected(
-        'exercise name empty',
-        (j) => at(j, 'exercises')['name'] = '',
-      );
-      expectRejected(
         'alias 61',
         (j) => at(j, 'exercises')['aliases'] = ['a' * 61],
       );
@@ -512,51 +510,97 @@ void main() {
       );
     });
 
-    test('vocabularies are closed', () {
-      expectRejected(
-        'muscleGroup',
-        (j) => at(j, 'exercises')['muscleGroup'] = 'Neck',
-      );
-      expectRejected(
-        'primary muscle',
-        (j) => at(j, 'exercises')['primaryMuscles'] = ['neck'],
-      );
-      expectRejected(
-        'secondary muscle',
-        (j) => at(j, 'exercises')['secondaryMuscles'] = ['neck'],
-      );
-      expectRejected(
-        'equipment',
-        (j) => at(j, 'exercises')['equipment'] = ['rocket'],
-      );
-      expectRejected(
-        'category',
-        (j) => at(j, 'exercises')['category'] = 'yoga',
-      );
-      expectRejected(
-        'template level',
-        (j) => (at(j, 'templates')['tags']! as Map)['level'] = 'expert',
-      );
-      expectRejected(
-        'template goal',
-        (j) => (at(j, 'templates')['tags']! as Map)['goal'] = ['fame'],
-      );
-      expectRejected(
-        'template equipment',
-        (j) => (at(j, 'templates')['tags']! as Map)['equipment'] = ['rocket'],
-      );
-      expectRejected(
-        'program level',
-        (j) => at(j, 'programs')['level'] = 'expert',
-      );
-      expectRejected(
-        'program goal',
-        (j) => at(j, 'programs')['goals'] = ['fame'],
-      );
-      expectRejected(
-        'program equipment',
-        (j) => at(j, 'programs')['equipment'] = ['rocket'],
-      );
+    test('unknown values in list fields are dropped', () {
+      final json = validSnapshot();
+      at(json, 'exercises')['primaryMuscles'] = ['quads', 'neck'];
+      at(json, 'exercises')['secondaryMuscles'] = ['neck'];
+      at(json, 'exercises')['equipment'] = ['barbell', 'rocket'];
+      (at(json, 'templates')['tags']! as Map)['goal'] = ['general', 'fame'];
+      (at(json, 'templates')['tags']! as Map)['equipment'] = ['rocket'];
+      at(json, 'programs')['goals'] = ['fame', 'strength'];
+      at(json, 'programs')['equipment'] = ['barbell', 'rocket'];
+      final snapshot = parseCatalogSnapshot(json);
+      final squat = snapshot.exercises.first;
+      expect(squat.primaryMuscles, ['quads']);
+      expect(squat.secondaryMuscles, isEmpty);
+      expect(squat.equipment, ['barbell']);
+      expect(squat.retired, isFalse);
+      expect(snapshot.templates.single.goals, ['general']);
+      expect(snapshot.templates.single.equipment, isEmpty);
+      expect(snapshot.templates.single.retired, isFalse);
+      expect(snapshot.programs.single.goals, ['strength']);
+      expect(snapshot.programs.single.equipment, ['barbell']);
+    });
+
+    test('an unknown scalar value hides that item, not the snapshot', () {
+      for (final (key, field) in [
+        ('exercises', 'muscleGroup'),
+        ('exercises', 'category'),
+      ]) {
+        final json = validSnapshot();
+        at(json, key)[field] = 'future-value';
+        final snapshot = parseCatalogSnapshot(json);
+        expect(snapshot.exercises.first.retired, isTrue, reason: field);
+        expect(snapshot.exercises.last.retired, isFalse, reason: field);
+        expect(snapshot.activeExercises.map((e) => e.id), ['builtin.v1.plank']);
+      }
+      var json = validSnapshot();
+      (at(json, 'templates')['tags']! as Map)['level'] = 'expert';
+      var snapshot = parseCatalogSnapshot(json);
+      expect(snapshot.templates.single.retired, isTrue);
+      expect(snapshot.programs.single.retired, isFalse);
+      expect(snapshot.exercises, hasLength(2));
+      json = validSnapshot();
+      at(json, 'programs')['level'] = 'expert';
+      snapshot = parseCatalogSnapshot(json);
+      expect(snapshot.programs.single.retired, isTrue);
+      expect(snapshot.templates.single.retired, isFalse);
+    });
+
+    test('an exercise with nothing known to log it with is hidden', () {
+      for (final (field, value) in [
+        ('equipment', ['rocket']),
+        ('equipment', <String>[]),
+        ('primaryMuscles', ['neck']),
+      ]) {
+        final json = validSnapshot();
+        at(json, 'exercises')[field] = value;
+        final snapshot = parseCatalogSnapshot(json);
+        expect(snapshot.exercises.first.retired, isTrue, reason: '$field');
+        expect(snapshot.exercises, hasLength(2));
+      }
+    });
+
+    test('a template using a hidden exercise is hidden, a program using a '
+        'hidden template is not browsable, nothing crashes', () {
+      final json = validSnapshot();
+      at(json, 'exercises')['category'] = 'future-value';
+      final snapshot = parseCatalogSnapshot(json);
+      expect(snapshot.exercises.first.retired, isTrue);
+      expect(snapshot.templates.single.retired, isTrue);
+      expect(snapshot.templates.single.exercises, hasLength(2));
+      expect(browsablePrograms(snapshot), isEmpty);
+      expect(browsableTemplates(snapshot), isEmpty);
+      // A genuinely retired exercise in a template is still a publisher error.
+      final strict = validSnapshot();
+      at(strict, 'exercises')['status'] = 'retired';
+      expectCode(strict, 'reference');
+    });
+
+    test('blank names hide the item, not the snapshot', () {
+      for (final blank in ['', '   ', ' \u00A0 ']) {
+        final json = validSnapshot();
+        at(json, 'exercises')['name'] = blank;
+        at(json, 'programs')['name'] = blank;
+        final snapshot = parseCatalogSnapshot(json);
+        expect(snapshot.exercises.first.retired, isTrue, reason: '"$blank"');
+        expect(snapshot.programs.single.retired, isTrue);
+        // The template uses the hidden exercise, so it is hidden as well.
+        expect(snapshot.templates.single.retired, isTrue);
+        final tpl = validSnapshot();
+        at(tpl, 'templates')['name'] = blank;
+        expect(parseCatalogSnapshot(tpl).templates.single.retired, isTrue);
+      }
     });
 
     test('control characters and lone surrogates are rejected', () {
