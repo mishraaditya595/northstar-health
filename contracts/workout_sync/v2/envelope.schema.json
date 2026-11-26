@@ -1,0 +1,617 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BeyondRep workout event envelope, v2",
+  "description": "Portable watch/phone session event (not a cloud workout aggregate).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "workout_id",
+    "session_id",
+    "origin_device_id",
+    "sequence",
+    "type",
+    "occurred_at_utc",
+    "recorded_at_utc",
+    "time_zone",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "workout_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "session_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "origin_device_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "type": {
+      "enum": [
+        "workout_started",
+        "exercise_added",
+        "set_logged",
+        "set_corrected",
+        "set_skipped",
+        "rest_started",
+        "platform_workout_exported",
+        "rest_cleared",
+        "workout_paused",
+        "workout_resumed",
+        "workout_completed",
+        "workout_abandoned"
+      ]
+    },
+    "occurred_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "recorded_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "time_zone": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "workout_started"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/workout_started"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "exercise_added"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/exercise_added"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "set_logged"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/set_logged"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "set_corrected"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/set_corrected"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "set_skipped"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/set_skipped"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "rest_started"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/rest_started"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "platform_workout_exported"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/platform_workout_exported"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "rest_cleared"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/rest_cleared"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "workout_paused"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/workout_paused"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "workout_resumed"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/workout_resumed"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "workout_completed"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/workout_completed"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "workout_abandoned"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/workout_abandoned"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "workout_started": {
+      "type": "object",
+      "required": [
+        "activity_type",
+        "name",
+        "owner",
+        "account_key"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "activity_type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "owner": {
+          "enum": [
+            "watch",
+            "phone"
+          ]
+        },
+        "account_key": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "plan_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "program_day": {
+          "type": "object",
+          "required": [
+            "program_id",
+            "local_date"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "program_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "local_date": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            }
+          }
+        }
+      }
+    },
+    "exercise_added": {
+      "type": "object",
+      "required": [
+        "exercise_id",
+        "name",
+        "kind",
+        "position"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "exercise_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "kind": {
+          "enum": [
+            "reps",
+            "duration"
+          ]
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "set_logged": {
+      "type": "object",
+      "required": [
+        "set_id",
+        "exercise_id",
+        "position",
+        "kind",
+        "input_unit"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "set_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "exercise_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "kind": {
+          "enum": [
+            "working",
+            "warmup"
+          ]
+        },
+        "input_unit": {
+          "enum": [
+            "kg",
+            "lb"
+          ]
+        },
+        "reps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duration_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "load_grams": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rpe": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "multipleOf": 0.5
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "reps"
+          ]
+        },
+        {
+          "required": [
+            "duration_seconds"
+          ]
+        }
+      ]
+    },
+    "set_corrected": {
+      "type": "object",
+      "required": [
+        "set_id",
+        "exercise_id",
+        "position",
+        "kind",
+        "input_unit",
+        "supersedes_event_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "set_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "exercise_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "kind": {
+          "enum": [
+            "working",
+            "warmup"
+          ]
+        },
+        "input_unit": {
+          "enum": [
+            "kg",
+            "lb"
+          ]
+        },
+        "reps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duration_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "load_grams": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rpe": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "multipleOf": 0.5
+        },
+        "supersedes_event_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "reps"
+          ]
+        },
+        {
+          "required": [
+            "duration_seconds"
+          ]
+        }
+      ]
+    },
+    "set_skipped": {
+      "type": "object",
+      "required": [
+        "set_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "set_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "rest_started": {
+      "type": "object",
+      "required": [
+        "seconds",
+        "deadline_utc"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "deadline_utc": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "platform_workout_exported": {
+      "type": "object",
+      "required": [
+        "platform",
+        "external_record_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "platform": {
+          "enum": [
+            "healthkit",
+            "health_connect"
+          ]
+        },
+        "external_record_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    },
+    "rest_cleared": {
+      "type": "object",
+      "maxProperties": 0,
+      "additionalProperties": false
+    },
+    "workout_paused": {
+      "type": "object",
+      "maxProperties": 0,
+      "additionalProperties": false
+    },
+    "workout_resumed": {
+      "type": "object",
+      "maxProperties": 0,
+      "additionalProperties": false
+    },
+    "workout_completed": {
+      "type": "object",
+      "maxProperties": 0,
+      "additionalProperties": false
+    },
+    "workout_abandoned": {
+      "type": "object",
+      "maxProperties": 0,
+      "additionalProperties": false
+    }
+  }
+}
