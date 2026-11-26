@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,17 +16,48 @@ abstract interface class WatchLink {
 
   /// Queues one message for guaranteed delivery (WatchConnectivity user info).
   Future<void> transfer(String json);
+
+  /// Fires when the session finishes activating or a watch is paired,
+  /// unpaired or gets the app installed, so a send that was dropped for lack
+  /// of a reachable watch can be tried again.
+  Stream<void> get watchStateChanges;
 }
 
 /// iOS bridge (`ios/Runner/WatchLinkBridge.swift`). A missing plugin or a
 /// platform error never reaches the UI: it means "no watch" and nothing is
 /// sent.
 class MethodChannelWatchLink implements WatchLink {
-  const MethodChannelWatchLink([
+  MethodChannelWatchLink([
     this.channel = const MethodChannel('beyondrep/watch_link'),
   ]);
 
   final MethodChannel channel;
+
+  /// The instance whose stream is listened to; only it owns the platform
+  /// callback, so a stale instance cannot remove a newer one's handler.
+  static MethodChannelWatchLink? _handling;
+
+  late final StreamController<void> _changes = StreamController<void>.broadcast(
+    onListen: _attach,
+    onCancel: _detach,
+  );
+
+  void _attach() {
+    _handling = this;
+    channel.setMethodCallHandler((call) async {
+      if (call.method == 'watchStateChanged') _changes.add(null);
+      return null;
+    });
+  }
+
+  void _detach() {
+    if (!identical(_handling, this)) return;
+    _handling = null;
+    channel.setMethodCallHandler(null);
+  }
+
+  @override
+  Stream<void> get watchStateChanges => _changes.stream;
 
   @override
   Future<bool> isReachableForUpdates() async {
@@ -72,10 +105,13 @@ class NoopWatchLink implements WatchLink {
 
   @override
   Future<void> transfer(String json) async {}
+
+  @override
+  Stream<void> get watchStateChanges => const Stream<void>.empty();
 }
 
 final watchLinkProvider = Provider<WatchLink>(
   (ref) => defaultTargetPlatform == TargetPlatform.iOS
-      ? const MethodChannelWatchLink()
+      ? MethodChannelWatchLink()
       : const NoopWatchLink(),
 );

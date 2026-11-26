@@ -14,10 +14,16 @@ import '../domain/watch_message.dart';
 /// Pure builders for the `watch_link/v1` messages the phone sends. Ids and
 /// clock are passed in; nothing here reads a provider, a store or the platform.
 
-/// WatchConnectivity payload headroom for one snapshot's JSON.
+/// WatchConnectivity payload headroom for one application context: the
+/// binding, plans and health JSON together.
 const watchSnapshotMaxBytes = 60000;
 
-String _utc(DateTime t) => t.toUtc().toIso8601String();
+/// Whole milliseconds: Dart prints microseconds when it has them, and the
+/// watch's date parser is only sure of three fractional digits.
+String _utc(DateTime t) => DateTime.fromMillisecondsSinceEpoch(
+  t.millisecondsSinceEpoch,
+  isUtc: true,
+).toIso8601String();
 
 /// Contract limits count code points, not UTF-16 units.
 String _cap(String text, int max) {
@@ -77,6 +83,7 @@ PlansSnapshot buildPlansSnapshot({
   required List<WorkoutSessionRecord> recentSessions,
   required DateTime nowUtc,
   required String messageId,
+  int maxBytes = watchSnapshotMaxBytes,
 }) {
   final exercises = {for (final e in library.exercises) e.uuid: e};
   final completed = [
@@ -149,12 +156,13 @@ PlansSnapshot buildPlansSnapshot({
 
   int size(PlansSnapshot m) => utf8.encode(jsonEncode(m.toJson())).length;
 
-  // Keep plans in order until the next one would pass the byte limit. The
-  // order is fixed, so the same library always gives the same snapshot.
+  // Add plans in order, skipping any that would pass the byte budget so a
+  // single huge plan does not hide the smaller ones after it. The order is
+  // fixed, so the same library always gives the same snapshot.
   final fitted = <Map<String, Object?>>[];
   for (final plan in ordered) {
     final next = [...fitted, _planJson(plan, exercises)];
-    if (size(message(next, true)) > watchSnapshotMaxBytes) break;
+    if (size(message(next, true)) > maxBytes) continue;
     fitted.add(next.last);
   }
   final todayFitted =

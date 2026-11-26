@@ -162,6 +162,34 @@ WorkoutSessionRecord _session(
 
 void main() {
   group('account messages', () {
+    test('send times are cut to milliseconds', () {
+      final micros = DateTime.utc(2026, 11, 24, 2, 30, 1, 123, 456);
+      final binding = buildAccountBinding(
+        accountKey: _key,
+        unit: 'kg',
+        messageId: _id,
+        nowUtc: micros,
+      );
+      expect(binding.sentAtUtc, '2026-11-24T02:30:01.123Z');
+      final cleared = buildAccountCleared(
+        accountKey: _key,
+        wipeUnsent: false,
+        messageId: _id,
+        nowUtc: micros,
+      );
+      expect(cleared.sentAtUtc, '2026-11-24T02:30:01.123Z');
+      final plans = buildPlansSnapshot(
+        accountKey: _key,
+        library: _library([_plan('p', 'P')]),
+        week: null,
+        recentSessions: const [],
+        nowUtc: micros,
+        messageId: _id,
+      );
+      expect(plans.sentAtUtc, '2026-11-24T02:30:01.123Z');
+      expect(plans.generatedAtUtc, '2026-11-24T02:30:01.123Z');
+    });
+
     test('binding round-trips through the codec', () {
       final m = buildAccountBinding(
         accountKey: _key,
@@ -525,6 +553,47 @@ void main() {
         expect(jsonEncode(again.toJson()), jsonEncode(m.toJson()));
       },
     );
+
+    test('a plan too large for the limit is skipped and later plans stay', () {
+      final m = buildPlansSnapshot(
+        accountKey: _key,
+        library: _library([
+          _plan('plan-big', 'A huge plan', exercises: 40, sets: 30),
+          _plan('plan-small', 'B small plan'),
+        ]),
+        week: null,
+        recentSessions: const [],
+        nowUtc: _now,
+        messageId: _id,
+      );
+      expect([for (final p in m.plans) (p! as Map)['name']], ['B small plan']);
+    });
+
+    test('maxBytes budgets the plans snapshot below the full limit', () {
+      final plans = [
+        for (var i = 0; i < 20; i++) _plan('plan-$i', 'Plan $i', exercises: 10),
+      ];
+      final full = buildPlansSnapshot(
+        accountKey: _key,
+        library: _library(plans),
+        week: null,
+        recentSessions: const [],
+        nowUtc: _now,
+        messageId: _id,
+      );
+      final small = buildPlansSnapshot(
+        accountKey: _key,
+        library: _library(plans),
+        week: null,
+        recentSessions: const [],
+        nowUtc: _now,
+        messageId: _id,
+        maxBytes: 6000,
+      );
+      expect(utf8.encode(jsonEncode(small.toJson())).length, lessThan(6001));
+      expect(small.plans, isNotEmpty);
+      expect(small.plans.length, lessThan(full.plans.length));
+    });
 
     test('names and ids over the contract length are shortened', () {
       final long = 'n' * 300;

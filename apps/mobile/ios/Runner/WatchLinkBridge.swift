@@ -7,24 +7,33 @@ import WatchConnectivity
 final class WatchLinkBridge: NSObject, WCSessionDelegate {
   static let channelName = "beyondrep/watch_link"
 
-  private var activated = false
+  private var channel: FlutterMethodChannel?
 
+  /// Activates the session at launch, so the first send after launch does not
+  /// find an inactive session and get dropped.
   static func register(messenger: FlutterBinaryMessenger) -> WatchLinkBridge {
     let bridge = WatchLinkBridge()
     let channel = FlutterMethodChannel(name: channelName, binaryMessenger: messenger)
+    bridge.channel = channel
     channel.setMethodCallHandler { call, result in bridge.handle(call, result: result) }
+    if WCSession.isSupported() {
+      let session = WCSession.default
+      session.delegate = bridge
+      session.activate()
+    }
     return bridge
   }
 
   private func session() -> WCSession? {
-    guard WCSession.isSupported() else { return nil }
-    let session = WCSession.default
-    if !activated {
-      activated = true
-      session.delegate = self
-      session.activate()
+    WCSession.isSupported() ? WCSession.default : nil
+  }
+
+  /// Tells Dart the watch state changed so it can send again. Delegate
+  /// callbacks arrive on a background queue; Flutter channels need the main one.
+  private func notifyWatchStateChanged() {
+    DispatchQueue.main.async { [weak self] in
+      self?.channel?.invokeMethod("watchStateChanged", arguments: nil)
     }
-    return session
   }
 
   private func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -60,7 +69,13 @@ final class WatchLinkBridge: NSObject, WCSessionDelegate {
 
   func session(
     _ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?
-  ) {}
+  ) {
+    if activationState == .activated { notifyWatchStateChanged() }
+  }
+
+  func sessionWatchStateDidChange(_ session: WCSession) {
+    notifyWatchStateChanged()
+  }
 
   func sessionDidBecomeInactive(_ session: WCSession) {}
 

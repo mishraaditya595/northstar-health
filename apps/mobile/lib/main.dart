@@ -65,7 +65,7 @@ class _AuthBootstrapState extends State<_AuthBootstrap> {
       // directly instead of a provider.
       onAccountDeleted: (owner) => unawaited(
         announceWatchAccountDeleted(
-          link: const MethodChannelWatchLink(),
+          link: MethodChannelWatchLink(),
           userId: owner,
           ids: SecureUuidFactory(),
           nowUtc: DateTime.now().toUtc(),

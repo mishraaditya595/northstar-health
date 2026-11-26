@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:beyondrep/core/clock.dart';
@@ -33,12 +34,21 @@ class _FakeLink implements WatchLink {
   bool reachable;
   final calls = <_Call>[];
 
+  /// When set, `updateContext` records its call and then waits for it.
+  Completer<void>? holdContext;
+  final stateChanges = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get watchStateChanges => stateChanges.stream;
+
   @override
   Future<bool> isReachableForUpdates() async => reachable;
 
   @override
-  Future<void> updateContext(Map<String, String> latestByType) async =>
-      calls.add(_Call('context', Map<String, String>.of(latestByType)));
+  Future<void> updateContext(Map<String, String> latestByType) async {
+    calls.add(_Call('context', Map<String, String>.of(latestByType)));
+    await holdContext?.future;
+  }
 
   @override
   Future<void> transfer(String json) async =>
@@ -220,8 +230,16 @@ void main() {
     final cleared = h.link.transferred(0) as AccountCleared;
     expect(cleared.accountKey, watchAccountKey(accountA));
     expect(cleared.wipeUnsent, isFalse);
-    // The context is emptied too, and nothing else is sent for a signed-out phone.
-    expect(h.link.contexts.single.payload, isEmpty);
+    // The context carries the same clear, so a replay of the old context on
+    // the watch cannot bring the account back; nothing else is sent after.
+    final ctx = h.link.contexts.single.payload! as Map<String, String>;
+    expect(ctx.keys, ['account_cleared']);
+    final inContext = WatchMessage.fromJson(
+      jsonDecode(ctx['account_cleared']!) as Map<String, Object?>,
+    );
+    expect(inContext, isA<AccountCleared>());
+    expect(inContext.accountKey, watchAccountKey(accountA));
+    expect((inContext as AccountCleared).wipeUnsent, isFalse);
     await _elapse(tester, const Duration(seconds: 3));
     expect(h.link.contexts, hasLength(1));
   });
@@ -278,6 +296,113 @@ void main() {
     final cleared = h.link.transferred(0) as AccountCleared;
     expect(cleared.wipeUnsent, isTrue);
     expect(cleared.accountKey, watchAccountKey(accountA));
+    final ctx = h.link.contexts.single.payload! as Map<String, String>;
+    final inContext = WatchMessage.fromJson(
+      jsonDecode(ctx['account_cleared']!) as Map<String, Object?>,
+    ) as AccountCleared;
+    expect(inContext.wipeUnsent, isTrue);
+    expect(ctx.keys, ['account_cleared']);
+  });
+
+  testWidgets('a sign out while the context is being sent still clears', (
+    tester,
+  ) async {
+    final h = _Harness(tester);
+    await h.start();
+    h.link.holdContext = Completer<void>();
+    await _elapse(tester, const Duration(seconds: 3));
+    expect(h.link.contexts, hasLength(1), reason: 'send is in flight');
+    h.link.calls.clear();
+    await h.auth.signOut();
+    await _elapse(tester, const Duration(milliseconds: 10));
+    h.link.holdContext!.complete();
+    await _elapse(tester, const Duration(milliseconds: 10));
+    final cleared = h.link.calls.where((c) => c.kind == 'transfer').toList();
+    expect(cleared, hasLength(1));
+    expect(
+      (h.link.transferred(0) as AccountCleared).accountKey,
+      watchAccountKey(accountA),
+    );
+  });
+
+  testWidgets('a change in the watch state resends without a resume', (
+    tester,
+  ) async {
+    final h = _Harness(tester, reachable: false);
+    await h.start();
+    await _elapse(tester, const Duration(seconds: 3));
+    expect(h.link.calls, isEmpty);
+    h.link.reachable = true;
+    h.link.stateChanges.add(null);
+    await _elapse(tester, const Duration(seconds: 3));
+    expect(h.link.contexts, hasLength(1));
+    // An identical state is sent again after a change, because the watch may
+    // be a new one.
+    h.link.stateChanges.add(null);
+    await _elapse(tester, const Duration(seconds: 3));
+    expect(h.link.contexts, hasLength(2));
+  });
+
+  testWidgets('the whole context stays under 60000 bytes', (tester) async {
+    final h = _Harness(tester);
+    final big = ProviderContainer(
+      overrides: [
+        accountAuthControllerProvider.overrideWithValue(h.auth),
+        watchLinkProvider.overrideWithValue(h.link),
+        watchMessageIdsProvider.overrideWithValue(_Ids()),
+        wallClockProvider.overrideWithValue(() => DateTime(2026, 11, 24, 8)),
+        localNowProvider.overrideWithValue(DateTime(2026, 11, 24, 8)),
+        trainLibraryProvider.overrideWith(
+          (ref) async => WorkoutLibrarySnapshot(
+            exercises: const [],
+            plans: [
+              for (var i = 0; i < 150; i++)
+                WorkoutPlanRecord(
+                  uuid: 'plan-$i',
+                  name: 'Synthetic plan ${i.toString().padLeft(3, '0')}',
+                  description: '',
+                  updatedAtMs: 0,
+                  exercises: [
+                    for (var e = 0; e < 40; e++)
+                      PlanExerciseRecord(
+                        uuid: 'pe-$i-$e',
+                        exerciseUuid: 'ex-$e',
+                        position: e,
+                        targetSets: 3,
+                        targetRepsMin: 8,
+                        targetRepsMax: 12,
+                        restSeconds: 90,
+                      ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+        programWeekProvider.overrideWithValue(null),
+        completedWorkoutHistoryProvider.overrideWith(
+          (ref) async => const WorkoutHistorySnapshot(sessions: []),
+        ),
+        fakeHealthOverview(h.health),
+      ],
+    );
+    addTearDown(big.dispose);
+    await h.auth.restore();
+    big.read(watchSyncControllerProvider);
+    await big.read(trainLibraryProvider.future);
+    await big.read(completedWorkoutHistoryProvider.future);
+    await big.read(healthOverviewProvider.future);
+    await _elapse(tester, const Duration(seconds: 3));
+    final ctx = h.link.contexts.single.payload! as Map<String, String>;
+    expect(ctx.keys.toSet(), {
+      'account_binding',
+      'plans_snapshot',
+      'health_snapshot',
+    });
+    final total = ctx.entries.fold<int>(
+      0,
+      (sum, e) => sum + utf8.encode(e.key).length + utf8.encode(e.value).length,
+    );
+    expect(total, lessThanOrEqualTo(60000));
   });
 
   testWidgets('not reachable sends nothing', (tester) async {

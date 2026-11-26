@@ -22,7 +22,7 @@ void main() {
 
   test('updateContext sends the map unchanged', () async {
     handle(null);
-    await const MethodChannelWatchLink().updateContext({
+    await MethodChannelWatchLink().updateContext({
       'account_binding': '{"a":1}',
       'plans_snapshot': '{"b":2}',
     });
@@ -33,25 +33,48 @@ void main() {
     });
   });
 
+  test(
+    'a watchStateChanged call from the platform reaches the stream',
+    () async {
+      handle(null);
+      final link = MethodChannelWatchLink();
+      var changes = 0;
+      final sub = link.watchStateChanges.listen((_) => changes++);
+      await messenger.handlePlatformMessage(
+        _channel.name,
+        _channel.codec.encodeMethodCall(const MethodCall('watchStateChanged')),
+        (_) {},
+      );
+      expect(changes, 1);
+      await sub.cancel();
+      await messenger.handlePlatformMessage(
+        _channel.name,
+        _channel.codec.encodeMethodCall(const MethodCall('watchStateChanged')),
+        (_) {},
+      );
+      expect(changes, 1);
+    },
+  );
+
   test('transfer sends json', () async {
     handle(null);
-    await const MethodChannelWatchLink().transfer('{"type":"x"}');
+    await MethodChannelWatchLink().transfer('{"type":"x"}');
     expect(calls.single.method, 'transfer');
     expect(calls.single.arguments, {'json': '{"type":"x"}'});
   });
 
   test('isReachableForUpdates returns what the platform says', () async {
     handle((_) async => true);
-    expect(await const MethodChannelWatchLink().isReachableForUpdates(), true);
+    expect(await MethodChannelWatchLink().isReachableForUpdates(), true);
     handle((_) async => false);
-    expect(await const MethodChannelWatchLink().isReachableForUpdates(), false);
+    expect(await MethodChannelWatchLink().isReachableForUpdates(), false);
     handle((_) async => null);
-    expect(await const MethodChannelWatchLink().isReachableForUpdates(), false);
+    expect(await MethodChannelWatchLink().isReachableForUpdates(), false);
   });
 
   test('MissingPluginException means unsupported and nothing throws', () async {
     messenger.setMockMethodCallHandler(_channel, null);
-    const link = MethodChannelWatchLink();
+    final link = MethodChannelWatchLink();
     expect(await link.isReachableForUpdates(), false);
     await link.updateContext({'a': 'b'});
     await link.transfer('{}');
@@ -59,7 +82,7 @@ void main() {
 
   test('platform error from updateContext is swallowed', () async {
     handle((_) async => throw PlatformException(code: 'wc_failed'));
-    const link = MethodChannelWatchLink();
+    final link = MethodChannelWatchLink();
     await link.updateContext({'a': 'b'});
     await link.transfer('{}');
     expect(await link.isReachableForUpdates(), false);
