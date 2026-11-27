@@ -167,9 +167,9 @@
   .cine-scene p:not(.cine-eyebrow) { font-size: 13px; line-height: 1.4; margin-bottom: 12px; max-width: 42ch; }
   .cine-scene .cine-pill { font-size: 11px; padding: 8px 12px; }
   .motion-ready .cine-scene { left: 6vw; top: 13%; width: 88%; max-width: none; transform: none; }
-  .cine-visual { top: 62%; width: 100%; height: 50%; right: 0; }
-  .cine-halo { left: 50%; top: 62%; width: 100vw; height: 100vw; }
-  .cine-word { left: 0; top: 62%; font-size: 38vw; }
+  .cine-visual { top: var(--cine-stack-y, 62%); width: 100%; height: 50%; right: 0; }
+  .cine-halo { left: 50%; top: var(--cine-stack-y, 62%); width: 100vw; height: 100vw; }
+  .cine-word { left: 0; top: var(--cine-stack-y, 62%); font-size: 38vw; }
   .motion-ready .cine-stage::after { background: linear-gradient(180deg,var(--cine-canvas) 0%,color-mix(in srgb,var(--cine-canvas) 70%,transparent) 23%,transparent 56%,var(--cine-canvas) 100%); }
   .cine-label { bottom: 75px; font-size: 11px; letter-spacing: .06em; right: 6vw; }
   .motion-ready .cine-bottom { padding: 12px 6vw 19px; gap: 6px; }
@@ -184,7 +184,7 @@
   .motion-ready .cine-scene { top: 12%; }
   .cine-scene h1, .cine-scene h2 { font-size: clamp(30px,9vw,46px); }
   .cine-scene p:not(.cine-eyebrow) { font-size: 12px; }
-  .cine-visual { top: 65%; }
+  .cine-visual, .cine-halo, .cine-word { top: var(--cine-stack-y, 65%); }
   .cine-label { bottom: 62px; }
   .cine-nav { padding-top: 10px; }
 }

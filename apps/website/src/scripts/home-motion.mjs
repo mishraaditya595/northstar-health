@@ -13,11 +13,12 @@ export function progressForScroll(top, trackHeight, stageHeight) {
   return clamp(-top / Math.max(1, trackHeight - stageHeight));
 }
 
-export function cinematicFrame(progress, width, height) {
+// `fixedSize` lets the phone layout shrink the stack to fit its free band.
+export function cinematicFrame(progress, width, height, fixedSize) {
   const p = clamp(progress);
   const mobile = width <= 720;
-  const size = mobile ? Math.min(.69, width / 550, height / 1130)
-    : Math.min(1.17, width / 1150, height / 720);
+  const size = fixedSize ?? (mobile ? Math.min(MAX_STACK_SIZE, width / 550, height / 1130)
+    : Math.min(1.17, width / 1150, height / 720));
   const q = p * 2;
   const segment = Math.min(1, Math.floor(q));
   const t = smooth(clamp(q - segment));
@@ -53,6 +54,65 @@ export function introFits({ sceneHeights, stageHeight, navHeight, bottomHeight, 
   return sceneHeights.every(h => h <= room);
 }
 
+// These must match home-motion.css: .cine-visual perspective and .cine-rig size.
+const PERSPECTIVE = 1200, RIG_W = 240, RIG_H = 468;
+export const MAX_STACK_SIZE = .69;
+export const MIN_STACK_SIZE = .3;
+// Scenes drift 25px per chapter while visible (opacity window .2 + .32).
+const SCENE_DRIFT = 25 * .52, STACK_GAP = 12;
+
+// Vertical extent of a rig's projected corners, as offsets from the stack
+// centre. CSS applies the transform list right to left: scale, rotateZ,
+// rotateY, rotateX, translate3d, then the perspective divide.
+export function rigExtent(r) {
+  const [cz, sz] = [Math.cos(r.ry * .22 * Math.PI / 180), Math.sin(r.ry * .22 * Math.PI / 180)];
+  const [cy, sy] = [Math.cos(r.ry * Math.PI / 180), Math.sin(r.ry * Math.PI / 180)];
+  const [cx, sx] = [Math.cos(r.rx * Math.PI / 180), Math.sin(r.rx * Math.PI / 180)];
+  let top = Infinity, bottom = -Infinity;
+  for (const [u, v] of [[-1,-1],[1,-1],[-1,1],[1,1]]) {
+    const x0 = u * RIG_W / 2 * r.scale, y0 = v * RIG_H / 2 * r.scale;
+    const x1 = x0 * cz - y0 * sz, y1 = x0 * sz + y0 * cz;
+    const z2 = -x1 * sy;
+    const y3 = y1 * cx - z2 * sx, z3 = y1 * sx + z2 * cx;
+    const y = (y3 + r.y) * PERSPECTIVE / (PERSPECTIVE - (z3 + r.z));
+    top = Math.min(top, y); bottom = Math.max(bottom, y);
+  }
+  return { top, bottom };
+}
+
+// Farthest the stack reaches above (up) and below (down) its centre at this
+// size, in px, over every frame.
+export function stackReach(size) {
+  let up = 0, down = 0;
+  for (let i = 0; i <= 240; i++) {
+    for (const r of cinematicFrame(i / 240, 0, 0, size).rigs) {
+      const { top, bottom } = rigExtent(r);
+      up = Math.max(up, -top); down = Math.max(down, bottom);
+    }
+  }
+  return { up, down };
+}
+
+// Fit the stack into the free band [top, bottom] (px from the stage top): the
+// largest size up to `max` whose reach (plus a 2% margin) fits, centred in the
+// slack. Reach is not linear in size (perspective), so bisect.
+export function fitMobileStack({ top, bottom, max = MAX_STACK_SIZE }) {
+  const band = bottom - top;
+  const reach = size => {
+    const { up, down } = stackReach(size);
+    return { up: up * 1.02, down: down * 1.02 };
+  };
+  const fits = size => { const r = reach(size); return r.up + r.down <= band; };
+  let size = max;
+  if (!fits(max)) {
+    let lo = 0, hi = max;
+    for (let i = 0; i < 20; i++) { const mid = (lo + hi) / 2; if (fits(mid)) lo = mid; else hi = mid; }
+    size = lo;
+  }
+  const { up, down } = reach(size);
+  return { size, center: top + up + (band - up - down) / 2 };
+}
+
 export const MOTION_QUERY = '(prefers-reduced-motion: no-preference) and (min-height: 581px)';
 
 export function mountCinematic(root, win) {
@@ -61,11 +121,12 @@ export function mountCinematic(root, win) {
   const word = root.querySelector('[data-word]');
   const nav = root.querySelector('.cine-nav');
   const bottom = root.querySelector('.cine-bottom');
+  const label = root.querySelector('.cine-label');
   const scenes = [...root.querySelectorAll('[data-scene]')];
   const rigs = [...root.querySelectorAll('[data-rig]')];
   const buttons = [...root.querySelectorAll('[data-chapter]')];
   const progressEls = [...root.querySelectorAll('[data-progress]')];
-  if (!stage || !word || !nav || !bottom || scenes.length !== 3 || rigs.length !== 3 ||
+  if (!stage || !word || !nav || !bottom || !label || scenes.length !== 3 || rigs.length !== 3 ||
       buttons.length !== 3 || !win.matchMedia || !win.requestAnimationFrame) {
     root.classList.remove('motion-ready');
     return;
@@ -75,6 +136,8 @@ export function mountCinematic(root, win) {
   // Layout is measured in reset() only, so scrolling never forces a reflow.
   let trackTop = 0, travel = 1, width = win.innerWidth, height = win.innerHeight;
   let focusAfterSettle = -1;
+  // Phone stack size fitted between the copy and the label; undefined = default.
+  let stackSize;
   // Chapter in view while the static layout shows, read before a resize
   // reflows the page so the reader's place survives a layout switch.
   let staticCh = -1, staticRaf = 0;
@@ -90,7 +153,7 @@ export function mountCinematic(root, win) {
     scenes.forEach((el, j) => el.classList.toggle('is-active', j === i));
   }
   function draw(p) {
-    const frame = cinematicFrame(p, width, height);
+    const frame = cinematicFrame(p, width, height, stackSize);
     progressEls.forEach(el => el.style.setProperty('--p', p.toFixed(4)));
     rigs.forEach((el, i) => {
       const v = frame.rigs[i];
@@ -133,6 +196,8 @@ export function mountCinematic(root, win) {
     win.scrollTo({ top: trackTop + travel * i / 2, behavior });
   }
   function clearStyles() {
+    stackSize = undefined;
+    stage.style.removeProperty('--cine-stack-y');
     scenes.forEach(el => {
       el.style.removeProperty('opacity');
       el.style.removeProperty('transform');
@@ -169,13 +234,29 @@ export function mountCinematic(root, win) {
     raf = 0; last = 0; active = -1;
     clearStyles();
     root.classList.toggle('motion-ready', media.matches);
-    const ok = media.matches && introFits({
+    const mobile = win.innerWidth <= 720;
+    let ok = media.matches && introFits({
       sceneHeights: scenes.map(el => el.offsetHeight),
       stageHeight: stage.clientHeight,
       navHeight: nav.offsetHeight,
       bottomHeight: bottom.offsetHeight,
-      mobile: win.innerWidth <= 720,
+      mobile,
     });
+    if (ok && mobile) {
+      // The stage is position: sticky, so it is the offsetParent of the
+      // absolutely placed scenes and label and their offsets are stage pixels.
+      // The band starts below the copy plus the scenes' translateY drift.
+      const copyBottom = Math.max(...scenes.map(el => el.offsetTop + el.offsetHeight));
+      const fit = fitMobileStack({
+        top: copyBottom + STACK_GAP + SCENE_DRIFT, bottom: label.offsetTop - STACK_GAP,
+        max: Math.min(MAX_STACK_SIZE, win.innerWidth / 550),
+      });
+      if (fit.size < MIN_STACK_SIZE) ok = false;
+      else {
+        stackSize = fit.size;
+        stage.style.setProperty('--cine-stack-y', `${fit.center.toFixed(1)}px`);
+      }
+    }
     if (!ok) {
       root.classList.remove('motion-ready');
       if (wasInside) {

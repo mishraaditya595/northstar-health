@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cinematicFrame, progressForScroll, settleFactor, introFits, MOTION_QUERY } from '../src/scripts/home-motion.mjs';
+import { cinematicFrame, progressForScroll, settleFactor, introFits, stackReach, fitMobileStack, MAX_STACK_SIZE, MIN_STACK_SIZE, MOTION_QUERY } from '../src/scripts/home-motion.mjs';
 import { countUpText } from '../src/scripts/home-reveal.mjs';
 
 test('scroll progress is clamped to the pinned track', () => {
@@ -53,6 +53,71 @@ test('the pinned intro only runs when every chapter clears the nav and the chapt
   assert.equal(introFits({ ...phone, sceneHeights: [300,260,420] }), false);
   // Enlarged text makes the nav taller than the gap above the phone copy.
   assert.equal(introFits({ ...phone, navHeight: 130, sceneHeights: [300,260,310] }), false);
+});
+// Independent projection: a rig is a 240x468 card; CSS applies the transform list
+// right to left, so a corner is scaled, then rotated by Z, Y, X (one composed
+// matrix Rx*Ry*Rz), translated and perspective-projected (1200px) about the centre.
+const rad = d => d * Math.PI / 180;
+const mul = (A, B) => A.map((_, i) => B[0].map((_, j) => A[i].reduce((s, _, k) => s + A[i][k] * B[k][j], 0)));
+const Rx = a => [[1,0,0],[0,Math.cos(a),-Math.sin(a)],[0,Math.sin(a),Math.cos(a)]];
+const Ry = a => [[Math.cos(a),0,Math.sin(a)],[0,1,0],[-Math.sin(a),0,Math.cos(a)]];
+const Rz = a => [[Math.cos(a),-Math.sin(a),0],[Math.sin(a),Math.cos(a),0],[0,0,1]];
+const extent = (r, center) => {
+  const M = mul(mul(Rx(rad(r.rx)), Ry(rad(r.ry))), Rz(rad(r.ry * .22)));
+  const ys = [[-120,-234],[120,-234],[-120,234],[120,234]].map(([cx, cy]) => {
+    const v = [cx * r.scale, cy * r.scale, 0];
+    const y = M[1][0]*v[0] + M[1][1]*v[1] + r.y;
+    const z = M[2][0]*v[0] + M[2][1]*v[1] + r.z;
+    return center + y * 1200 / (1200 - z);
+  });
+  return [Math.min(...ys), Math.max(...ys)];
+};
+const GAP = 12, DRIFT = 13;
+const fitFor = (w, copyBottom, labelTop) =>
+  fitMobileStack({ top: copyBottom + GAP + DRIFT, bottom: labelTop - GAP, max: Math.min(MAX_STACK_SIZE, w / 550) });
+const minSlack = (w, h, copyBottom, labelTop, { center, size }) => {
+  let slack = Infinity;
+  for (let i = 0; i <= 240; i++) for (const r of cinematicFrame(i/240, w, h, size).rigs) {
+    const [t, b] = extent(r, center);
+    slack = Math.min(slack, t - (copyBottom + GAP + DRIFT), labelTop - GAP - b);
+  }
+  return slack;
+};
+test('the fitted phone stack stays between the copy and the label in every frame', () => {
+  let fitted = 0;
+  for (const [w, h, copyBottom, labelTop] of [[393,656,301,566],[390,844,360,755],[320,900,330,811],[430,932,380,843],[360,740,320,650],[375,667,300,577]]) {
+    const fit = fitFor(w, copyBottom, labelTop);
+    if (fit.size < MIN_STACK_SIZE) continue;
+    fitted++;
+    const slack = minSlack(w, h, copyBottom, labelTop, fit);
+    assert.ok(slack >= -.01, `${w}x${h} slack ${slack}`);
+  }
+  assert.ok(fitted >= 4);
+});
+test('the fitted stack never exceeds the screen width cap', () => {
+  const { size } = fitMobileStack({ top: 355, bottom: 799, max: Math.min(MAX_STACK_SIZE, 320 / 550) });
+  assert.ok(size <= 320 / 550);
+  assert.ok(size > 0);
+  assert.equal(fitMobileStack({ top: 0, bottom: 5000 }).size, MAX_STACK_SIZE);
+});
+test('the old fixed placement overlaps the copy on a 393x656 phone, the fitted one does not', () => {
+  const front = cinematicFrame(0, 393, 656).rigs[0];
+  assert.ok(extent(front, 656 * .65)[0] < 301 + GAP);
+  const fit = fitFor(393, 301, 566);
+  assert.ok(extent(cinematicFrame(0, 393, 656, fit.size).rigs[0], fit.center)[0] >= 301 + GAP);
+});
+test('cinematicFrame without a size keeps the original sizing', () => {
+  assert.equal(cinematicFrame(0,1440,900).rigs[0].scale, 1.13 * Math.min(1.17, 1440/1150, 900/720));
+  assert.equal(cinematicFrame(0,390,844).rigs[0].scale, 1.13 * Math.min(MAX_STACK_SIZE, 390/550, 844/1130));
+  assert.equal(cinematicFrame(0,390,844,.5).rigs[0].scale, 1.13 * .5);
+});
+test('stack reach is finite and positive and grows with size', () => {
+  const a = stackReach(.4), b = stackReach(.6);
+  assert.ok([a.up, a.down].every(n => Number.isFinite(n) && n > 0));
+  assert.ok(b.up > a.up && b.down > a.down);
+});
+test('a band too small for the phones gives a size below the minimum', () => {
+  assert.ok(fitMobileStack({ top: 300, bottom: 420 }).size < MIN_STACK_SIZE);
 });
 test('count-up text starts at zero, ends on the exact value and keeps its format', () => {
   assert.equal(countUpText('6,240', 0), '0');
