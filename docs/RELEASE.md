@@ -436,3 +436,21 @@ The watch Home tiles show values read from the watch's own HealthKit store, in m
 | A phone snapshot sent mid-sleep keeps the phone's shorter night on the watch until the phone sends again (by design: the phone's value wins), even if the watch's own read is longer | not run |
 | Deny the permission: the tiles show "—", not 0, and the prompt does not return | not run |
 | Sign out on the phone: the watch values disappear; sign in as another account shows nothing from the first | not run |
+
+## Phase 4 stage 5b: the watch joins a workout the phone owns (device checks, none run)
+
+The phone owns the workout; the watch follows it and saves the one `HKWorkout`. Implemented in source, **not released or device-verified**; the Swift builds and passes its tests on CI only. Every row is not run.
+
+| Check | Result |
+|---|---|
+| Start a workout on the phone: the watch opens at the same set | not run |
+| Log a set on the watch: "Saving..." clears and the phone shows it | not run |
+| Finish on the phone: one workout in history, heart rate and energy in "From Apple Health", one workout in Apple Health | not run |
+| Discard on the phone: no workout in history and none in Apple Health | not run |
+| Watch out of range, then back: "iPhone out of reach", controls off, then live again | not run |
+| The watch joins late (launch arrives, first state after some seconds): "Connecting to your iPhone..." then the set | not run |
+| The watch never joins (watch app not reachable): the phone workout is unaffected and no second workout appears | not run |
+| A watch session already running: the phone workout starts without the watch joining | not run |
+| `startWatchApp` needs no new permission prompt on the phone | not run |
+| Watch force-quit mid-workout, relaunch: it follows again; finishing on the phone still saves one HKWorkout and links it | not run |
+| Phone unreachable at finish: the link is resent until the phone acks it, never a second HKWorkout | not run |

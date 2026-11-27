@@ -22,6 +22,8 @@ Stock Flutter does not officially target watchOS. `flutter_watchos` package is *
 
 **Live workout on the phone (stage 5a, source only):** the watch owns a workout it starts and mirrors it to the phone (HealthKit workout mirroring, with `WCSession.sendMessage` as fallback); the phone shows the sets live and sends idempotent commands (log, skip, add a set, rest, pause, finish, discard). The phone stores nothing for it. Not released or device-verified; see `docs/RELEASE.md`.
 
+**The watch joins a workout the phone owns (stage 5b, source only):** the phone launches the watch app (`startWatchApp`, no new phone permission) and its ObjectBox engine stays the only authority; the watch starts a HealthKit session, shows Set, Rest and Overview pages ("On your iPhone") and sends idempotent commands that show as saved only when the phone lists them as applied. The watch saves the one `HKWorkout` at finish and sends a `workout_link` (resent until the phone acks it); the phone stores a receipt, so history shows "From Apple Health" for it. It does not join when the watch has a session of its own or is bound to another account. Not released or device-verified; see `docs/RELEASE.md`.
+
 **Do not assume ObjectBox Flutter library can run on watchOS**, particularly the custom engine; use platform-supported native on-watch persistence. iOS app holds its *own* ObjectBox cache.
 
 ## Data ownership and backend handoff
