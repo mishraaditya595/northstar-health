@@ -150,6 +150,7 @@ final class AppModel: ObservableObject {
                 while !Task.isCancelled {
                     try? await Task.sleep(nanoseconds: 30 * 1_000_000_000)
                     if Task.isCancelled { return }
+                    await self?.recorder.retryMirroringIfNeeded()
                     self?.broadcastLiveState()
                 }
             }
@@ -441,6 +442,7 @@ final class AppModel: ObservableObject {
             workout = restored
             _ = await recorder.recover(workoutId: restored.workoutId)
         }
+        var unresolvedPendingFinish = boundAccount == nil
         for pending in (try? WorkoutController.pendingFinishAllAccounts(journal: journal)) ?? [] {
             var uuid: String?
             if let workoutId = try? journal.events(sessionId: pending.sessionId).first?.header.workoutId {
@@ -450,11 +452,13 @@ final class AppModel: ObservableObject {
                     uuid = found
                 case .failed:
                     // Do not queue without a UUID: the next launch retries.
+                    unresolvedPendingFinish = true
                     continue
                 case .notFound:
                     // Another running session owns the recovered HealthKit session.
                     if workout != nil { continue }
-                    if await recorder.recover(workoutId: workoutId) {
+                    // Only finished here, so the iPhone has nothing to follow.
+                    if await recorder.recover(workoutId: workoutId, mirror: false) {
                         let end = try? WorkoutController.completedAt(sessionId: pending.sessionId, journal: journal)
                         uuid = await recorder.finish(at: end ?? Date())
                     }
@@ -463,6 +467,13 @@ final class AppModel: ObservableObject {
             try? WorkoutController.queuePendingFinish(
                 sessionId: pending.sessionId, journal: journal, accountKey: pending.accountKey,
                 healthkitWorkoutUuid: uuid, makeId: { UUID().uuidString.lowercased() }, clock: Date.init)
+        }
+        // A HealthKit session no journal session explains (the app died after a
+        // discard committed) would run for hours: end it.
+        if OrphanSessionPolicy.shouldDiscard(
+            restoredSession: workout != nil, unresolvedPendingFinish: unresolvedPendingFinish)
+        {
+            _ = await recorder.discardOrphanedSession()
         }
         sendQueued()
         didAct()

@@ -67,6 +67,7 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     private var session: HKWorkoutSession?
     private var builder: HKLiveWorkoutBuilder?
     private var workoutId: String?
+    private var isStartingMirror = false
 
     /// Asks once; true when the person allowed saving workouts. Denied or
     /// unavailable HealthKit is not an error: the workout still records.
@@ -95,37 +96,62 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     }
 
     /// Mirrors the session to the iPhone. A failure (no iPhone in reach, an
-    /// iPhone below iOS 17) leaves the live link on WatchConnectivity.
+    /// iPhone below iOS 17) leaves the live link on WatchConnectivity; the
+    /// next heartbeat tries again (`retryMirroringIfNeeded`). An error that
+    /// says the session is already mirrored counts as mirroring.
     private func startMirroring() async {
-        guard let session else { return }
+        guard let session, !isStartingMirror else { return }
+        isStartingMirror = true
+        defer { isStartingMirror = false }
         do {
             try await session.startMirroringToCompanionDevice()
             isMirroring = true
         } catch {
-            isMirroring = false
+            isMirroring = Self.isAlreadyMirroring(error)
         }
     }
 
-    /// Sends one live message through the mirrored session. False when there
-    /// is no mirrored session, so the caller can use the fallback.
-    func send(_ data: Data) -> Bool {
-        guard isMirroring, let session else { return false }
-        session.sendToRemoteWorkoutSession(data: data) { _, _ in }
-        return true
+    /// HealthKit has no documented code for this, so the error text is
+    /// matched (a device check in `docs/RELEASE.md` confirms it).
+    private static func isAlreadyMirroring(_ error: Error) -> Bool {
+        let text = error.localizedDescription.lowercased()
+        return text.contains("already") && text.contains("mirror")
+    }
+
+    /// Called by the 30 s live heartbeat while a workout is active or paused:
+    /// a mirror the disconnect callback dropped (the iPhone went out of
+    /// range) is started again. Never faster than the heartbeat.
+    func retryMirroringIfNeeded() async {
+        guard session != nil, !isMirroring else { return }
+        await startMirroring()
+    }
+
+    /// Sends one live message through the mirrored session and reports
+    /// whether HealthKit delivered it, so the caller can use the fallback
+    /// when it did not. The completion runs on any queue; it is called with
+    /// false at once when there is no mirrored session.
+    func send(_ data: Data, completion: @escaping @Sendable (Bool) -> Void) {
+        guard isMirroring, let session else {
+            completion(false)
+            return
+        }
+        session.sendToRemoteWorkoutSession(data: data) { success, _ in completion(success) }
     }
 
     /// Like `send`, but returns once HealthKit reports the data handled or
     /// after `timeout` seconds, so the last state goes out before the session
-    /// ends and a slow link never holds up finishing.
-    func sendAndWait(_ data: Data, timeout: TimeInterval) async {
-        guard isMirroring, let session else { return }
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+    /// ends and a slow link never holds up finishing. False when it was not
+    /// delivered (no mirror, a failure or the timeout), so the caller sends it
+    /// the other way too.
+    func sendAndWait(_ data: Data, timeout: TimeInterval) async -> Bool {
+        guard isMirroring, let session else { return false }
+        return await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
             let once = Once()
-            session.sendToRemoteWorkoutSession(data: data) { _, _ in
-                once.run { continuation.resume() }
+            session.sendToRemoteWorkoutSession(data: data) { success, _ in
+                once.run { continuation.resume(returning: success) }
             }
             DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
-                once.run { continuation.resume() }
+                once.run { continuation.resume(returning: false) }
             }
         }
     }
@@ -170,7 +196,9 @@ final class WorkoutRecorder: NSObject, ObservableObject {
 
     /// Reattaches to a session HealthKit kept alive while the app was not
     /// running. `workoutId` is the BeyondRep workout it belongs to.
-    func recover(workoutId: String? = nil) async -> Bool {
+    /// `mirror: false` for a session that is only being finished or discarded:
+    /// there is nothing for the iPhone to follow.
+    func recover(workoutId: String? = nil, mirror: Bool = true) async -> Bool {
         do {
             guard let recovered = try await store.recoverActiveWorkoutSession() else { return false }
             let builder = recovered.associatedWorkoutBuilder()
@@ -179,11 +207,19 @@ final class WorkoutRecorder: NSObject, ObservableObject {
             session = recovered
             self.builder = builder
             if let workoutId { self.workoutId = workoutId }
-            await startMirroring()
+            if mirror { await startMirroring() }
             return true
         } catch {
             return false
         }
+    }
+
+    /// Ends and discards a HealthKit session nothing in the journal explains
+    /// (see `OrphanSessionPolicy`). True when there was one.
+    func discardOrphanedSession() async -> Bool {
+        guard session == nil, await recover(mirror: false) else { return false }
+        discard()
+        return true
     }
 
     /// The `HKWorkout` already saved for `workoutId`, found by its external
@@ -249,7 +285,7 @@ extension WorkoutRecorder: HKWorkoutSessionDelegate {
 }
 
 /// Runs a body once, from whichever thread gets there first.
-private final class Once {
+private final class Once: @unchecked Sendable {
     private let lock = NSLock()
     private var done = false
 

@@ -96,6 +96,32 @@ final class CommandApplierTests: XCTestCase {
         XCTAssertEqual(c.state.sets.first?.reps, 9)
     }
 
+    func testCorrectSetOnANeverLoggedSetBecomesSetLoggedAndStartsRest() throws {
+        let c = try start()
+        XCTAssertEqual(try c.apply(message(c, "correct_set", set: values(c, 1))), .applied)
+        XCTAssertEqual(Array(try eventTypes(c).suffix(2)), ["set_logged", "rest_started"])
+        XCTAssertFalse(try eventTypes(c).contains("set_corrected"))
+        XCTAssertNotNil(c.restDeadline)
+    }
+
+    func testOldDuplicateCommandIsStillListedInTheNextStateAfterTheWindowMoved() throws {
+        let c = try start()
+        let first = newCommandId()
+        XCTAssertEqual(try c.apply(message(c, "pause", id: first)), .applied)
+        for _ in 0..<24 {
+            _ = try c.apply(message(c, "clear_rest"))
+        }
+        let early = try c.sessionState(messageId: "77777777-3333-4333-8333-0000000000f4", sentAtUtc: "2026-10-23T11:05:00Z")
+        guard case .sessionState(_, let before) = early.body else { return XCTFail("not a session state") }
+        XCTAssertFalse((before["applied_command_ids"] as? [String] ?? []).contains(first))
+        XCTAssertEqual(try c.apply(message(c, "pause", id: first)), .duplicate)
+        let state = try c.sessionState(messageId: "77777777-3333-4333-8333-0000000000f5", sentAtUtc: "2026-10-23T11:05:01Z")
+        guard case .sessionState(_, let raw) = state.body else { return XCTFail("not a session state") }
+        let listed = raw["applied_command_ids"] as? [String] ?? []
+        XCTAssertLessThanOrEqual(listed.count, 20)
+        XCTAssertTrue(listed.contains(first))
+    }
+
     func testLogOnACompletedSetBecomesACorrection() throws {
         let c = try start()
         _ = try c.apply(message(c, "log_set", set: values(c, 1)))

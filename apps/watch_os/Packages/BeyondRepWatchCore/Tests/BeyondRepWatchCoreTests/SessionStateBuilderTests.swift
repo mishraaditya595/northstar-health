@@ -49,4 +49,24 @@ final class SessionStateBuilderTests: XCTestCase {
         guard case .sessionState(_, let raw) = message.body else { return XCTFail("not a session state") }
         XCTAssertEqual(raw["applied_command_ids"] as? [String], Array(ids.suffix(20)))
     }
+
+    func testConfirmedCommandIdsStayListedEvenWhenOlderThanTheNewestTwenty() throws {
+        let template = try TemplateFixtures.template()
+        let key = String(repeating: "0123456789abcdef", count: 4)
+        var m = SessionMachine(
+            sessionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", owner: "watch", accountKey: key,
+            deviceId: "watch-installation-a", clock: { Date(timeIntervalSince1970: 1_792_000_000) }, timeZone: "Asia/Kolkata",
+            makeId: TemplateFixtures.counterIds(from: 900))
+        let events = try m.start(name: template.name, exercises: template.exerciseAddedPayloads)
+        let ids = (1...25).map { String(format: "88888888-4444-4444-8444-%012d", $0) }
+        let message = try SessionStateBuilder.message(
+            events: events, template: template, unit: "kg", accountKey: key,
+            messageId: "77777777-3333-4333-8333-0000000000f1", sentAtUtc: "2026-10-23T11:00:00Z",
+            appliedCommandIds: ids, confirmedCommandIds: [ids[1]])
+        guard case .sessionState(_, let raw) = message.body else { return XCTFail("not a session state") }
+        let listed = try XCTUnwrap(raw["applied_command_ids"] as? [String])
+        XCTAssertEqual(listed.count, 20)
+        XCTAssertEqual(listed.last, ids[1])
+        XCTAssertEqual(Array(listed.dropLast()), Array(ids.suffix(19)))
+    }
 }

@@ -20,23 +20,29 @@ final class LiveLink {
         self.phone = phone
     }
 
-    /// Sends `message` on the best live path; false when there is none.
-    @discardableResult
-    func send(_ message: WatchMessage) -> Bool {
-        guard let data = try? message.jsonData() else { return false }
-        if recorder.send(data) { return true }
-        return phone()?.sendLive(json: String(decoding: data, as: UTF8.self)) ?? false
+    /// Sends `message` on the best live path: the mirrored session, and the
+    /// WatchConnectivity message when there is no mirror or HealthKit reports
+    /// the mirrored send failed. A state nobody could take is dropped.
+    func send(_ message: WatchMessage) {
+        guard let data = try? message.jsonData() else { return }
+        let json = String(decoding: data, as: UTF8.self)
+        guard recorder.isMirroring else {
+            _ = phone()?.sendLive(json: json)
+            return
+        }
+        recorder.send(data) { [weak self] sent in
+            guard !sent else { return }
+            Task { @MainActor in _ = self?.phone()?.sendLive(json: json) }
+        }
     }
 
     /// Sends the last state of a workout (`status: ended`) and waits for the
     /// mirrored session to report it handled (at most 3 s) before the caller
-    /// ends that session. Without a mirrored session it is the plain send.
+    /// ends that session; when it did not, the state goes by
+    /// WatchConnectivity too. Without a mirrored session it is the plain send.
     func sendEnded(_ message: WatchMessage) async {
         guard let data = try? message.jsonData() else { return }
-        if recorder.isMirroring {
-            await recorder.sendAndWait(data, timeout: 3)
-        } else {
-            _ = phone()?.sendLive(json: String(decoding: data, as: UTF8.self))
-        }
+        if recorder.isMirroring, await recorder.sendAndWait(data, timeout: 3) { return }
+        _ = phone()?.sendLive(json: String(decoding: data, as: UTF8.self))
     }
 }

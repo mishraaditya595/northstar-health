@@ -13,6 +13,7 @@ public final class WorkoutController {
     let makeId: () -> String
     var machine: SessionMachine
     private var focusExerciseId: String?
+    private var confirmedDuplicateIds: [String] = []
     public private(set) var template: WorkoutTemplate
 
     private init(
@@ -212,7 +213,19 @@ public final class WorkoutController {
     /// Applies a phone `session_command` at most once per command id (see
     /// `CommandApplier`).
     public func apply(_ message: WatchMessage) throws -> CommandOutcome {
-        try CommandApplier.apply(message, to: self)
+        let outcome = try CommandApplier.apply(message, to: self)
+        // A duplicate of an applied command means the phone did not see it
+        // confirmed yet (the 20-id window moved on): list it in the next
+        // states. Memory only; the journal row already exists.
+        if outcome == .duplicate, case .sessionCommand(let command) = message.body {
+            let id = command.commandId.lowercased()
+            if try journal.commandResult(sessionId: sessionId, commandId: id)?.result == "applied" {
+                confirmedDuplicateIds.removeAll { $0 == id }
+                confirmedDuplicateIds.append(id)
+                confirmedDuplicateIds = Array(confirmedDuplicateIds.suffix(20))
+            }
+        }
+        return outcome
     }
 
     /// The `session_state` to broadcast now. `extraRejections` are refusals
@@ -225,6 +238,7 @@ public final class WorkoutController {
             events: machine.events, template: template, unit: unit, accountKey: accountKey, messageId: messageId,
             sentAtUtc: sentAtUtc, focusExerciseId: focusExerciseId,
             appliedCommandIds: log.filter { $0.result == "applied" }.map { $0.commandId },
+            confirmedCommandIds: confirmedDuplicateIds,
             rejectedCommands: log.filter { $0.result == "rejected" }.map {
                 SessionStateBuilder.Rejection(commandId: $0.commandId, reason: $0.reason ?? "not_allowed")
             } + extraRejections)

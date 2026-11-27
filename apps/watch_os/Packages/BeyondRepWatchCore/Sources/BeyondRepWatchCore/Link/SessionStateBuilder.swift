@@ -19,7 +19,8 @@ public enum SessionStateBuilder {
     public static func message(
         events: [WorkoutEventV2], template: WorkoutTemplate, unit: String, accountKey: String,
         messageId: String, sentAtUtc: String, focusExerciseId: String? = nil,
-        appliedCommandIds: [String] = [], rejectedCommands: [Rejection] = []
+        appliedCommandIds: [String] = [], confirmedCommandIds: [String] = [],
+        rejectedCommands: [Rejection] = []
     ) throws -> WatchMessage {
         var seen = Set<String>()
         let ordered = events.filter { seen.insert($0.header.eventId).inserted }
@@ -105,7 +106,14 @@ public enum SessionStateBuilder {
             exercises.append(["exercise_id": exercise.exerciseId, "name": exercise.name, "kind": exercise.kind, "sets": sets])
         }
         body["exercises"] = exercises
-        if !appliedCommandIds.isEmpty { body["applied_command_ids"] = Array(appliedCommandIds.suffix(20)) }
+        // At most 20, newest last. `confirmedCommandIds` are ids the phone sent
+        // again (a duplicate); they stay listed even when older than the newest
+        // 20, so a retry of an old command is still confirmed.
+        var uniqueIds = Set<String>()
+        let confirmed = confirmedCommandIds.filter { uniqueIds.insert($0).inserted }.suffix(20)
+        let recent = appliedCommandIds.filter { !confirmed.contains($0) }.suffix(20 - confirmed.count)
+        let listed = Array(recent) + confirmed
+        if !listed.isEmpty { body["applied_command_ids"] = listed }
         if !rejectedCommands.isEmpty {
             body["rejected_commands"] = rejectedCommands.suffix(20).map {
                 ["command_id": $0.commandId, "reason": $0.reason]
