@@ -150,16 +150,28 @@ class CodemagicTemplateTest(unittest.TestCase):
                 "certificates": ["Apple Distribution"],
             },
         )
-        self.assertEqual(env["groups"], ["ns_mobile_supabase_public"])
+        # ns_google_play is optional for iOS: without it App Store Connect alone is used.
+        self.assertEqual(env["groups"], ["ns_mobile_supabase_public", "ns_google_play"])
         self.assertEqual(
             env["vars"],
             {
+                "NS_RELEASE_TYPE": "${{ inputs.release_type }}",
                 "NS_VERSION_NAME": "${{ inputs.version_name }}",
                 "NS_BUILD_NUMBER": "${{ inputs.build_number }}",
             },
         )
         inputs = workflow["inputs"]
-        self.assertEqual(set(inputs), {"version_name", "build_number"})
+        self.assertEqual(set(inputs), {"release_type", "version_name", "build_number"})
+        self.assertEqual(inputs["release_type"]["type"], "choice")
+        self.assertEqual(
+            inputs["release_type"]["options"],
+            [
+                "Fix or optimisation", "Feature", "Major",
+                "Same version, new build", "Exact version",
+            ],
+        )
+        self.assertEqual(inputs["release_type"]["default"], "Fix or optimisation")
+        self.assertIn("Exact version", inputs["version_name"]["description"])
         for name in ("version_name", "build_number"):
             self.assertEqual(inputs[name]["type"], "string")
             # Codemagic rejects empty interpolated inputs; AUTO is the default.
@@ -224,8 +236,12 @@ class CodemagicTemplateTest(unittest.TestCase):
             env["groups"], ["ns_mobile_supabase_public", "ns_google_play"]
         )
         self.assertEqual(
+            workflow["integrations"], {"app_store_connect": "Codemagic Signing"}
+        )
+        self.assertEqual(
             env["vars"],
             {
+                "NS_RELEASE_TYPE": "${{ inputs.release_type }}",
                 "NS_VERSION_NAME": "${{ inputs.version_name }}",
                 "NS_BUILD_NUMBER": "${{ inputs.build_number }}",
                 "NS_PLAY_TRACK": "${{ inputs.play_track }}",
@@ -233,7 +249,19 @@ class CodemagicTemplateTest(unittest.TestCase):
             },
         )
         inputs = workflow["inputs"]
-        self.assertEqual(set(inputs), {"version_name", "build_number", "play_track"})
+        self.assertEqual(
+            set(inputs), {"release_type", "version_name", "build_number", "play_track"}
+        )
+        self.assertEqual(inputs["release_type"]["type"], "choice")
+        self.assertEqual(
+            inputs["release_type"]["options"],
+            [
+                "Fix or optimisation", "Feature", "Major",
+                "Same version, new build", "Exact version",
+            ],
+        )
+        self.assertEqual(inputs["release_type"]["default"], "Fix or optimisation")
+        self.assertIn("Exact version", inputs["version_name"]["description"])
         for name in ("version_name", "build_number"):
             self.assertEqual(inputs[name]["type"], "string")
             self.assertEqual(inputs[name]["default"], "AUTO")
@@ -249,7 +277,9 @@ class CodemagicTemplateTest(unittest.TestCase):
         self.assertIn("flutter pub get --enforce-lockfile", scripts)
         self.assertIn("flutter build appbundle --release", scripts)
         self.assertNotIn("$BUILD_NUMBER", scripts)
-        self.assertIn("python3 ../../scripts/codemagic_android_version.py", scripts)
+        self.assertIn("python3 ../../scripts/codemagic_android_version.py\n", scripts + "\n")
+        self.assertNotIn("codemagic_android_version.py pubspec", scripts)
+        self.assertIn('--release-name "$BEYONDREP_VERSION_NAME"', scripts)
         self.assertIn('--build-name="$BEYONDREP_VERSION_NAME"', scripts)
         self.assertIn('--build-number="$BEYONDREP_BUILD_NUMBER"', scripts)
         self.assertIn("CN=Android Debug", scripts)
