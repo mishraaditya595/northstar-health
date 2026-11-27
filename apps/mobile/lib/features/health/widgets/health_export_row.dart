@@ -36,12 +36,23 @@ class HealthExportRow extends ConsumerWidget {
       return const SizedBox.shrink();
     }
     final name = healthPlatformName(platform);
-    final on = status is HealthExportOn;
     final notifier = ref.read(healthExportControllerProvider.notifier);
 
     Future<void> tap() async {
       if (status is HealthExportOn) {
-        if (status.needsAccess) return notifier.openSettings();
+        if (status.needsAccess) {
+          final action = await showNsSheet<_AccessAction>(
+            context,
+            heightFactor: 0.4,
+            builder: (_) => _AccessSheet(name: name),
+          );
+          if (action == _AccessAction.openSettings) {
+            await notifier.openSettings();
+          } else if (action == _AccessAction.stop) {
+            await notifier.turnOff();
+          }
+          return;
+        }
         final stop = await showNsConfirm(
           context,
           title: 'Stop saving workouts?',
@@ -69,10 +80,59 @@ class HealthExportRow extends ConsumerWidget {
       icon: Icons.fitness_center,
       title: 'Save workouts to $name',
       subtitle: _subtitle(status),
-      trailing: ExcludeSemantics(
-        child: Switch(value: on, onChanged: (_) => tap()),
-      ),
+      trailing: status is HealthExportOn && status.needsAccess
+          ? const NsTag('On', warning: true)
+          : null,
       onTap: tap,
+    );
+  }
+}
+
+enum _AccessAction { openSettings, stop }
+
+class _AccessSheet extends StatelessWidget {
+  const _AccessSheet({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        8,
+        20,
+        24 + MediaQuery.paddingOf(context).bottom,
+      ),
+      children: [
+        Semantics(
+          header: true,
+          child: Text(
+            'Allow access in Settings',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          "BeyondRep can't save workouts to $name until you allow it in "
+          'Settings.',
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 24),
+        FilledButton(
+          onPressed: () =>
+              Navigator.of(context).pop(_AccessAction.openSettings),
+          child: const Text('Open Settings'),
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_AccessAction.stop),
+          child: Text('Stop saving', style: TextStyle(color: theme.mutedColor)),
+        ),
+      ],
     );
   }
 }

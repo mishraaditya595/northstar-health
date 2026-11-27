@@ -1,8 +1,10 @@
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
+import 'package:beyondrep/core/design/page_header.dart';
 import 'package:beyondrep/features/health/application/workout_health_export_controller.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/health/widgets/health_export_row.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -123,7 +125,7 @@ void main() {
     expect(find.text('On'), findsOneWidget);
   });
 
-  testWidgets('needsAccess shows Allow access in Settings and opens settings', (
+  testWidgets('needsAccess shows an On tag and a sheet with two actions', (
     tester,
   ) async {
     final fake = await pumpRow(
@@ -131,9 +133,62 @@ void main() {
       const HealthExportOn(saved: 1, waiting: 2, needsAccess: true),
     );
     expect(find.text('Allow access in Settings'), findsOneWidget);
+    expect(find.byType(NsTag), findsOneWidget);
+    expect(find.text('On'), findsOneWidget);
     await tester.tap(find.text('Save workouts to Apple Health'));
     await tester.pumpAndSettle();
+    expect(
+      find.text(
+        "BeyondRep can't save workouts to Apple Health until you allow it in "
+        'Settings.',
+      ),
+      findsOneWidget,
+    );
+    expect(fake.calls, isEmpty);
+    await tester.tap(find.text('Open Settings'));
+    await tester.pumpAndSettle();
     expect(fake.calls, ['openSettings']);
+    expect(find.text('Open Settings'), findsNothing);
+
+    await tester.tap(find.text('Save workouts to Apple Health'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Stop saving'));
+    await tester.pumpAndSettle();
+    expect(fake.calls, ['openSettings', 'turnOff']);
+  });
+
+  testWidgets('needsAccess sheet says Health Connect on Android', (
+    tester,
+  ) async {
+    await pumpRow(
+      tester,
+      const HealthExportOn(saved: 0, waiting: 1, needsAccess: true),
+      platform: HealthPlatformKind.healthConnect,
+    );
+    await tester.tap(find.text('Save workouts to Health Connect'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text(
+        "BeyondRep can't save workouts to Health Connect until you allow it "
+        'in Settings.',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('uses no raw Switch and a screen reader hears the state', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    await pumpRow(
+      tester,
+      const HealthExportOn(saved: 42, waiting: 0, needsAccess: false),
+    );
+    expect(find.byType(Switch), findsNothing);
+    final node = tester.getSemantics(find.byType(NsListCard));
+    expect(node.label, contains('On · 42 saved'));
+    expect(node.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+    handle.dispose();
   });
 
   testWidgets('Stop saving asks before turning off', (tester) async {
