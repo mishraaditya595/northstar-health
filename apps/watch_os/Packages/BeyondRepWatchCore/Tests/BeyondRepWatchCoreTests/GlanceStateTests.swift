@@ -151,7 +151,7 @@ final class GlanceStateTests: XCTestCase {
         XCTAssertEqual(better[2].status, "+6 vs usual")
         XCTAssertEqual(better[2].tone, .good)
         XCTAssertEqual(better[0].status, "Score 81")
-        XCTAssertEqual(better[0].tone, .good)
+        XCTAssertEqual(better[0].tone, .neutral)  // sleep is never coloured as good or bad
         XCTAssertEqual(better[3].status, "today")
         XCTAssertEqual(better[3].tone, .neutral)
 
