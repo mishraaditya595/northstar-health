@@ -11,6 +11,7 @@ import 'package:beyondrep/features/health/data/health_connection_repository.dart
 import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/health/detail/readiness_detail_page.dart';
 import 'package:beyondrep/features/health/domain/daily_series.dart';
+import 'package:beyondrep/features/health/domain/energy.dart';
 import 'package:beyondrep/features/health/domain/health_types.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/features/health/domain/sleep_nights.dart';
@@ -127,6 +128,28 @@ HealthOverview _overview(
     DailyReduction.latest,
   );
   final today = _day(0);
+  final readiness = SectionData(
+    ReadinessOverview(
+      result: scoreReadiness(
+        today: today,
+        lastNight: last,
+        sleepScore: score,
+        priorNights: nights.sublist(0, nights.length - 1),
+        hrvDaily: hrvDaily,
+        restingHrDaily: rhrDaily,
+        loadSessions: loadSessions(logged, mergeWorkouts(logged, outside)),
+      ),
+      loadSessions: loadSessions(logged, mergeWorkouts(logged, outside)),
+      hasHrv: true,
+      hasRestingHr: true,
+      hasSleep: true,
+      hrvVsNormal: null,
+      restingHrVsNormal: null,
+      hrvBaseline: baselineOf(hrvDaily, today, sdFloor: hrvSdFloor),
+      restingHrBaseline: baselineOf(rhrDaily, today, sdFloor: rhrSdFloor),
+      hrvIsSdnn: reader.platform == HealthPlatformKind.appleHealth,
+    ),
+  );
   return HealthOverview(
     ownerId: _owner,
     readAt: _now,
@@ -146,27 +169,11 @@ HealthOverview _overview(
     activity: SectionData(fullActivity),
     body: SectionData(fullBody),
     workouts: SectionData(WorkoutsOverview(outside: outside)),
-    readiness: SectionData(
-      ReadinessOverview(
-        result: scoreReadiness(
-          today: today,
-          lastNight: last,
-          sleepScore: score,
-          priorNights: nights.sublist(0, nights.length - 1),
-          hrvDaily: hrvDaily,
-          restingHrDaily: rhrDaily,
-          loadSessions: loadSessions(logged, mergeWorkouts(logged, outside)),
-        ),
-        loadSessions: loadSessions(logged, mergeWorkouts(logged, outside)),
-        hasHrv: true,
-        hasRestingHr: true,
-        hasSleep: true,
-        hrvVsNormal: null,
-        restingHrVsNormal: null,
-        hrvBaseline: baselineOf(hrvDaily, today, sdFloor: hrvSdFloor),
-        restingHrBaseline: baselineOf(rhrDaily, today, sdFloor: rhrSdFloor),
-        hrvIsSdnn: reader.platform == HealthPlatformKind.appleHealth,
-      ),
+    readiness: readiness,
+    energy: energySection(
+      readiness,
+      wake: DateTime(2026, 11, 24, 6, 31),
+      day: today,
     ),
   );
 }
@@ -177,11 +184,19 @@ HealthOverview _todayOverview({
   bool restingHr = true,
   double? loadRatio,
   DateTime? readAt,
+  Energy? energy,
+  EnergyLearning learning = const EnergyLearning(),
 }) {
   // sleepOverview's vsWeek is 36 min under the 7-night average: 6h 48m.
+  final at = readAt ?? overviewReadAt;
+  final readiness = _todayReadiness(
+    platform: platform,
+    restingHr: restingHr,
+    loadRatio: loadRatio,
+  );
   return HealthOverview(
     ownerId: _owner,
-    readAt: readAt ?? overviewReadAt,
+    readAt: at,
     platform: platform,
     readableFrom: null,
     needsMoreAccess: false,
@@ -189,57 +204,72 @@ HealthOverview _todayOverview({
     heart: SectionData(fullHeart),
     activity: SectionData(fullActivity),
     body: SectionData(fullBody),
-    readiness: SectionData(
-      ReadinessOverview(
-        result: ReadinessReady(
-          Readiness(
-            value: 78,
-            band: ReadinessBand.good,
-            parts: [
+    readiness: readiness,
+    energy: energySection(
+      readiness,
+      energy: energy,
+      learning: learning,
+      wake: DateTime(at.year, at.month, at.day, 6, 31),
+      day: DateTime(at.year, at.month, at.day),
+    ),
+  );
+}
+
+SectionData<ReadinessOverview> _todayReadiness({
+  required HealthPlatformKind platform,
+  required bool restingHr,
+  required double? loadRatio,
+}) {
+  return SectionData(
+    ReadinessOverview(
+      result: ReadinessReady(
+        Readiness(
+          value: 78,
+          band: ReadinessBand.good,
+          parts: [
+            const ReadinessPart(
+              input: ReadinessInput.hrv,
+              score: 85,
+              weight: 0.4,
+              z: 1,
+            ),
+            if (restingHr)
               const ReadinessPart(
-                input: ReadinessInput.hrv,
-                score: 85,
-                weight: 0.4,
-                z: 1,
-              ),
-              if (restingHr)
-                const ReadinessPart(
-                  input: ReadinessInput.restingHr,
-                  score: 77.4,
-                  weight: 0.25,
-                  z: -0.5,
-                ),
-              const ReadinessPart(
-                input: ReadinessInput.sleep,
-                score: 74,
+                input: ReadinessInput.restingHr,
+                score: 77.4,
                 weight: 0.25,
+                z: -0.5,
               ),
+            const ReadinessPart(
+              input: ReadinessInput.sleep,
+              score: 74,
+              weight: 0.25,
+            ),
+            const ReadinessPart(
+              input: ReadinessInput.sleepDebt,
+              score: 60,
+              weight: 0.1,
+            ),
+            if (loadRatio != null)
               const ReadinessPart(
-                input: ReadinessInput.sleepDebt,
-                score: 60,
-                weight: 0.1,
+                input: ReadinessInput.trainingLoad,
+                score: 80,
+                weight: 0.15,
               ),
-              if (loadRatio != null)
-                const ReadinessPart(
-                  input: ReadinessInput.trainingLoad,
-                  score: 80,
-                  weight: 0.15,
-                ),
-            ],
-            loadRatio: loadRatio,
-          ),
+          ],
+          loadRatio: loadRatio,
         ),
-        hasHrv: true,
-        hasRestingHr: restingHr,
-        hasSleep: true,
-        hrvVsNormal: null,
-        restingHrVsNormal: null,
-        hrvBaseline: const Baseline(mean: 46, sd: 3, days: 20),
-        restingHrBaseline: restingHr
-            ? const Baseline(mean: 57.6, sd: 1.5, days: 20)
-            : null,
-        hrvIsSdnn: platform == HealthPlatformKind.appleHealth,
       ),
+      hasHrv: true,
+      hasRestingHr: restingHr,
+      hasSleep: true,
+      hrvVsNormal: null,
+      restingHrVsNormal: null,
+      hrvBaseline: const Baseline(mean: 46, sd: 3, days: 20),
+      restingHrBaseline: restingHr
+          ? const Baseline(mean: 57.6, sd: 1.5, days: 20)
+          : null,
+      hrvIsSdnn: platform == HealthPlatformKind.appleHealth,
     ),
   );
 }
@@ -286,6 +316,26 @@ Future<void> _selectRange(WidgetTester tester, String label) async {
   await tester.pumpAndSettle();
 }
 
+Energy _energy62() => Energy(
+  value: 62,
+  band: ReadinessBand.fair,
+  start: 78,
+  items: [
+    EnergyItem(
+      kind: EnergyItemKind.workout,
+      points: -9,
+      at: DateTime(2026, 11, 24, 7, 10),
+    ),
+    const EnergyItem(kind: EnergyItemKind.activeDay, points: -8),
+    const EnergyItem(kind: EnergyItemKind.awake, points: -1, awakeHours: 10),
+    EnergyItem(
+      kind: EnergyItemKind.nap,
+      points: 3,
+      at: DateTime(2026, 11, 24, 14, 40),
+    ),
+  ],
+);
+
 void main() {
   group('Today', () {
     testWidgets('one row per part with its normal range and share', (
@@ -319,9 +369,120 @@ void main() {
         find.text('6h 12m vs 6h 48m 7-night average · 10% of the score'),
         findsOneWidget,
       );
-      expect(find.text('How readiness works'), findsOneWidget);
+      expect(find.text('Why you started at 78'), findsOneWidget);
+      expect(find.text('How energy works'), findsOneWidget);
+      expect(find.text('How readiness works'), findsNothing);
       expect(find.textContaining('not medical advice'), findsOneWidget);
-      expect(find.textContaining('14 days'), findsOneWidget);
+      expect(
+        find.textContaining('A measure counts once it has 3 days'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('Today shows energy, the change line and every item', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        _todayOverview(energy: _energy62()),
+        FakeHealthReader(),
+      );
+
+      expect(find.text('Energy'), findsWidgets);
+      expect(find.text('62'), findsOneWidget);
+      expect(
+        find.text('Started today at 78 · down 16 since morning'),
+        findsOneWidget,
+      );
+      expect(find.text('Since you woke'), findsOneWidget);
+      expect(find.text('Woke at 6:31 AM'), findsOneWidget);
+      for (final (label, points) in [
+        ('Workout at 7:10 AM', '−9'),
+        ('Active day so far', '−8'),
+        ('Awake 10 hours', '−1'),
+        ('Nap at 2:40 PM', '+3'),
+      ]) {
+        expect(
+          find.descendant(
+            of: find.widgetWithText(DetailRow, label),
+            matching: find.text(points),
+          ),
+          findsOneWidget,
+          reason: label,
+        );
+      }
+      expect(find.text('Why you started at 78'), findsOneWidget);
+      expect(find.textContaining('Naps add back'), findsNothing);
+      expect(find.textContaining('Still learning'), findsNothing);
+    });
+
+    testWidgets('a capped nap explains the cap', (tester) async {
+      await _pump(
+        tester,
+        _todayOverview(
+          energy: Energy(
+            value: 70,
+            band: ReadinessBand.good,
+            start: 78,
+            items: [
+              EnergyItem(
+                kind: EnergyItemKind.workout,
+                points: -8,
+                at: DateTime(2026, 11, 24, 7, 10),
+              ),
+              EnergyItem(
+                kind: EnergyItemKind.nap,
+                points: 0 + 8,
+                at: DateTime(2026, 11, 24, 14, 40),
+                capped: true,
+              ),
+            ],
+          ),
+        ),
+        FakeHealthReader(),
+      );
+
+      expect(find.text('Nap at 2:40 PM (capped)'), findsOneWidget);
+      expect(
+        find.text(
+          'Naps add back up to 10 points, and never more than the day has '
+          'used.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('no items says nothing has changed', (tester) async {
+      await _pump(tester, _todayOverview(), FakeHealthReader());
+
+      expect(find.text('Since you woke'), findsOneWidget);
+      expect(
+        find.text('Nothing has changed your energy since you woke.'),
+        findsOneWidget,
+      );
+      expect(find.byType(DetailRow), findsWidgets);
+      expect(
+        find.text('Started today at 78 · no change since morning'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('learning note shows days and workouts', (tester) async {
+      await _pump(
+        tester,
+        _todayOverview(
+          learning: const EnergyLearning(workoutsNeeded: 12, daysNeeded: 9),
+        ),
+        FakeHealthReader(),
+      );
+
+      expect(
+        find.text(
+          'Still learning your patterns: 12 more workouts and 9 more days '
+          'of data for a calibrated score.',
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('lists Training load with its About button when the part '
@@ -333,7 +494,6 @@ void main() {
         findsOneWidget,
       );
       expect(find.bySemanticsLabel('About Training load'), findsOneWidget);
-      expect(find.textContaining('14 days of workout history'), findsOneWidget);
     });
 
     testWidgets('has no Training load row without the part', (tester) async {
@@ -389,8 +549,70 @@ void main() {
       expect(find.text('No resting HR today yet.'), findsOneWidget);
     });
 
+    testWidgets('a baseline short of 3 days says so', (tester) async {
+      final o = _todayOverview();
+      final r = (o.readiness as SectionData<ReadinessOverview>).value;
+      final short = SectionData(
+        ReadinessOverview(
+          result: ReadinessReady(
+            Readiness(
+              value: 78,
+              band: ReadinessBand.good,
+              parts: const [
+                ReadinessPart(
+                  input: ReadinessInput.sleep,
+                  score: 74,
+                  weight: 1,
+                ),
+              ],
+            ),
+          ),
+          hasHrv: true,
+          hasRestingHr: true,
+          hasSleep: true,
+          hrvVsNormal: null,
+          restingHrVsNormal: null,
+          hrvBaseline: null,
+          restingHrBaseline: null,
+          hrvIsSdnn: r.hrvIsSdnn,
+        ),
+      );
+      final ov = overview(
+        sleep: o.sleep,
+        readiness: short,
+        energy: energySection(
+          short,
+          wake: DateTime(2026, 11, 24, 6, 31),
+          day: DateTime(2026, 11, 24),
+        ),
+        readAt: o.readAt,
+      );
+      await _pump(tester, ov, FakeHealthReader());
+      expect(
+        find.text('Your normal needs 3 days of HRV in the last 30.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Your normal needs 3 days of resting HR in the last 30.'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('not ready reuses the card copy', (tester) async {
       final o = _todayOverview();
+      const notReadyReadiness = SectionData(
+        ReadinessOverview(
+          result: ReadinessNotReady(noHrvOrRhrToday: true),
+          hasHrv: false,
+          hasRestingHr: false,
+          hasSleep: true,
+          hrvVsNormal: null,
+          restingHrVsNormal: null,
+          hrvBaseline: null,
+          restingHrBaseline: null,
+          hrvIsSdnn: true,
+        ),
+      );
       final notReady = HealthOverview(
         ownerId: o.ownerId,
         readAt: o.readAt,
@@ -401,24 +623,13 @@ void main() {
         heart: o.heart,
         activity: o.activity,
         body: o.body,
-        readiness: const SectionData(
-          ReadinessOverview(
-            result: ReadinessNotReady(noHrvOrRhrToday: true),
-            hasHrv: false,
-            hasRestingHr: false,
-            hasSleep: true,
-            hrvVsNormal: null,
-            restingHrVsNormal: null,
-            hrvBaseline: null,
-            restingHrBaseline: null,
-            hrvIsSdnn: true,
-          ),
-        ),
+        readiness: notReadyReadiness,
+        energy: energySection(notReadyReadiness),
       );
       await _pump(tester, notReady, FakeHealthReader());
 
       expect(find.text('Not enough data for a score'), findsOneWidget);
-      expect(find.text('How readiness works'), findsOneWidget);
+      expect(find.text('How energy works'), findsOneWidget);
     });
 
     testWidgets('explains that older days are scored without sleep HR', (
@@ -432,7 +643,7 @@ void main() {
       );
     });
 
-    testWidgets("yesterday's overview never shows yesterday's score", (
+    testWidgets("yesterday's overview never shows yesterday's energy", (
       tester,
     ) async {
       final controller = FakeHealthOverviewController(
@@ -447,7 +658,8 @@ void main() {
 
       expect(find.text('Good to train'), findsNothing);
       expect(find.text('78'), findsNothing);
-      expect(find.text('How readiness works'), findsNothing);
+      expect(find.text('Since you woke'), findsNothing);
+      expect(find.text('How energy works'), findsNothing);
       expect(find.text("Couldn't read · Try again"), findsOneWidget);
       await tester.tap(find.text("Couldn't read · Try again"));
       await tester.pumpAndSettle();
@@ -471,6 +683,7 @@ void main() {
 
       expect(find.byType(DetailLoading), findsOneWidget);
       expect(find.text('Good to train'), findsNothing);
+      expect(find.text('Since you woke'), findsNothing);
       expect(find.text("Couldn't read · Try again"), findsNothing);
     });
   });

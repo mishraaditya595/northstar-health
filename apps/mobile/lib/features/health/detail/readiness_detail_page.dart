@@ -7,11 +7,13 @@ import '../../../core/design/charts/score_ring.dart';
 import '../../../core/design/charts/trend_label.dart';
 import '../application/health_details.dart';
 import '../application/health_overview.dart';
+import '../domain/energy.dart';
 import '../domain/metric_explanations.dart';
 import '../domain/readiness.dart';
 import '../domain/trend.dart';
 import '../health_format.dart';
 import '../widgets/detail_layout.dart';
+import '../widgets/energy_text.dart';
 import '../widgets/health_card_frame.dart';
 import '../widgets/metric_info_sheet.dart';
 import '../widgets/readiness_card.dart';
@@ -44,7 +46,7 @@ class _ReadinessDetailPageState extends ConsumerState<ReadinessDetailPage> {
       ref.listen(readinessHistoryProvider(range), (_, _) {});
     }
     return HealthDetailScaffold(
-      title: 'Readiness',
+      title: 'Energy',
       icon: Icons.bolt_outlined,
       chips: DetailRangeChips(
         options: const [
@@ -71,15 +73,15 @@ class _ReadinessDetailPageState extends ConsumerState<ReadinessDetailPage> {
             ),
           ],
         );
-        final today = todaysReadiness(overview, now);
-        // An earlier day's score is never shown as today's: wait for the
+        final today = currentEnergy(overview, now);
+        // An earlier day's energy is never shown as today's: wait for the
         // re-read, or offer to try again.
-        if (today == null && hasStaleReadiness(overview, now)) {
+        if (today == null && hasStaleEnergy(overview, now)) {
           return ref.watch(healthOverviewProvider).isLoading
               ? const DetailLoading()
               : unavailable(MetricGap.failed);
         }
-        return switch (overview.readiness) {
+        return switch (overview.energy) {
           SectionGap(gap: MetricGap.noData) => ReadinessCard(
             overview: overview,
             now: now,
@@ -87,7 +89,7 @@ class _ReadinessDetailPageState extends ConsumerState<ReadinessDetailPage> {
           SectionGap(:final gap) => unavailable(gap),
           SectionData() =>
             _range == SleepRange.lastNight
-                ? _Today(overview: overview, readiness: today!, now: now)
+                ? _Today(overview: overview, energy: today!, now: now)
                 : _RangeView(overview: overview, range: _range),
         };
       },
@@ -98,32 +100,35 @@ class _ReadinessDetailPageState extends ConsumerState<ReadinessDetailPage> {
 class _Today extends StatelessWidget {
   const _Today({
     required this.overview,
-    required this.readiness,
+    required this.energy,
     required this.now,
   });
 
   final HealthOverview overview;
-  final ReadinessOverview readiness;
+  final EnergyOverview energy;
   final DateTime now;
 
   @override
   Widget build(BuildContext context) {
-    final hrvName = readinessHrvName(readiness.hrvIsSdnn);
+    final start = energy.start;
+    final hrvName = readinessHrvName(start.hrvIsSdnn);
+    final current = energy.energy;
     return DetailPanels(
       children: [
-        ...switch (readiness.result) {
-          ReadinessReady(:final readiness) => [
-            _summary(context, readiness),
-            _parts(context, readiness, hrvName),
+        ...switch ((current, start.result)) {
+          (final e?, ReadinessReady(:final readiness)) => [
+            _summary(context, e),
+            _changes(context, e),
+            _parts(context, start, readiness, hrvName),
           ],
           // The card's copy for what is missing.
-          ReadinessNotReady() => [
+          _ => [
             ReadinessCard(overview: overview, now: now),
             const SizedBox(height: 12),
           ],
         },
         DetailPanel(
-          title: 'How readiness works',
+          title: 'How energy works',
           info: metricInfoButton(
             context,
             MetricKey.readiness,
@@ -131,15 +136,21 @@ class _Today extends StatelessWidget {
           ),
           children: [
             HealthCaption(
-              "Readiness compares today's $hrvName and resting heart rate "
-              'with your own normal, their average over the 30 days before '
-              "today, and adds last night's sleep. A measure counts once it "
-              'has 14 days of data. Training load, your last 7 days of '
-              'workouts against your usual week, counts once you have 14 '
-              'days of workout history. The 7 and 30 day comparison scores the '
-              'days before the period without sleep heart rate. Readiness '
-              'is a suggestion for planning your training, not medical '
-              'advice.',
+              'Energy starts each day from your recovery when you wake: '
+              "today's $hrvName and resting heart rate against your own "
+              'normal (their average over the 30 days before), last '
+              "night's sleep, your sleep over the past week and your recent "
+              'training load. A measure counts once it has 3 days of data. '
+              'Until it has 14, and until you have logged 20 workouts in '
+              'BeyondRep, the score is still learning. Through the day '
+              'energy goes down with each workout you finish, with active '
+              'calories above your usual for that hour, and a little with '
+              'long hours awake; a nap adds a few points back. Your day '
+              'runs from waking to your next main sleep, so a late session '
+              'counts for the day you are still awake in. The 7 and 30 day '
+              'comparison scores the days before the period without sleep '
+              'heart rate. Energy is a suggestion for planning your '
+              'training, not medical advice.',
             ),
           ],
         ),
@@ -147,22 +158,23 @@ class _Today extends StatelessWidget {
     );
   }
 
-  Widget _summary(BuildContext context, Readiness r) {
+  Widget _summary(BuildContext context, Energy e) {
     final theme = Theme.of(context);
+    final learning = energyLearningText(energy.learning);
     return DetailPanel(
       children: [
         Row(
           children: [
             NsScoreRing(
-              value: r.value,
+              value: e.value,
               size: 88,
-              color: readinessBandColor(theme, r.band),
-              caption: 'Readiness',
+              color: readinessBandColor(theme, e.band),
+              caption: 'Energy',
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
-                readinessBandWords(r.band),
+                readinessBandWords(e.band),
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
@@ -170,11 +182,42 @@ class _Today extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 8),
+        HealthCaption(energyChangeText(e)),
+        if (learning != null) HealthCaption(learning),
       ],
     );
   }
 
-  Widget _parts(BuildContext context, Readiness r, String hrvName) {
+  Widget _changes(BuildContext context, Energy e) {
+    final wake = energy.wake;
+    return DetailPanel(
+      title: 'Since you woke',
+      trailing: wake == null
+          ? null
+          : 'Woke at ${formatClockTime(wake.toLocal())}',
+      children: [
+        for (final i in e.items)
+          DetailRow(energyItemLabel(i), energyPointsText(i.points)),
+        if (e.items.any((i) => i.kind == EnergyItemKind.nap && i.capped))
+          const HealthCaption(
+            'Naps add back up to 10 points, and never more than the day has '
+            'used.',
+          ),
+        if (e.items.isEmpty)
+          const HealthCaption(
+            'Nothing has changed your energy since you woke.',
+          ),
+      ],
+    );
+  }
+
+  Widget _parts(
+    BuildContext context,
+    ReadinessOverview readiness,
+    Readiness r,
+    String hrvName,
+  ) {
     final heart = switch (overview.heart) {
       SectionData(:final value) => value,
       SectionGap() => null,
@@ -231,11 +274,11 @@ class _Today extends StatelessWidget {
     String whyNot(ReadinessInput input) => switch (input) {
       ReadinessInput.hrv =>
         readiness.hasHrv
-            ? 'Your normal needs 14 days of HRV in the last 30.'
+            ? 'Your normal needs 3 days of HRV in the last 30.'
             : 'No HRV today yet.',
       ReadinessInput.restingHr =>
         readiness.hasRestingHr
-            ? 'Your normal needs 14 days of resting HR in the last 30.'
+            ? 'Your normal needs 3 days of resting HR in the last 30.'
             : 'No resting HR today yet.',
       ReadinessInput.sleep => 'No sleep last night.',
       ReadinessInput.sleepDebt => 'Needs 3 nights in the week before.',
@@ -263,7 +306,7 @@ class _Today extends StatelessWidget {
           input == ReadinessInput.hrv || input == ReadinessInput.restingHr,
     );
     return DetailPanel(
-      title: 'What made the score',
+      title: 'Why you started at ${r.value}',
       children: [
         for (final input in ReadinessInput.values)
           if (input == ReadinessInput.trainingLoad && parts[input] == null)
