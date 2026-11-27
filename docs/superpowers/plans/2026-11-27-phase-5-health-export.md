@@ -116,11 +116,11 @@ Writes are sorted by `completedAt` ascending and cut at `maxWrites`; deletes and
 
 Mapping: `write` calls `writeWorkoutDataUUID` with the Global Constraints values; non-empty uuid ⇒ `HealthWriteOk` (Android: use `clientRecordId` = workout uuid as the record id when the returned string is empty but the call returned without error). `HealthException` with `HealthErrorCode.permissionDenied` ⇒ `HealthWriteDenied`; Health Connect unavailable ⇒ `HealthWriteUnavailable`; any other exception or empty result ⇒ `HealthWriteFailed`. `delete`: iOS `deleteByUUID(uuid: platformRecordId, type: HealthDataType.WORKOUT)`, Android `deleteByClientRecordId(dataTypeKey: HealthDataType.WORKOUT, clientRecordId: workoutUuid)`; a record already gone counts as Ok. `requestAccess`: `requestAuthorization([HealthDataType.WORKOUT], permissions: [HealthDataAccess.READ_WRITE])`. `hasWriteAccess`: `hasPermissions([WORKOUT], permissions: [READ_WRITE])` on Android; on iOS `hasPermissions` with `WRITE` (HealthKit reports write status truthfully). Never log values or exception text.
 
-- [ ] **Step 1: Write failing tests** with a mocked method channel (as `platform_health_reader_test.dart` does): `write sends strength training, brand BeyondRep, syncIdentifier and syncVersion on iOS`; `write sends clientRecordId, clientRecordVersion, title and zone offsets on Android`; `no energy or distance argument is sent`; `permission error maps to HealthWriteDenied`; `delete uses deleteByUUID with WORKOUT on iOS and deleteByClientRecordId on Android`; `beyondRepWorkoutsIn keeps in.beyondrep.app and in.beyondrep.app.watchkitapp, drops in.beyondrep.apple and other apps`. In the reader test: `own written workout is not an outside workout` (source `in.beyondrep.app`).
-- [ ] **Step 2: Run** those files — expected FAIL.
-- [ ] **Step 3: Implement** the writer, the fake, and the native declarations.
-- [ ] **Step 4: Run** the files plus `python3 -m unittest tool.test_ios_privacy_strings` from the repo root — expected PASS.
-- [ ] **Step 5: Commit** `feat(health): add a workout writer for Apple Health and Health Connect`.
+- [x] **Step 1: Write failing tests** with a mocked method channel (as `platform_health_reader_test.dart` does): `write sends strength training, brand BeyondRep, syncIdentifier and syncVersion on iOS`; `write sends clientRecordId, clientRecordVersion, title and zone offsets on Android`; `no energy or distance argument is sent`; `permission error maps to HealthWriteDenied`; `delete uses deleteByUUID with WORKOUT on iOS and deleteByClientRecordId on Android`; `beyondRepWorkoutsIn keeps in.beyondrep.app and in.beyondrep.app.watchkitapp, drops in.beyondrep.apple and other apps`. In the reader test: `own written workout is not an outside workout` (source `in.beyondrep.app`).
+- [x] **Step 2: Run** those files — expected FAIL.
+- [x] **Step 3: Implement** the writer, the fake, and the native declarations.
+- [x] **Step 4: Run** the files plus `python3 -m unittest tool.test_ios_privacy_strings` from the repo root — expected PASS.
+- [x] **Step 5: Commit** `feat(health): add a workout writer for Apple Health and Health Connect`.
 
 ### Task 4: Exporter pass (state machine)
 

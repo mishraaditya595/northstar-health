@@ -1031,6 +1031,21 @@ void main() {
       ]);
     });
 
+    test('own written workout is not an outside workout', () async {
+      // A strength workout as the phone export writes it (Phase 5).
+      health.points = [
+        _workout(
+          HealthWorkoutActivityType.TRADITIONAL_STRENGTH_TRAINING,
+          uuid: 'written',
+          kcal: null,
+          sourceId: 'in.beyondrep.app',
+          sourceName: 'BeyondRep',
+        ),
+      ];
+      final r = await ios().readWorkouts(from, now);
+      expect((r as SeriesData<List<OutsideWorkout>>).data, isEmpty);
+    });
+
     test('a lookalike source such as in.beyondrep.apple is kept', () async {
       health.points = [
         _workout(
