@@ -132,7 +132,8 @@ final class WorkoutControllerTests: XCTestCase {
 
     func testQueueCompletedQueuesOnce() throws {
         let controller = try start(try TemplateFixtures.template())
-        _ = try logCurrent(controller)
+        _ = try logCurrent(controller)  // the warm-up, not counted
+        _ = try logCurrent(controller)  // the first working set
         try controller.markCompleted()
         let uuid = "11111111-2222-4333-8444-555555555555"
         try controller.queueCompleted(healthkitWorkoutUuid: uuid)
@@ -147,7 +148,8 @@ final class WorkoutControllerTests: XCTestCase {
     func testFinishingSessionIsFoundAfterRestart() throws {
         var controller: WorkoutController? = try start(try TemplateFixtures.template())
         let sessionId = controller!.sessionId
-        _ = try logCurrent(controller!)
+        _ = try logCurrent(controller!)  // the warm-up, not counted
+        _ = try logCurrent(controller!)  // the first working set
         try controller!.markCompleted()
         controller = nil
         let reopened = try WatchJournal(url: dir.appendingPathComponent("journal.sqlite"))
