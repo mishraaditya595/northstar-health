@@ -1079,6 +1079,8 @@ void main() {
   group('readOwnWorkout', () {
     final start = DateTime.utc(2026, 11, 20, 9);
     final end = DateTime.utc(2026, 11, 20, 9, 40);
+    final workoutStart = start.add(const Duration(minutes: 2));
+    final workoutEnd = end.subtract(const Duration(minutes: 3));
 
     HealthDataPoint hr(num value, int minute, {String uuid = 'h'}) =>
         HealthDataPoint(
@@ -1101,8 +1103,8 @@ void main() {
           HealthWorkoutActivityType.TRADITIONAL_STRENGTH_TRAINING,
           uuid: 'AB12-CD',
           kcal: 212,
-          from: start,
-          to: end,
+          from: workoutStart,
+          to: workoutEnd,
           sourceId: 'in.beyondrep.app.watchkitapp',
         ),
         hr(100, 5),
@@ -1122,8 +1124,10 @@ void main() {
       final hrCall = health.calls.firstWhere(
         (c) => c.types.contains(HealthDataType.HEART_RATE),
       );
-      expect(hrCall.start, start);
-      expect(hrCall.end, end);
+      // The requested bounds differ from the workout's own, so this proves
+      // heart rate is read over the matched workout's bounds.
+      expect(hrCall.start, workoutStart);
+      expect(hrCall.end, workoutEnd);
     });
 
     test('ignores workouts with another uuid', () async {
