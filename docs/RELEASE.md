@@ -133,6 +133,27 @@ The iPhone app sends the signed-in account's plans and today's numbers to the Be
 | Large text and VoiceOver on a small and a large watch: tiles read "Resting heart rate, 54 beats per minute" and "Steps, no data", nothing clipped | not run |
 | Watch signing through the Codemagic job works without the fallback profile (see IOS_TESTFLIGHT_CODEMAGIC.md) | not run |
 
+## Phase 4 watch glance redesign and sync status (owner actions, none done)
+
+The two-page watch app, its detail screens and the watch status on the iPhone are implemented in source, **not released or device-verified**. The Swift unit tests run in `watchos_smoke.yml`; none of these device checks is CI. Every row is not run.
+
+| Check | Result |
+| --- | --- |
+| TestFlight build installs on the watch; Home shows the readiness hero and an even 2x2 grid with a status line on each tile | not run |
+| The Train button in the bottom corner of Home opens the Train page; the crown also scrolls between Home and Train; the "Turn the crown for your workouts" hint shows once and "Got it" dismisses it for good | not run |
+| Train shows today's program workout first, then the plans, with no Start button | not run |
+| Every tile, the hero and the top status line open a detail screen; sleep shows stages, resting HR and HRV a dashed usual line, steps bars with today highlighted, readiness one line per input; a day without data has no mark, never 0 | not run |
+| The detail values match the phone's Health tab and the readiness words match the phone | not run |
+| Large text and VoiceOver on a 41 mm and a larger watch: tiles read "Resting heart rate 61 beats per minute, 2 below your usual", the grid falls back to one column, nothing clipped | not run |
+| Turn Bluetooth off on the iPhone: the watch top line says "Phone not nearby", the Sync screen shows the dated data; turn it on: "Synced" with the time | not run |
+| Open the watch app before signing in on the phone: the Sync screen says "Open BeyondRep on your iPhone" | not run |
+| The iPhone shows "Apple Watch · synced" at the bottom of Today only after the watch has confirmed; Account & sync shows Connected, Installed, Last synced and what was sent | not run |
+| Delete the watch app: the iPhone shows "BeyondRep isn't on your watch yet" at the top of Today; "Show me how" opens the three steps; "Not now" hides the banner for good while Account & sync still says Not installed | not run |
+| Leave the watch out of use for two days with the phone app opened: the iPhone banner says the watch has not synced since the last time | not run |
+| An iPhone with no paired Apple Watch, an iPad and an Android phone show no banner, no footer and no Apple Watch section | not run |
+| After local midnight the watch shows no detail screen from the day before | not run |
+| An old watch build next to the new phone build shows dashes, no crash (the new snapshot is rejected until the watch updates) | not run |
+
 ## Phase 4 stage 1: tablet layouts (owner actions, none done)
 
 Wide-window layouts (window width 840 dp or more) are implemented in source, **not released or device-verified**. The automated sweep (`test/accessibility/wide_layout_sweep_test.dart`) checks for overflow at five sizes, both themes and 200 % text in the test font; it does not replace these checks. Every row is not run.
