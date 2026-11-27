@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
+import 'package:beyondrep/features/health/application/workout_health_export_controller.dart';
 import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
@@ -27,6 +28,11 @@ const disconnectHint =
 
 final now = DateTime(2026, 11, 24, 18, 20);
 
+class _OffExport extends HealthExportController {
+  @override
+  Future<HealthExportStatus> build() async => const HealthExportOff();
+}
+
 HealthConnected connected({
   HealthPlatformKind platform = HealthPlatformKind.appleHealth,
 }) => HealthConnected(readAt: now, platform: platform);
@@ -42,6 +48,7 @@ Future<void> pumpPage(
   bool settle = true,
   DateTime? clock,
   FakeHealthOverviewController? overviewController,
+  bool exportRow = false,
 }) async {
   tester.view.physicalSize = Size(width, 1600);
   tester.view.devicePixelRatio = 1;
@@ -57,6 +64,8 @@ Future<void> pumpPage(
           overviewController ?? FakeHealthOverviewController(overview()),
         ),
         healthClockProvider.overrideWithValue(() => clock ?? now),
+        if (exportRow)
+          healthExportControllerProvider.overrideWith(_OffExport.new),
       ],
       child: MaterialApp(
         theme: BeyondRepTheme.build(brightness),
@@ -77,6 +86,35 @@ Future<void> pumpPage(
 }
 
 void main() {
+  testWidgets('shows the save-workouts row while health is not connected', (
+    tester,
+  ) async {
+    final c = FakeHealthSummaryController(
+      const HealthNotConnected(
+        availability: HealthAvailability.available,
+        platform: HealthPlatformKind.appleHealth,
+      ),
+    );
+    await pumpPage(tester, c, exportRow: true);
+    expect(find.text('Save workouts to Apple Health'), findsOneWidget);
+    expect(find.text('Off'), findsOneWidget);
+  });
+
+  testWidgets('shows the save-workouts row when connected, after Disconnect', (
+    tester,
+  ) async {
+    await pumpPage(
+      tester,
+      FakeHealthSummaryController(connected()),
+      exportRow: true,
+    );
+    final disconnect = tester.getTopLeft(find.text('Disconnect')).dy;
+    final row = tester
+        .getTopLeft(find.text('Save workouts to Apple Health'))
+        .dy;
+    expect(row, greaterThan(disconnect));
+  });
+
   testWidgets('not connected shows the connect card, no demo content', (
     tester,
   ) async {

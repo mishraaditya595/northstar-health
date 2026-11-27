@@ -195,10 +195,10 @@ Copy (iOS shown; Android replaces "Apple Health" with "Health Connect"):
 - Sheet (`showNsSheet`): heading `Save workouts to Apple Health`; body `BeyondRep will save each workout you finish on this phone to Apple Health as Strength training, with its name, start and end. Your past workouts here are saved too. Heart rate and calories are not included. Apple Watch workouts are already in Apple Health and are not saved twice.`; primary `Turn on` ⇒ `turnOn`; secondary `Not now`.
 
 - [ ] **Step 1: Write failing widget tests:** `shows Off and opens the sheet`; `Turn on calls turnOn`; `On shows saved and waiting counts`; `needsAccess shows Allow access in Settings and opens settings`; `Stop saving asks before turning off`; `Health Connect wording on Android`; `hidden when unavailable`; light and dark at text scale 2.0 without overflow; health page shows the row while not connected for reads.
-- [ ] **Step 2: Run** — expected FAIL.
-- [ ] **Step 3: Implement** the row, the sheet and the page placement.
-- [ ] **Step 4: Run** the tests plus `flutter test test/design_kit_guard_test.dart test/health` — expected PASS.
-- [ ] **Step 5: Commit** `feat(health): add the save-to-Apple-Health switch to the Health tab`.
+- [x] **Step 2: Run** — expected FAIL.
+- [x] **Step 3: Implement** the row, the sheet and the page placement.
+- [x] **Step 4: Run** the tests plus `flutter test test/design_kit_guard_test.dart test/health` — expected PASS.
+- [x] **Step 5: Commit** `feat(health): add the save-to-Apple-Health switch to the Health tab`.
 
 ### Task 7: ADR-0014, docs and full checks
 

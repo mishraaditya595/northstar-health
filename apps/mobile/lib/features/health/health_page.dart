@@ -17,6 +17,7 @@ import 'widgets/body_card.dart';
 import 'widgets/health_actions_mixin.dart';
 import 'widgets/health_card_frame.dart';
 import 'widgets/health_connect_card.dart';
+import 'widgets/health_export_row.dart';
 import 'widgets/heart_card.dart';
 import 'widgets/readiness_card.dart';
 import 'widgets/sleep_card.dart';
@@ -97,6 +98,15 @@ class _HealthPageState extends ConsumerState<HealthPage>
             )
           else
             ..._connected(context, state as HealthConnected, loading, muted),
+          if (state != null) ...[
+            const SizedBox(height: 16),
+            HealthExportRow(
+              platform: switch (state) {
+                HealthNotConnected(:final platform) => platform,
+                HealthConnected(:final platform) => platform,
+              },
+            ),
+          ],
         ],
       ),
     );

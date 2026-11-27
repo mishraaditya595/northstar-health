@@ -44,13 +44,12 @@ class HealthExportController extends AsyncNotifier<HealthExportStatus> {
   @override
   Future<HealthExportStatus> build() async {
     final owner = ref.watch(healthOwnerIdProvider);
-    final writer = ref.watch(healthWorkoutWriterProvider);
-    final repository = ref.watch(healthExportRepositoryProvider);
     _owner = owner;
     _exporter = null;
-    if (owner == null || !await writer.isAvailable()) {
-      return const HealthExportUnavailable();
-    }
+    if (owner == null) return const HealthExportUnavailable();
+    final writer = ref.watch(healthWorkoutWriterProvider);
+    final repository = ref.watch(healthExportRepositoryProvider);
+    if (!await writer.isAvailable()) return const HealthExportUnavailable();
     if (!repository.isEnabled(owner)) return const HealthExportOff();
     final exporter = _exporterFor(owner);
     return _on(exporter.summary());
