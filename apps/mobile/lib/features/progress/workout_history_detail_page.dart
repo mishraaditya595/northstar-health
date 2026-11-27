@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design/stats.dart';
 import '../../core/design/section.dart';
 import '../../core/design/beyondrep_theme.dart';
+import '../health/application/own_workout_health.dart';
+import '../health/domain/own_workout_health.dart';
 import 'domain/progress_overview.dart';
 import '../../core/units/load_units.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
@@ -178,6 +180,19 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
             ),
           ],
         ),
+        if (session.origin == WorkoutOrigin.watch)
+          ..._appleHealthSection(
+            theme,
+            ref
+                .watch(
+                  ownWorkoutHealthProvider((
+                    workoutUuid: session.uuid,
+                    start: session.startedAtUtc,
+                    end: finished,
+                  )),
+                )
+                .value,
+          ),
         const SizedBox(height: 24),
         SectionHeading(
           '${session.exercises.length} '
@@ -281,6 +296,46 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  /// Optional detail: nothing while loading, on failure or without a value.
+  List<Widget> _appleHealthSection(ThemeData theme, OwnWorkoutHealth? health) {
+    if (health == null) return const [];
+    final rows = [
+      if (health.averageBpm != null)
+        ('Average heart rate', '${health.averageBpm} bpm'),
+      if (health.maxBpm != null) ('Max heart rate', '${health.maxBpm} bpm'),
+      if (health.activeKcal != null)
+        ('Active energy', '${health.activeKcal!.round()} kcal'),
+    ];
+    return [
+      const SizedBox(height: 24),
+      const SectionHeading('From Apple Health'),
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              for (final (label, value) in rows)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: Text(label)),
+                      const SizedBox(width: 12),
+                      Text(
+                        value,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    ];
   }
 
   Future<void> _confirmDelete(

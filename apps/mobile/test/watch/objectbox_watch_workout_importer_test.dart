@@ -398,4 +398,15 @@ void main() {
     importIt();
     expect(importer.platformWorkoutUuids(), {hkUuid.toLowerCase()});
   });
+
+  test('platformWorkoutUuidFor reads the receipt of one workout', () {
+    importIt();
+    final workoutUuid = store
+        .box<WatchWorkoutReceiptEntity>()
+        .getAll()
+        .single
+        .workoutUuid;
+    expect(importer.platformWorkoutUuidFor(workoutUuid), hkUuid.toLowerCase());
+    expect(importer.platformWorkoutUuidFor('no-such-workout'), isNull);
+  });
 }

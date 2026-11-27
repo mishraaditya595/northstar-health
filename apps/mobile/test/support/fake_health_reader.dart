@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/health/domain/health_types.dart';
 import 'package:beyondrep/features/health/domain/outside_workouts.dart';
+import 'package:beyondrep/features/health/domain/own_workout_health.dart';
 
 class FakeHealthReader implements HealthReader {
   FakeHealthReader({
@@ -138,6 +139,26 @@ class FakeHealthReader implements HealthReader {
     workoutCalls.add((from, to));
     await workoutsGate?.future;
     return workouts;
+  }
+
+  /// What [readOwnWorkout] returns.
+  SeriesResult<OwnWorkoutHealth?> ownWorkout = const SeriesData(null);
+  final List<(String, DateTime, DateTime)> ownWorkoutCalls = [];
+  bool throwOnOwnWorkout = false;
+
+  /// Holds every [readOwnWorkout] until completed.
+  Completer<void>? ownWorkoutGate;
+
+  @override
+  Future<SeriesResult<OwnWorkoutHealth?>> readOwnWorkout(
+    String platformWorkoutId,
+    DateTime from,
+    DateTime to,
+  ) async {
+    ownWorkoutCalls.add((platformWorkoutId, from, to));
+    await ownWorkoutGate?.future;
+    if (throwOnOwnWorkout) throw StateError('synthetic own workout bug');
+    return ownWorkout;
   }
 
   @override
