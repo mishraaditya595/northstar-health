@@ -42,11 +42,13 @@ public struct WorkoutCursor {
     }
 
     /// Starting values for the set screen: the last completed set of the same
-    /// exercise in this session, else the set's targets, else a plain default
+    /// exercise and kind in this session (a warm-up never fills a working set), else the set's targets, else a plain default
     /// (10 reps or 30 s, no weight) the crown then adjusts.
     public func prefill(for position: SetPosition, unit: String) -> SetValues {
         let ids = Set(position.exercise.sets.map(\.setId))
-        let last = state.sets.last { $0.status == "completed" && ids.contains($0.setId) }
+        let last = state.sets.last {
+            $0.status == "completed" && $0.kind == position.set.kind && ids.contains($0.setId)
+        }
         let timed = position.exercise.kind == "duration"
         var values = SetValues(
             setId: position.set.setId, exerciseId: position.exercise.exerciseId,

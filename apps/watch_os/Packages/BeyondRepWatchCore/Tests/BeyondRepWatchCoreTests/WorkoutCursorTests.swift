@@ -59,6 +59,17 @@ final class WorkoutCursorTests: XCTestCase {
         XCTAssertEqual(values.kind, "working")
     }
 
+    func testPrefillIgnoresAWarmupForAWorkingSet() throws {
+        let t = try template()
+        let warmup = t.exercises[0].sets[0]
+        let cursor = WorkoutCursor(template: t, state: state([completed(warmup, reps: 10, load: 20000)]))
+        let current = try XCTUnwrap(cursor.current)
+        XCTAssertEqual(current.set.kind, "working")
+        let values = cursor.prefill(for: current, unit: "kg")
+        XCTAssertEqual(values.reps, 8)
+        XCTAssertEqual(values.loadGrams, 60000)
+    }
+
     func testPrefillFallsBackToTargets() throws {
         let t = try template()
         let cursor = WorkoutCursor(template: t, state: state([]))

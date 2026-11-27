@@ -201,7 +201,7 @@ final class AppModel: ObservableObject {
     /// Save: record the finish, save the one HKWorkout, queue the completed
     /// workout, send it, and show the summary.
     func finishWorkout() async {
-        guard let controller = workout, controller.state.completedSets > 0 else { return }
+        guard let controller = workout, controller.canSave else { return }
         do { try controller.markCompleted() } catch { return }
         let uuid = await recorder.finish(at: Date())
         try? controller.queueCompleted(healthkitWorkoutUuid: uuid)

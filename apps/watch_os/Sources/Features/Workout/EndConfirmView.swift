@@ -9,7 +9,7 @@ struct EndConfirmView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var confirmingDiscard = false
 
-    private var hasSets: Bool { _ = model.revision; return controller.state.completedSets > 0 }
+    private var hasSets: Bool { _ = model.revision; return controller.canSave }
 
     var body: some View {
         ScrollView {

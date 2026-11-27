@@ -77,6 +77,9 @@ public final class WorkoutController {
     public var cursor: WorkoutCursor {
         WorkoutCursor(template: template, state: machine.state, focusExerciseId: focusExerciseId)
     }
+    /// True with at least one completed working set, the rule the builder
+    /// enforces: warm-ups alone cannot be saved.
+    public var canSave: Bool { machine.state.completedSets >= 1 }
     public var restDeadline: Date? { RestClock.deadline(events: machine.events) }
     public var startedAt: Date {
         for case .workoutStarted(let header, _) in machine.events {

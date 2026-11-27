@@ -145,6 +145,15 @@ final class WorkoutControllerTests: XCTestCase {
         XCTAssertEqual(hk, uuid)
     }
 
+    func testOnlyWarmupsCannotBeSaved() throws {
+        let controller = try start(try TemplateFixtures.template())
+        XCTAssertFalse(controller.canSave)
+        _ = try logCurrent(controller)  // the warm-up
+        XCTAssertFalse(controller.canSave)
+        _ = try logCurrent(controller)  // the first working set
+        XCTAssertTrue(controller.canSave)
+    }
+
     func testFinishingSessionIsFoundAfterRestart() throws {
         var controller: WorkoutController? = try start(try TemplateFixtures.template())
         let sessionId = controller!.sessionId
