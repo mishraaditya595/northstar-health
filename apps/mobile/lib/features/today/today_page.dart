@@ -243,9 +243,9 @@ class _TodayPageState extends ConsumerState<TodayPage> {
         padding: padding,
         children: [
           header,
+          const SizedBox(height: 24),
           const WatchStatusBanner(),
           backup,
-          const SizedBox(height: 24),
           NsSplitColumns(
             mainFlex: 1,
             sideFlex: 1,
@@ -266,9 +266,9 @@ class _TodayPageState extends ConsumerState<TodayPage> {
       padding: padding,
       children: [
         header,
+        const SizedBox(height: 24),
         const WatchStatusBanner(),
         backup,
-        const SizedBox(height: 24),
         hero,
         ?missed,
         const SizedBox(height: 27),

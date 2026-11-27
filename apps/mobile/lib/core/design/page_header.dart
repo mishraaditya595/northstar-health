@@ -251,20 +251,30 @@ class InsightCard extends StatelessWidget {
   final VoidCallback? onAction;
 
   /// A second, quieter action ("Not now"). With it the actions sit under the
-  /// text, so two buttons never squeeze the words at large text sizes.
+  /// text, start-aligned with it, so two buttons never squeeze the words at
+  /// large text sizes.
   final String? secondaryActionLabel;
   final VoidCallback? onSecondaryAction;
 
   /// Makes the whole card tappable, with ink on the card's own colour.
   final VoidCallback? onTap;
 
+  static const _markSize = 30.0;
+  static const _markGap = 12.0;
+  static const _actionPadding = 12.0;
+
+  /// Two-action buttons: the default 48 dp hit area, narrower side padding.
+  static final _actionStyle = TextButton.styleFrom(
+    padding: const EdgeInsets.symmetric(horizontal: _actionPadding),
+  );
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
     final mark = Container(
-      width: 30,
-      height: 30,
+      width: _markSize,
+      height: _markSize,
       decoration: BoxDecoration(
         color: dark
             ? BeyondRepPalette.sleepSoftDark
@@ -290,7 +300,7 @@ class InsightCard extends StatelessWidget {
         ? Row(
             children: [
               mark,
-              const SizedBox(width: 12),
+              const SizedBox(width: _markGap),
               message,
               if (actionLabel != null)
                 TextButton(onPressed: onAction, child: Text(actionLabel!)),
@@ -299,18 +309,29 @@ class InsightCard extends StatelessWidget {
         : Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(children: [mark, const SizedBox(width: 12), message]),
-              Align(
-                alignment: AlignmentDirectional.centerEnd,
+              Row(
+                children: [
+                  mark,
+                  const SizedBox(width: _markGap),
+                  message,
+                ],
+              ),
+              // Labels line up with the message text: the button's own padding
+              // supplies the last part of the mark + gap indent.
+              Padding(
+                padding: const EdgeInsetsDirectional.only(
+                  start: _markSize + _markGap - _actionPadding,
+                ),
                 child: Wrap(
-                  alignment: WrapAlignment.end,
                   children: [
                     if (actionLabel != null)
                       TextButton(
+                        style: _actionStyle,
                         onPressed: onAction,
                         child: Text(actionLabel!),
                       ),
                     TextButton(
+                      style: _actionStyle,
                       onPressed: onSecondaryAction,
                       child: Text(secondaryActionLabel!),
                     ),
@@ -319,7 +340,12 @@ class InsightCard extends StatelessWidget {
               ),
             ],
           );
-    const padding = EdgeInsets.fromLTRB(15, 14, 15, 14);
+    final padding = EdgeInsets.fromLTRB(
+      15,
+      14,
+      15,
+      secondaryActionLabel == null ? 14 : 2,
+    );
     if (onTap == null) {
       return Container(
         padding: padding,
