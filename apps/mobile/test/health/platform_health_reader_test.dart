@@ -1030,6 +1030,26 @@ void main() {
       ]);
     });
 
+    test('a lookalike source such as in.beyondrep.apple is kept', () async {
+      health.points = [
+        _workout(
+          HealthWorkoutActivityType.RUNNING,
+          uuid: 'look',
+          sourceId: 'in.beyondrep.apple',
+          sourceName: 'in.beyondrep.apple',
+        ),
+        _workout(
+          HealthWorkoutActivityType.RUNNING,
+          uuid: 'child',
+          sourceId: 'in.beyondrep.app.child',
+        ),
+      ];
+      final r = await ios().readWorkouts(from, now);
+      expect((r as SeriesData<List<OutsideWorkout>>).data.map((w) => w.id), [
+        'look',
+      ]);
+    });
+
     test('permission denied on Android is SeriesNotAllowed', () async {
       health.deniedTypes = {HealthDataType.WORKOUT};
       expect(

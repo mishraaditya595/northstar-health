@@ -63,6 +63,11 @@ const _iosFractionTypes = {
 /// Workouts BeyondRep itself saves, never read back as another app's.
 const _ownAppId = 'in.beyondrep.app';
 
+/// The app itself or one of its children (the watch app), never a lookalike
+/// such as `in.beyondrep.apple`.
+bool _isOwnSource(String source) =>
+    source == _ownAppId || source.startsWith('$_ownAppId.');
+
 OutsideWorkoutKind _kindOf(HealthWorkoutActivityType type) {
   final name = type.name;
   if (name.contains('DANCE')) return OutsideWorkoutKind.dance;
@@ -309,8 +314,7 @@ class PlatformHealthReader implements HealthReader {
     return SeriesData([
       for (final p in points)
         if (p.value case final WorkoutHealthValue w)
-          if (!p.sourceId.startsWith(_ownAppId) &&
-              !p.sourceName.startsWith(_ownAppId))
+          if (!_isOwnSource(p.sourceId) && !_isOwnSource(p.sourceName))
             OutsideWorkout(
               id: p.uuid.isEmpty
                   ? '${p.sourceId}-${p.dateFrom.millisecondsSinceEpoch}'
