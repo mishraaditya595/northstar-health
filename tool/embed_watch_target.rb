@@ -95,6 +95,9 @@ watch.build_configurations.each do |config|
     "CURRENT_PROJECT_VERSION" => "$(FLUTTER_BUILD_NUMBER)",
     "SWIFT_VERSION" => "5.9",
     "TARGETED_DEVICE_FAMILY" => "4",
+    # The Flutter project sets SUPPORTED_PLATFORMS = iphoneos for Release and
+    # Profile; without this the device archive builds the watch app for iOS.
+    "SUPPORTED_PLATFORMS" => "watchos watchsimulator",
     "SKIP_INSTALL" => "YES",
     "CODE_SIGN_STYLE" => "Automatic",
     "ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS" => "NO",
