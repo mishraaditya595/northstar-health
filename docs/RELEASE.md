@@ -393,3 +393,16 @@ The phone's history detail for an Apple Watch workout shows average and max hear
 | Apple Watch workout detail on iPhone shows average/max heart rate and kcal from Apple Health | not run |
 | Delete that workout in the Health app: the section disappears | not run |
 | Disconnect Health in BeyondRep: the section disappears | not run |
+
+## Phase 4: Apple Watch reads its own sleep, steps, HRV and resting heart rate (device checks, none run)
+
+The watch Home tiles show values read from the watch's own HealthKit store, in memory only, before a phone sync (ADR-0012 decision 4 amendment 2026-11-27). Implemented in source, **not released or device-verified**. Every row is not run.
+
+| Check | Result |
+|---|---|
+| First Home with a paired account shows the HealthKit permission prompt once (sleep, steps, HRV, resting heart rate, heart rate, active energy, workouts) | not run |
+| Phone off or out of range: sleep, resting HR, HRV and steps show on Home with the caption "From this watch. Open BeyondRep on your iPhone for readiness" and no readiness | not run |
+| Steps grow while walking (refresh on opening Home and every 5 minutes) | not run |
+| After a phone sync the phone's sleep, resting HR and HRV replace the watch's, steps show the larger value, and the caption reads "as of" | not run |
+| Deny the permission: the tiles show "—", not 0, and the prompt does not return | not run |
+| Sign out on the phone: the watch values disappear; sign in as another account shows nothing from the first | not run |
