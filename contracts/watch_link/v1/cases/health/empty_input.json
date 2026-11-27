@@ -1,0 +1,9 @@
+{
+  "description": "No samples: every value is missing, none is zero.",
+  "utc_offset_minutes": 0,
+  "now": "2026-11-20T09:30:00Z",
+  "sleep": [],
+  "hrv": [],
+  "resting_hr": [],
+  "expected": {}
+}
