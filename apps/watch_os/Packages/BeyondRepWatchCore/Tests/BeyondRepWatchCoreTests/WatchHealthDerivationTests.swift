@@ -88,4 +88,17 @@ final class WatchHealthDerivationTests: XCTestCase {
         XCTAssertEqual(steps(9450.4), 9450)
         XCTAssertEqual(steps(9450.5), 9451)
     }
+
+    func testZeroMinuteNightIsMissingOnTheWatch() {
+        // 30 s asleep ending after 03:00: the phone shows 0 min, the watch has no night value.
+        let night = [
+            SleepSample(
+                from: TestMessages.date("2026-11-20T06:29:30Z"), to: TestMessages.date("2026-11-20T06:30:00Z"),
+                stage: .asleepUnspecified, sourceKey: "com.example.watch")
+        ]
+        let now = TestMessages.date("2026-11-20T09:30:00Z")
+        let result = WatchHealthDerivation.today(
+            sleep: night, hrv: [], restingHr: [], steps: nil, now: now, timeZone: TimeZone(secondsFromGMT: 0)!)
+        XCTAssertNil(result.asleepMinutes)
+    }
 }

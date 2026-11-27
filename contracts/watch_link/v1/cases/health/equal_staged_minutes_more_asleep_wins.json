@@ -1,0 +1,30 @@
+{
+  "description": "Both sources have 240 staged minutes; the source with more asleep minutes (420, key sorts later) beats the other (240, key sorts first).",
+  "utc_offset_minutes": 0,
+  "now": "2026-11-20T09:30:00Z",
+  "sleep": [
+    {
+      "from": "2026-11-19T23:00:00Z",
+      "to": "2026-11-20T03:00:00Z",
+      "stage": "light",
+      "source_key": "com.example.aaa"
+    },
+    {
+      "from": "2026-11-19T23:00:00Z",
+      "to": "2026-11-20T03:00:00Z",
+      "stage": "light",
+      "source_key": "com.example.zzz"
+    },
+    {
+      "from": "2026-11-20T03:00:00Z",
+      "to": "2026-11-20T06:00:00Z",
+      "stage": "asleep_unspecified",
+      "source_key": "com.example.zzz"
+    }
+  ],
+  "hrv": [],
+  "resting_hr": [],
+  "expected": {
+    "asleep_minutes": 420
+  }
+}
