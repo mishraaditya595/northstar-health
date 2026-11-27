@@ -5,6 +5,7 @@ Dependencies: python3 -m pip install -r tool/requirements-ci.txt
 
 import json
 import unittest
+from datetime import datetime
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
@@ -73,6 +74,124 @@ def reference_replay(events):
         "volume_grams": volume,
         "completed_sets": done,
         "gaps": gaps,
+    }
+
+
+def _parse_utc(text):
+    return datetime.fromisoformat(text.replace("Z", "+00:00"))
+
+
+def reference_session_state(case):
+    """Independent reference of the session_state builder rules (README)."""
+    events, ctx = case["events"], case["context"]
+    template, unit = ctx["template"], ctx["unit"]
+    seen, ordered = set(), []
+    for event in events:
+        if event["event_id"] not in seen:
+            seen.add(event["event_id"])
+            ordered.append(event)
+    ordered.sort(key=lambda e: e["sequence"])
+    replay = reference_replay(ordered)
+    started = next(e for e in ordered if e["type"] == "workout_started")
+    status = {"active": "active", "paused": "paused"}.get(replay["status"], "ended")
+    body = {
+        "session_id": started["session_id"],
+        "owner": started["payload"]["owner"],
+        "status": status,
+        "name": started["payload"]["name"],
+        "started_at_utc": started["occurred_at_utc"],
+        "last_sequence": max(e["sequence"] for e in ordered),
+    }
+    if status == "ended":
+        body["end_reason"] = (
+            "completed" if replay["status"] == "completed" else "discarded"
+        )
+    # Pauses: an interval ends at the next resume, completion or discard.
+    paused_total, paused_since = 0, None
+    for e in ordered:
+        if e["type"] == "workout_paused" and paused_since is None:
+            paused_since = e["occurred_at_utc"]
+        elif (
+            e["type"] in ("workout_resumed", "workout_completed", "workout_abandoned")
+            and paused_since is not None
+        ):
+            paused_total += int(
+                (_parse_utc(e["occurred_at_utc"]) - _parse_utc(paused_since)).total_seconds()
+            )
+            paused_since = None
+    if status == "paused":
+        body["paused_at_utc"] = paused_since
+    if paused_total > 0:
+        body["paused_seconds"] = paused_total
+    # Rest: the last rest_started, ended by clear, log, pause, complete, discard.
+    deadline = None
+    for e in ordered:
+        if e["type"] == "rest_started":
+            deadline = e["payload"]["deadline_utc"]
+        elif e["type"] in (
+            "rest_cleared",
+            "set_logged",
+            "workout_paused",
+            "workout_completed",
+            "workout_abandoned",
+        ):
+            deadline = None
+    if deadline:
+        body["rest_deadline_utc"] = deadline
+    done = {s["set_id"]: s for s in replay["sets"]}
+    units, kinds = {}, {}
+    for e in ordered:
+        if e["type"] in ("set_logged", "set_corrected"):
+            units[e["payload"]["set_id"]] = e["payload"]["input_unit"]
+            kinds[e["payload"]["set_id"]] = e["payload"]["kind"]
+    exercises, current = [], None
+    for ex in sorted(template["exercises"], key=lambda x: x["position"]):
+        sets = []
+        for st in sorted(ex["sets"], key=lambda x: x["position"]):
+            item = {"set_id": st["set_id"], "position": st["position"]}
+            d = done.get(st["set_id"])
+            if d is None:
+                item.update(kind=st["kind"], status="planned", input_unit=unit)
+                for src, dst in (
+                    ("target_reps", "reps"),
+                    ("target_seconds", "duration_seconds"),
+                    ("target_load_grams", "load_grams"),
+                ):
+                    if st.get(src):
+                        item[dst] = st[src]
+                if current is None and status != "ended":
+                    current = st["set_id"]
+            elif d["status"] == "skipped":
+                item.update(kind=st["kind"], status="skipped")
+            else:
+                item.update(
+                    kind=kinds[st["set_id"]],
+                    status="completed",
+                    input_unit=units.get(st["set_id"], unit),
+                )
+                for k in ("reps", "duration_seconds", "load_grams", "rpe"):
+                    if k == "load_grams" and not d.get(k):
+                        continue
+                    if k in d:
+                        item[k] = d[k]
+            sets.append(item)
+        exercises.append(
+            {"exercise_id": ex["exercise_id"], "name": ex["name"], "kind": ex["kind"], "sets": sets}
+        )
+    if current:
+        body["current_set_id"] = current
+    body["exercises"] = exercises
+    if ctx.get("applied_command_ids"):
+        body["applied_command_ids"] = ctx["applied_command_ids"][-20:]
+    if ctx.get("rejected_commands"):
+        body["rejected_commands"] = ctx["rejected_commands"][-20:]
+    return {
+        "schema_version": 1,
+        "message_id": ctx["message_id"],
+        "type": "session_state",
+        "sent_at_utc": ctx["sent_at_utc"],
+        "account_key": ctx["account_key"],
+        "body": body,
     }
 
 
@@ -195,6 +314,17 @@ class WatchLinkContractTest(unittest.TestCase):
                     case["expected"]["body"]["last_sequence"],
                     max(e["sequence"] for e in case["events"]),
                 )
+
+    def test_session_state_cases(self):
+        cases = sorted((LINK / "cases/session_state").glob("*.json"))
+        self.assertGreaterEqual(len(cases), 4)
+        for path in cases:
+            case = load(path)
+            with self.subTest(file=path.name):
+                for event in case["events"]:
+                    self.v2.validate(event)
+                self.validator.validate(case["expected"])
+                self.assertEqual(reference_session_state(case), case["expected"])
 
 
 if __name__ == "__main__":

@@ -258,7 +258,7 @@ final class WatchJournalTests: XCTestCase {
         XCTAssertNil(try journal.binding())
     }
 
-    func testJournalMigratesUserVersion2To6KeepingOutboxRows() throws {
+    func testJournalMigratesUserVersion2To7KeepingOutboxRows() throws {
         // A database written before the binding table existed.
         let old = try SQLiteDatabase(url: url)
         try old.execute("CREATE TABLE outbox(message_id TEXT PRIMARY KEY, account_key TEXT NOT NULL, json TEXT NOT NULL, created_at TEXT NOT NULL)")
@@ -275,7 +275,7 @@ final class WatchJournalTests: XCTestCase {
         try journal.saveBinding(TestMessages.binding())
         XCTAssertEqual(try journal.binding()?.accountKey, TestMessages.keyA)
         let check = try SQLiteDatabase(url: url)
-        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(6))
+        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(7))
     }
 
     func testJournalMigratesAVersion3BindingTableKeepingItsRow() throws {
@@ -318,7 +318,7 @@ final class WatchJournalTests: XCTestCase {
         try journal.recordReceived(atMs: 1_234)
         XCTAssertEqual(try journal.lastReceivedMs(), 1_234)
         let check = try SQLiteDatabase(url: url)
-        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(6))
+        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(7))
     }
 
     func testRecordedReceivedTimeKeepsTheLatestAndSurvivesReopen() throws {
@@ -522,11 +522,81 @@ final class WatchJournalTests: XCTestCase {
         // The old row's type is filled in, so it counts as a queued completed workout.
         XCTAssertEqual(try journal.pendingCompleted(limit: 10).count, 1)
         let check = try SQLiteDatabase(url: url)
-        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(6))
+        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(7))
         XCTAssertTrue(try columns("outbox").contains("type"))
         XCTAssertTrue(try columns("outbox").contains("session_id"))
         XCTAssertTrue(try columns("sessions").contains("delivery"))
         XCTAssertTrue(try columns("sessions").contains("template_json"))
+    }
+
+    func testVersion7AddsCommandResultColumnsAndKeepsAppliedCommands() throws {
+        // A version 6 database: applied_commands has only its two key columns.
+        let old = try SQLiteDatabase(url: url)
+        try old.execute("CREATE TABLE applied_commands(session_id TEXT NOT NULL, command_id TEXT NOT NULL, PRIMARY KEY(session_id, command_id))")
+        let commandId = "88888888-4444-4444-8444-000000000001"
+        try old.execute("INSERT INTO applied_commands(session_id, command_id) VALUES(?,?)", [.text(session), .text(commandId)])
+        try old.setUserVersion(6)
+
+        let journal = try WatchJournal(url: url)
+        let check = try SQLiteDatabase(url: url)
+        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(7))
+        for column in ["result", "reason", "applied_at_ms"] {
+            XCTAssertTrue(try columns("applied_commands").contains(column), column)
+        }
+        // The old row stays and counts as applied.
+        let found = try XCTUnwrap(try journal.commandResult(sessionId: session, commandId: commandId))
+        XCTAssertEqual(found.result, "applied")
+        XCTAssertNil(found.reason)
+    }
+
+    func testRejectedCommandIsStoredOnceAndListedInOrder() throws {
+        let journal = try WatchJournal(url: url)
+        try recordSession(journal, sets: 0)
+        let a = "88888888-4444-4444-8444-00000000000a"
+        let b = "88888888-4444-4444-8444-00000000000b"
+        try journal.recordCommand(sessionId: session, commandId: a, result: "rejected", reason: "unknown_set")
+        try journal.recordCommand(sessionId: session, commandId: b, result: "applied", reason: nil)
+        try journal.recordCommand(sessionId: session, commandId: a.uppercased(), result: "applied", reason: nil)
+        let log = try journal.commandLog(sessionId: session)
+        XCTAssertEqual(log.map { $0.commandId }, [a, b])
+        XCTAssertEqual(log.map { $0.result }, ["rejected", "applied"])
+        XCTAssertEqual(log.first?.reason, "unknown_set")
+    }
+
+    func testAbandonedSessionDropsItsCommandRows() throws {
+        let journal = try WatchJournal(url: url)
+        var m = machine()
+        var events = try m.start(name: "Synthetic push day")
+        try journal.record(events, sessionState: replay(events))
+        try journal.recordCommand(sessionId: session, commandId: "88888888-4444-4444-8444-00000000000a", result: "applied", reason: nil)
+        events = [try m.abandon()]
+        try journal.record(events, sessionState: m.state, commandId: "88888888-4444-4444-8444-00000000000c")
+        XCTAssertTrue(try journal.commandLog(sessionId: session).isEmpty)
+    }
+
+    func testCompletedSessionKeepsItsCommandRowsUntilTheAck() throws {
+        let journal = try WatchJournal(url: url)
+        var m = machine()
+        var events = try m.start(name: "Synthetic push day")
+        events.append(try m.log(set: set(1)))
+        try journal.record(events, sessionState: replay(events))
+        let finish = "88888888-4444-4444-8444-00000000000c"
+        let done = try m.complete()
+        try journal.record([done], sessionState: m.state, commandId: finish)
+        XCTAssertEqual(try journal.commandLog(sessionId: session).map { $0.commandId }, [finish])
+        let message = try completedMessage()
+        try journal.queueCompleted(message, sessionId: session)
+        _ = try journal.applyAck(ackedMessageId: message.messageId, result: "stored")
+        XCTAssertTrue(try journal.commandLog(sessionId: session).isEmpty)
+    }
+
+    func testSaveTemplateWithCommandIdIsOneTransaction() throws {
+        let journal = try WatchJournal(url: url)
+        try recordSession(journal, sets: 0)
+        let id = "88888888-4444-4444-8444-00000000000d"
+        try journal.saveTemplate(sessionId: session, json: "{\"name\":\"x\"}", commandId: id)
+        XCTAssertEqual(try journal.template(sessionId: session), "{\"name\":\"x\"}")
+        XCTAssertEqual(try journal.commandResult(sessionId: session, commandId: id)?.result, "applied")
     }
 
     func testPendingCompletedSkipsEventMessages() throws {

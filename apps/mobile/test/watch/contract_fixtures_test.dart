@@ -165,6 +165,23 @@ void main() {
       }
     });
 
+    test('session_state cases decode and round-trip', () {
+      final files = _files('watch_link/v1/cases/session_state');
+      expect(files.length, greaterThanOrEqualTo(4));
+      for (final f in files) {
+        final c = _read(f);
+        for (final e in (c['events']! as List)) {
+          WorkoutEventV2.fromJson(e as Map<String, Object?>);
+        }
+        final expected = c['expected']! as Map<String, Object?>;
+        expect(
+          WatchMessage.fromJson(expected).toJson(),
+          equals(expected),
+          reason: _name(f),
+        );
+      }
+    });
+
     test('replay case events all decode', () {
       for (final f in _files('watch_link/v1/cases/replay')) {
         for (final e in (_read(f)['events']! as List)) {
