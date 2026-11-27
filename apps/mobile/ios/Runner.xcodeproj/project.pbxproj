@@ -62,6 +62,7 @@
 		BA5914729E62229D59B54A0D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DA7376967BF3D83F7EB44FEC /* Assets.xcassets */; };
 		BEAC4190E8772EC9AA6D386B /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFAA7FAB09B6F66E9C0BE506 /* Palette.swift */; };
 		BFE1972AECA9805E3AE86558 /* SyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE847FF357D91EE7164E4B8C /* SyncView.swift */; };
+		C3EA4DA9914DB946CF7A4C06 /* FollowerSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A477A8BAE90277841968D81 /* FollowerSession.swift */; };
 		C46F61C5DC5869259ED114D8 /* SyncLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC5926A135D54CCEDA2AB17 /* SyncLine.swift */; };
 		C6234CEEC173ED0650154736 /* OrphanSessionPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C92BD3AD0AF390DB75DD6063 /* OrphanSessionPolicy.swift */; };
 		E46CAEA98318EE4CF30536D8 /* TrainHintView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8922D0083E9A278F8A0F90F /* TrainHintView.swift */; };
@@ -139,6 +140,7 @@
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		3E1F976DFA0863688161BBFD /* BeyondRepWatchCore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BeyondRepWatchCore.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/BeyondRepWatchCore.swift; sourceTree = "<group>"; };
 		4958CB03F18EF358B6DFDDB7 /* TrainPage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrainPage.swift; path = Sources/Features/Train/TrainPage.swift; sourceTree = "<group>"; };
+		4A477A8BAE90277841968D81 /* FollowerSession.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FollowerSession.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Link/FollowerSession.swift; sourceTree = "<group>"; };
 		59529592C68CBAB87AE138BD /* ExercisesSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExercisesSheet.swift; path = Sources/Features/Workout/ExercisesSheet.swift; sourceTree = "<group>"; };
 		5A92E162B0EA79951A9CFCEE /* WorkoutController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WorkoutController.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Session/WorkoutController.swift; sourceTree = "<group>"; };
 		65B03F6FDD06F3863DB51B1A /* SessionStateBuilder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SessionStateBuilder.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Link/SessionStateBuilder.swift; sourceTree = "<group>"; };
@@ -341,6 +343,7 @@
 				65B03F6FDD06F3863DB51B1A /* SessionStateBuilder.swift */,
 				F5E53FD59768B175247055D3 /* LiveLink.swift */,
 				C92BD3AD0AF390DB75DD6063 /* OrphanSessionPolicy.swift */,
+				4A477A8BAE90277841968D81 /* FollowerSession.swift */,
 			);
 			name = BeyondRepWatch;
 			path = ../../watch_os;
@@ -571,6 +574,7 @@
 				B669770CB33B6F13D7646AF7 /* SessionStateBuilder.swift in Sources */,
 				82210AFFBBC53876CD29F72C /* LiveLink.swift in Sources */,
 				C6234CEEC173ED0650154736 /* OrphanSessionPolicy.swift in Sources */,
+				C3EA4DA9914DB946CF7A4C06 /* FollowerSession.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

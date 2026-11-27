@@ -4,6 +4,19 @@ import Foundation
 public enum AckEffect: Equatable {
     case delivered(sessionId: String)
     case rejected(sessionId: String)
+    /// The phone acked a `workout_link`: the link is settled (stored,
+    /// duplicate or refused) and is not sent again.
+    case linked(workoutId: String)
+}
+
+/// The workout the watch follows on the phone, so a relaunch mid-workout
+/// recovers it. `phase` is `following`, or `finishing` once the phone said it
+/// finished and the watch has yet to save the one `HKWorkout` and queue the link.
+public struct FollowerRow: Equatable {
+    public let sessionId: String
+    public let accountKey: String
+    public let joinedAtMs: Int64
+    public let phase: String
 }
 
 public enum JournalError: Error, Equatable {
@@ -72,7 +85,12 @@ public final class WatchJournal {
             try Self.addColumn(db, table: "applied_commands", column: "result", definition: "TEXT NOT NULL DEFAULT 'applied'")
             try Self.addColumn(db, table: "applied_commands", column: "reason", definition: "TEXT")
             try Self.addColumn(db, table: "applied_commands", column: "applied_at_ms", definition: "INTEGER NOT NULL DEFAULT 0")
-            try db.setUserVersion(7)
+            // Version 8 adds the workout the watch follows on the phone (one
+            // row) and the links it owes the phone (one per phone workout, kept
+            // after the ack so a link is never queued twice).
+            try db.execute("CREATE TABLE IF NOT EXISTS follower(slot INTEGER PRIMARY KEY CHECK(slot = 1), session_id TEXT NOT NULL, account_key TEXT NOT NULL, joined_at_ms INTEGER NOT NULL, phase TEXT NOT NULL)")
+            try db.execute("CREATE TABLE IF NOT EXISTS links(workout_id TEXT PRIMARY KEY, account_key TEXT NOT NULL, message_id TEXT NOT NULL, acked INTEGER NOT NULL DEFAULT 0)")
+            try db.setUserVersion(8)
         }
     }
 
@@ -265,12 +283,78 @@ public final class WatchJournal {
         }
     }
 
+    // MARK: Following a workout the phone owns
+
+    /// Remembers the workout this watch follows (one at a time).
+    public func saveFollower(sessionId: String, accountKey: String, joinedAtMs: Int64, phase: String) throws {
+        try db.execute(
+            "INSERT OR REPLACE INTO follower(slot, session_id, account_key, joined_at_ms, phase) VALUES(1,?,?,?,?)",
+            [.text(sessionId.lowercased()), .text(accountKey), .int(joinedAtMs), .text(phase)])
+    }
+
+    public func follower() throws -> FollowerRow? {
+        let rows = try db.query("SELECT session_id, account_key, joined_at_ms, phase FROM follower WHERE slot = 1")
+        guard let row = rows.first, case .text(let session) = row[0], case .text(let key) = row[1],
+            case .int(let joined) = row[2], case .text(let phase) = row[3]
+        else { return nil }
+        return FollowerRow(sessionId: session, accountKey: key, joinedAtMs: joined, phase: phase)
+    }
+
+    public func clearFollower() throws {
+        try db.execute("DELETE FROM follower")
+    }
+
+    /// Queues the `workout_link` for the phone's workout and drops the follower
+    /// row in one transaction. False (nothing written) when a link for that
+    /// workout was already queued, or already acked.
+    @discardableResult
+    public func queueWorkoutLink(_ message: WatchMessage) throws -> Bool {
+        guard case .workoutLink(let workoutId, _) = message.body else { return false }
+        return try db.transaction { () throws -> Bool in
+            let inserted = try db.execute(
+                "INSERT OR IGNORE INTO links(workout_id, account_key, message_id) VALUES(?,?,?)",
+                [.text(workoutId.lowercased()), .text(message.accountKey), .text(message.messageId.lowercased())])
+            guard inserted > 0 else { return false }
+            try enqueue(message, sessionId: workoutId.lowercased())
+            try db.execute("DELETE FROM follower")
+            return true
+        }
+    }
+
+    /// Links waiting for the phone's ack, oldest first.
+    public func pendingLinks(limit: Int) throws -> [WatchMessage] {
+        try db.query(
+            "SELECT json FROM outbox WHERE type = 'workout_link' ORDER BY rowid LIMIT ?", [.int(Int64(limit))]
+        ).compactMap { (row: [SQLValue]) -> WatchMessage? in
+            guard case .text(let text)? = row.first else { return nil }
+            return try decode(text)
+        }
+    }
+
+    /// The account key of a queued link, nil when it is not queued.
+    public func queuedLinkAccountKey(messageId: String) throws -> String? {
+        let rows = try db.query(
+            "SELECT account_key FROM outbox WHERE message_id = ? AND type = 'workout_link'",
+            [.text(messageId.lowercased())])
+        guard case .text(let key)? = rows.first?.first else { return nil }
+        return key
+    }
+
     /// Applies the phone's `ack` for a completed workout: the message, the
     /// session's other queued messages, its events and applied commands are
     /// deleted and the session is marked `delivered` (`stored`, `duplicate`) or
     /// `rejected`. An unknown or already applied id returns nil.
     public func applyAck(ackedMessageId: String, result: String) throws -> AckEffect? {
         try db.transaction { () throws -> AckEffect? in
+            let linkRows = try db.query(
+                "SELECT session_id FROM outbox WHERE message_id = ? AND type = 'workout_link'",
+                [.text(ackedMessageId.lowercased())])
+            if case .text(let workoutId)? = linkRows.first?.first {
+                // Stored, duplicate or refused: the link is settled either way.
+                try db.execute("DELETE FROM outbox WHERE message_id = ?", [.text(ackedMessageId.lowercased())])
+                try db.execute("UPDATE links SET acked = 1 WHERE workout_id = ?", [.text(workoutId)])
+                return AckEffect.linked(workoutId: workoutId)
+            }
             let rows = try db.query(
                 "SELECT session_id FROM outbox WHERE message_id = ? AND type = 'completed_workout'",
                 [.text(ackedMessageId.lowercased())])
@@ -493,6 +577,8 @@ public final class WatchJournal {
                 "DELETE FROM applied_commands WHERE session_id IN (SELECT session_id FROM sessions WHERE account_key = ?)",
                 [.text(key)])
             try db.execute("DELETE FROM sessions WHERE account_key = ?", [.text(key)])
+            try db.execute("DELETE FROM follower WHERE account_key = ?", [.text(key)])
+            try db.execute("DELETE FROM links WHERE account_key = ?", [.text(key)])
             try db.execute("DELETE FROM outbox WHERE account_key = ?", [.text(key)])
         }
     }
@@ -513,8 +599,9 @@ public final class WatchJournal {
                 received < nowMs - Int64(maxSilenceDays) * 86_400_000
             {
                 let busy = try db.query(
-                    "SELECT 1 FROM sessions WHERE account_key = ? AND status IN ('active','paused') LIMIT 1",
-                    [.text(binding.accountKey)])
+                    "SELECT 1 FROM sessions WHERE account_key = ? AND status IN ('active','paused') "
+                        + "UNION SELECT 1 FROM follower WHERE account_key = ? LIMIT 1",
+                    [.text(binding.accountKey), .text(binding.accountKey)])
                 if busy.isEmpty {
                     try recordCleared(binding.accountKey, sentAtMs: binding.sentAtMs)
                     try clearAccount(binding.accountKey, wipeUnsent: false)

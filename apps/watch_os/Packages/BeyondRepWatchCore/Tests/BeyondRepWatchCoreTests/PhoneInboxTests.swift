@@ -314,4 +314,29 @@ final class PhoneInboxTests: XCTestCase {
         XCTAssertTrue(outcomes.isEmpty)
         XCTAssertTrue(inbox.lastAckEffects.isEmpty)
     }
+
+    // MARK: Acks for workout links (stage 5b)
+
+    private func queuedLink(key: String = M.keyA) throws -> WatchMessage {
+        let message = WatchMessage(
+            messageId: M.id(), sentAtUtc: "2026-10-23T11:00:00Z", accountKey: key,
+            body: .workoutLink(workoutId: ackSession, healthkitWorkoutUuid: "cccccccc-cccc-4ccc-8ccc-cccccccccccc"))
+        XCTAssertTrue(try journal.queueWorkoutLink(message))
+        return message
+    }
+
+    func testStoredAckSettlesAWorkoutLink() throws {
+        let queued = try queuedLink()
+        try inbox.receive(userInfo: ack(queued, result: "stored"))
+        XCTAssertTrue(try journal.pendingLinks(limit: 10).isEmpty)
+        XCTAssertEqual(inbox.lastAckEffects, [.linked(workoutId: ackSession)])
+    }
+
+    func testLinkAckWithOtherAccountKeyIsIgnored() throws {
+        let queued = try queuedLink()
+        try inbox.receive(userInfo: ack(queued, result: "stored", key: M.keyB))
+        XCTAssertEqual(try journal.pendingLinks(limit: 10).count, 1)
+        XCTAssertTrue(inbox.lastAckEffects.isEmpty)
+        XCTAssertEqual(inbox.ignoredCount, 1)
+    }
 }

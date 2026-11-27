@@ -135,7 +135,10 @@ public final class PhoneInbox {
         case .ack(let ackedMessageId, let result, _):
             // An ack is never acked. It counts only when its account is the
             // one the queued workout was recorded under.
-            guard let queuedKey = try journal.queuedCompletedAccountKey(messageId: ackedMessageId) else {
+            guard
+                let queuedKey = try journal.queuedCompletedAccountKey(messageId: ackedMessageId)
+                    ?? journal.queuedLinkAccountKey(messageId: ackedMessageId)
+            else {
                 return nil  // already applied, or never queued: nothing changes
             }
             guard queuedKey == message.accountKey else {
