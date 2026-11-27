@@ -198,6 +198,23 @@ void main() {
       expect(sessionPerformance(s, withRpe), closeTo(1500 / 1350 * 0.95, 1e-9));
     });
 
+    test('a load norm is never compared with a bodyweight session', () {
+      final bw = session(
+        'bw',
+        DateTime(2026, 11, 10),
+        exercises: [('bw-e', 'def-bench', 'Bench')],
+        sets: [(ex: 'bw-e', reps: 10, grams: null, secs: null, rpe: null)],
+      );
+      expect(sessionPerformance(bw, earlier), isNull);
+    });
+
+    test('a session ratio is clamped to 0.5 to 2.0', () {
+      final huge = bench('now', DateTime(2026, 11, 10), kg: 400);
+      expect(sessionPerformance(huge, earlier), energySessionRatioMax);
+      final tiny = bench('now2', DateTime(2026, 11, 10), kg: 10);
+      expect(sessionPerformance(tiny, earlier), energySessionRatioMin);
+    });
+
     test('zero-volume norms are skipped, never NaN', () {
       final zero = [
         bench('e1', DateTime(2026, 11, 1), reps: 0),

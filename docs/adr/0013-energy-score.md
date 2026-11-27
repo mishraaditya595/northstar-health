@@ -76,6 +76,7 @@ Implemented in source, not released or device-verified. Personal tuning is compu
 | `energyHistoryDays` | 120 |
 | `energyNormSessions` / `energyNormMinSessions` | 5 / 2 |
 | `energyRpeWeight` / `energyRpeMaxDiff` | 0.05 / 3.0 |
+| `energySessionRatioMin` / `energySessionRatioMax` | 0.5 / 2.0 |
 | `energyTuneMinPairs` | 10 |
 | `energyTuneMinSpread` | 10.0 points |
 | `energyExpectedLowRatio` | 0.95 |
@@ -84,7 +85,7 @@ Implemented in source, not released or device-verified. Personal tuning is compu
 
 - **Sessions used:** completed BeyondRep sessions that completed in the last 90 days, excluding any that start in the current waking day.
 - **Usual hours:** with at least 8 sessions, a local hour is usual when the sessions starting in it or the hour either side number at least `max(3, ceil(0.25 × n))`. Fewer than 8 sessions: no usual hour. Not gated on calibration. In a usual hour the awake dip is waived.
-- **Performance index:** per exercise (the definition id, else the lower-cased name), volume over completed working sets (kg × reps when any set has both, else reps, else seconds) against the mean of up to the 5 most recent earlier sessions with that exercise (at least 2; any session in the read, also older than 90 days). The session's ratio is the mean over exercises with a norm; with RPE on both sides it is multiplied by `1 − 0.05 × clamp(rpe − normRpe, −3, 3)`.
+- **Performance index:** per exercise (the definition id, else the lower-cased name), volume over completed working sets (kg × reps when any set has both, else reps, else seconds; the kind is part of the exercise key so kinds are never compared) against the mean of up to the 5 most recent earlier sessions with that exercise (at least 2; any session in the read, also older than 90 days). The session's ratio is the mean over exercises with a norm; with RPE on both sides it is multiplied by `1 − 0.05 × clamp(rpe − normRpe, −3, 3)` and then kept within 0.5 to 2.0.
 - **Past energy at a session's start:** the readiness for its waking day (HRV, resting heart rate and sleep from the cached history, no sleep heart rate) less earlier workouts of that day; no active energy, awake dip or naps. Sessions without a waking day or a scored start are skipped.
 - **Multiplier:** calibrated (20 sessions in 90 days and baseline of at least 14 days) and at least 10 pairs and an energy spread of at least 10 points between the lower and upper half, else 1.0. Otherwise `clamp(1 + 8 × (0.95 − lowerRatio / upperRatio), 0.6, 1.4)`. It scales workout and active-energy drain (the active cap of 15 applies after multiplying), never the awake dip or naps.
 - **Extra reads:** exactly three (sleep, HRV, resting heart rate from 120 days back; sleep and HRV from 18:00), at most once per local day per account, connection and access scope, held in `energyHistoryCacheProvider` (one entry, never `autoDispose`, replaced on a new key so one account's data is held at a time). A failed read is cached as failed for that key and energy uses generic tuning. Android without history access returns about 30 days and the calibrated gate still applies.

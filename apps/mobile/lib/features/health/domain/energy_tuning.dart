@@ -27,6 +27,10 @@ const energyNormMinSessions = 2;
 const energyRpeWeight = 0.05;
 const energyRpeMaxDiff = 3.0;
 
+/// A session's performance ratio is kept within these bounds.
+const energySessionRatioMin = 0.5;
+const energySessionRatioMax = 2.0;
+
 const energyTuneMinPairs = 10;
 const energyTuneMinSpread = 10.0;
 const energyExpectedLowRatio = 0.95;
@@ -100,14 +104,19 @@ Map<String, double> _volumes(WorkoutSessionRecord s) {
     bool loaded(WorkoutSetRecord x) =>
         (x.loadGrams ?? 0) > 0 && (x.reps ?? 0) > 0;
     final double v;
+    final String mode;
     if (entry.value.any(loaded)) {
+      mode = 'load';
       v = sum((x) => loaded(x) ? x.loadGrams! / 1000 * x.reps! : 0);
     } else if (entry.value.any((x) => (x.reps ?? 0) > 0)) {
+      mode = 'reps';
       v = sum((x) => (x.reps ?? 0).toDouble());
     } else {
+      mode = 'seconds';
       v = sum((x) => (x.durationSeconds ?? 0).toDouble());
     }
-    if (v > 0) result[entry.key] = v;
+    // Volumes of different kinds are never compared.
+    if (v > 0) result['${entry.key}|$mode'] = v;
   }
   return result;
 }
@@ -125,6 +134,52 @@ double? _mean(Iterable<double> v) {
   return v.fold(0.0, (a, b) => a + b) / v.length;
 }
 
+class _Prepared {
+  _Prepared(this.session)
+    : volumes = _volumes(session),
+      rpe = _meanRpe(session);
+
+  final WorkoutSessionRecord session;
+  final Map<String, double> volumes;
+  final double? rpe;
+}
+
+/// [cur]'s performance against the first [end] of [earlier] (oldest first, all
+/// starting before it).
+double? _performanceOf(_Prepared cur, List<_Prepared> earlier, int end) {
+  if (cur.volumes.isEmpty) return null;
+  final ratios = <double>[];
+  final normSessions = <_Prepared>{};
+  for (final entry in cur.volumes.entries) {
+    final used = <_Prepared>[];
+    for (var i = end - 1; i >= 0; i--) {
+      if (earlier[i].volumes.containsKey(entry.key)) used.add(earlier[i]);
+      if (used.length == energyNormSessions) break;
+    }
+    if (used.length < energyNormMinSessions) continue;
+    final norm = _mean([for (final e in used) e.volumes[entry.key]!]);
+    if (norm == null || norm <= 0) continue;
+    ratios.add(entry.value / norm);
+    normSessions.addAll(used);
+  }
+  final ratio = _mean(ratios);
+  if (ratio == null) return null;
+  final normRpe = _mean([for (final e in normSessions) ?e.rpe]);
+  var result = ratio;
+  if (cur.rpe != null && normRpe != null) {
+    final diff = (cur.rpe! - normRpe).clamp(
+      -energyRpeMaxDiff,
+      energyRpeMaxDiff,
+    );
+    result = ratio * (1 - energyRpeWeight * diff);
+  }
+  return result.clamp(energySessionRatioMin, energySessionRatioMax);
+}
+
+List<_Prepared> _preparedByStart(Iterable<WorkoutSessionRecord> sessions) => [
+  for (final s in sessions) _Prepared(s),
+]..sort((a, b) => a.session.startedAtUtc.compareTo(b.session.startedAtUtc));
+
 /// How [s] went against what the person usually does in the same exercises
 /// (1.0 is usual); null without a norm. [earlier] may hold any sessions, only
 /// those starting before [s] count.
@@ -132,34 +187,11 @@ double? sessionPerformance(
   WorkoutSessionRecord s,
   List<WorkoutSessionRecord> earlier,
 ) {
-  final volumes = _volumes(s);
-  if (volumes.isEmpty) return null;
-  final before = [
-    for (final e in earlier)
-      if (e.startedAtUtc.isBefore(s.startedAtUtc)) e,
-  ]..sort((a, b) => b.startedAtUtc.compareTo(a.startedAtUtc));
-  final earlierVolumes = {for (final e in before) e: _volumes(e)};
-  final ratios = <double>[];
-  final normSessions = <WorkoutSessionRecord>{};
-  for (final entry in volumes.entries) {
-    final used = <WorkoutSessionRecord>[];
-    for (final e in before) {
-      if (earlierVolumes[e]!.containsKey(entry.key)) used.add(e);
-      if (used.length == energyNormSessions) break;
-    }
-    if (used.length < energyNormMinSessions) continue;
-    final norm = _mean([for (final e in used) earlierVolumes[e]![entry.key]!]);
-    if (norm == null || norm <= 0) continue;
-    ratios.add(entry.value / norm);
-    normSessions.addAll(used);
-  }
-  final ratio = _mean(ratios);
-  if (ratio == null) return null;
-  final rpe = _meanRpe(s);
-  final normRpe = _mean([for (final e in normSessions) ?_meanRpe(e)]);
-  if (rpe == null || normRpe == null) return ratio;
-  final diff = (rpe - normRpe).clamp(-energyRpeMaxDiff, energyRpeMaxDiff);
-  return ratio * (1 - energyRpeWeight * diff);
+  final prior = [
+    for (final e in _preparedByStart(earlier))
+      if (e.session.startedAtUtc.isBefore(s.startedAtUtc)) e,
+  ];
+  return _performanceOf(_Prepared(s), prior, prior.length);
 }
 
 /// One bounded multiplier for what workouts and active calories cost:
@@ -230,11 +262,12 @@ EnergyTuning energyTuningOf({
               s.startedAtUtc.toLocal().isBefore(currentDay.wake)))
         s,
   ];
-  final done = [
+  final prepared = _preparedByStart([
     for (final s in sessions)
       if (isCompleted(s)) s,
-  ];
+  ]);
   final pairs = <({double energy, double ratio})>[];
+  final index = {for (final (i, p) in prepared.indexed) p.session.uuid: i};
   for (final s in used) {
     final energy = pastEnergyAt(
       session: s,
@@ -243,7 +276,13 @@ EnergyTuning energyTuningOf({
       readinessOnDay: readinessOnDay,
     );
     if (energy == null) continue;
-    final ratio = sessionPerformance(s, done);
+    final at = index[s.uuid]!;
+    var end = at;
+    while (end > 0 &&
+        !prepared[end - 1].session.startedAtUtc.isBefore(s.startedAtUtc)) {
+      end--;
+    }
+    final ratio = _performanceOf(prepared[at], prepared, end);
     if (ratio == null || !ratio.isFinite) continue;
     pairs.add((energy: energy, ratio: ratio));
   }
