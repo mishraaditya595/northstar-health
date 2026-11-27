@@ -185,21 +185,23 @@ final class AppModel: ObservableObject {
     }
 
     /// Runs one controller action. A failed commit leaves the screen as it
-    /// was: nothing is shown as done before it is stored.
-    func act(_ action: (WorkoutController) throws -> Void) {
-        guard let workout else { return }
-        try? action(workout)
+    /// was: nothing is shown as done before it is stored. Returns whether the
+    /// action committed.
+    @discardableResult
+    func act(_ action: (WorkoutController) throws -> Void) -> Bool {
+        guard let workout else { return false }
+        let committed = (try? action(workout)) != nil
         didAct()
+        return committed
     }
 
+    /// HealthKit changes only after the journal commit succeeded.
     func pauseOrResume() {
         guard let workout else { return }
         if workout.status == "paused" {
-            act { try $0.resume() }
-            recorder.resume()
+            if act({ try $0.resume() }) { recorder.resume() }
         } else {
-            act { try $0.pause() }
-            recorder.pause()
+            if act({ try $0.pause() }) { recorder.pause() }
         }
     }
 
@@ -218,9 +220,10 @@ final class AppModel: ObservableObject {
         didAct()
     }
 
+    /// Commit first: if the journal write fails the workout and HealthKit stay as they were.
     func discardWorkout() {
+        guard act({ try $0.discard() }) else { return }
         recorder.discard()
-        act { try $0.discard() }
         workout = nil
         didAct()
     }
@@ -241,28 +244,40 @@ final class AppModel: ObservableObject {
             ? "Saved on watch \u{00B7} sent to iPhone" : "Saved on watch \u{00B7} waiting for iPhone"
     }
 
-    /// Restores a running workout after a relaunch, finishes any workout that
-    /// was marked completed but never queued, then sends what waits.
+    /// Restores a running workout of the bound account after a relaunch,
+    /// queues every finished-but-unqueued workout of any account, then sends
+    /// what waits. Restoring an active session of another account is not done.
     func restoreWorkout() async {
-        guard let journal, let account = boundAccount, workout == nil else { return }
-        if let restored = try? WorkoutController.restore(
-            journal: journal, accountKey: account.accountKey, unit: account.unit, deviceId: deviceId,
-            clock: Date.init, timeZone: TimeZone.current.identifier)
+        guard let journal else { return }
+        if let account = boundAccount, workout == nil,
+            let restored = try? WorkoutController.restore(
+                journal: journal, accountKey: account.accountKey, unit: account.unit, deviceId: deviceId,
+                clock: Date.init, timeZone: TimeZone.current.identifier)
         {
             workout = restored
             _ = await recorder.recover(workoutId: restored.workoutId)
         }
-        for sessionId in (try? WorkoutController.pendingFinish(journal: journal, accountKey: account.accountKey)) ?? [] {
+        for pending in (try? WorkoutController.pendingFinishAllAccounts(journal: journal)) ?? [] {
             var uuid: String?
-            if let workoutId = try? journal.events(sessionId: sessionId).first?.header.workoutId {
+            if let workoutId = try? journal.events(sessionId: pending.sessionId).first?.header.workoutId {
                 // The HKWorkout may already be saved; never save a second one.
-                uuid = await recorder.savedWorkoutUuid(workoutId: workoutId)
-                if uuid == nil, await recorder.recover(workoutId: workoutId) {
-                    uuid = await recorder.finish(at: Date())
+                switch await recorder.savedWorkout(workoutId: workoutId) {
+                case .found(let found):
+                    uuid = found
+                case .failed:
+                    // Do not queue without a UUID: the next launch retries.
+                    continue
+                case .notFound:
+                    // Another running session owns the recovered HealthKit session.
+                    if workout != nil { continue }
+                    if await recorder.recover(workoutId: workoutId) {
+                        let end = try? WorkoutController.completedAt(sessionId: pending.sessionId, journal: journal)
+                        uuid = await recorder.finish(at: end ?? Date())
+                    }
                 }
             }
             try? WorkoutController.queuePendingFinish(
-                sessionId: sessionId, journal: journal, unit: account.unit, accountKey: account.accountKey,
+                sessionId: pending.sessionId, journal: journal, accountKey: pending.accountKey,
                 healthkitWorkoutUuid: uuid, makeId: { UUID().uuidString.lowercased() }, clock: Date.init)
         }
         sendQueued()
@@ -296,6 +311,11 @@ final class AppModel: ObservableObject {
     private func scheduleRestHaptic(_ deadline: Date?) {
         restHapticTask?.cancel()
         guard let deadline, deadline != hapticDeadline else { return }
+        // A deadline long past (a relaunch after the rest ended) gets no haptic.
+        if deadline.timeIntervalSinceNow < -5 {
+            hapticDeadline = deadline
+            return
+        }
         restHapticTask = Task { [weak self] in
             let seconds = deadline.timeIntervalSinceNow
             if seconds > 0 { try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000)) }

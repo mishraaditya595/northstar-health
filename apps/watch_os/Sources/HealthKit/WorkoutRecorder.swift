@@ -1,6 +1,13 @@
 import Foundation
 import HealthKit
 
+/// The result of looking for an already saved `HKWorkout`.
+enum SavedWorkoutLookup: Equatable {
+    case found(String)
+    case notFound
+    case failed
+}
+
 /// The thin HealthKit wrapper that owns the live workout session. It holds no
 /// workout rules (those are in `WorkoutController`). Permissions are the
 /// minimum: share `workoutType()`; read heart rate and active energy. Heart
@@ -100,17 +107,27 @@ final class WorkoutRecorder: NSObject, ObservableObject {
         }
     }
 
-    /// The UUID of the `HKWorkout` already saved for `workoutId`, found by its
-    /// external UUID, so recovery never saves a second one.
-    func savedWorkoutUuid(workoutId: String) async -> String? {
-        guard HKHealthStore.isHealthDataAvailable() else { return nil }
-        let predicate = HKQuery.predicateForObjects(
-            withMetadataKey: HKMetadataKeyExternalUUID, allowedValues: [workoutId])
+    /// The `HKWorkout` already saved for `workoutId`, found by its external
+    /// UUID among the workouts this app saved, so recovery never saves a
+    /// second one. A query error is `failed`, not `notFound`: the caller must
+    /// not queue without a UUID then.
+    func savedWorkout(workoutId: String) async -> SavedWorkoutLookup {
+        guard HKHealthStore.isHealthDataAvailable() else { return .notFound }
+        let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
+            HKQuery.predicateForObjects(withMetadataKey: HKMetadataKeyExternalUUID, allowedValues: [workoutId]),
+            HKQuery.predicateForObjects(from: HKSource.default()),
+        ])
         return await withCheckedContinuation { continuation in
             let query = HKSampleQuery(
                 sampleType: HKObjectType.workoutType(), predicate: predicate, limit: 1, sortDescriptors: nil
-            ) { _, samples, _ in
-                continuation.resume(returning: samples?.first?.uuid.uuidString.lowercased())
+            ) { _, samples, error in
+                if error != nil {
+                    continuation.resume(returning: .failed)
+                } else if let uuid = samples?.first?.uuid.uuidString.lowercased() {
+                    continuation.resume(returning: .found(uuid))
+                } else {
+                    continuation.resume(returning: .notFound)
+                }
             }
             store.execute(query)
         }
@@ -138,21 +155,25 @@ extension WorkoutRecorder: HKLiveWorkoutBuilderDelegate {
     nonisolated func workoutBuilder(
         _ workoutBuilder: HKLiveWorkoutBuilder, didCollectDataOf collectedTypes: Set<HKSampleType>
     ) {
-        var bpm: Int?
-        var kcal: Double?
-        var average: Int?
+        var latestBpm: Int?
+        var latestKcal: Double?
+        var latestAverage: Int?
         for type in collectedTypes {
             guard let quantityType = type as? HKQuantityType,
                 let statistics = workoutBuilder.statistics(for: quantityType)
             else { continue }
             if quantityType == HKQuantityType(.heartRate) {
                 let unit = HKUnit.count().unitDivided(by: .minute())
-                bpm = statistics.mostRecentQuantity().map { Int($0.doubleValue(for: unit).rounded()) }
-                average = statistics.averageQuantity().map { Int($0.doubleValue(for: unit).rounded()) }
+                latestBpm = statistics.mostRecentQuantity().map { Int($0.doubleValue(for: unit).rounded()) }
+                latestAverage = statistics.averageQuantity().map { Int($0.doubleValue(for: unit).rounded()) }
             } else if quantityType == HKQuantityType(.activeEnergyBurned) {
-                kcal = statistics.sumQuantity()?.doubleValue(for: .kilocalorie())
+                latestKcal = statistics.sumQuantity()?.doubleValue(for: .kilocalorie())
             }
         }
+        // Immutable copies: the Task closure must not capture mutable vars.
+        let bpm = latestBpm
+        let kcal = latestKcal
+        let average = latestAverage
         Task { @MainActor [weak self] in
             if let bpm { self?.heartRate = bpm }
             if let kcal { self?.activeKilocalories = kcal }

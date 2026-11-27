@@ -26,7 +26,11 @@ final class PhoneLink: NSObject, WCSessionDelegate {
     ) {
         guard activationState == .activated else { return }
         let reachable = session.isReachable
-        onMain { $0.setPhoneReachable(reachable) }
+        // transferUserInfo queues while the phone is away, so send either way.
+        onMain {
+            $0.setPhoneReachable(reachable)
+            $0.sendQueued()
+        }
         // The context the phone sent while the watch app was not running.
         let context = session.receivedApplicationContext
         deliver(context: context)
