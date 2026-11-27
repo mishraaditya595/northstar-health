@@ -10,6 +10,14 @@ String energyChangeText(Energy e) {
   return '${started}up ${-drop} since morning';
 }
 
+/// The watch's reason line: `Started at 78 · down 16 since morning`, plus
+/// ` · still learning` while [l] shows the learning note.
+String energyWatchReason(Energy e, EnergyLearning l) {
+  final change = energyChangeText(e)
+      .replaceFirst('Started today at', 'Started at');
+  return l.show ? '$change · still learning' : change;
+}
+
 String _count(int n, String one, String many) =>
     '$n more ${n == 1 ? one : many}';
 

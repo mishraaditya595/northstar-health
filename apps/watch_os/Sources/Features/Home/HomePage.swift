@@ -145,8 +145,8 @@ struct ReadinessHero: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "Readiness \(line.score) of 100, \(line.headline)" + (reason.map { ". \($0)" } ?? ""))
-        .accessibilityHint("Opens readiness details")
+            "Energy \(line.score) of 100, \(line.headline)" + (reason.map { ". \($0)" } ?? ""))
+        .accessibilityHint("Opens energy details")
     }
 }
 

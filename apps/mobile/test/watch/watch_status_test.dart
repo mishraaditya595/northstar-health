@@ -124,7 +124,7 @@ void main() {
     test('lists readiness, health and plans', () {
       expect(
         watchSentSummary(hasReadiness: true, hasHealth: true, planCount: 3),
-        'Readiness, health, 3 plans',
+        'Energy, health, 3 plans',
       );
     });
 

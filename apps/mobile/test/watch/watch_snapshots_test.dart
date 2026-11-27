@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:beyondrep/core/units/load_units.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
+import 'package:beyondrep/features/health/domain/energy.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/features/health/domain/sleep_nights.dart';
 import 'package:beyondrep/features/health/domain/sleep_score.dart';
@@ -293,10 +294,25 @@ void main() {
       );
     });
 
-    test('readiness headline and reason equal the phone card text', () {
-      final o = overview(readiness: _ready(77));
-      final value = (o.readiness as SectionData<ReadinessOverview>).value;
-      final readiness = (value.result as ReadinessReady).readiness;
+    test('readiness carries energy now with the start factors', () {
+      final start = _ready(78);
+      final startValue = (start as SectionData<ReadinessOverview>).value;
+      final readiness = (startValue.result as ReadinessReady).readiness;
+      final energy = Energy(
+        value: 62,
+        band: readinessBandOf(62),
+        start: 78,
+        items: const [],
+      );
+      final o = overview(
+        readiness: start,
+        energy: energySection(
+          start,
+          energy: energy,
+          learning: const EnergyLearning(workoutsNeeded: 3),
+          wake: DateTime(2026, 11, 24, 6, 31),
+        ),
+      );
       final m = buildHealthSnapshot(
         accountKey: _key,
         overview: o,
@@ -304,16 +320,87 @@ void main() {
         messageId: _id,
       )!;
       expect(m.readiness, {
-        'score': 77,
-        'band': 'good',
-        'headline': readinessBandWords(readiness.band),
-        'reason': readinessReasons(o, value, readiness),
+        'score': 62,
+        'band': 'fair',
+        'headline': 'Train as planned, watch effort',
+        'reason': 'Started at 78 · down 16 since morning · still learning',
         'factors': [
-          for (final f in readinessFactors(o, value, readiness))
+          for (final f in readinessFactors(o, startValue, readiness))
             {'input': f.input, 'status': f.status, 'tone': f.tone},
         ],
       });
       _roundTrip(m);
+    });
+
+    test('a ready start without a waking day sends no readiness', () {
+      final start = _ready(78);
+      final o = overview(
+        readiness: start,
+        energy: SectionData(
+          EnergyOverview(
+            day: DateTime(2026, 11, 24),
+            wake: null,
+            start: (start as SectionData<ReadinessOverview>).value,
+            energy: null,
+            learning: const EnergyLearning(),
+          ),
+        ),
+      );
+      final m = buildHealthSnapshot(
+        accountKey: _key,
+        overview: o,
+        localNow: DateTime(2026, 11, 24, 8),
+        messageId: _id,
+      )!;
+      expect(m.readiness, isNull);
+    });
+
+    test('after local midnight the previous waking day sends no readiness', () {
+      final start = _ready(78);
+      final o = overview(
+        readiness: start,
+        readAt: DateTime(2026, 11, 25, 0, 28),
+        energy: energySection(
+          start,
+          wake: DateTime(2026, 11, 24, 7),
+          day: DateTime(2026, 11, 24),
+        ),
+      );
+      final m = buildHealthSnapshot(
+        accountKey: _key,
+        overview: o,
+        localNow: DateTime(2026, 11, 25, 0, 30),
+        messageId: _id,
+      )!;
+      expect(m.readiness, isNull);
+    });
+
+    test('the reason stays within 140 characters', () {
+      final start = _ready(100);
+      final o = overview(
+        readiness: start,
+        energy: energySection(
+          start,
+          energy: Energy(
+            value: 0,
+            band: readinessBandOf(0),
+            start: 100,
+            items: const [],
+          ),
+          learning: const EnergyLearning(workoutsNeeded: 12, daysNeeded: 9),
+          wake: DateTime(2026, 11, 24, 6, 31),
+        ),
+      );
+      final m = buildHealthSnapshot(
+        accountKey: _key,
+        overview: o,
+        localNow: DateTime(2026, 11, 24, 8),
+        messageId: _id,
+      )!;
+      expect(
+        (m.readiness!['reason']! as String).length,
+        lessThanOrEqualTo(140),
+      );
     });
 
     test('not-ready readiness is omitted', () {

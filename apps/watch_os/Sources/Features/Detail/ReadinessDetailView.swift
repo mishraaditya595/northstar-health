@@ -39,7 +39,7 @@ struct ReadinessDetailView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Readiness \(line.score) of 100, \(line.headline)")
+                .accessibilityLabel("Energy \(line.score) of 100, \(line.headline)")
                 if let reason {
                     Text(reason)
                         .font(.caption2)

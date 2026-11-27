@@ -107,7 +107,7 @@ WatchStatus watchStatusOf({
   return WatchSynced(confirmed);
 }
 
-/// `Readiness, health, 3 plans`: what the last context held, or null when it
+/// `Energy, health, 3 plans`: what the last context held, or null when it
 /// held nothing.
 String? watchSentSummary({
   required bool hasReadiness,
@@ -115,7 +115,7 @@ String? watchSentSummary({
   required int planCount,
 }) {
   final parts = [
-    if (hasReadiness) 'readiness',
+    if (hasReadiness) 'energy',
     if (hasHealth) 'health',
     if (planCount > 0) '$planCount ${planCount == 1 ? 'plan' : 'plans'}',
   ];
