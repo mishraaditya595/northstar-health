@@ -7,13 +7,16 @@ import '../data/health_reader.dart';
 import '../domain/daily_series.dart';
 import '../domain/energy.dart';
 import '../domain/energy_day.dart';
+import '../domain/energy_tuning.dart';
 import '../domain/health_types.dart';
 import '../domain/outside_workouts.dart';
 import '../domain/readiness.dart';
+import '../domain/readiness_on.dart';
 import '../domain/sleep_nights.dart';
 import '../domain/sleep_score.dart';
 import '../domain/training_load.dart';
 import '../domain/trend.dart';
+import 'energy_history_cache.dart';
 import 'health_summary_controller.dart';
 
 enum MetricGap { noData, notAllowed, needsAccess, failed, unsupported }
@@ -199,6 +202,7 @@ class EnergyOverview {
     required this.start,
     required this.energy,
     required this.learning,
+    this.tuning = EnergyTuning.generic,
   });
 
   /// The waking day's date; the calendar day when no waking day exists.
@@ -213,6 +217,10 @@ class EnergyOverview {
   /// Null unless [start] is scored and a waking day exists.
   final Energy? energy;
   final EnergyLearning learning;
+
+  /// What was learned about this person and applied to [energy]; generic
+  /// when there was not enough history. Memory only.
+  final EnergyTuning tuning;
 }
 
 /// Read fresh and held in memory only; never written anywhere.
@@ -339,6 +347,7 @@ class HealthOverviewController extends AsyncNotifier<HealthOverview?> {
       repository.connectedAt(owner),
       repository.accessScope(owner),
       history,
+      ref.read(energyHistoryCacheProvider.notifier).historyFor,
     );
     // An account switch or disconnect while reading discards the result.
     if (!ref.mounted || ref.read(healthOwnerIdProvider) != owner) return null;
@@ -580,6 +589,49 @@ Section<ReadinessOverview> _readiness(
   );
 }
 
+/// The personal tuning from the cached history and the sessions; generic
+/// when the history is not usable or anything in the path throws.
+Future<EnergyTuning> _tuningOf(
+  Future<EnergyHistory> historyF, {
+  required List<WorkoutSessionRecord> sessions,
+  required List<LoadSession> load,
+  required WakingDay currentDay,
+  required DateTime now,
+  required bool calibrated,
+}) async {
+  try {
+    final h = await historyF;
+    if (!h.usable) return EnergyTuning.generic;
+    final nights = buildNights(h.sleep!);
+    final byDate = {for (final n in nights) n.date: n};
+    final hrvDaily = hrvDailyOf(h.hrv ?? const [], nights);
+    final rhrDaily = reduceDaily(
+      h.restingHr ?? const [],
+      DailyReduction.latest,
+    );
+    return energyTuningOf(
+      sessions: sessions,
+      load: load,
+      nights: nights,
+      readinessOnDay: (day) => readinessOn(
+        day,
+        byDate,
+        nights,
+        const {},
+        rhrDaily,
+        hrvDaily,
+        rhrDaily,
+        load,
+      ).result,
+      currentDay: currentDay,
+      now: now,
+      calibrated: calibrated,
+    );
+  } catch (_) {
+    return EnergyTuning.generic;
+  }
+}
+
 Future<HealthOverview> _read(
   String ownerId,
   Set<String> ownWorkoutIds,
@@ -588,11 +640,58 @@ Future<HealthOverview> _read(
   DateTime? connectedAt,
   int accessScope,
   Future<List<WorkoutSessionRecord>?> history,
+  Future<EnergyHistory> Function(
+    EnergyHistoryKey key,
+    Future<EnergyHistory> Function() read,
+  )
+  historyFor,
 ) async {
   final platform = reader.platform;
   final today = dayOf(now);
   DateTime daysAgo(int n, [int hour = 0]) =>
       DateTime(today.year, today.month, today.day - n, hour);
+
+  // The tuning history is read once per local day, in parallel with the main
+  // reads, and only ever waited for at the end.
+  final tuningHistoryF = historyFor(
+    (
+      owner: ownerId,
+      day: today,
+      connectedAt: connectedAt,
+      accessScope: accessScope,
+    ),
+    () async {
+      List<T>? data<T>(SeriesResult<List<T>> r) =>
+          r is SeriesData<List<T>> ? r.data : null;
+      Future<List<T>?> once<T>(
+        Future<SeriesResult<List<T>>> Function() read,
+      ) async {
+        try {
+          return data(await read());
+        } catch (_) {
+          return null;
+        }
+      }
+
+      final from = daysAgo(energyHistoryDays, 18);
+      final sleepF = once(() => reader.readSleep(from, now));
+      final hrvF = once(
+        () => reader.readSeries(HealthSeriesType.hrv, from, now),
+      );
+      final rhrF = once(
+        () => reader.readSeries(
+          HealthSeriesType.restingHeartRate,
+          daysAgo(energyHistoryDays),
+          now,
+        ),
+      );
+      return EnergyHistory(
+        sleep: await sleepF,
+        hrv: await hrvF,
+        restingHr: await rhrF,
+      );
+    },
+  );
   final monthFrom = daysAgo(29);
 
   Future<SeriesResult<List<HealthSample>>> series(
@@ -820,9 +919,26 @@ Future<HealthOverview> _read(
         );
   final energy = switch (startSection) {
     SectionGap(:final gap) => SectionGap<EnergyOverview>(gap),
-    SectionData(value: final start) => () {
+    SectionData(value: final start) => await () async {
       final result = start.result;
       final ready = result is ReadinessReady ? result.readiness : null;
+      final learning = energyLearningOf(
+        completedSessions: sessions == null
+            ? null
+            : completedSessionsWithin(sessions, now),
+        baselineDays: ready?.baselineDays,
+      );
+      var tuning = EnergyTuning.generic;
+      if (ready != null && waking != null && sessions != null) {
+        tuning = await _tuningOf(
+          tuningHistoryF,
+          sessions: sessions,
+          load: load,
+          currentDay: waking,
+          now: now,
+          calibrated: !learning.show && ready.baselineDays != null,
+        );
+      }
       return SectionData(
         EnergyOverview(
           day: energyDay,
@@ -837,13 +953,10 @@ Future<HealthOverview> _read(
                   sessions: load,
                   hourlyActiveEnergy: _list(energyResult),
                   sleepSegments: _list(sleepResult),
+                  tuning: tuning,
                 ),
-          learning: energyLearningOf(
-            completedSessions: sessions == null
-                ? null
-                : completedSessionsWithin(sessions, now),
-            baselineDays: ready?.baselineDays,
-          ),
+          learning: learning,
+          tuning: tuning,
         ),
       );
     }(),
