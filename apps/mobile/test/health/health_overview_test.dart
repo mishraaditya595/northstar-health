@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:beyondrep/features/health/application/energy_history_cache.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
 import 'package:beyondrep/features/health/data/health_connection_repository.dart';
@@ -589,7 +590,7 @@ void main() {
 
     fake.sleepGate = Completer<void>();
     c.read(_ownerProvider.notifier).set(_ownerB);
-    while (fake.sleepCalls.length < 4) {
+    while (fake.sleepCalls.length < 2) {
       await Future<void>.delayed(Duration.zero);
     }
     final mid = c.read(healthOverviewProvider);
@@ -791,7 +792,7 @@ void main() {
       fake.series.remove(HealthSeriesType.restingHeartRate);
       fake.sleepGate = Completer<void>();
       c.read(_ownerProvider.notifier).set(_ownerB);
-      while (fake.sleepCalls.length < 4) {
+      while (fake.sleepCalls.length < 2) {
         await Future<void>.delayed(Duration.zero);
       }
       final mid = c.read(healthOverviewProvider);
@@ -1319,7 +1320,7 @@ void main() {
       fake.series.remove(HealthSeriesType.restingHeartRate);
       fake.sleepGate = Completer<void>();
       c.read(_ownerProvider.notifier).set(_ownerB);
-      while (fake.sleepCalls.length < 4) {
+      while (fake.sleepCalls.length < 2) {
         await Future<void>.delayed(Duration.zero);
       }
       final mid = c.read(healthOverviewProvider);
@@ -1469,10 +1470,15 @@ void main() {
     EnergyOverview energyOf(HealthOverview o) =>
         (o.energy as SectionData<EnergyOverview>).value;
 
+    void eightSessions() {
+      history = _FakeHistory([for (var i = 1; i <= 8; i++) _logged('s$i', i)]);
+    }
+
     test(
       'a resume re-read the same day repeats none of the three reads',
       () async {
         readinessWeek();
+        eightSessions();
         final c = container();
         await c.read(healthOverviewProvider.future);
         expect(extraReads(), 3);
@@ -1484,6 +1490,7 @@ void main() {
 
     test('a new local day reads them again', () async {
       readinessWeek();
+      eightSessions();
       final c = container();
       await c.read(healthOverviewProvider.future);
       now = DateTime(2026, 11, 25, 8);
@@ -1493,6 +1500,7 @@ void main() {
 
     test('a reconnect reads them again', () async {
       readinessWeek();
+      eightSessions();
       final c = container();
       await c.read(healthOverviewProvider.future);
       repo.connect(_ownerA, DateTime(2026, 11, 2));
@@ -1502,55 +1510,114 @@ void main() {
 
     test("account B never gets A's cached history or tuning", () async {
       readinessWeek();
-      history = _FakeHistory([for (var i = 1; i <= 8; i++) _logged('s$i', i)]);
+      eightSessions();
       repo.connect(_ownerB, DateTime(2026, 11, 1));
       final c = container();
       final a = (await c.read(healthOverviewProvider.future))!;
       expect(energyOf(a).tuning.usualHours, isNotEmpty);
+      expect(extraReads(), 3);
 
-      fake.failFrom = {extraFrom};
       c.read(_ownerProvider.notifier).set(_ownerB);
+      expect(c.read(energyHistoryCacheProvider), isNull);
       final b = (await c.read(healthOverviewProvider.future))!;
       expect(b.ownerId, _ownerB);
       expect(extraReads(), 6);
-      expect(energyOf(b).energy, isNotNull);
-      expect(energyOf(b).tuning.usualHours, isEmpty);
-      expect(identical(energyOf(b).tuning, EnergyTuning.generic), isTrue);
+      expect(c.read(energyHistoryCacheProvider)!.key.owner, _ownerB);
     });
 
     test(
-      'a failed extra read leaves generic tuning and is not retried',
+      'a failed extra read still learns usual hours, and is retried',
       () async {
         readinessWeek();
-        history = _FakeHistory([
-          for (var i = 1; i <= 8; i++) _logged('s$i', i),
-        ]);
+        eightSessions();
         fake.failFrom = {extraFrom};
         final c = container();
         final o = (await c.read(healthOverviewProvider.future))!;
         expect(o.energy, isA<SectionData<EnergyOverview>>());
         expect(energyOf(o).energy, isNotNull);
-        expect(identical(energyOf(o).tuning, EnergyTuning.generic), isTrue);
+        expect(energyOf(o).tuning.drainMultiplier, 1.0);
+        expect(energyOf(o).tuning.usualHours, isNotEmpty);
         expect(o.sleep, isA<SectionData<SleepOverview>>());
+        await Future<void>.delayed(Duration.zero);
+        expect(c.read(energyHistoryCacheProvider), isNull);
 
+        fake.failFrom = {};
         now = DateTime(2026, 11, 24, 7, 52);
         await c.read(healthOverviewProvider.notifier).refresh();
-        expect(extraReads(), 3);
+        expect(extraReads(), 6);
+        expect(c.read(energyHistoryCacheProvider), isNotNull);
       },
     );
 
+    testWidgets('a hung 120-day read does not hold the overview', (
+      tester,
+    ) async {
+      readinessWeek();
+      eightSessions();
+      fake.hangFrom = {extraFrom};
+      final c = container();
+      HealthOverview? done;
+      c.read(healthOverviewProvider.future).then((o) => done = o);
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pump(const Duration(seconds: 1));
+      expect(done, isNotNull);
+      expect(energyOf(done!).energy, isNotNull);
+      expect(energyOf(done!).tuning.drainMultiplier, 1.0);
+      expect(energyOf(done!).tuning.usualHours, isNotEmpty);
+    });
+
+    test('signing out clears the held history', () async {
+      readinessWeek();
+      eightSessions();
+      final c = container();
+      await c.read(healthOverviewProvider.future);
+      expect(c.read(energyHistoryCacheProvider), isNotNull);
+      c.read(_ownerProvider.notifier).set(null);
+      await c.read(healthOverviewProvider.future);
+      expect(c.read(energyHistoryCacheProvider), isNull);
+    });
+
+    test('disconnecting clears the held history', () async {
+      readinessWeek();
+      eightSessions();
+      final c = container();
+      await c.read(healthOverviewProvider.future);
+      await c.read(healthSummaryProvider.notifier).disconnect();
+      await c.read(healthOverviewProvider.future);
+      expect(c.read(energyHistoryCacheProvider), isNull);
+    });
+
+    test('revoked HRV on the main read drops the held history', () async {
+      readinessWeek();
+      eightSessions();
+      final c = container();
+      await c.read(healthOverviewProvider.future);
+      expect(c.read(energyHistoryCacheProvider), isNotNull);
+      fake.seriesResults[HealthSeriesType.hrv] = const SeriesNotAllowed();
+      now = DateTime(2026, 11, 24, 7, 52);
+      await c.read(healthOverviewProvider.notifier).refresh();
+      expect(c.read(energyHistoryCacheProvider), isNull);
+    });
+
+    test('under 8 sessions in 90 days skips the 120-day read', () async {
+      readinessWeek();
+      history = _FakeHistory([for (var i = 1; i <= 5; i++) _logged('s$i', i)]);
+      final c = container();
+      await c.read(healthOverviewProvider.future);
+      expect(extraReads(), 0);
+      expect(c.read(energyHistoryCacheProvider), isNull);
+    });
+
     test('the main reads keep their calls and starts', () async {
       readinessWeek();
+      eightSessions();
       final c = container();
       await c.read(healthOverviewProvider.future);
       final main = fake.seriesCalls.where(
         (c) => c.$2 != extraFrom && c.$2 != extraRhrFrom,
       );
       expect(main, hasLength(6));
-      expect(fake.sleepCalls.where((c) => c.$1 != extraFrom).single, (
-        DateTime(2026, 10, 24, 18),
-        now,
-      ));
+      expect(mainSleepCalls().single, (DateTime(2026, 10, 24, 18), now));
     });
 
     test('20 sessions at 22:30 waive the awake dip at 23:30', () async {

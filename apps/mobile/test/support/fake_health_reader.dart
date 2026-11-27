@@ -59,6 +59,9 @@ class FakeHealthReader implements HealthReader {
   /// [readSleep] and [readSeries] throw when asked from one of these instants.
   Set<DateTime> failFrom = {};
 
+  /// [readSleep] and [readSeries] never complete from one of these instants.
+  Set<DateTime> hangFrom = {};
+
   @override
   Future<HealthAvailability> availability() async => availabilityResult;
 
@@ -85,6 +88,7 @@ class FakeHealthReader implements HealthReader {
   ) async {
     sleepCalls.add((from, to));
     await sleepGate?.future;
+    if (hangFrom.contains(from)) await Completer<void>().future;
     if (failFrom.contains(from)) throw StateError('synthetic sleep bug');
     if (throwOnSleep) throw StateError('synthetic sleep bug');
     return sleepResult ?? SeriesData(sleep);
@@ -105,6 +109,7 @@ class FakeHealthReader implements HealthReader {
       await Future<void>.microtask(() {});
       _seriesInFlight--;
     }
+    if (hangFrom.contains(from)) await Completer<void>().future;
     if (failFrom.contains(from)) throw StateError('synthetic series bug');
     if (throwOnSeries.contains(type)) throw StateError('synthetic series bug');
     final samples = series[type] ?? const <HealthSample>[];

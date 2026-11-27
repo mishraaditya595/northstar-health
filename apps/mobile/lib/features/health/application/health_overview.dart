@@ -335,7 +335,10 @@ class HealthOverviewController extends AsyncNotifier<HealthOverview?> {
     final connected = await ref.watch(
       healthSummaryProvider.selectAsync((s) => s is HealthConnected),
     );
-    if (owner == null || !connected || !ref.mounted) return null;
+    if (owner == null || !connected || !ref.mounted) {
+      if (ref.mounted) ref.read(energyHistoryCacheProvider.notifier).clear();
+      return null;
+    }
     final reader = ref.read(healthReaderProvider);
     final repository = ref.read(healthConnectionRepositoryProvider);
     final history = _completedSessions(ref);
@@ -347,7 +350,7 @@ class HealthOverviewController extends AsyncNotifier<HealthOverview?> {
       repository.connectedAt(owner),
       repository.accessScope(owner),
       history,
-      ref.read(energyHistoryCacheProvider.notifier).historyFor,
+      ref.read(energyHistoryCacheProvider.notifier),
     );
     // An account switch or disconnect while reading discards the result.
     if (!ref.mounted || ref.read(healthOwnerIdProvider) != owner) return null;
@@ -589,19 +592,33 @@ Section<ReadinessOverview> _readiness(
   );
 }
 
-/// The personal tuning from the cached history and the sessions; generic
-/// when the history is not usable or anything in the path throws.
+/// How long the overview waits for the 120-day read before using what the
+/// sessions alone teach; the read itself keeps running in the cache.
+const _tuningHistoryWait = Duration(seconds: 3);
+
+/// The personal tuning from the sessions and, when it is usable, the cached
+/// history. Without a usable history only the usual hours are learned.
+/// Never throws.
 Future<EnergyTuning> _tuningOf(
-  Future<EnergyHistory> historyF, {
+  Future<EnergyHistory?> historyF, {
   required List<WorkoutSessionRecord> sessions,
   required List<LoadSession> load,
   required WakingDay currentDay,
   required DateTime now,
   required bool calibrated,
 }) async {
+  EnergyTuning usualOnly() => energyTuningOf(
+    sessions: sessions,
+    load: load,
+    nights: const [],
+    readinessOnDay: (_) => const ReadinessNotReady(),
+    currentDay: currentDay,
+    now: now,
+    calibrated: calibrated,
+  );
   try {
-    final h = await historyF;
-    if (!h.usable) return EnergyTuning.generic;
+    final h = await historyF.timeout(_tuningHistoryWait, onTimeout: () => null);
+    if (h == null || !h.usable) return usualOnly();
     final nights = buildNights(h.sleep!);
     final byDate = {for (final n in nights) n.date: n};
     final hrvDaily = hrvDailyOf(h.hrv ?? const [], nights);
@@ -640,11 +657,7 @@ Future<HealthOverview> _read(
   DateTime? connectedAt,
   int accessScope,
   Future<List<WorkoutSessionRecord>?> history,
-  Future<EnergyHistory> Function(
-    EnergyHistoryKey key,
-    Future<EnergyHistory> Function() read,
-  )
-  historyFor,
+  EnergyHistoryCache historyCache,
 ) async {
   final platform = reader.platform;
   final today = dayOf(now);
@@ -652,46 +665,62 @@ Future<HealthOverview> _read(
       DateTime(today.year, today.month, today.day - n, hour);
 
   // The tuning history is read once per local day, in parallel with the main
-  // reads, and only ever waited for at the end.
-  final tuningHistoryF = historyFor(
-    (
-      owner: ownerId,
-      day: today,
-      connectedAt: connectedAt,
-      accessScope: accessScope,
-    ),
-    () async {
-      List<T>? data<T>(SeriesResult<List<T>> r) =>
-          r is SeriesData<List<T>> ? r.data : null;
-      Future<List<T>?> once<T>(
-        Future<SeriesResult<List<T>>> Function() read,
-      ) async {
-        try {
-          return data(await read());
-        } catch (_) {
-          return null;
+  // reads and only when the sessions could teach anything (usual hours need
+  // [energyUsualHoursMinSessions]); it is only ever waited for at the end.
+  final tuningHistoryF = history.then<EnergyHistory?>((sessions) {
+    if (sessions == null ||
+        completedSessionsWithin(sessions, now) < energyUsualHoursMinSessions) {
+      return null;
+    }
+    return historyCache.historyFor(
+      (
+        owner: ownerId,
+        day: today,
+        connectedAt: connectedAt,
+        accessScope: accessScope,
+      ),
+      () async {
+        var failed = false;
+        List<T>? data<T>(SeriesResult<List<T>> r) {
+          if (r is SeriesFailed<List<T>>) failed = true;
+          return r is SeriesData<List<T>> ? r.data : null;
         }
-      }
 
-      final from = daysAgo(energyHistoryDays, 18);
-      final sleepF = once(() => reader.readSleep(from, now));
-      final hrvF = once(
-        () => reader.readSeries(HealthSeriesType.hrv, from, now),
-      );
-      final rhrF = once(
-        () => reader.readSeries(
-          HealthSeriesType.restingHeartRate,
-          daysAgo(energyHistoryDays),
-          now,
-        ),
-      );
-      return EnergyHistory(
-        sleep: await sleepF,
-        hrv: await hrvF,
-        restingHr: await rhrF,
-      );
-    },
-  );
+        Future<List<T>?> once<T>(
+          Future<SeriesResult<List<T>>> Function() read,
+        ) async {
+          try {
+            return data(await read());
+          } catch (_) {
+            failed = true;
+            return null;
+          }
+        }
+
+        final from = daysAgo(energyHistoryDays, 18);
+        final sleepF = once(() => reader.readSleep(from, now));
+        final hrvF = once(
+          () => reader.readSeries(HealthSeriesType.hrv, from, now),
+        );
+        final rhrF = once(
+          () => reader.readSeries(
+            HealthSeriesType.restingHeartRate,
+            daysAgo(energyHistoryDays),
+            now,
+          ),
+        );
+        final sleep = await sleepF;
+        final hrv = await hrvF;
+        final rhr = await rhrF;
+        return EnergyHistory(
+          sleep: sleep,
+          hrv: hrv,
+          restingHr: rhr,
+          failed: failed,
+        );
+      },
+    );
+  });
   final monthFrom = daysAgo(29);
 
   Future<SeriesResult<List<HealthSample>>> series(
@@ -751,6 +780,17 @@ Future<HealthOverview> _read(
   final energyResult = await energyF;
   final workoutsResult = await workoutsF;
   final sessions = await history;
+
+  // A revoked permission must not be served from the held history.
+  final revoked = [
+    sleepResult,
+    hrvResult,
+    rhrResult,
+  ].any((r) => r is SeriesNotAllowed);
+  if (revoked) {
+    await tuningHistoryF.timeout(_tuningHistoryWait, onTimeout: () => null);
+    historyCache.clear();
+  }
 
   final rhrAll = reduceDaily(_list(rhrResult), DailyReduction.latest);
   final hrvAll = hrvDailyOf(_list(hrvResult), nights);
@@ -931,7 +971,7 @@ Future<HealthOverview> _read(
       var tuning = EnergyTuning.generic;
       if (ready != null && waking != null && sessions != null) {
         tuning = await _tuningOf(
-          tuningHistoryF,
+          revoked ? Future<EnergyHistory?>.value() : tuningHistoryF,
           sessions: sessions,
           load: load,
           currentDay: waking,
