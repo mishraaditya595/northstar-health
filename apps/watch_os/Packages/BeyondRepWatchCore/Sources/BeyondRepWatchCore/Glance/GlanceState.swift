@@ -4,16 +4,22 @@ public struct ReadinessLine: Equatable {
     public let score: Int
     public let band: String
     public let headline: String
+
+    public init(score: Int, band: String, headline: String) {
+        self.score = score
+        self.band = band
+        self.headline = headline
+    }
 }
 
 /// How a status line is coloured. The phone decides it for readiness factors;
 /// the watch decides it for the tile lines below.
-public enum Tone: String, Equatable {
+public enum Tone: String, Hashable {
     case good, neutral, caution
 }
 
 /// The four health tiles; also the key for a detail screen.
-public enum Metric: Equatable {
+public enum Metric: Hashable {
     case sleep, restingHr, hrv, steps
 }
 
@@ -74,6 +80,19 @@ public struct Glance: Equatable {
     public let caption: String
     public let today: PlanRow?
     public let plans: [PlanRow]
+
+    public init(
+        readiness: ReadinessLine?, readinessReason: String?, factors: [Factor], tiles: [GlanceTile],
+        caption: String, today: PlanRow?, plans: [PlanRow]
+    ) {
+        self.readiness = readiness
+        self.readinessReason = readinessReason
+        self.factors = factors
+        self.tiles = tiles
+        self.caption = caption
+        self.today = today
+        self.plans = plans
+    }
 }
 
 /// What the Home screen shows, computed from the journal. Only values the
@@ -165,7 +184,7 @@ public enum GlanceState: Equatable {
     }
 
     /// "7h 12m", or "45m" under an hour.
-    static func sleepText(minutes: Int) -> String {
+    public static func sleepText(minutes: Int) -> String {
         minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes)m"
     }
 

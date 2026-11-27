@@ -7,6 +7,13 @@ public struct DayPoint: Equatable {
     /// Nil for a day the phone sent no value for; never 0 for missing.
     public let value: Int?
     public let isToday: Bool
+
+    public init(date: Date, label: String, value: Int?, isToday: Bool) {
+        self.date = date
+        self.label = label
+        self.value = value
+        self.isToday = isToday
+    }
 }
 
 public struct SleepStages: Equatable {
@@ -14,6 +21,13 @@ public struct SleepStages: Equatable {
     public let core: Int
     public let rem: Int
     public let awake: Int
+
+    public init(deep: Int, core: Int, rem: Int, awake: Int) {
+        self.deep = deep
+        self.core = core
+        self.rem = rem
+        self.awake = awake
+    }
 }
 
 /// One metric's detail screen: today, the phone's usual and the 7 days ending
@@ -31,6 +45,20 @@ public struct DetailModel: Equatable {
     public let stages: SleepStages?
     /// Mean of the days with a value, rounded; nil when none has one.
     public let weekAverage: Int?
+
+    public init(
+        title: String, value: String, unit: String?, caption: String?, usual: Int?, week: [DayPoint],
+        stages: SleepStages?, weekAverage: Int?
+    ) {
+        self.title = title
+        self.value = value
+        self.unit = unit
+        self.caption = caption
+        self.usual = usual
+        self.week = week
+        self.stages = stages
+        self.weekAverage = weekAverage
+    }
 
     /// Nil when nothing is bound or there is no snapshot for today's local
     /// date, so yesterday's week is never shown.
