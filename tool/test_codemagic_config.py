@@ -147,7 +147,7 @@ class CodemagicTemplateTest(unittest.TestCase):
                     "beyondrep_app_store",
                     "beyondrep_watch_app_store",
                 ],
-                "certificates": ["apple_distribution"],
+                "certificates": ["Apple Distribution"],
             },
         )
         self.assertEqual(env["groups"], ["ns_mobile_supabase_public"])

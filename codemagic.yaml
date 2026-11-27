@@ -231,8 +231,9 @@ workflows:
         provisioning_profiles:
           - beyondrep_app_store
           - beyondrep_watch_app_store
+        # The certificate both profiles were made with (expires 2027-11-24).
         certificates:
-          - apple_distribution
+          - Apple Distribution
       groups:
         - ns_mobile_supabase_public
       vars:
