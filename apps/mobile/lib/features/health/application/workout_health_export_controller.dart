@@ -44,8 +44,10 @@ class HealthExportController extends AsyncNotifier<HealthExportStatus> {
   @override
   Future<HealthExportStatus> build() async {
     final owner = ref.watch(healthOwnerIdProvider);
+    // The exporter serializes passes, so a rebuild (switch off and on, store
+    // change) keeps it while the account is the same: one pass at a time.
+    if (owner != _owner) _exporter = null;
     _owner = owner;
-    _exporter = null;
     if (owner == null) return const HealthExportUnavailable();
     final writer = ref.watch(healthWorkoutWriterProvider);
     final repository = ref.watch(healthExportRepositoryProvider);

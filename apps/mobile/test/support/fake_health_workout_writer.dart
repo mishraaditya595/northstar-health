@@ -34,6 +34,9 @@ class FakeHealthWorkoutWriter implements HealthWorkoutWriter {
   /// Runs after each `write` call, for tests that flip state mid-pass.
   void Function()? onWrite;
 
+  /// When set, `write` waits for it before it stores the workout.
+  Future<void>? writeGate;
+
   var _next = 0;
 
   @override
@@ -52,6 +55,7 @@ class FakeHealthWorkoutWriter implements HealthWorkoutWriter {
   @override
   Future<HealthWriteResult> write(HealthWorkoutRecord r) async {
     writes.add(r);
+    await writeGate;
     final result = writeResults.isEmpty
         ? HealthWriteOk(isIos ? 'hk-${_next++}' : r.workoutUuid)
         : writeResults.removeAt(0);
