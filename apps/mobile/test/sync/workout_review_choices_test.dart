@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/features/account/account_auth_provider.dart';
 import 'package:beyondrep/features/sync/objectbox_workout_restore_importer.dart';
@@ -45,6 +46,7 @@ WorkoutRemoteReview review({bool present = false, bool deleted = false}) =>
               snapshot: deleted
                   ? null
                   : RemoteWorkoutSnapshot(
+                      origin: WorkoutOrigin.phone,
                       uuid: workout,
                       name: 'Cloud row',
                       startedAtUtc: DateTime.utc(2026, 10, 20),

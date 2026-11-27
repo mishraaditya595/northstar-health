@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 import 'package:beyondrep/core/ids/uuid_factory.dart';
 import 'package:beyondrep/features/sync/objectbox_workout_restore_importer.dart';
 import 'package:beyondrep/features/sync/workout_restore_feed.dart';
@@ -84,6 +85,7 @@ void main() {
             snapshot: deleted
                 ? null
                 : RemoteWorkoutSnapshot(
+                    origin: WorkoutOrigin.phone,
                     uuid: workout,
                     name: 'Cloud strength',
                     startedAtUtc: DateTime.fromMillisecondsSinceEpoch(

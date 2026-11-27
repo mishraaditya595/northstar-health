@@ -925,4 +925,102 @@ void main() {
       }
     });
   });
+
+  group('workout origin', () {
+    Map<String, dynamic> withOrigin(Object? origin) =>
+        snapshot()..['origin'] = origin;
+
+    test('a beyondrep_watch payload decodes with origin watch', () {
+      final result = decode(
+        page(changes: [change()..['payload'] = withOrigin('beyondrep_watch')]),
+      );
+      expect(result.changes.single.snapshot!.origin, WorkoutOrigin.watch);
+    });
+
+    test('a northstar_phone payload decodes with origin phone', () {
+      expect(
+        decode(page()).changes.single.snapshot!.origin,
+        WorkoutOrigin.phone,
+      );
+    });
+
+    test('an unknown origin is still invalid_workout_origin', () {
+      for (final origin in <Object?>[
+        'beyondrep_wear',
+        'BEYONDREP_WATCH',
+        '',
+        1,
+        null,
+      ]) {
+        expect(
+          () => decode(
+            page(changes: [change()..['payload'] = withOrigin(origin)]),
+          ),
+          throwsA(
+            isA<RestoreContractException>().having(
+              (e) => e.code,
+              'code',
+              'invalid_workout_origin',
+            ),
+          ),
+          reason: '$origin',
+        );
+      }
+    });
+
+    test('parseWorkout with origins {watch} rejects northstar_phone', () {
+      expect(
+        () => WorkoutRestorePage.parseWorkout(
+          snapshot(),
+          workoutId: workoutId,
+          origins: {WorkoutOrigin.watch},
+        ),
+        throwsA(
+          isA<RestoreContractException>().having(
+            (e) => e.code,
+            'code',
+            'invalid_workout_origin',
+          ),
+        ),
+      );
+      expect(
+        WorkoutRestorePage.parseWorkout(
+          withOrigin('beyondrep_watch'),
+          workoutId: workoutId,
+          origins: {WorkoutOrigin.watch},
+        ).origin,
+        WorkoutOrigin.watch,
+      );
+    });
+
+    test(
+      'parseWorkout rejects a completed set with neither reps nor seconds',
+      () {
+        final raw = mutableSnapshot()..['origin'] = 'beyondrep_watch';
+        final ex = (raw['exercises'] as List).single as Map<String, dynamic>;
+        final set = (ex['sets'] as List).single as Map<String, dynamic>;
+        set
+          ..remove('reps')
+          ..remove('load_grams');
+        expect(
+          () => WorkoutRestorePage.parseWorkout(raw, workoutId: workoutId),
+          throwsA(
+            isA<RestoreContractException>().having(
+              (e) => e.code,
+              'code',
+              'invalid_set_completion',
+            ),
+          ),
+        );
+      },
+    );
+
+    test('WorkoutOrigin.fromWire maps only the two wire values', () {
+      expect(WorkoutOrigin.fromWire('northstar_phone'), WorkoutOrigin.phone);
+      expect(WorkoutOrigin.fromWire('beyondrep_watch'), WorkoutOrigin.watch);
+      expect(WorkoutOrigin.fromWire('health_connect_import'), isNull);
+      expect(WorkoutOrigin.fromWire(null), isNull);
+      expect(WorkoutOrigin.fromWire(1), isNull);
+    });
+  });
 }

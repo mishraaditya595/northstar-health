@@ -7,6 +7,8 @@ import '../../core/storage/objectbox_store_provider.dart';
 import '../../objectbox.g.dart';
 import '../workouts/data/workout_entities.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
+import '../workouts/domain/workout_models.dart' show WorkoutOrigin;
+import 'completed_snapshot_writer.dart';
 import 'workout_restore_feed.dart';
 
 /// Does not contain a raw server response, account ID, workout ID or note.
@@ -473,7 +475,7 @@ class ObjectBoxWorkoutRestoreImporter {
       if (local.deletedAtMs != null && !change.deleted) {
         throw const RestoreImportException('local_deletion_conflict');
       }
-      if (local.origin != 'northstar_phone' ||
+      if (WorkoutOrigin.fromWire(local.origin) == null ||
           local.status != 'completed' ||
           local.completedAtMs == null) {
         throw const RestoreImportException('local_workout_conflict');
@@ -695,7 +697,7 @@ class ObjectBoxWorkoutRestoreImporter {
       throw const RestoreImportException('resolution_local_changed');
     }
     if (local != null &&
-        (local.origin != 'northstar_phone' ||
+        (WorkoutOrigin.fromWire(local.origin) == null ||
             local.status != 'completed' ||
             local.completedAtMs == null)) {
       throw const RestoreImportException('resolution_not_phone_history');
@@ -809,7 +811,7 @@ class ObjectBoxWorkoutRestoreImporter {
     if (action == WorkoutResolutionAction.retryLocal &&
         (local == null ||
             local.deletedAtMs != null ||
-            local.origin != 'northstar_phone' ||
+            WorkoutOrigin.fromWire(local.origin) == null ||
             local.status != 'completed' ||
             local.completedAtMs == null ||
             remoteChange?.deleted == true)) {
@@ -924,6 +926,16 @@ class ObjectBoxWorkoutRestoreImporter {
     return true;
   });
 
+  int _materialize(
+    RemoteWorkoutSnapshot snapshot,
+    WorkoutSessionEntity? existing,
+  ) => writeCompletedSnapshot(
+    _store,
+    snapshot,
+    existing,
+    nowMs: _clock().toUtc().millisecondsSinceEpoch,
+  );
+
   void _redactSession(WorkoutSessionEntity session) {
     for (final exercise in _matching(
       _exercises,
@@ -939,100 +951,6 @@ class ObjectBoxWorkoutRestoreImporter {
       }
       _exercises.remove(exercise.id);
     }
-  }
-
-  int _materialize(
-    RemoteWorkoutSnapshot snapshot,
-    WorkoutSessionEntity? existing,
-  ) {
-    // Global Unique IDs on exercises and sets must not be stolen from a
-    // different local workout. Check first, then write everything atomically.
-    final oldExercises = _matching(
-      _exercises,
-      WorkoutExerciseEntity_.sessionUuid,
-      snapshot.uuid,
-    );
-    final oldIds = oldExercises.map((e) => e.uuid).toSet();
-    for (final exercise in snapshot.exercises) {
-      final prior = _one(
-        _exercises,
-        WorkoutExerciseEntity_.uuid,
-        exercise.uuid,
-      );
-      if (prior != null && prior.sessionUuid != snapshot.uuid) {
-        throw const RestoreImportException('exercise_uuid_collision');
-      }
-    }
-    for (final set in snapshot.sets) {
-      final prior = _one(_sets, WorkoutSetEntity_.uuid, set.uuid);
-      if (prior != null && !oldIds.contains(prior.exerciseUuid)) {
-        throw const RestoreImportException('set_uuid_collision');
-      }
-    }
-    for (final exercise in oldExercises) {
-      for (final set in _matching(
-        _sets,
-        WorkoutSetEntity_.exerciseUuid,
-        exercise.uuid,
-      )) {
-        _sets.remove(set.id);
-      }
-      _exercises.remove(exercise.id);
-    }
-    final now = _clock().toUtc().millisecondsSinceEpoch;
-    final session =
-        existing ??
-        WorkoutSessionEntity(
-          uuid: snapshot.uuid,
-          name: snapshot.name,
-          startedAtMs: snapshot.startedAtUtc.millisecondsSinceEpoch,
-          originalOffsetMinutes: snapshot.originalOffsetMinutes,
-          updatedAtMs: now,
-        );
-    session.name = snapshot.name;
-    session.status = 'completed';
-    session.origin = 'northstar_phone';
-    session.planUuid = null; // Plans are never transported in the DTO.
-    session.startedAtMs = snapshot.startedAtUtc.millisecondsSinceEpoch;
-    session.completedAtMs = snapshot.completedAtUtc.millisecondsSinceEpoch;
-    session.originalOffsetMinutes = snapshot.originalOffsetMinutes;
-    session.updatedAtMs = now;
-    session.deletedAtMs = null;
-    session.revision = existing == null ? 1 : existing.revision + 1;
-    _sessions.put(session);
-    for (final ex in snapshot.exercises) {
-      _exercises.put(
-        WorkoutExerciseEntity(
-          uuid: ex.uuid,
-          sessionUuid: snapshot.uuid,
-          nameSnapshot: ex.nameSnapshot,
-          muscleSnapshot: ex.muscleSnapshot,
-          equipmentSnapshot: ex.equipmentSnapshot,
-          position: ex.position,
-          primaryMusclesSnapshot: List.of(ex.primaryMusclesSnapshot),
-          secondaryMusclesSnapshot: List.of(ex.secondaryMusclesSnapshot),
-        ),
-      );
-    }
-    for (final set in snapshot.sets) {
-      _sets.put(
-        WorkoutSetEntity(
-          uuid: set.uuid,
-          exerciseUuid: set.exerciseUuid,
-          position: set.position,
-          kind: set.kind.name,
-          status: set.status.name,
-          reps: set.reps,
-          durationSeconds: set.durationSeconds,
-          loadGrams: set.loadGrams,
-          inputUnit: set.inputUnit.name,
-          rpe: set.rpe,
-          completedAtMs: set.completedAtUtc?.millisecondsSinceEpoch,
-          updatedAtMs: now,
-        ),
-      );
-    }
-    return session.revision;
   }
 }
 

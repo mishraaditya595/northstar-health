@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 import 'package:beyondrep/core/storage/objectbox_store_provider.dart';
 import 'package:beyondrep/features/account/account_auth_provider.dart';
 import 'package:beyondrep/features/progress/workout_history_state.dart';
@@ -32,6 +33,7 @@ RemoteWorkoutChange change(int seq, {String? id}) => RemoteWorkoutChange(
   changeSeq: seq,
   deleted: false,
   snapshot: RemoteWorkoutSnapshot(
+    origin: WorkoutOrigin.phone,
     uuid: id ?? workoutId(seq),
     name: 'Restored workout',
     startedAtUtc: DateTime.utc(2026, 10, 25, 9),
