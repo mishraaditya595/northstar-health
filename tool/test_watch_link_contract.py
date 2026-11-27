@@ -133,6 +133,7 @@ class WatchLinkContractTest(unittest.TestCase):
             "health_snapshot_factor_duplicate",
             "health_snapshot_week_out_of_order",
             "health_snapshot_week_eight_days",
+            "health_snapshot_week_after_local_date",
             "health_snapshot_factor_status_too_long",
             "health_snapshot_usual_negative",
         ):
