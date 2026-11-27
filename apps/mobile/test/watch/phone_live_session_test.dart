@@ -130,6 +130,16 @@ class _Ids implements UuidFactory {
       '77777777-3333-4333-8333-${(n++).toString().padLeft(12, '0')}';
 }
 
+/// Counts how often the active workout provider was invalidated.
+base class _InvalidationCount extends ProviderObserver {
+  int count = 0;
+
+  @override
+  void didDisposeProvider(ProviderObserverContext context) {
+    if (context.provider == activeWorkoutProvider) count++;
+  }
+}
+
 class _Harness {
   _Harness(this.tester, {this.store, bool linked = true}) {
     api = FakeAuthApi()..sessionId = accountA;
@@ -137,6 +147,7 @@ class _Harness {
     auth = controller(api, bound);
     link = FakeWatchLiveLink();
     container = ProviderContainer(
+      observers: [invalidations],
       overrides: [
         accountAuthControllerProvider.overrideWithValue(auth),
         objectBoxStoreProvider.overrideWithValue(store!),
@@ -160,6 +171,7 @@ class _Harness {
   late final FakeBoundAccountStore bound;
   late final AccountAuthController auth;
   late final FakeWatchLiveLink link;
+  final invalidations = _InvalidationCount();
   late ProviderContainer container;
   final DateTime t0 = DateTime.now().toUtc();
   Duration elapsed = Duration.zero;
@@ -777,6 +789,131 @@ void main() {
       );
       h.link.receive(jsonEncode(other.toJson()));
       expect(h.link.states.length, before + 1);
+      h.dispose();
+    });
+
+    testWidgets('a join without a session id gets the running state', (
+      tester,
+    ) async {
+      final h = _Harness(tester, store: store);
+      await h.start();
+      h.sessionUuid = (await h.seed()).uuid;
+      final before = h.link.states.length;
+      final join = JoinMessage(
+        messageId: '55555555-3333-4333-8333-000000000003',
+        sentAtUtc: h.t0.toIso8601String(),
+        accountKey: watchAccountKey(accountA),
+      );
+      h.link.receive(jsonEncode(join.toJson()));
+      expect(h.link.states.length, before + 1);
+      expect(h.lastState.status, 'active');
+      h.dispose();
+    });
+
+    testWidgets('a join for a finished workout is answered with ended', (
+      tester,
+    ) async {
+      final h = _Harness(tester, store: store);
+      await h.start();
+      h.sessionUuid = (await h.seed()).uuid;
+      h.actions.finish(h.session);
+      h.container.invalidate(activeWorkoutProvider);
+      h.container.read(activeWorkoutProvider);
+      // Well past the 2 minutes the ended state is resent.
+      await h.advance(const Duration(minutes: 5));
+      h.link.states.clear();
+      final join = JoinMessage(
+        messageId: '55555555-3333-4333-8333-000000000004',
+        sentAtUtc: h.t0.toIso8601String(),
+        accountKey: watchAccountKey(accountA),
+        sessionId: h.sessionUuid,
+      );
+      h.link.receive(jsonEncode(join.toJson()));
+      expect(h.link.states, hasLength(1));
+      expect(h.lastState.status, 'ended');
+      expect(h.lastState.endReason, 'completed');
+      expect(h.lastState.sessionId, h.sessionUuid);
+      h.dispose();
+    });
+
+    testWidgets(
+      'after a relaunch a join for a discarded workout is answered ended',
+      (tester) async {
+        final h = _Harness(tester, store: store);
+        await h.start();
+        h.sessionUuid = (await h.seed()).uuid;
+        h.actions.discard(h.session);
+        await h.relaunch();
+        final join = JoinMessage(
+          messageId: '55555555-3333-4333-8333-000000000005',
+          sentAtUtc: h.t0.toIso8601String(),
+          accountKey: watchAccountKey(accountA),
+          sessionId: h.sessionUuid,
+        );
+        h.link.receive(jsonEncode(join.toJson()));
+        expect(h.link.states, hasLength(1));
+        expect(h.lastState.status, 'ended');
+        expect(h.lastState.endReason, 'discarded');
+        h.dispose();
+      },
+    );
+
+    testWidgets('a join for an unknown workout is not answered', (
+      tester,
+    ) async {
+      final h = _Harness(tester, store: store);
+      await h.start();
+      h.sessionUuid = (await h.seed()).uuid;
+      final before = h.link.states.length;
+      final join = JoinMessage(
+        messageId: '55555555-3333-4333-8333-000000000006',
+        sentAtUtc: h.t0.toIso8601String(),
+        accountKey: watchAccountKey(accountA),
+        sessionId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      );
+      h.link.receive(jsonEncode(join.toJson()));
+      expect(h.link.states.length, before);
+      h.dispose();
+    });
+
+    testWidgets('no timer and no refresh while no watch can be sent to', (
+      tester,
+    ) async {
+      final h = _Harness(tester, store: store, linked: false);
+      await h.start();
+      h.sessionUuid = (await h.seed()).uuid;
+      final before = h.invalidations.count;
+      await h.advance(const Duration(seconds: 90));
+      expect(h.invalidations.count, before);
+      expect(h.link.states, isEmpty);
+      // Linking later starts the beat again.
+      h.linked = true;
+      final linkedStates = h.link.states.length;
+      await h.advance(const Duration(seconds: 30));
+      expect(h.link.states.length, greaterThan(linkedStates));
+      expect(h.invalidations.count, greaterThan(before));
+      h.dispose();
+    });
+
+    testWidgets('a replayed add_set after a relaunch adds no extra set', (
+      tester,
+    ) async {
+      final h = _Harness(tester, store: store);
+      await h.start();
+      h.sessionUuid = (await h.seed()).uuid;
+      final add = h.command('add_set', exerciseId: _x1);
+      h.link.receive(add);
+      expect(h.session.sets.length, 4);
+      final revision = h.session.revision;
+      await h.relaunch();
+      await h.advance(const Duration(seconds: 10));
+      h.link.receive(add);
+      expect(h.session.sets.length, 4);
+      expect(h.session.revision, revision);
+      expect(h.lastState.rejectedCommands, isEmpty);
+      // Another add_set command still adds a set.
+      h.link.receive(h.command('add_set', exerciseId: _x1));
+      expect(h.session.sets.length, 5);
       h.dispose();
     });
 

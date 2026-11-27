@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -43,6 +44,31 @@ String _utc(DateTime t) => DateTime.fromMillisecondsSinceEpoch(
   t.millisecondsSinceEpoch,
   isUtc: true,
 ).toIso8601String();
+
+/// The uuid of the set an `add_set` command creates: derived from the command
+/// id (UUIDv5 in a fixed namespace), so the same command taken again after a
+/// phone relaunch finds its set and adds nothing.
+String addedSetUuid(String commandId) {
+  const namespace = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
+  List<int> bytes(String uuid) {
+    final hex = uuid.replaceAll('-', '');
+    return [
+      for (var i = 0; i < 32; i += 2)
+        int.parse(hex.substring(i, i + 2), radix: 16),
+    ];
+  }
+
+  final digest = sha1.convert([
+    ...bytes(namespace),
+    ...utf8.encode('beyondrep.watch.add_set:${commandId.toLowerCase()}'),
+  ]).bytes;
+  final b = digest.sublist(0, 16);
+  b[6] = (b[6] & 0x0f) | 0x50;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  final hex = [for (final v in b) v.toRadixString(16).padLeft(2, '0')].join();
+  return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
+      '${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
+}
 
 String _cap(String text, int max) {
   final runes = text.runes;
@@ -245,8 +271,15 @@ class PhoneLiveSessionController extends Notifier<PhoneLiveSessionState> {
     ref.listen<bool>(
       watchLinkStateProvider.select((s) => _isLinked(s.device)),
       (was, now) {
+        _syncTimer();
         if (now && was != true) _broadcast(force: true);
       },
+    );
+    // A workout the watch owns stops the phone's own beat, and its end starts
+    // it again.
+    ref.listen<bool>(
+      liveWatchWorkoutProvider.select((s) => s.workout != null),
+      (_, _) => _syncTimer(),
     );
     return const PhoneLiveSessionState();
   }
@@ -308,7 +341,7 @@ class PhoneLiveSessionController extends Notifier<PhoneLiveSessionState> {
       // A workout that was already there when the app started (or came back
       // after a relaunch) is broadcast but never launches the watch app.
       if (_seenNull && view.session.status == WorkoutStatus.inProgress) {
-        if (_launched.add(view.session.uuid) && _canSend) {
+        if (_canSend && _launched.add(view.session.uuid)) {
           unawaited(_link.startWatchApp());
         }
       }
@@ -336,12 +369,37 @@ class PhoneLiveSessionController extends Notifier<PhoneLiveSessionState> {
     if (_canSend) unawaited(_link.sendState(json));
   }
 
-  WorkoutStatus? _storedStatus(String uuid) {
+  WorkoutSessionRecord? _stored(String uuid) {
     try {
-      return ref.read(workoutRepositoryProvider).getSession(uuid)?.status;
+      return ref.read(workoutRepositoryProvider).getSession(uuid);
     } catch (_) {
       return null;
     }
+  }
+
+  WorkoutStatus? _storedStatus(String uuid) => _stored(uuid)?.status;
+
+  /// A watch asked about a session that is no longer the active one (it
+  /// missed the end): answers with an `ended` state built from the stored
+  /// workout. A session the phone does not know, or one still unfinished, is
+  /// not answered.
+  void _answerEnded(String sessionId) {
+    final stored = _stored(sessionId.toLowerCase());
+    if (stored == null) return;
+    final reason = switch (stored.status) {
+      WorkoutStatus.completed => 'completed',
+      WorkoutStatus.discarded => 'discarded',
+      _ => null,
+    };
+    if (reason == null || !_canSend) return;
+    final view = ActiveWorkoutView(
+      stored,
+      WorkoutRecoveryCheckpoint(
+        sessionUuid: stored.uuid,
+        checkpointRevision: stored.revision,
+      ),
+    );
+    unawaited(_link.sendState(_stateJson(view, endReason: reason)));
   }
 
   /// Pause time lives in memory: the engine records none. After a relaunch the
@@ -407,7 +465,8 @@ class PhoneLiveSessionController extends Notifier<PhoneLiveSessionState> {
   }
 
   void _syncTimer() {
-    final needed = _lastView != null || _endedJson != null;
+    // No watch to send to (or one that owns a workout): no beat, no refresh.
+    final needed = (_lastView != null || _endedJson != null) && _canSend;
     if (needed && _timer == null) {
       _timer = Timer.periodic(phoneStateEvery, (_) => _tick());
     } else if (!needed) {
@@ -417,6 +476,10 @@ class PhoneLiveSessionController extends Notifier<PhoneLiveSessionState> {
   }
 
   void _tick() {
+    if (!_canSend) {
+      _syncTimer();
+      return;
+    }
     final ended = _endedJson;
     if (ended != null) {
       final until = _endedUntil;
@@ -466,9 +529,12 @@ class PhoneLiveSessionController extends Notifier<PhoneLiveSessionState> {
     if (key == null || message.accountKey != key) return;
     if (message is JoinMessage) {
       final view = _fresh();
+      final asked = message.sessionId?.toLowerCase();
       if (view != null &&
-          view.session.uuid.toLowerCase() == message.sessionId.toLowerCase()) {
+          (asked == null || view.session.uuid.toLowerCase() == asked)) {
         _broadcast(force: true);
+      } else if (asked != null) {
+        _answerEnded(asked);
       }
     } else if (message is SessionCommand) {
       _onCommand(message);
@@ -647,8 +713,22 @@ class PhoneLiveSessionController extends Notifier<PhoneLiveSessionState> {
             .where((e) => e.uuid == c.exerciseId)
             .firstOrNull;
         if (exercise == null) return 'unknown_set';
+        final uuid = addedSetUuid(c.commandId);
+        // The same command taken again (after a relaunch) finds its set.
+        if (setOf(uuid) != null) return null;
         return _run(() {
-          actions.addPlannedSet(session, exercise);
+          actions.saveSet(
+            session,
+            WorkoutSetRecord(
+              uuid: uuid,
+              exerciseUuid: exercise.uuid,
+              position: session.sets
+                  .where((s) => s.exerciseUuid == exercise.uuid)
+                  .length,
+              kind: WorkoutSetKind.working,
+              status: WorkoutSetStatus.planned,
+            ),
+          );
           return null;
         });
       case 'start_rest':
