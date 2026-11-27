@@ -10,6 +10,7 @@ import 'features/account/account_gate.dart';
 import 'features/account/account_local_cleanup.dart';
 import 'features/watch/application/watch_sync_controller.dart';
 import 'features/watch/data/watch_link.dart';
+import 'features/watch/data/watch_status_store.dart';
 
 /// Only public client settings are provided at build time. Never accept or
 /// embed service_role / secret keys, database passwords or personal tokens.
@@ -63,14 +64,17 @@ class _AuthBootstrapState extends State<_AuthBootstrap> {
       localCleaner: NativeAccountDataCleaner(projectHost: uri.host),
       // The signed-in scope is already gone by then, so this uses the link
       // directly instead of a provider.
-      onAccountDeleted: (owner) => unawaited(
-        announceWatchAccountDeleted(
-          link: MethodChannelWatchLink(),
-          userId: owner,
-          ids: SecureUuidFactory(),
-          nowUtc: DateTime.now().toUtc(),
-        ),
-      ),
+      onAccountDeleted: (owner) {
+        unawaited(
+          announceWatchAccountDeleted(
+            link: MethodChannelWatchLink(),
+            userId: owner,
+            ids: SecureUuidFactory(),
+            nowUtc: DateTime.now().toUtc(),
+          ),
+        );
+        unawaited(WatchStatusStore.clearStored());
+      },
     );
     await controller.restore();
     _controller = controller;

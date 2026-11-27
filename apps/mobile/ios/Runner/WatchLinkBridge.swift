@@ -38,12 +38,26 @@ final class WatchLinkBridge: NSObject, WCSessionDelegate {
 
   private func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard let session = session() else {
-      result(call.method == "isReachableForUpdates" ? false : nil)
+      switch call.method {
+      case "isReachableForUpdates": result(false)
+      case "watchStatus":
+        // iPad and other devices without WatchConnectivity: nothing is shown.
+        result(["supported": false, "paired": false, "installed": false, "reachable": false])
+      default: result(nil)
+      }
       return
     }
     switch call.method {
     case "isReachableForUpdates":
       result(session.activationState == .activated && session.isPaired && session.isWatchAppInstalled)
+    case "watchStatus":
+      let active = session.activationState == .activated
+      result([
+        "supported": true,
+        "paired": active && session.isPaired,
+        "installed": active && session.isPaired && session.isWatchAppInstalled,
+        "reachable": active && session.isReachable,
+      ])
     case "updateContext":
       guard let context = call.arguments as? [String: String] else {
         result(FlutterError(code: "bad_arguments", message: nil, details: nil))
@@ -75,6 +89,19 @@ final class WatchLinkBridge: NSObject, WCSessionDelegate {
 
   func sessionWatchStateDidChange(_ session: WCSession) {
     notifyWatchStateChanged()
+  }
+
+  func sessionReachabilityDidChange(_ session: WCSession) {
+    notifyWatchStateChanged()
+  }
+
+  /// The watch's acknowledgments arrive as user info (`["json": String]`) and
+  /// go to Dart, which decides what they mean.
+  func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
+    guard let json = userInfo["json"] as? String else { return }
+    DispatchQueue.main.async { [weak self] in
+      self?.channel?.invokeMethod("watchMessage", arguments: json)
+    }
   }
 
   func sessionDidBecomeInactive(_ session: WCSession) {}
