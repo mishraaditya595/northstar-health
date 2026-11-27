@@ -300,6 +300,43 @@ void main() {
     expect(find.text('Not now'), findsOneWidget);
   });
 
+  testWidgets('the note is once per waking day, across midnight', (
+    tester,
+  ) async {
+    await _pump(tester, _low());
+    _container.read(_nowProvider.notifier).set(DateTime(2026, 11, 24, 23));
+    await tester.pump();
+    await _tapStart(tester);
+    expect(find.text('Not now'), findsOneWidget);
+    await tester.tap(find.text('Not now'));
+    await tester.pumpAndSettle();
+
+    // 00:30 is still the waking day that began at 06:31 the day before.
+    _container.read(_nowProvider.notifier).set(DateTime(2026, 11, 25, 0, 30));
+    await tester.pump();
+    await _tapStart(tester);
+    expect(find.text('Not now'), findsNothing);
+    expect(_actions.started, ['plan-1']);
+
+    // The next waking day shows it again.
+    _container.read(_nowProvider.notifier).set(DateTime(2026, 11, 25, 7, 30));
+    final start = _ready(48);
+    _controller.replace(
+      overview(
+        readiness: start,
+        readAt: DateTime(2026, 11, 25, 7, 30),
+        energy: energySection(
+          start,
+          wake: DateTime(2026, 11, 25, 7),
+          day: DateTime(2026, 11, 25),
+        ),
+      ),
+    );
+    await tester.pump();
+    await _tapStart(tester);
+    expect(find.text('Not now'), findsOneWidget);
+  });
+
   testWidgets('another owner sees the note again', (tester) async {
     await _pump(tester, _low());
     await _tapStart(tester);

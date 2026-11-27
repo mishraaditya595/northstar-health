@@ -28,7 +28,7 @@ final readinessStartNoteShownProvider =
     );
 
 /// Returns true at once unless energy now is Low and the note has not
-/// been shown today for this owner. Uses only the current overview value and
+/// been shown this waking day for this owner. Uses only the current overview value and
 /// never waits for a health read. A dismissed note counts as "Not now".
 Future<bool> confirmReadinessBeforeStart(
   BuildContext context,
@@ -36,14 +36,15 @@ Future<bool> confirmReadinessBeforeStart(
 ) async {
   final owner = ref.read(healthOwnerIdProvider);
   final overview = ref.read(healthOverviewProvider).value;
-  final energy = overview == null
+  final current = overview == null
       ? null
-      : currentEnergyScore(overview, ref.read(localNowProvider));
+      : currentEnergy(overview, ref.read(localNowProvider));
+  final energy = current?.energy;
   if (owner == null || energy == null || energy.band != ReadinessBand.low) {
     return true;
   }
-  final now = ref.read(localNowProvider);
-  final day = DateTime(now.year, now.month, now.day);
+  // The waking day, not the calendar day: a late trainer is asked once.
+  final day = current!.day;
   if (ref.read(readinessStartNoteShownProvider) == (owner: owner, day: day)) {
     return true;
   }
