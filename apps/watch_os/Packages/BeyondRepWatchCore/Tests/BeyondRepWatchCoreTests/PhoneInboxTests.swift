@@ -169,4 +169,78 @@ final class PhoneInboxTests: XCTestCase {
         XCTAssertNil(try journal.binding())
         XCTAssertTrue(try journal.pendingOutbox(limit: 10).isEmpty)
     }
+
+    // MARK: Ack outcomes
+
+    private func message(_ m: WatchMessage) -> String { m.messageId.lowercased() }
+
+    func testStoredAckForEachAppliedContextMessage() throws {
+        let binding = M.binding(M.keyA), plans = M.plans(M.keyA), health = M.health(M.keyA)
+        let outcomes = try inbox.receive(applicationContext: context(health, plans, binding), now: M.date(M.t0))
+        XCTAssertEqual(
+            outcomes,
+            [
+                AckOutcome(messageId: message(binding), accountKey: M.keyA, result: "stored", reason: nil),
+                AckOutcome(messageId: message(plans), accountKey: M.keyA, result: "stored", reason: nil),
+                AckOutcome(messageId: message(health), accountKey: M.keyA, result: "stored", reason: nil),
+            ])
+    }
+
+    func testSameHealthTwiceIsDuplicate() throws {
+        let binding = M.binding(M.keyA), health = M.health(M.keyA)
+        _ = try inbox.receive(applicationContext: context(binding, health), now: M.date(M.t0))
+        let again = try inbox.receive(applicationContext: context(binding, health), now: M.date(M.t0))
+        XCTAssertEqual(
+            again,
+            [
+                AckOutcome(messageId: message(binding), accountKey: M.keyA, result: "duplicate", reason: nil),
+                AckOutcome(messageId: message(health), accountKey: M.keyA, result: "duplicate", reason: nil),
+            ])
+        let plans = M.plans(M.keyA)
+        XCTAssertEqual(try inbox.receive(applicationContext: context(plans)).first?.result, "stored")
+        XCTAssertEqual(try inbox.receive(applicationContext: context(plans)).first?.result, "duplicate")
+    }
+
+    func testPlansForAnotherBoundAccountAreRejectedWrongAccount() throws {
+        _ = try inbox.receive(applicationContext: context(M.binding(M.keyA)))
+        let plans = M.plans(M.keyB), health = M.health(M.keyB)
+        let outcomes = try inbox.receive(applicationContext: context(plans, health))
+        XCTAssertEqual(
+            outcomes,
+            [
+                AckOutcome(messageId: message(plans), accountKey: M.keyB, result: "rejected", reason: "wrong_account"),
+                AckOutcome(messageId: message(health), accountKey: M.keyB, result: "rejected", reason: "wrong_account"),
+            ])
+        XCTAssertNil(try journal.plans(accountKey: M.keyB))
+    }
+
+    func testNoAckWithoutBinding() throws {
+        let outcomes = try inbox.receive(applicationContext: context(M.plans(M.keyA), M.health(M.keyA)))
+        XCTAssertEqual(outcomes, [])
+        XCTAssertEqual(try inbox.receive(userInfo: ["json": "not json"]), [])
+        XCTAssertEqual(try inbox.receive(userInfo: [:]), [])
+    }
+
+    func testClearedGivesAStoredAckAndDropsTheReceivedTime() throws {
+        _ = try inbox.receive(applicationContext: context(M.binding(M.keyA)))
+        let cleared = M.cleared(M.keyA)
+        let outcomes = try inbox.receive(userInfo: ["json": try M.json(cleared)])
+        XCTAssertEqual(
+            outcomes, [AckOutcome(messageId: message(cleared), accountKey: M.keyA, result: "stored", reason: nil)])
+    }
+
+    func testReceivedTimeRecordedAndClearedWithAccount() throws {
+        XCTAssertNil(try journal.lastReceivedMs())
+        let now = M.date("2026-10-23T05:00:00Z")
+        _ = try inbox.receive(applicationContext: context(M.binding(M.keyA), M.health(M.keyA)), now: now)
+        XCTAssertEqual(try journal.lastReceivedMs(), 1_792_731_600_000)
+
+        // A rejected message does not count as received.
+        let later = M.date("2026-10-23T06:00:00Z")
+        _ = try inbox.receive(applicationContext: context(M.plans(M.keyB)), now: later)
+        XCTAssertEqual(try journal.lastReceivedMs(), 1_792_731_600_000)
+
+        _ = try inbox.receive(userInfo: ["json": try M.json(M.cleared(M.keyA))], now: later)
+        XCTAssertNil(try journal.lastReceivedMs())
+    }
 }

@@ -18,24 +18,30 @@ public final class PhoneInbox {
 
     /// Context keys are message types and each value is a JSON string. The
     /// binding is applied first because dictionary order is arbitrary.
-    public func receive(applicationContext: [String: Any]) throws {
+    /// Returns one outcome for each message handled, in that order, for the
+    /// watch to acknowledge. Undecodable entries have no outcome.
+    @discardableResult
+    public func receive(applicationContext: [String: Any], now: Date = Date()) throws -> [AckOutcome] {
+        var outcomes: [AckOutcome] = []
         for type in ["account_binding", "account_cleared", "plans_snapshot", "health_snapshot"] {
             guard let value = applicationContext[type] else { continue }
             guard let message = decode(value), message.type == type else {
                 rejectedCount += 1
                 continue
             }
-            try apply(message)
+            if let outcome = try apply(message, now: now) { outcomes.append(outcome) }
         }
+        return outcomes
     }
 
     /// One-off messages arrive as `["json": String]`.
-    public func receive(userInfo: [String: Any]) throws {
+    @discardableResult
+    public func receive(userInfo: [String: Any], now: Date = Date()) throws -> [AckOutcome] {
         guard let message = decode(userInfo["json"]) else {
             rejectedCount += 1
-            return
+            return []
         }
-        try apply(message)
+        return try apply(message, now: now).map { [$0] } ?? []
     }
 
     private func decode(_ value: Any?) -> WatchMessage? {
@@ -43,7 +49,15 @@ public final class PhoneInbox {
         return try? WatchMessage(json: Data(text.utf8))
     }
 
-    private func apply(_ message: WatchMessage) throws {
+    private func apply(_ message: WatchMessage, now: Date) throws -> AckOutcome? {
+        func outcome(_ result: String, _ reason: String? = nil) -> AckOutcome {
+            AckOutcome(
+                messageId: message.messageId.lowercased(), accountKey: message.accountKey, result: result,
+                reason: reason)
+        }
+        func received() throws {
+            try journal.recordReceived(atMs: Int64((now.timeIntervalSince1970 * 1000).rounded(.down)))
+        }
         switch message.body {
         case .accountBinding:
             // Application context and user info are separate, unordered
@@ -51,17 +65,20 @@ public final class PhoneInbox {
             // only send times decide what is current.
             guard let sentAt = WatchTimestamp.milliseconds(message.sentAtUtc) else {
                 rejectedCount += 1
-                return
+                return nil
             }
             if let clearedAt = try journal.clearedAt(message.accountKey), sentAt <= clearedAt {
                 ignoredCount += 1  // sent before the account was cleared
-                return
+                return nil
             }
             if let current = try journal.bindingState() {
-                if current.messageId == message.messageId.lowercased() { return }  // already applied
+                if current.messageId == message.messageId.lowercased() {  // already applied
+                    try received()
+                    return outcome("duplicate")
+                }
                 if sentAt < current.sentAtMs {
                     ignoredCount += 1  // older than the binding in place
-                    return
+                    return nil
                 }
                 if current.accountKey != message.accountKey {
                     // Unsent workouts of the previous account stay (wipeUnsent: false).
@@ -69,10 +86,12 @@ public final class PhoneInbox {
                 }
             }
             try journal.saveBinding(message)
+            try received()
+            return outcome("stored")
         case .accountCleared(let wipeUnsent):
             guard let sentAt = WatchTimestamp.milliseconds(message.sentAtUtc) else {
                 rejectedCount += 1
-                return
+                return nil
             }
             try journal.recordCleared(message.accountKey, sentAtMs: sentAt)
             // A clear older than the binding in place is late: that binding is
@@ -82,17 +101,38 @@ public final class PhoneInbox {
                 current.accountKey == message.accountKey, sentAt < current.sentAtMs
             {
                 ignoredCount += 1
-                return
+                return outcome("stored")  // the tombstone is stored
             }
             try journal.clearAccount(message.accountKey, wipeUnsent: wipeUnsent)
+            return outcome("stored")
         case .plansSnapshot:
-            guard try journal.binding()?.accountKey == message.accountKey else { return }
+            // Without a binding there is no account to answer for: no ack.
+            guard let bound = try journal.binding() else { return nil }
+            guard bound.accountKey == message.accountKey else { return outcome("rejected", "wrong_account") }
+            if try journal.plans(accountKey: bound.accountKey)?.messageId.lowercased()
+                == message.messageId.lowercased()
+            {
+                try received()
+                return outcome("duplicate")
+            }
             try journal.savePlans(message)
-        case .healthSnapshot:
-            guard try journal.binding()?.accountKey == message.accountKey else { return }
+            try received()
+            return outcome("stored")
+        case .healthSnapshot(let localDate, _):
+            guard let bound = try journal.binding() else { return nil }
+            guard bound.accountKey == message.accountKey else { return outcome("rejected", "wrong_account") }
+            if try journal.health(accountKey: bound.accountKey, forLocalDate: localDate)?.messageId.lowercased()
+                == message.messageId.lowercased()
+            {
+                try received()
+                return outcome("duplicate")
+            }
             try journal.saveHealth(message)
+            try received()
+            return outcome("stored")
         default:
             rejectedCount += 1  // watch-bound types are not phone-to-watch glance data yet
+            return nil
         }
     }
 }
