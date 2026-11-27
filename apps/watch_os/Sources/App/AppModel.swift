@@ -17,6 +17,9 @@ final class AppModel: ObservableObject {
     /// observable, so every action bumps `revision` to redraw the screens.
     @Published private(set) var workout: WorkoutController?
     @Published private(set) var revision = 0
+    /// True from a Start tap until the session is running, so a double tap
+    /// cannot start two sessions while HealthKit asks for permission.
+    @Published private(set) var isStarting = false
     @Published private(set) var summary: WorkoutSummary?
     @Published private(set) var waiting = WaitingWorkouts(waiting: 0, waitingOtherAccount: 0)
     /// Length of the rest in progress, for the ring.
@@ -163,7 +166,9 @@ final class AppModel: ObservableObject {
     }
 
     func startWorkout(_ template: WorkoutTemplate) async {
-        guard let journal, let account = boundAccount, workout == nil else { return }
+        guard let journal, let account = boundAccount, workout == nil, !isStarting else { return }
+        isStarting = true
+        defer { isStarting = false }
         _ = await recorder.requestAuthorization()
         guard
             let controller = try? WorkoutController.start(

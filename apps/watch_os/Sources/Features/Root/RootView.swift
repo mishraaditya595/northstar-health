@@ -60,7 +60,7 @@ struct RootView: View {
                 HomePage(glance: model.glance, syncLine: model.syncLine, page: $page)
                     .tag(WatchPage.home)
                 TrainPage(
-                    glance: model.glance, canStart: model.canStart,
+                    glance: model.glance, canStart: model.canStart, isStarting: model.isStarting,
                     onQuickWorkout: { Task { await model.startWorkout(.quick()) } }
                 )
                 .tag(WatchPage.train)

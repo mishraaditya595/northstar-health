@@ -8,6 +8,7 @@ import BeyondRepWatchCore
 struct TrainPage: View {
     let glance: GlanceState
     var canStart = false
+    var isStarting = false
     var onQuickWorkout: () -> Void = {}
 
     var body: some View {
@@ -19,7 +20,8 @@ struct TrainPage: View {
                     .foregroundStyle(Palette.secondary)
                     .padding()
             case .ready(let glance):
-                TrainContent(glance: glance, canStart: canStart, onQuickWorkout: onQuickWorkout)
+                TrainContent(
+                    glance: glance, canStart: canStart, isStarting: isStarting, onQuickWorkout: onQuickWorkout)
             }
         }
         .background(Palette.canvas)
@@ -29,6 +31,7 @@ struct TrainPage: View {
 private struct TrainContent: View {
     let glance: Glance
     let canStart: Bool
+    let isStarting: Bool
     let onQuickWorkout: () -> Void
 
     var body: some View {
@@ -90,6 +93,7 @@ private struct TrainContent: View {
             if canStart {
                 Button("+ Quick workout", action: onQuickWorkout)
                     .font(.footnote.weight(.semibold))
+                    .disabled(isStarting)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
         }

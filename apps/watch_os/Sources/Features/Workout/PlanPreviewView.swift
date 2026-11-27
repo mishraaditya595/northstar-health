@@ -34,6 +34,7 @@ struct PlanPreviewView: View {
                         Button("Start") {
                             Task { if let fresh = model.template(planId: planId) { await model.startWorkout(fresh) } }
                         }
+                        .disabled(model.isStarting)
                         .buttonStyle(.borderedProminent)
                         .tint(Palette.performance)
                         .foregroundStyle(Palette.canvas)
