@@ -133,6 +133,20 @@ The iPhone app sends the signed-in account's plans and today's numbers to the Be
 | Large text and VoiceOver on a small and a large watch: tiles read "Resting heart rate, 54 beats per minute" and "Steps, no data", nothing clipped | not run |
 | Watch signing through the Codemagic job works without the fallback profile (see IOS_TESTFLIGHT_CODEMAGIC.md) | not run |
 
+## Phase 4 stage 4a: watch workout import and `beyondrep_watch` origin (owner actions, none done)
+
+The phone imports a completed workout from the watch, backs it up with origin `beyondrep_watch`, and resends an account-deletion wipe until the watch confirms it. Implemented in source, **not released or device-verified**. The watch cannot send a completed workout until stage 4b, so the import cannot be tested end to end yet. Every row is not run.
+
+| Check | Result |
+| --- | --- |
+| Deploy order: the `supabase-database` job has applied `20261127090000_workout_origin_beyondrep_watch.sql` to the project under test before any build that uploads watch workouts | not run |
+| Every install on every phone of the test account is updated before the first watch workout is uploaded (older builds refuse the origin when restoring) | not run |
+| `Supabase SQL and RLS` (`workout_watch_origin` and the existing pgTAP files) passes on the PR | not run |
+| A watch workout restored on a second phone shows the Apple Watch tag in history and its detail | not run |
+| A watch workout appears once in Account > export with origin `beyondrep_watch` | not run |
+| Delete the account with the watch out of range, then bring it in range: the watch drops that account's unsent workouts | not run |
+| Delete the account with the watch out of range, force-quit and relaunch with the watch in range: the wipe is resent and the watch drops the workouts | not run |
+
 ## Phase 4 watch glance redesign and sync status (owner actions, none done)
 
 The two-page watch app, its detail screens and the watch status on the iPhone are implemented in source, **not released or device-verified**. The Swift unit tests run in `watchos_smoke.yml`; none of these device checks is CI. Every row is not run.

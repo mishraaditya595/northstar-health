@@ -48,7 +48,7 @@ Current dashboard aggregates ~5–30 minute TTL while in use; historical aggrega
 
 ## Health export (separate permission, **never automatic by default**)
 
-Only for **completed BeyondRep-owned sessions**, not drafts or imported workouts. A settings control and contextual first-use explanation are required. Track origin: `northstar_phone`, `beyondrep_apple_watch`, `northstar_wear_os`, `external_platform`, `manual`. Do not synthesize energy, heart rate or sleep to improve activity-ring metrics. Set-by-set details are not portable platform measurements.
+Only for **completed BeyondRep-owned sessions**, not drafts or imported workouts. A settings control and contextual first-use explanation are required. Track origin: `northstar_phone`, `beyondrep_watch`, `northstar_wear_os`, `external_platform`, `manual`. Do not synthesize energy, heart rate or sleep to improve activity-ring metrics. Set-by-set details are not portable platform measurements.
 
 ### Export receipt state machine
 

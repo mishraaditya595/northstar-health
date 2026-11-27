@@ -18,4 +18,5 @@
 
 - New contracts: `contracts/workout_sync/v2` (RPE, timed sets, catalogue ids) and `contracts/watch_link/v1`. `workout_sync/v1` is unchanged.
 - ADR-0011 rule 3 (outside-workout dedup) is amended in stage 4.
+- Stage 4a (phone side of workout import): the migration `20261127090000_workout_origin_beyondrep_watch.sql` lets the server accept the cloud origin `beyondrep_watch`. The phone imports a `completed_workout` atomically (workout, receipt and outbox entry in one ObjectBox transaction) and sends the `ack` only after the commit; a workout for another account gets no ack, so the watch keeps it. The `completed_workout` body gained an optional `program_day`. ADR-0011 rule 3 is amended: workouts from the watch app's own HealthKit source, and any workout whose platform UUID is in a stored receipt, are not outside workouts. The account-deletion wipe is persisted on the phone and resent until the watch acks it.
 - Nothing here is released or device-verified.
