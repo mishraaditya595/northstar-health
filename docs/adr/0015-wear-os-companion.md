@@ -1,7 +1,7 @@
 # ADR-0015 — Wear OS companion
 
 **Status:** **Accepted** — approved by the project owner on 2026-11-27 (Adi approved the design). Stage 1 (the pure-Kotlin watch core) is implemented in source, not released or device-verified; stages 2 to 5 are not started.
-**Builds on:** [ADR-0012](0012-apple-watch-companion.md) (decisions 3, 5, 6 and 7 apply unchanged) and ADR-0014 (the phone writes workouts to Health Connect). **Amends:** ADR-0012 decision 4 and [HEALTH_DATA.md](../HEALTH_DATA.md) when stage 3 lands. Design: [Wear OS companion](../superpowers/specs/2026-11-27-wear-os-companion-design.md).
+**Builds on:** [ADR-0012](0012-apple-watch-companion.md) (decisions 3, 5, 6 and 7 apply unchanged) and the planned ADR-0014 (the phone writes workouts to Health Connect; being designed in a separate thread and not in the repository yet). **Amends:** ADR-0012 decision 4 and [HEALTH_DATA.md](../HEALTH_DATA.md) when stage 3 lands. Design: [Wear OS companion](../superpowers/specs/2026-11-27-wear-os-companion-design.md).
 
 ## Decisions
 
