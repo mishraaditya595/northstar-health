@@ -8,7 +8,9 @@ import BeyondRepWatchCore
 /// HealthKit store for the Home tiles. A thin mapping: the day rules are in
 /// `WatchHealthDerivation` (tested with the golden cases). Nothing is stored,
 /// logged or sent; the result lives in `AppModel` memory only. A query that
-/// fails or has no permission leaves only its own value missing.
+/// fails or has no permission leaves only its own value missing; `read` also
+/// names the fields whose query returned an error, so the app can keep the
+/// value it already holds for them.
 final class HealthGlanceReader {
     private let store = HKHealthStore()
 
@@ -21,7 +23,7 @@ final class HealthGlanceReader {
         _ = await HealthAccess.request(store: store)
     }
 
-    func read(now: Date, timeZone: TimeZone) async -> WatchHealth {
+    func read(now: Date, timeZone: TimeZone) async -> (health: WatchHealth, failed: Set<WatchHealthField>) {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
         let midnight = calendar.startOfDay(for: now)
@@ -34,7 +36,18 @@ final class HealthGlanceReader {
         async let rhrSamples = self.samples(HKQuantityType(.restingHeartRate), from: midnight, to: now)
         async let steps = self.stepCount(from: midnight, to: now)
 
-        let sleep = await sleepSamples.compactMap { sample -> SleepSample? in
+        let sleepRead = await sleepSamples
+        let hrvRead = await hrvSamples
+        let rhrRead = await rhrSamples
+        let stepsRead = await steps
+        // The HRV rule needs the night, so a failed sleep read fails both.
+        var failed = Set<WatchHealthField>()
+        if sleepRead == nil { failed.formUnion([.asleep, .hrv]) }
+        if hrvRead == nil { failed.insert(.hrv) }
+        if rhrRead == nil { failed.insert(.restingHr) }
+        if stepsRead == nil { failed.insert(.steps) }
+
+        let sleep = (sleepRead ?? []).compactMap { sample -> SleepSample? in
             guard let category = sample as? HKCategorySample, let stage = Self.stage(category.value) else {
                 return nil
             }
@@ -42,11 +55,12 @@ final class HealthGlanceReader {
                 from: category.startDate, to: category.endDate, stage: stage,
                 sourceKey: category.sourceRevision.source.bundleIdentifier)
         }
-        return WatchHealthDerivation.today(
+        let health = WatchHealthDerivation.today(
             sleep: sleep,
-            hrv: Self.values(await hrvSamples, unit: .secondUnit(with: .milli)),
-            restingHr: Self.values(await rhrSamples, unit: .count().unitDivided(by: .minute())),
-            steps: await steps, now: now, timeZone: timeZone)
+            hrv: Self.values(hrvRead ?? [], unit: .secondUnit(with: .milli)),
+            restingHr: Self.values(rhrRead ?? [], unit: .count().unitDivided(by: .minute())),
+            steps: stepsRead, now: now, timeZone: timeZone)
+        return (health, failed)
     }
 
     private static func stage(_ rawValue: Int) -> SleepStage? {
@@ -69,21 +83,23 @@ final class HealthGlanceReader {
         }
     }
 
-    /// Samples overlapping the window; empty on any error.
-    private func samples(_ type: HKSampleType, from start: Date, to end: Date) async -> [HKSample] {
-        guard HKHealthStore.isHealthDataAvailable() else { return [] }
+    /// Samples overlapping the window; nil when the query returned an error.
+    private func samples(_ type: HKSampleType, from start: Date, to end: Date) async -> [HKSample]? {
+        guard HKHealthStore.isHealthDataAvailable() else { return nil }
         let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: [])
         return await withCheckedContinuation { continuation in
             let query = HKSampleQuery(
                 sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil
-            ) { _, samples, _ in
-                continuation.resume(returning: samples ?? [])
+            ) { _, samples, error in
+                continuation.resume(returning: error == nil ? (samples ?? []) : nil)
             }
             store.execute(query)
         }
     }
 
-    /// HealthKit's own sum (it merges overlapping sources); nil on any error.
+    /// HealthKit's own sum (it merges overlapping sources); 0 when there are no
+    /// samples (HealthKit reports that as errorNoData, which is not a failure);
+    /// nil on any other error.
     private func stepCount(from start: Date, to end: Date) async -> Double? {
         guard HKHealthStore.isHealthDataAvailable() else { return nil }
         let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: [])
@@ -91,8 +107,13 @@ final class HealthGlanceReader {
             let query = HKStatisticsQuery(
                 quantityType: HKQuantityType(.stepCount), quantitySamplePredicate: predicate,
                 options: .cumulativeSum
-            ) { _, statistics, _ in
-                continuation.resume(returning: statistics?.sumQuantity()?.doubleValue(for: .count()))
+            ) { _, statistics, error in
+                if let error {
+                    let noData = (error as? HKError)?.code == .errorNoData
+                    continuation.resume(returning: noData ? 0 : nil)
+                } else {
+                    continuation.resume(returning: statistics?.sumQuantity()?.doubleValue(for: .count()) ?? 0)
+                }
             }
             store.execute(query)
         }

@@ -404,5 +404,6 @@ The watch Home tiles show values read from the watch's own HealthKit store, in m
 | Phone off or out of range: sleep, resting HR, HRV and steps show on Home with the caption "From this watch. Open BeyondRep on your iPhone for readiness" and no readiness | not run |
 | Steps grow while walking (refresh on opening Home and every 5 minutes) | not run |
 | After a phone sync the phone's sleep, resting HR and HRV replace the watch's, steps show the larger value, and the caption reads "as of" | not run |
+| A phone snapshot sent mid-sleep keeps the phone's shorter night on the watch until the phone sends again (by design: the phone's value wins), even if the watch's own read is longer | not run |
 | Deny the permission: the tiles show "—", not 0, and the prompt does not return | not run |
 | Sign out on the phone: the watch values disappear; sign in as another account shows nothing from the first | not run |

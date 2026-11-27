@@ -35,7 +35,8 @@ final class AppModel: ObservableObject {
     private let healthReader = HealthGlanceReader()
     /// Only the newest read may store its result.
     private var healthReadId = 0
-    private var isAskingForHealthAccess = false
+    /// Set before the first await so two Home triggers never ask twice.
+    private var didAskForHealth = false
     private var periodicHealthTask: Task<Void, Never>?
 
     /// Sends the acks for what the inbox stored; set by `PhoneLink`.
@@ -157,7 +158,8 @@ final class AppModel: ObservableObject {
         let read = await healthReader.read(now: Date(), timeZone: .current)
         // A newer read started, or the account changed while HealthKit worked.
         guard id == healthReadId, boundAccount?.accountKey == key else { return }
-        held = HeldWatchHealth(accountKey: key, health: read)
+        let before = held ?? HeldWatchHealth(accountKey: key, health: read.health)
+        held = before.updated(accountKey: key, read: read.health, failed: read.failed)
         refresh()
     }
 
@@ -167,10 +169,11 @@ final class AppModel: ObservableObject {
     func homeAppeared() async {
         guard boundAccount != nil else { return }
         startPeriodicHealthRefresh()
-        if !isAskingForHealthAccess, await healthReader.shouldRequestAuthorization() {
-            isAskingForHealthAccess = true
-            await healthReader.requestAuthorization()
-            isAskingForHealthAccess = false
+        if !didAskForHealth {
+            didAskForHealth = true
+            if await healthReader.shouldRequestAuthorization() {
+                await healthReader.requestAuthorization()
+            }
         }
         await refreshWatchHealth()
     }
@@ -181,8 +184,8 @@ final class AppModel: ObservableObject {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 300 * 1_000_000_000)
                 if Task.isCancelled { return }
-                // Not while a workout runs: the session owns HealthKit then.
-                guard let self, self.workout == nil else { continue }
+                // Sample queries work during a workout, so this keeps reading then too.
+                guard let self else { return }
                 await self.refreshWatchHealth()
             }
         }

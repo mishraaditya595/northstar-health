@@ -94,6 +94,11 @@ enum HealthMerge {
     }
 }
 
+/// A value of `WatchHealth` whose HealthKit query can fail.
+public enum WatchHealthField: Hashable {
+    case asleep, restingHr, hrv, steps
+}
+
 /// What the app keeps in memory between reads, with the account it was read
 /// for. The watch is bound to one account at a time, so a sign out or a
 /// rebind to another account must never show these values.
@@ -110,5 +115,23 @@ public struct HeldWatchHealth: Equatable {
     /// still the account they were read for; nil otherwise.
     public func ifCurrent(boundKey: String?) -> WatchHealth? {
         boundKey == accountKey ? health : nil
+    }
+
+    /// The held values after a new read. A field in [failed] (its query
+    /// returned an error, not "no data") that the read left missing keeps the
+    /// value held now, when that is for the same account and local date.
+    public func updated(accountKey newKey: String, read: WatchHealth, failed: Set<WatchHealthField>)
+        -> HeldWatchHealth
+    {
+        guard newKey == accountKey, read.localDate == health.localDate else {
+            return HeldWatchHealth(accountKey: newKey, health: read)
+        }
+        let merged = WatchHealth(
+            localDate: read.localDate,
+            asleepMinutes: read.asleepMinutes ?? (failed.contains(.asleep) ? health.asleepMinutes : nil),
+            restingHrBpm: read.restingHrBpm ?? (failed.contains(.restingHr) ? health.restingHrBpm : nil),
+            hrvMs: read.hrvMs ?? (failed.contains(.hrv) ? health.hrvMs : nil),
+            steps: read.steps ?? (failed.contains(.steps) ? health.steps : nil))
+        return HeldWatchHealth(accountKey: newKey, health: merged)
     }
 }
