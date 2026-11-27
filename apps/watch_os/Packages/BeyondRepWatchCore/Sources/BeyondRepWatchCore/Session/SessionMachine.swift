@@ -124,6 +124,12 @@ public struct SessionMachine {
         return out
     }
 
+    /// Adds an exercise during a session (the person picked one on the watch).
+    public mutating func addExercise(_ exercise: ExerciseAddedPayload) throws -> WorkoutEventV2 {
+        try require(.active, .paused)
+        return emit { .exerciseAdded($0, exercise) }
+    }
+
     /// Logs a set. A set that is already logged gets a `set_corrected` that
     /// supersedes its last event instead of a second `set_logged`.
     public mutating func log(set: SetValues) throws -> WorkoutEventV2 {

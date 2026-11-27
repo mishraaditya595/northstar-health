@@ -23,6 +23,7 @@
 		47EBD5954374F186E31E9F30 /* CompletedWorkoutBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 111BB1F27C14C007C2FAD33D /* CompletedWorkoutBuilder.swift */; };
 		5BCBB67E3E214A5F94F61915 /* WorkoutEventV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = E01924EFB10273514249E577 /* WorkoutEventV2.swift */; };
 		5BCF22A25D41FE1D5A8A317F /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77A0E08A8BE709F8B8E981A7 /* AppModel.swift */; };
+		66CF32CA00242B3F1D95194A /* WorkoutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A92E162B0EA79951A9CFCEE /* WorkoutController.swift */; };
 		7148F147EC8063A48572FA0D /* SleepDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38A33A2CAA39030FFFC7B6CA /* SleepDetailView.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
@@ -114,6 +115,7 @@
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		3E1F976DFA0863688161BBFD /* BeyondRepWatchCore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BeyondRepWatchCore.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/BeyondRepWatchCore.swift; sourceTree = "<group>"; };
 		4958CB03F18EF358B6DFDDB7 /* TrainPage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrainPage.swift; path = Sources/Features/Train/TrainPage.swift; sourceTree = "<group>"; };
+		5A92E162B0EA79951A9CFCEE /* WorkoutController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WorkoutController.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Session/WorkoutController.swift; sourceTree = "<group>"; };
 		711130B0406401E13B88A88E /* BeyondRepWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BeyondRepWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -278,6 +280,7 @@
 				F3C9AAC37819865F8456917F /* RestClock.swift */,
 				9448487299EC553B04D911A5 /* WorkoutCursor.swift */,
 				8EA03EBF58BC1C519EAACCBD /* WorkoutTemplate.swift */,
+				5A92E162B0EA79951A9CFCEE /* WorkoutController.swift */,
 			);
 			name = BeyondRepWatch;
 			path = ../../watch_os;
@@ -488,6 +491,7 @@
 				F40EF61EA925EFC3BF88C23E /* RestClock.swift in Sources */,
 				11DBB18882EA7F05733C5EDD /* WorkoutCursor.swift in Sources */,
 				8C38E348F9EE87EE7654A9E1 /* WorkoutTemplate.swift in Sources */,
+				66CF32CA00242B3F1D95194A /* WorkoutController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

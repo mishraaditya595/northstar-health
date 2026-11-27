@@ -246,6 +246,22 @@ public final class WatchJournal {
         }
     }
 
+    /// `queued`, `delivered` or `rejected`; nil before the workout is queued.
+    public func delivery(sessionId: String) throws -> String? {
+        let rows = try db.query("SELECT delivery FROM sessions WHERE session_id = ?", [.text(sessionId)])
+        guard case .text(let text)? = rows.first?.first else { return nil }
+        return text
+    }
+
+    /// Every stored event of a session in sequence order, whatever its status.
+    public func events(sessionId: String) throws -> [WorkoutEventV2] {
+        try db.query("SELECT json FROM events WHERE session_id = ? ORDER BY sequence", [.text(sessionId)])
+            .compactMap { row -> WorkoutEventV2? in
+                guard case .text(let text) = row[0] else { return nil }
+                return try? WorkoutEventV2(json: Data(text.utf8))
+            }
+    }
+
     /// The account key of a queued completed workout, nil when it is not queued.
     public func queuedCompletedAccountKey(messageId: String) throws -> String? {
         let rows = try db.query(
