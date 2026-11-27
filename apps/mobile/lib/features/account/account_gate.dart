@@ -17,6 +17,7 @@ import 'account_auth_controller.dart';
 import '../health/data/health_reader.dart';
 import '../health/data/platform_health_reader.dart';
 import '../sync/workout_upload_coordinator.dart';
+import '../watch/application/watch_sync_controller.dart';
 import '../sync/objectbox_workout_restore_importer.dart';
 import '../sync/workout_conflict_resolution.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
@@ -146,8 +147,10 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
             ),
           ],
           child: const AccountWorkoutUploadHost(
-            child: CatalogDefinitionSyncHost(
-              child: CatalogRefreshHost(child: BeyondRepApp()),
+            child: WatchSyncHost(
+              child: CatalogDefinitionSyncHost(
+                child: CatalogRefreshHost(child: BeyondRepApp()),
+              ),
             ),
           ),
         );

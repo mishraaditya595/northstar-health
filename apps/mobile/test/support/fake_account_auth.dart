@@ -220,10 +220,12 @@ AccountAuthController controller(
   FakeDeletionRecoveryStore? recovery,
   FakeConfirmedDeletionCleanupStore? cleanup,
   FakeLocalAccountDataCleaner? cleaner,
+  void Function(String owner)? onAccountDeleted,
 }) => AccountAuthController(
   api,
   bound,
   recovery ?? FakeDeletionRecoveryStore(),
   cleanupStore: cleanup ?? FakeConfirmedDeletionCleanupStore(),
   localCleaner: cleaner ?? FakeLocalAccountDataCleaner(),
+  onAccountDeleted: onAccountDeleted,
 );

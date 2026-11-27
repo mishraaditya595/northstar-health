@@ -292,6 +292,7 @@ class AccountAuthController extends ChangeNotifier {
     this._recoveryStore, {
     required this._cleanupStore,
     required this._localCleaner,
+    this.onAccountDeleted,
   }) {
     _authSubscription = _api.cloudIdentityChanges.listen(
       _onIdentityChange,
@@ -307,6 +308,10 @@ class AccountAuthController extends ChangeNotifier {
   final DeletionRecoveryStore _recoveryStore;
   final ConfirmedDeletionCleanupStore _cleanupStore;
   final LocalAccountDataCleaner _localCleaner;
+
+  /// Called once with the owner after the server confirmed the permanent
+  /// deletion, before local erasure. Failures here never affect deletion.
+  final void Function(String owner)? onAccountDeleted;
   late final StreamSubscription<String?> _authSubscription;
   Timer? _sessionExpiryTimer;
   bool _refreshFailed = false;
@@ -587,6 +592,11 @@ class AccountAuthController extends ChangeNotifier {
     try {
       await _api.deleteAccountOnServer(owner);
       serverConfirmed = true;
+      try {
+        onAccountDeleted?.call(owner);
+      } catch (_) {
+        // A notification hook must never block the confirmed local erasure.
+      }
       // The exact server receipt is the authorization for local erasure.
       // Track it in memory BEFORE attempting secure-storage persistence:
       // failure to write the durable retry marker must NOT strand confirmed

@@ -68,8 +68,19 @@ The `+N` part of the pubspec version is not used for TestFlight builds. To chang
 2. When the build finishes, App Store Connect processes the IPA (usually 5–30 minutes). Internal testers then get it in the TestFlight app.
 3. Record the commit SHA, version name, build number (printed by the resolve step) and outcome in the P2-08 evidence before describing the build anywhere.
 
+## Apple Watch app
+
+The watch target is added to `Runner.xcodeproj` by `tool/embed_watch_target.rb` (see `apps/watch_os/README.md`); the sources stay in `apps/watch_os`. Owner steps:
+
+1. In Apple Developer, create the App ID `in.beyondrep.app.watchkitapp` (you may tick HealthKit now; the watch does not use it until stage 4).
+2. Run `mobile-ios-testflight` as above. Codemagic's automatic signing is expected to cover the watch App ID that extends the app's ID. **This is unverified until the first run.** The step "Check the watch app has a signing profile" fails the build early, before the archive, if the export options have no profile for `in.beyondrep.app.watchkitapp`.
+3. **If that step or the archive fails on watch signing**, upload **both** App Store profiles to Codemagic code signing identities: the iPhone profile and a new one for `in.beyondrep.app.watchkitapp` (as `beyondrep_watch_app_store`). Then change the job's `environment` to `ios_signing: provisioning_profiles: [beyondrep_app_store, beyondrep_watch_app_store]` with `certificates: [apple_distribution]` (the iPhone profile keeps its existing identity name). Reference profiles by name only; never commit them.
+4. On the iPhone, install from TestFlight, open the Watch app, find BeyondRep and tap Install.
+
+The watch target has an App Icon asset catalog (`apps/watch_os/Sources/Resources/Assets.xcassets`, the iPhone 1024 px icon, opaque), so a missing-icon rejection is not expected; whether App Store Connect accepts it is unverified until the first upload.
+
 ## Known limits
 
 - The Health tab reads sleep, steps, resting heart rate and weight from HealthKit (read-only) and ships a HealthKit entitlement, so the App ID capability and regenerated profile above are required. It is not yet device-verified.
-- No Apple Watch companion is embedded.
+- The build embeds the BeyondRep Apple Watch app (`in.beyondrep.app.watchkitapp`), which shows a read-only glance of plans, readiness, sleep, resting heart rate, HRV and steps that the phone sends. It has no workout recording and no HealthKit access yet. It has never been installed on a watch, and signing it through this job is unverified until the first run (see "Apple Watch app" below).
 - External TestFlight testing needs Beta App Review, a privacy policy URL and App Privacy answers. It is deliberately not enabled here.

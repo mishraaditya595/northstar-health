@@ -38,7 +38,21 @@ public final class WatchJournal {
             try db.execute("CREATE TABLE IF NOT EXISTS plans(account_key TEXT PRIMARY KEY, json TEXT NOT NULL)")
             try db.execute("CREATE TABLE IF NOT EXISTS applied_commands(session_id TEXT NOT NULL, command_id TEXT NOT NULL, PRIMARY KEY(session_id, command_id))")
             try db.execute("CREATE TABLE IF NOT EXISTS health(account_key TEXT PRIMARY KEY, local_date TEXT NOT NULL, json TEXT NOT NULL)")
-            try db.setUserVersion(2)
+            // Version 3 adds the account binding, version 4 its message id and
+            // send time plus per-account clear tombstones. Tables are created
+            // only when missing and columns added only when absent, so an
+            // older database keeps every row.
+            try db.execute("CREATE TABLE IF NOT EXISTS binding(slot INTEGER PRIMARY KEY CHECK(slot = 1), account_key TEXT NOT NULL, unit TEXT NOT NULL, message_id TEXT NOT NULL DEFAULT '', sent_at_ms INTEGER NOT NULL DEFAULT 0)")
+            let columns = try db.query("PRAGMA table_info(binding)").compactMap { (row: [SQLValue]) -> String? in
+                guard row.count > 1, case .text(let name) = row[1] else { return nil }
+                return name
+            }
+            if !columns.contains("sent_at_ms") {
+                try db.execute("ALTER TABLE binding ADD COLUMN message_id TEXT NOT NULL DEFAULT ''")
+                try db.execute("ALTER TABLE binding ADD COLUMN sent_at_ms INTEGER NOT NULL DEFAULT 0")
+            }
+            try db.execute("CREATE TABLE IF NOT EXISTS cleared(account_key TEXT PRIMARY KEY, sent_at_ms INTEGER NOT NULL)")
+            try db.setUserVersion(4)
         }
     }
 
@@ -136,6 +150,54 @@ public final class WatchJournal {
         try db.transaction { try enqueue(message) }
     }
 
+    /// Remembers which account the phone is signed in as (one row). The
+    /// caller clears the previous account first when the key changes.
+    public func saveBinding(_ message: WatchMessage) throws {
+        guard case .accountBinding(let unit) = message.body,
+            let sentAtMs = WatchTimestamp.milliseconds(message.sentAtUtc)
+        else { throw ContractError("invalid_value") }
+        try db.execute(
+            "INSERT OR REPLACE INTO binding(slot, account_key, unit, message_id, sent_at_ms) VALUES(1,?,?,?,?)",
+            [.text(message.accountKey), .text(unit), .text(message.messageId.lowercased()), .int(sentAtMs)])
+    }
+
+    /// The stored binding with the id and send time of the message it came
+    /// from (0 for a row written before version 4).
+    public func bindingState() throws -> (accountKey: String, messageId: String, sentAtMs: Int64)? {
+        let rows = try db.query("SELECT account_key, message_id, sent_at_ms FROM binding WHERE slot = 1")
+        guard let row = rows.first, case .text(let key) = row[0], case .text(let id) = row[1],
+            case .int(let ms) = row[2]
+        else { return nil }
+        return (key, id, ms)
+    }
+
+    /// When the phone last told the watch `key` was cleared, if ever. A
+    /// binding sent before that is stale and must not be applied.
+    public func clearedAt(_ key: String) throws -> Int64? {
+        let rows = try db.query("SELECT sent_at_ms FROM cleared WHERE account_key = ?", [.text(key)])
+        guard case .int(let ms)? = rows.first?.first else { return nil }
+        return ms
+    }
+
+    /// Remembers a clear, keeping the newest time seen for the key.
+    public func recordCleared(_ key: String, sentAtMs: Int64) throws {
+        try db.execute(
+            "INSERT INTO cleared(account_key, sent_at_ms) VALUES(?,?) "
+                + "ON CONFLICT(account_key) DO UPDATE SET sent_at_ms = MAX(sent_at_ms, excluded.sent_at_ms)",
+            [.text(key), .int(sentAtMs)])
+    }
+
+    /// Deletes every health snapshot that is not for `localDate`.
+    public func purgeHealth(exceptLocalDate localDate: String) throws {
+        try db.execute("DELETE FROM health WHERE local_date != ?", [.text(localDate)])
+    }
+
+    public func binding() throws -> (accountKey: String, unit: String)? {
+        let rows = try db.query("SELECT account_key, unit FROM binding WHERE slot = 1")
+        guard let row = rows.first, case .text(let key) = row[0], case .text(let unit) = row[1] else { return nil }
+        return (key, unit)
+    }
+
     public func savePlans(_ message: WatchMessage) throws {
         guard case .plansSnapshot = message.body else { throw ContractError("invalid_value") }
         try db.execute(
@@ -163,7 +225,7 @@ public final class WatchJournal {
     /// (ADR-0012), so rows for any other date are deleted here, on read and on
     /// save, and are never returned.
     public func health(accountKey: String, forLocalDate localDate: String) throws -> WatchMessage? {
-        try db.execute("DELETE FROM health WHERE local_date != ?", [.text(localDate)])
+        try purgeHealth(exceptLocalDate: localDate)
         let rows = try db.query(
             "SELECT json FROM health WHERE account_key = ? AND local_date = ?",
             [.text(accountKey), .text(localDate)])
@@ -171,12 +233,13 @@ public final class WatchJournal {
         return try decode(text)
     }
 
-    /// Drops the plans and health snapshot for `key`. With `wipeUnsent` (account
+    /// Drops the plans, health snapshot and binding for `key`. With `wipeUnsent` (account
     /// deletion only) it also drops that key's sessions, events and queue.
     public func clearAccount(_ key: String, wipeUnsent: Bool) throws {
         try db.transaction {
             try db.execute("DELETE FROM plans WHERE account_key = ?", [.text(key)])
             try db.execute("DELETE FROM health WHERE account_key = ?", [.text(key)])
+            try db.execute("DELETE FROM binding WHERE account_key = ?", [.text(key)])
             guard wipeUnsent else { return }
             try db.execute(
                 "DELETE FROM events WHERE session_id IN (SELECT session_id FROM sessions WHERE account_key = ?)",

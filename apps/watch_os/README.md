@@ -1,6 +1,6 @@
 # BeyondRep Apple Watch (watchOS)
 
-**Current state: independently located SwiftUI source scaffold and reproducible XcodeGen project spec, not a shipped or embedded watch companion.** Screen is an explicit placeholder; workout capture, pairing, HealthKit entitlements and durable event storage are not enabled.
+**Current state: a read-only glance (readiness, sleep, resting HR, HRV, steps, plan names) fed by the phone over WatchConnectivity, embedded in the iPhone Runner project, not shipped and not device-verified.** No workout capture, no HealthKit access or entitlement, no Start button.
 
 ## Source ownership and packaging
 
@@ -15,7 +15,7 @@ xcodebuild -list -project BeyondRepWatch.xcodeproj
 # Inspect available watchOS simulators/SDKs before selecting a build destination.
 ```
 
-The generated `BeyondRepWatch.xcodeproj` from this standalone spec is **not** the embedded companion configuration. A later packaging PR must test actual iPhone + watch pairing and TestFlight archive. `Sources/` should remain the single source in both projects.
+The generated `BeyondRepWatch.xcodeproj` from this standalone spec is only a compile proof. The embedded companion is a second target named `BeyondRepWatch` inside `apps/mobile/ios/Runner.xcodeproj`, produced by `tool/embed_watch_target.rb` (Ruby `xcodeproj` gem, pinned in `tool/Gemfile`): it references the files in `Sources/` and `Packages/BeyondRepWatchCore/Sources/` by relative path, links `libsqlite3.tbd` and copies the app into `Runner.app/Watch` ("Embed Watch Content"). The script creates the target if it is missing and otherwise syncs it with the disk, so after adding or removing a watch Swift file (or changing the asset catalog) run `cd tool && bundle install && bundle exec ruby embed_watch_target.rb` and commit the changed `project.pbxproj`. A second run changes nothing, and Runner's own files such as `WatchLinkBridge.swift` are not touched. `tool/test_watch_embedding.py` fails when the Swift files on disk and in the project differ. The `ios-with-watch` job in `watchos_smoke.yml` builds it unsigned. Real pairing and the TestFlight archive are still unverified. `Sources/` stays the single source in both projects.
 
 ## BeyondRepWatchCore package
 
@@ -25,13 +25,13 @@ The generated `BeyondRepWatch.xcodeproj` from this standalone spec is **not** th
 swift test --package-path apps/watch_os/Packages/BeyondRepWatchCore   # macOS
 ```
 
-CI runs this in the `WatchOS standalone build proof` workflow before the Xcode build. The package is not yet linked into the watch app target.
+CI runs this in the `WatchOS standalone build proof` workflow before the Xcode build. The package's source files are compiled directly into the watch app target (as part of the app module, not as a linked package), so app code guards `import BeyondRepWatchCore` with `#if canImport`.
 
 ## Planned modules
 
-- `Features/Workout/`: compact workout state, timer, sets; currently only informational UI
+- `Features/Home/`: the read-only glance; `Features/Workout/` (set logging) is not built yet
 - `HealthKit/`: native background workout capture (unimplemented)
-- `Connectivity/`: WatchConnectivity transport (unimplemented)
+- `Connectivity/`: receives the phone's application context and user info (implemented, receive only)
 - `Persistence/`: watch-local transactional journal/outbox (unimplemented)
 
 Read [ADR-0002](../../docs/adr/0002-watch-workout-architecture.md) and [watch-to-phone protocol](../../docs/SYNC_PROTOCOL.md). Do not claim support for an active recording session until native background/durability tests pass.

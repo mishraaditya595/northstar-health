@@ -4,7 +4,7 @@
 
 ## Production structure/bootstrap — merged scaffold
 
-Flutter lives in `apps/mobile/` with version-controlled Android and iOS runners. Standalone non-recording native `apps/watch_os` and `apps/wear_os` scaffolds and the `contracts/workout_sync/v1` schema/fixtures are present. **Apple Watch target embedding, signing, companion distribution and physical-device verification are still release gates.**
+Flutter lives in `apps/mobile/` with version-controlled Android and iOS runners. Standalone non-recording native `apps/watch_os` and `apps/wear_os` scaffolds and the `contracts/workout_sync/v1` schema/fixtures are present. **Apple Watch target embedding is in source (stage 3); watch signing through Codemagic, companion distribution and physical-device verification are still release gates.**
 
 ## Phase 1 — Reliable offline workout logger
 
@@ -55,6 +55,10 @@ Apple Watch recording plus wide-window layouts for tablets, designed together in
 **Stage 1 (tablet layouts, implemented in source, not released or device-verified):** on windows 840 dp and wider Today, Health, the five Health detail screens, Progress history, the Exercises, Workouts and Programs lists and Train use the width (two columns, card grids, list and detail side by side); narrower windows, portrait iPad and split view keep the single column. Layout primitives live in `lib/core/design/layout.dart`. The iPad simulator and split-view checks are open in [RELEASE.md](RELEASE.md).
 
 **Stage 2 (message contracts and watch core, implemented in source, no UI, not device-verified):** [ADR-0012](adr/0012-apple-watch-companion.md); `contracts/workout_sync/v2` and `contracts/watch_link/v1` with synthetic fixtures and replay cases; Dart codecs and the watch account key in `lib/features/watch/domain/`; the `BeyondRepWatchCore` Swift package (codecs, event replay, session state machine, SQLite journal and outbox) tested on macOS CI. No transport, no screens, no HealthKit, no Supabase migration for `beyondrep_watch` yet.
+
+**Stage 3 (phone-watch link, health glance and TestFlight embedding, implemented in source, not released or device-verified):** the phone builds `watch_link/v1` account binding, plans and health snapshots (`lib/features/watch/application/`) and pushes the latest of each over WatchConnectivity (a small Runner bridge, `ios/Runner/WatchLinkBridge.swift`); the watch app stores them in its journal and shows a read-only Home glance (readiness, sleep, resting HR, HRV, steps, plan names); a sign-out or account switch is designed to clear the previous account on the watch (the clear goes in the application context and as user info, and the watch orders clears and bindings by their send times so a replayed or late message cannot undo the newest one; not device-verified). The watch target is embedded in `Runner.xcodeproj` by `tool/embed_watch_target.rb` and built unsigned by the `ios-with-watch` CI job; the `mobile-ios-testflight` job now also carries it, with watch signing unverified until the first run. No Start button, no HealthKit, no workout recording. Device checks are open in [RELEASE.md](RELEASE.md).
+
+**Stage 4 notes (not started):** the deletion wipe of a watch's unsent workouts is sent once, only when the phone is reachable at that moment; if the watch is out of reach or the message is lost, the unsent workouts stay until the account is cleared another way. Stage 4 should persist the deletion wipe and retry it before any watch workout can be recorded. The watch also needs a way to drop its tombstones and binding if the phone never returns.
 
 ## Phase 5 — User-controlled completed-workout export
 

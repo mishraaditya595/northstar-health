@@ -1,0 +1,4 @@
+# Only for tool/embed_watch_target.rb (Xcode project editing). Not an app dependency.
+source "https://rubygems.org"
+
+gem "xcodeproj", "1.28.1"

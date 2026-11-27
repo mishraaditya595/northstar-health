@@ -25,6 +25,7 @@ jobs:
       pull-requests: read
     outputs:
       watch: ${{ steps.filter.outputs.watch }}
+      ios: ${{ steps.filter.outputs.ios }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
@@ -33,6 +34,11 @@ jobs:
           filters: |
             watch:
               - "apps/watch_os/**"
+              - "contracts/**"
+              - ".github/workflows/watchos_smoke.yml"
+            ios:
+              - "apps/watch_os/**"
+              - "apps/mobile/ios/**"
               - "contracts/**"
               - ".github/workflows/watchos_smoke.yml"
 
@@ -61,5 +67,68 @@ jobs:
             -destination 'generic/platform=watchOS Simulator' \
             CODE_SIGNING_ALLOWED=NO build
 
-# Important: this does NOT validate iPhone Runner embedding, TestFlight packaging,
-# watch permissions, background workout or real-device pairing.
+  # The iPhone Runner with the Apple Watch app embedded (ADR-0004, ADR-0012).
+  # Unsigned simulator build: it proves the target links, compiles and is copied
+  # into Runner.app/Watch. It does not prove signing or a TestFlight upload.
+  ios-with-watch:
+    needs: changes
+    if: >-
+      !cancelled() &&
+      (needs.changes.result != 'success' ||
+       needs.changes.outputs.ios == 'true')
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - name: Resolve from committed lockfile
+        working-directory: apps/mobile
+        run: flutter pub get --enforce-lockfile
+      - name: Select the newest installed Xcode
+        # device_info_plus needs a recent iOS SDK (isiOSAppOnVision); the
+        # runner default is older.
+        run: |
+          xcode="$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+      - name: Pick an iPhone simulator
+        # Flutter needs a device id to build an app that has a watchOS companion.
+        run: |
+          udid="$(xcrun simctl list devices available iPhone -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for k in sorted(d) if "iOS" in k for x in d[k] if x["name"].startswith("iPhone")))')"
+          echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
+          echo "Using simulator $udid"
+      - name: Build the iPhone simulator app (unsigned)
+        working-directory: apps/mobile
+        run: flutter build ios --simulator --debug --no-codesign -d "$SIMULATOR_UDID"
+      - name: Assert the watch app is embedded
+        working-directory: apps/mobile
+        run: |
+          app=build/ios/iphonesimulator/Runner.app
+          watch="$app/Watch/BeyondRepWatch.app"
+          test -d "$watch"
+          ls "$app/Watch"
+          test -f "$watch/Assets.car"
+          python3 - "$app/Info.plist" "$watch/Info.plist" <<'PY'
+          import plistlib, sys
+          phone = plistlib.load(open(sys.argv[1], "rb"))
+          watch = plistlib.load(open(sys.argv[2], "rb"))
+          expect = {
+              "DTPlatformName": "watchsimulator",
+              "WKApplication": True,
+              "WKCompanionAppBundleIdentifier": "in.beyondrep.app",
+              "CFBundleIdentifier": "in.beyondrep.app.watchkitapp",
+              "CFBundleShortVersionString": phone["CFBundleShortVersionString"],
+              "CFBundleVersion": phone["CFBundleVersion"],
+          }
+          bad = {k: (watch.get(k), v) for k, v in expect.items() if watch.get(k) != v}
+          print({k: watch.get(k) for k in expect})
+          if bad:
+              sys.exit(f"watch Info.plist differs (actual, expected): {bad}")
+          PY
+
+# Important: this does NOT validate signing, TestFlight packaging, watch
+# permissions, background workout or real-device pairing.

@@ -5,7 +5,7 @@
 | Path | Owner | What builds |
 | --- | --- | --- |
 | `apps/mobile/` | Flutter team/agents | Android/iOS app, adaptive phones/iPads/tablets |
-| `apps/watch_os/` | Swift/watch team | SwiftUI sources + XcodeGen watch **proof target**; future real embedded iPhone companion target |
+| `apps/watch_os/` | Swift/watch team | SwiftUI sources + XcodeGen watch **proof target**; the same sources are embedded in Runner by `tool/embed_watch_target.rb` |
 | `apps/wear_os/` | Kotlin/watch team | Gradle/Compose watch app artifact |
 | `apps/website/` | Site/agents | Static Astro marketing and legal site for beyondrep.in (privacy, account deletion, terms, support); deployed by Cloudflare Pages |
 | `catalog/` | Content reviewers | Shared training catalogue source (JSON), schema, release lock and changelog; see [CATALOG.md](CATALOG.md) |
@@ -20,7 +20,7 @@
 
 The bootstrap PR moved Flutter sources and configuration into `apps/mobile/` and committed native Android/iOS runners and `pubspec.lock`. Normal CI **must not regenerate project files**. If re-creating a platform runner is unavoidable, do so deliberately with a pinned Flutter SDK from `apps/mobile`, inspect the generated diff and preserve approved bundle identifiers/signing. Release builds still require native/device QA.
 
-Wear OS uses native Gradle/JDK 17 and a committed official Gradle Wrapper. watchOS uses XcodeGen for a **temporary watch-only proof target**, but this does **not satisfy** Apple Watch companion packaging: Xcode must associate target and embedding with Flutter Runner's iOS application, with agreed bundle IDs and signing. This must be configured and tested on macOS, with no Swift source duplication; see [watchOS README](../apps/watch_os/README.md).
+Wear OS uses native Gradle/JDK 17 and a committed official Gradle Wrapper. watchOS uses XcodeGen for a **temporary watch-only proof target**, but it is not the companion package. The companion target `BeyondRepWatch` is added to Flutter Runner's `Runner.xcodeproj` by `tool/embed_watch_target.rb` (idempotent, committed output) and references `apps/watch_os` sources by path with no Swift duplication; signing and device pairing remain unverified. See [watchOS README](../apps/watch_os/README.md).
 
 ## Constraints and release gates
 

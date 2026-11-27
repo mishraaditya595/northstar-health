@@ -113,6 +113,26 @@ Workouts from other apps and the training-load readiness input are implemented i
 | Account switch: sign in as another account, no workout or load from the first account appears | not run | not run |
 | No outside workout, kcal, heart rate or load appears in Account > export, Supabase, logs or an iCloud/Android backup | not run | not run |
 
+## Phase 4 stage 3: watch link, glance and TestFlight embedding (owner actions, none done)
+
+The iPhone app sends the signed-in account's plans and today's numbers to the BeyondRep Apple Watch app, which shows them read-only; the watch app is embedded in the iPhone build. All implemented in source, **not released or device-verified**. Compared values are the phone's own, never recomputed on the watch. Every row is not run.
+
+| Check | Result |
+| --- | --- |
+| TestFlight build installs the BeyondRep watch app from the iPhone Watch app | not run |
+| Signed in, the watch shows the same readiness, sleep, resting HR, HRV and steps as the phone's Today and Health tabs, with the same "as of" time | not run |
+| The watch plan list matches the phone's plans, with today's program workout named when there is one | not run |
+| Phone in airplane mode: the last glance stays, with its "as of" time | not run |
+| After local midnight the watch shows "Open BeyondRep on your iPhone to refresh", no readiness and dashes, not yesterday's values | not run |
+| Sign out on the phone: the watch shows "Open BeyondRep on your iPhone to sign in." | not run |
+| Sign in as a second account: no data from the first account appears on the watch, also if the first account's messages arrive late | not run |
+| A metric the phone lacks (no HRV, no steps) shows a dash on the watch, never 0 | not run |
+| Resting HR, HRV and sleep reach the watch only when the phone has a value dated today, so a dash in the morning before today's reading exists is expected, not a fault | not run |
+| Sign out, then force-quit and reopen the watch app: the account does not come back; sign in as the same account again: it binds | not run |
+| The BeyondRep icon shows in the iPhone Watch app and on the watch | not run |
+| Large text and VoiceOver on a small and a large watch: tiles read "Resting heart rate, 54 beats per minute" and "Steps, no data", nothing clipped | not run |
+| Watch signing through the Codemagic job works without the fallback profile (see IOS_TESTFLIGHT_CODEMAGIC.md) | not run |
+
 ## Phase 4 stage 1: tablet layouts (owner actions, none done)
 
 Wide-window layouts (window width 840 dp or more) are implemented in source, **not released or device-verified**. The automated sweep (`test/accessibility/wide_layout_sweep_test.dart`) checks for overflow at five sizes, both themes and 200 % text in the test font; it does not replace these checks. Every row is not run.
