@@ -239,6 +239,8 @@ class InsightCard extends StatelessWidget {
     required this.text,
     this.actionLabel,
     this.onAction,
+    this.secondaryActionLabel,
+    this.onSecondaryAction,
     super.key,
   });
 
@@ -247,46 +249,75 @@ class InsightCard extends StatelessWidget {
   final String? actionLabel;
   final VoidCallback? onAction;
 
+  /// A second, quieter action ("Not now"). With it the actions sit under the
+  /// text, so two buttons never squeeze the words at large text sizes.
+  final String? secondaryActionLabel;
+  final VoidCallback? onSecondaryAction;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
+    final mark = Container(
+      width: 30,
+      height: 30,
+      decoration: BoxDecoration(
+        color: dark
+            ? BeyondRepPalette.sleepSoftDark
+            : BeyondRepPalette.sleepSoftLight,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(
+        icon,
+        size: 16,
+        color: dark ? BeyondRepPalette.sleepDark : BeyondRepPalette.sleepLight,
+      ),
+    );
+    final message = Expanded(
+      child: Text.rich(
+        text,
+        style: theme.textTheme.bodySmall?.copyWith(height: 1.55),
+      ),
+    );
     return Container(
       padding: const EdgeInsets.fromLTRB(15, 14, 15, 14),
       decoration: BoxDecoration(
         color: dark ? BeyondRepPalette.darkSoft : BeyondRepPalette.lightSoft,
         borderRadius: BorderRadius.circular(22),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: dark
-                  ? BeyondRepPalette.sleepSoftDark
-                  : BeyondRepPalette.sleepSoftLight,
-              borderRadius: BorderRadius.circular(12),
+      child: secondaryActionLabel == null
+          ? Row(
+              children: [
+                mark,
+                const SizedBox(width: 12),
+                message,
+                if (actionLabel != null)
+                  TextButton(onPressed: onAction, child: Text(actionLabel!)),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(children: [mark, const SizedBox(width: 12), message]),
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: Wrap(
+                    alignment: WrapAlignment.end,
+                    children: [
+                      if (actionLabel != null)
+                        TextButton(
+                          onPressed: onAction,
+                          child: Text(actionLabel!),
+                        ),
+                      TextButton(
+                        onPressed: onSecondaryAction,
+                        child: Text(secondaryActionLabel!),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            child: Icon(
-              icon,
-              size: 16,
-              color: dark
-                  ? BeyondRepPalette.sleepDark
-                  : BeyondRepPalette.sleepLight,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text.rich(
-              text,
-              style: theme.textTheme.bodySmall?.copyWith(height: 1.55),
-            ),
-          ),
-          if (actionLabel != null)
-            TextButton(onPressed: onAction, child: Text(actionLabel!)),
-        ],
-      ),
     );
   }
 }
