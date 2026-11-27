@@ -40,10 +40,13 @@ class NsHeroFrame extends StatelessWidget {
   /// Screen reader label of the loading spinner.
   final String loadingLabel;
 
+  /// The muted green of the subtitle, for text placed in [child].
+  static const Color subtleColor = Color(0xFFBCCFC1);
+
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    const subtle = Color(0xFFBCCFC1);
+    const subtle = subtleColor;
     final titleBlock = title == null
         ? const SizedBox.shrink()
         : Column(

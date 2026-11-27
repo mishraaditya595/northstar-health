@@ -79,7 +79,7 @@ class ReadinessHero extends StatelessWidget {
                             Text(
                               learningText,
                               style: const TextStyle(
-                                color: Color(0xFFBCCFC1),
+                                color: NsHeroFrame.subtleColor,
                                 fontSize: 12,
                               ),
                             ),
