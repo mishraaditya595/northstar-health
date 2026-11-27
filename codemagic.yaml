@@ -259,9 +259,9 @@ workflows:
         certificates:
           - Apple Distribution
       groups:
+        # Not ns_google_play: Codemagic refuses to start a build that names a
+        # group that does not exist, and Google Play is optional for iOS.
         - ns_mobile_supabase_public
-        # Optional for iOS: Play credentials let the version also consider Google Play.
-        - ns_google_play
       vars:
         NS_RELEASE_TYPE: "${{ inputs.release_type }}"
         NS_VERSION_NAME: "${{ inputs.version_name }}"

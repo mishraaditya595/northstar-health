@@ -150,8 +150,10 @@ class CodemagicTemplateTest(unittest.TestCase):
                 "certificates": ["Apple Distribution"],
             },
         )
-        # ns_google_play is optional for iOS: without it App Store Connect alone is used.
-        self.assertEqual(env["groups"], ["ns_mobile_supabase_public", "ns_google_play"])
+        # No ns_google_play on iOS: Codemagic refuses to start a build that
+        # names a variable group that does not exist yet, and without the Play
+        # credentials the version comes from App Store Connect alone.
+        self.assertEqual(env["groups"], ["ns_mobile_supabase_public"])
         self.assertEqual(
             env["vars"],
             {
