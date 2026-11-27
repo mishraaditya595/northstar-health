@@ -93,3 +93,22 @@ enum HealthMerge {
             steps: steps)
     }
 }
+
+/// What the app keeps in memory between reads, with the account it was read
+/// for. The watch is bound to one account at a time, so a sign out or a
+/// rebind to another account must never show these values.
+public struct HeldWatchHealth: Equatable {
+    public let accountKey: String
+    public let health: WatchHealth
+
+    public init(accountKey: String, health: WatchHealth) {
+        self.accountKey = accountKey
+        self.health = health
+    }
+
+    /// The values while [boundKey] (the bound account, nil when unbound) is
+    /// still the account they were read for; nil otherwise.
+    public func ifCurrent(boundKey: String?) -> WatchHealth? {
+        boundKey == accountKey ? health : nil
+    }
+}

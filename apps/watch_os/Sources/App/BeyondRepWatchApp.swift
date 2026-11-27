@@ -20,6 +20,10 @@ struct BeyondRepWatchApp: App {
                         model.pruneStale()
                         model.refresh()
                         model.sendQueued()
+                        model.startPeriodicHealthRefresh()
+                        Task { await model.refreshWatchHealth() }
+                    } else {
+                        model.stopPeriodicHealthRefresh()
                     }
                 }
         }

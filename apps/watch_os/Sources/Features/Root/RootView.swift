@@ -73,6 +73,12 @@ struct RootView: View {
         .fullScreenCover(isPresented: showHint) {
             TrainHintView { didShowTrainHint = true }
         }
+        // The Home reads this watch's own health; the first time it asks for
+        // permission. Also when the phone pairs while the Home is showing.
+        .onAppear { Task { await model.homeAppeared() } }
+        .onChange(of: isReady) { _, ready in
+            if ready { Task { await model.homeAppeared() } }
+        }
     }
 
     @ViewBuilder

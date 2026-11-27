@@ -27,6 +27,17 @@ final class AppModel: ObservableObject {
     let recorder = WorkoutRecorder()
     private var details: [Metric: DetailModel] = [:]
 
+    /// What the watch read itself (sleep, steps, HRV, resting heart rate).
+    /// Memory only: never written to the journal, `UserDefaults` or a file,
+    /// never sent to the phone, never logged. Dropped when the account
+    /// changes and at midnight.
+    private var held: HeldWatchHealth?
+    private let healthReader = HealthGlanceReader()
+    /// Only the newest read may store its result.
+    private var healthReadId = 0
+    private var isAskingForHealthAccess = false
+    private var periodicHealthTask: Task<Void, Never>?
+
     /// Sends the acks for what the inbox stored; set by `PhoneLink`.
     weak var link: PhoneLink?
 
@@ -59,11 +70,14 @@ final class AppModel: ObservableObject {
     deinit {
         midnightTask?.cancel()
         restHapticTask?.cancel()
+        periodicHealthTask?.cancel()
     }
 
     func receive(applicationContext: [String: Any]) {
         acknowledge(try? inbox?.receive(applicationContext: applicationContext))
         refresh()
+        // A health snapshot changes what the phone's numbers are; read ours again.
+        Task { await refreshWatchHealth() }
     }
 
     func receive(userInfo: [String: Any]) {
@@ -103,15 +117,19 @@ final class AppModel: ObservableObject {
     func refresh() {
         guard let journal else { return }
         let now = Date()
+        // The held values are only ever for the account that is bound now.
+        let watch = held?.ifCurrent(boundKey: boundAccount?.accountKey)
+        if watch == nil { held = nil }
         if let next = try? GlanceState.make(
-            journal: journal, now: now, timeZone: .current, locale: .current)
+            journal: journal, now: now, timeZone: .current, locale: .current, watch: watch)
         {
             glance = next
         }
         var next: [Metric: DetailModel] = [:]
         for metric in [Metric.sleep, .restingHr, .hrv, .steps] {
             if let detail = try? DetailModel.make(
-                metric: metric, journal: journal, now: now, timeZone: .current, locale: .current)
+                metric: metric, journal: journal, now: now, timeZone: .current, locale: .current,
+                watch: watch)
             {
                 next[metric] = detail
             }
@@ -125,6 +143,54 @@ final class AppModel: ObservableObject {
         {
             syncLine = line
         }
+    }
+
+    // MARK: Health read by the watch
+
+    /// Reads today's values from this watch's HealthKit store and redraws.
+    /// Returns at once without an account binding: nothing is read for an
+    /// unpaired watch. A failed or denied read leaves its value missing.
+    func refreshWatchHealth() async {
+        guard let key = boundAccount?.accountKey else { return }
+        healthReadId += 1
+        let id = healthReadId
+        let read = await healthReader.read(now: Date(), timeZone: .current)
+        // A newer read started, or the account changed while HealthKit worked.
+        guard id == healthReadId, boundAccount?.accountKey == key else { return }
+        held = HeldWatchHealth(accountKey: key, health: read)
+        refresh()
+    }
+
+    /// The Home is showing: asks for the HealthKit permission once (when
+    /// HealthKit has not decided yet), reads, and keeps reading every 5
+    /// minutes while the app is active.
+    func homeAppeared() async {
+        guard boundAccount != nil else { return }
+        startPeriodicHealthRefresh()
+        if !isAskingForHealthAccess, await healthReader.shouldRequestAuthorization() {
+            isAskingForHealthAccess = true
+            await healthReader.requestAuthorization()
+            isAskingForHealthAccess = false
+        }
+        await refreshWatchHealth()
+    }
+
+    func startPeriodicHealthRefresh() {
+        guard periodicHealthTask == nil else { return }
+        periodicHealthTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 300 * 1_000_000_000)
+                if Task.isCancelled { return }
+                // Not while a workout runs: the session owns HealthKit then.
+                guard let self, self.workout == nil else { continue }
+                await self.refreshWatchHealth()
+            }
+        }
+    }
+
+    func stopPeriodicHealthRefresh() {
+        periodicHealthTask?.cancel()
+        periodicHealthTask = nil
     }
 
     // MARK: Workouts
@@ -357,7 +423,11 @@ final class AppModel: ObservableObject {
                 let seconds = max(1, midnight.timeIntervalSinceNow)
                 try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
                 if Task.isCancelled { return }
+                // Yesterday's values must not show on the new day while the
+                // read is in flight.
+                self?.held = nil
                 self?.refresh()
+                await self?.refreshWatchHealth()
             }
         }
     }
