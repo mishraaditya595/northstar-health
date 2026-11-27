@@ -30,7 +30,7 @@
 1. Add `mishraaditya595/northstar-health` as a Codemagic app using **codemagic.yaml** configuration.
 2. **Team settings → Integrations → Developer Portal → Manage keys:** add the API key with the exact name `Codemagic Signing`, which must match `integrations.app_store_connect` in the YAML.
 3. **Team settings → codemagic.yaml settings → Code signing identities:**
-   - **iOS certificates:** generate or upload an *Apple Distribution* certificate using the key above, with the reference name `apple_distribution`.
+   - **iOS certificates:** generate or upload an *Apple Distribution* certificate using the key above, with the reference name `Apple Distribution`. Both App Store profiles below must be made with this same certificate (in the Apple portal a profile holds one distribution certificate; Codemagic shows a green check on a profile whose certificate it holds).
    - **iOS provisioning profiles:** two *App Store* profiles, both made with that certificate: `in.beyondrep.app` with the reference name `beyondrep_app_store`, and `in.beyondrep.app.watchkitapp` with the reference name `beyondrep_watch_app_store`. After enabling HealthKit on an App ID, regenerate its profile before the next run; a profile without the capability cannot sign the build.
 4. **App → Environment variables:** create the group `ns_mobile_supabase_public` with:
 
