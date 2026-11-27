@@ -8,6 +8,19 @@ Every message has `schema_version` 1 (other versions are rejected, never read as
 
 Fixtures are fictional and synthetic. `$id` values use the reserved `.invalid` domain only so the schema can reference the v2 schema; nothing is hosted there.
 
+## Health snapshot extras (optional)
+
+`health_snapshot` carries these optional fields, all additive (`schema_version` stays 1). Missing values are left out, never sent as 0. Fixtures: `valid/health_snapshot_full.json` and the `invalid/health_snapshot_*` files.
+
+- `sleep.core_minutes`, `sleep.awake_minutes`: only when the night has stages.
+- `resting_hr_usual_bpm`, `hrv_usual_ms`: the readiness baseline mean, only when a baseline exists.
+- `readiness.factors`: 0 to 4 items `{input, status, tone}`. `input` is `sleep`, `hrv`, `resting_hr` or `training_load` and appears at most once; `status` is 1 to 24 code points written by the phone; `tone` is `good`, `neutral` or `caution`.
+- `week`: 1 to 7 items, the local days ending on `local_date`, strictly ascending and none later than `local_date`. Each item has `local_date` and optional integer `asleep_minutes`, `sleep_score` (0 to 100), `resting_hr_bpm`, `hrv_ms`, `steps`.
+
+JSON Schema cannot express the duplicate-factor and week-order rules, so the Python test (`cross_field_errors`), Dart and Swift check them in code.
+
+**Old watch builds:** the watch decoder rejects unknown keys, so a watch still on a build from before these fields rejects the new snapshot and shows "—" until it updates. The phone and the watch ship in the same TestFlight build, which is acceptable for an internal build.
+
 ## Replay cases
 
 `cases/replay/<name>.json` holds `events` (workout_sync v2 envelopes) and the `expected` result of replaying them. Swift (`WorkoutReplay.swift`) and an independent reference in `tool/test_watch_link_contract.py` must produce exactly that result; there is no Dart replay. Rules:
