@@ -64,7 +64,7 @@ class AndroidSqlDatabase(context: Context, name: String = "beyondrep_watch.db") 
             bind(query, args)
             SQLiteCursor(driver, editTable, query)
         }
-        db.rawQueryWithFactory(factory, sql, null, null).use { cursor ->
+        db.rawQueryWithFactory(factory, sql, null, "").use { cursor ->
             val rows = mutableListOf<List<SqlValue>>()
             while (cursor.moveToNext()) {
                 rows.add(
