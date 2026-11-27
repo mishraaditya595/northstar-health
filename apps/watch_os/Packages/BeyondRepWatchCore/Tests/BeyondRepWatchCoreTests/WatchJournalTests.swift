@@ -830,7 +830,7 @@ final class WatchJournalTests: XCTestCase {
     func testRejectedAndDuplicateLinkAcksAlsoSettleIt() throws {
         let journal = try WatchJournal(url: url)
         let a = linkMessage()
-        let otherWorkout = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+        let otherWorkout = "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
         let b = linkMessage(workoutId: otherWorkout)
         XCTAssertTrue(try journal.queueWorkoutLink(a))
         XCTAssertTrue(try journal.queueWorkoutLink(b))
