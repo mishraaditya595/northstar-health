@@ -1,6 +1,8 @@
 import '../../../core/units/load_units.dart';
 
 /// Immutable domain values: never expose ObjectBox IDs to presentation.
+library;
+
 /// Where a completed workout was logged. `wire` is the cloud payload value.
 enum WorkoutOrigin {
   phone('northstar_phone'),
