@@ -1,6 +1,6 @@
 # ADR-0013 — Energy score replaces readiness
 
-**Status:** **Accepted** — decided by the human owner on 2026-11-27 (design approved). Stages 1 (energy on the Health tab hero and the readiness detail Today view) and 2 (every other surface and the words) are implemented in source, not released or device-verified; stage 3 is not started.
+**Status:** **Accepted** — decided by the human owner on 2026-11-27 (design approved). Stages 1 (energy on the Health tab hero and the readiness detail Today view), 2 (every other surface and the words) and 3 (personal tuning) are implemented in source, not released or device-verified.
 **Amends:** [ADR-0009](0009-health-insights-trends.md) stage 2 (readiness score, its 14-day baseline minimum and its midnight cut-off) and [ADR-0011](0011-read-workouts-from-health-platforms.md) decision 6 (training load stays a starting-value input). Does not alter ADR-0003 ownership, ADR-0005 backup scope or ADR-0012 watch rules. Design: [`docs/superpowers/specs/2026-11-27-energy-score-design.md`](../superpowers/specs/2026-11-27-energy-score-design.md).
 
 ## Context
@@ -64,3 +64,28 @@ Implemented in source, not released or device-verified. One selector, `currentEn
 - **Surfaces:** the Today hero (`ENERGY NOW · GOOD`, change since morning, learning note), the Train strip, the once-per-day low note before a workout ("Energy is low right now"), the "Better fit today" low rule, and the watch snapshot. With no energy (no waking day, or the start not ready) a surface shows nothing and never falls back to the morning score; the only other state is the building line while the start has `n` days to go.
 - **Watch:** the snapshot key stays `readiness` (`score`, `band`, `headline`, `reason` up to 140 characters, optional `factors`) and carries energy. `reason` is `Started at 78 · down 16 since morning`, plus ` · still learning` while the learning note applies. It is sent only for a waking day that began on the watch's local date (ADR-0012 local-midnight rule). The watch app's accessibility labels and caption say energy.
 - **Words:** no user-visible string says readiness. The explain sheet, the detail chart ("Starting energy") and the glossary are updated; `test/energy_wording_guard_test.dart` enforces it. Identifiers, routes and the wire key keep the old name.
+
+## Stage 3 defaults
+
+Implemented in source, not released or device-verified. Personal tuning is computed in memory on every overview read from completed BeyondRep sessions and a once-a-day read of about 120 days of sleep, HRV and resting heart rate. Nothing is stored, synced, exported, logged, sent to telemetry or sent to the watch. Constants live in `energy_tuning.dart`.
+
+| Constant | Value |
+| --- | --- |
+| `energyUsualHoursMinSessions` | 8 |
+| `energyUsualHourMinCount` / `energyUsualHourMinShare` | 3 / 0.25 |
+| `energyHistoryDays` | 120 |
+| `energyNormSessions` / `energyNormMinSessions` | 5 / 2 |
+| `energyRpeWeight` / `energyRpeMaxDiff` | 0.05 / 3.0 |
+| `energyTuneMinPairs` | 10 |
+| `energyTuneMinSpread` | 10.0 points |
+| `energyExpectedLowRatio` | 0.95 |
+| `energyTuneGain` | 8.0 |
+| `energyDrainMultiplierFloor` / `energyDrainMultiplierCeiling` | 0.6 / 1.4 |
+
+- **Sessions used:** completed BeyondRep sessions that completed in the last 90 days, excluding any that start in the current waking day.
+- **Usual hours:** with at least 8 sessions, a local hour is usual when the sessions starting in it or the hour either side number at least `max(3, ceil(0.25 × n))`. Fewer than 8 sessions: no usual hour. Not gated on calibration. In a usual hour the awake dip is waived.
+- **Performance index:** per exercise (the definition id, else the lower-cased name), volume over completed working sets (kg × reps when any set has both, else reps, else seconds) against the mean of up to the 5 most recent earlier sessions with that exercise (at least 2; any session in the read, also older than 90 days). The session's ratio is the mean over exercises with a norm; with RPE on both sides it is multiplied by `1 − 0.05 × clamp(rpe − normRpe, −3, 3)`.
+- **Past energy at a session's start:** the readiness for its waking day (HRV, resting heart rate and sleep from the cached history, no sleep heart rate) less earlier workouts of that day; no active energy, awake dip or naps. Sessions without a waking day or a scored start are skipped.
+- **Multiplier:** calibrated (20 sessions in 90 days and baseline of at least 14 days) and at least 10 pairs and an energy spread of at least 10 points between the lower and upper half, else 1.0. Otherwise `clamp(1 + 8 × (0.95 − lowerRatio / upperRatio), 0.6, 1.4)`. It scales workout and active-energy drain (the active cap of 15 applies after multiplying), never the awake dip or naps.
+- **Extra reads:** exactly three (sleep, HRV, resting heart rate from 120 days back; sleep and HRV from 18:00), at most once per local day per account, connection and access scope, held in `energyHistoryCacheProvider` (one entry, never `autoDispose`, replaced on a new key so one account's data is held at a time). A failed read is cached as failed for that key and energy uses generic tuning. Android without history access returns about 30 days and the calibrated gate still applies.
+- **Copy:** "You usually train around now, so time awake costs nothing today." on the detail "Since you woke" panel when the dip was waived; "Tuned to your last 90 days." on the Health hero and detail summary when calibrated and the multiplier is not 1.0; "How energy works" explains both.

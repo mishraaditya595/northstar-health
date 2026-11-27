@@ -467,6 +467,67 @@ void main() {
       );
     });
 
+    testWidgets('a waived awake dip is explained, otherwise nothing is', (
+      tester,
+    ) async {
+      const waived =
+          'You usually train around now, so time awake costs '
+          'nothing today.';
+      await _pump(
+        tester,
+        _todayOverview(
+          energy: const Energy(
+            value: 70,
+            band: ReadinessBand.fair,
+            start: 78,
+            items: [],
+            awakeWaived: true,
+          ),
+        ),
+        FakeHealthReader(),
+      );
+      expect(find.text(waived), findsOneWidget);
+    });
+
+    testWidgets('no waived caption without a waived dip', (tester) async {
+      await _pump(tester, _todayOverview(), FakeHealthReader());
+      expect(find.textContaining('You usually train around now'), findsNothing);
+    });
+
+    testWidgets('a tuned energy says so under the change line', (tester) async {
+      const tuned = 'Tuned to your last 90 days.';
+      await _pump(
+        tester,
+        _todayOverview(
+          energy: const Energy(
+            value: 70,
+            band: ReadinessBand.fair,
+            start: 78,
+            items: [],
+            tuned: true,
+          ),
+        ),
+        FakeHealthReader(),
+      );
+      expect(find.text(tuned), findsOneWidget);
+    });
+
+    testWidgets('an untuned energy has no tuned caption', (tester) async {
+      await _pump(tester, _todayOverview(), FakeHealthReader());
+      expect(find.text('Tuned to your last 90 days.'), findsNothing);
+    });
+
+    testWidgets('How energy works explains the tuning', (tester) async {
+      await _pump(tester, _todayOverview(), FakeHealthReader());
+      expect(
+        find.textContaining(
+          'tunes how much workouts and active calories lower your energy',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('never saved.'), findsOneWidget);
+    });
+
     testWidgets('learning note shows days and workouts', (tester) async {
       await _pump(
         tester,
