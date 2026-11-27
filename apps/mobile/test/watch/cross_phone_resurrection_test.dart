@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:beyondrep/core/ids/uuid_factory.dart';
-import 'package:beyondrep/features/account/account_auth_controller.dart';
 import 'package:beyondrep/features/sync/workout_upload_coordinator.dart';
 import 'package:beyondrep/features/watch/application/watch_workout_inbox.dart';
 import 'package:beyondrep/features/watch/data/objectbox_watch_workout_importer.dart';
