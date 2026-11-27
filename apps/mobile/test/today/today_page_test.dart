@@ -7,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
+import 'package:beyondrep/core/design/hero_frame.dart';
+import 'package:beyondrep/core/design/page_header.dart';
 import 'package:beyondrep/features/account/account_auth_controller.dart';
 import 'package:beyondrep/features/account/account_auth_provider.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
@@ -20,6 +22,7 @@ import 'package:beyondrep/features/train/active_workout_state.dart';
 import 'package:beyondrep/features/train/train_library_state.dart';
 import 'package:beyondrep/features/watch/application/watch_status_provider.dart';
 import 'package:beyondrep/features/watch/domain/watch_status.dart';
+import 'package:beyondrep/features/watch/widgets/watch_status_banner.dart';
 import 'package:beyondrep/features/workouts/domain/live_workout_engine.dart';
 import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
 import 'package:beyondrep/features/workouts/domain/workout_models.dart';
@@ -215,6 +218,48 @@ void main() {
       tester.getTopLeft(banner).dy,
       lessThan(tester.getTopLeft(find.text('No plans yet')).dy),
     );
+  });
+
+  testWidgets('without a notice the hero sits 24 below the header', (
+    tester,
+  ) async {
+    await show(tester);
+    expect(
+      tester.getRect(find.byType(NsHeroFrame)).top -
+          tester.getRect(find.byType(PageHeader)).bottom,
+      24,
+    );
+  });
+
+  testWidgets('the watch banner has 24 above and 16 below', (tester) async {
+    await show(
+      tester,
+      overrides: [
+        watchLinkStateProvider.overrideWith(
+          () => _SeededWatch(
+            const WatchLinkState(
+              status: WatchNotInstalled(),
+              device: WatchDeviceStatus(
+                supported: true,
+                paired: true,
+                installed: false,
+                reachable: false,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+    final header = tester.getRect(find.byType(PageHeader));
+    final banner = tester.getRect(
+      find.descendant(
+        of: find.byType(WatchStatusBanner),
+        matching: find.byType(InsightCard),
+      ),
+    );
+    final hero = tester.getRect(find.byType(NsHeroFrame));
+    expect(banner.top - header.bottom, 24);
+    expect(hero.top - banner.bottom, 16);
   });
 
   testWidgets('a synced watch adds one quiet line at the bottom', (
