@@ -137,7 +137,6 @@ struct ReadinessHero: View {
                     Text(reason)
                         .font(.caption2)
                         .foregroundStyle(Palette.secondary)
-                        .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }

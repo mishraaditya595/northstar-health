@@ -131,6 +131,7 @@ Energy on the Health tab hero, the detail Today view, Today, the Train strip, th
 | Stage 2: "Better fit today" on a low-energy afternoon picks the lightest recovered plan | not run | not run |
 | Stage 2: watch Home and detail show energy and `· still learning`, cleared at local midnight | n/a | not run |
 | Stage 2: VoiceOver and TalkBack read "Energy" on Today, Train and the watch, never "Readiness" | not run | not run |
+| Stage 2: 41 mm Apple Watch Home shows the whole reason line including `· still learning` | not run | n/a |
 
 ## Phase 4 stage 3: watch link, glance and TestFlight embedding (owner actions, none done)
 
