@@ -346,7 +346,7 @@ sealed class WatchMessage {
       case 'completed_workout':
         final b = body(
           {'workout', 'last_sequence'},
-          {'healthkit_workout_uuid'},
+          {'healthkit_workout_uuid', 'program_day'},
         );
         final workout = b.map['workout'];
         if (workout is! Map) {
@@ -355,6 +355,18 @@ sealed class WatchMessage {
         if (workout['origin'] != 'beyondrep_watch' ||
             workout['workout_id'] is! String) {
           throw const WatchContractException('invalid_value');
+        }
+        ({String planId, String programId, String localDate})? programDay;
+        if (b.has('program_day')) {
+          final d = b.object(
+            'program_day',
+            required: {'plan_id', 'program_id', 'local_date'},
+          );
+          programDay = (
+            planId: d.string('plan_id', max: 128),
+            programId: d.string('program_id', max: 128),
+            localDate: d.localDate('local_date'),
+          );
         }
         return CompletedWorkout(
           messageId: id,
@@ -365,6 +377,7 @@ sealed class WatchMessage {
           healthkitWorkoutUuid: b.has('healthkit_workout_uuid')
               ? b.uuid('healthkit_workout_uuid')
               : null,
+          programDay: programDay,
         );
       default:
         final b = body({'acked_message_id', 'result'}, {'reason'});
@@ -643,6 +656,7 @@ final class CompletedWorkout extends WatchMessage {
     required this.workout,
     required this.lastSequence,
     this.healthkitWorkoutUuid,
+    this.programDay,
   });
 
   /// The cloud workout payload with origin `beyondrep_watch`. Full payload
@@ -650,6 +664,9 @@ final class CompletedWorkout extends WatchMessage {
   final Map<String, Object?> workout;
   final int lastSequence;
   final String? healthkitWorkoutUuid;
+
+  /// Today's program day the watch copied from `plans_snapshot.today`.
+  final ({String planId, String programId, String localDate})? programDay;
 
   @override
   String get type => 'completed_workout';
@@ -659,6 +676,12 @@ final class CompletedWorkout extends WatchMessage {
     'workout': workout,
     'last_sequence': lastSequence,
     'healthkit_workout_uuid': ?healthkitWorkoutUuid,
+    if (programDay case final d?)
+      'program_day': {
+        'plan_id': d.planId,
+        'program_id': d.programId,
+        'local_date': d.localDate,
+      },
   };
 }
 

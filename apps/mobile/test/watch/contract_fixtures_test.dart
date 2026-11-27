@@ -88,6 +88,34 @@ void main() {
       }
     });
 
+    test('completed_workout program_day round-trips', () {
+      final json = _read(
+        File(
+          '../../contracts/watch_link/v1/fixtures/valid/'
+          'completed_workout_program_day.json',
+        ),
+      );
+      final message = WatchMessage.fromJson(json) as CompletedWorkout;
+      final day =
+          (json['body']! as Map<String, Object?>)['program_day']!
+              as Map<String, Object?>;
+      expect(message.programDay!.programId, day['program_id']);
+      expect(message.programDay!.planId, day['plan_id']);
+      expect(message.programDay!.localDate, day['local_date']);
+      expect(message.toJson(), equals(json));
+    });
+
+    test('completed_workout without program_day has none', () {
+      final json = _read(
+        File(
+          '../../contracts/watch_link/v1/fixtures/valid/completed_workout.json',
+        ),
+      );
+      final message = WatchMessage.fromJson(json) as CompletedWorkout;
+      expect(message.programDay, isNull);
+      expect(message.toJson(), equals(json));
+    });
+
     test('replay case events all decode', () {
       for (final f in _files('watch_link/v1/cases/replay')) {
         for (final e in (_read(f)['events']! as List)) {

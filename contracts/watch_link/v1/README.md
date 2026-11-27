@@ -6,6 +6,8 @@ Every message has `schema_version` 1 (other versions are rejected, never read as
 
 `health_snapshot` is the only message that may carry health values; the CI test checks that no other valid fixture mentions them. `completed_workout.workout` is the cloud workout payload with `origin` `beyondrep_watch`; its field rules follow `docs/SYNC_PROTOCOL.md` "Cloud workout payload". The codecs (Dart, Swift) check only `origin` and a string `workout_id` of that object. **The stage-4 phone import must run the existing cloud-payload validator, including the reps-or-duration rule, before anything enters the outbox.** A delivered message is not an acknowledgment: durability is the explicit `ack`.
 
+`completed_workout.healthkit_workout_uuid` is the receipt the phone stores to hide the watch's own HealthKit workout from outside workouts. `completed_workout.program_day` (optional, `plan_id`, `program_id`, `local_date`; the watch copies it from `plans_snapshot.today`) tells the phone which program day the workout fulfils: the phone records it only when that plan exists locally and belongs to that program, and imports the workout without it otherwise.
+
 Fixtures are fictional and synthetic. `$id` values use the reserved `.invalid` domain only so the schema can reference the v2 schema; nothing is hosted there.
 
 ## Health snapshot extras (optional)

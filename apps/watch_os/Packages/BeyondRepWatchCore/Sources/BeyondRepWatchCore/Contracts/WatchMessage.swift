@@ -226,13 +226,19 @@ public struct WatchMessage {
                         ["log_set", "correct_set", "skip_set", "start_rest", "clear_rest", "pause", "resume", "finish", "discard"]),
                     set: set, restSeconds: try b.optionalInt("rest_seconds", min: 1, max: 3600)))
         case "completed_workout":
-            let b = try body(["workout", "last_sequence"], ["healthkit_workout_uuid"])
+            let b = try body(["workout", "last_sequence"], ["healthkit_workout_uuid", "program_day"])
             guard let workout = b.dict["workout"] as? [String: Any],
                 workout["origin"] as? String == "beyondrep_watch",
                 let workoutId = workout["workout_id"] as? String
             else { throw ContractError("invalid_value") }
             let lastSequence = try b.int("last_sequence")
             let healthkitUuid = try b.has("healthkit_workout_uuid") ? b.uuid("healthkit_workout_uuid") : nil
+            if b.has("program_day") {
+                let d = try b.object("program_day", required: ["plan_id", "program_id", "local_date"])
+                _ = try d.string("plan_id", max: 128)
+                _ = try d.string("program_id", max: 128)
+                _ = try d.localDate("local_date")
+            }
             self.body = .completedWorkout(
                 workoutId: workoutId, lastSequence: lastSequence, healthkitWorkoutUuid: healthkitUuid, raw: b.dict)
         default:

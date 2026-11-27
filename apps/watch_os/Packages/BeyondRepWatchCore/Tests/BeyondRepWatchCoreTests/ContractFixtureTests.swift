@@ -57,6 +57,18 @@ final class ContractFixtureTests: XCTestCase {
         try rejects("contracts/watch_link/v1/fixtures/invalid", minimum: 14) { _ = try WatchMessage(json: $0) }
     }
 
+    func testCompletedWorkoutProgramDayIsChecked() throws {
+        let valid = try FixtureLoader.json(
+            "contracts/watch_link/v1/fixtures/valid/completed_workout_program_day.json")
+        _ = try WatchMessage(json: valid)
+        for name in ["completed_workout_program_day_bad_date", "completed_workout_program_day_extra_field"] {
+            let data = try FixtureLoader.json("contracts/watch_link/v1/fixtures/invalid/\(name).json")
+            XCTAssertThrowsError(try WatchMessage(json: data), name) { error in
+                XCTAssertTrue(error is ContractError, "\(name): \(error)")
+            }
+        }
+    }
+
     func testHealthSnapshotStillRejectsUnknownKey() throws {
         let data = try FixtureLoader.json("contracts/watch_link/v1/fixtures/valid/health_snapshot_full.json")
         var message = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
