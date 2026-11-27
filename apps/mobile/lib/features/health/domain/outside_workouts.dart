@@ -78,7 +78,8 @@ int _overlapMs(DateTime aStart, DateTime aEnd, DateTime bStart, DateTime bEnd) {
   return ms > 0 ? ms : 0;
 }
 
-bool _sameRange(
+/// Whether two time ranges overlap by at least half of the shorter one.
+bool overlapsByHalf(
   DateTime aStart,
   DateTime aEnd,
   DateTime bStart,
@@ -109,7 +110,7 @@ List<OutsideWorkout> _withoutDuplicates(List<OutsideWorkout> outside) {
     });
   final kept = <OutsideWorkout>[];
   for (final w in ranked) {
-    if (!kept.any((k) => _sameRange(w.start, w.end, k.start, k.end))) {
+    if (!kept.any((k) => overlapsByHalf(w.start, w.end, k.start, k.end))) {
       kept.add(w);
     }
   }

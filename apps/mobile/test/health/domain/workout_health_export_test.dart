@@ -91,12 +91,22 @@ void main() {
     }
   });
 
-  test('a workout the watch linked with no copy of ours plans nothing', () {
+  test('a workout the watch linked with no receipt plans nothing', () {
     expect(plan([cand('a')], linked: {'a'}), isEmpty);
+  });
+
+  test('a linked workout with an unfinished receipt is superseded too', () {
+    for (final s in [
+      HealthExportState.failedRetryable,
+      HealthExportState.blocked,
+    ]) {
+      final actions = plan([cand('a')], receipts: [rec('a', s)], linked: {'a'});
+      expect((actions.single as SupersedeByWatch).platformRecordId, isNull);
+    }
     expect(
       plan(
         [cand('a')],
-        receipts: [rec('a', HealthExportState.failedRetryable)],
+        receipts: [rec('a', HealthExportState.supersededByWatch)],
         linked: {'a'},
       ),
       isEmpty,
@@ -116,6 +126,16 @@ void main() {
       final d = actions.single as DeleteOwnCopy;
       expect(d.workoutUuid, 'a');
       expect(d.platformRecordId, 'hk1');
+    }
+  });
+
+  test('deleted workout with a blocked or failed receipt still deletes', () {
+    for (final s in [
+      HealthExportState.blocked,
+      HealthExportState.failedRetryable,
+    ]) {
+      final actions = plan([cand('a', deleted: true)], receipts: [rec('a', s)]);
+      expect(actions.single, isA<DeleteOwnCopy>());
     }
   });
 

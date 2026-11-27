@@ -113,19 +113,22 @@ List<ExportAction> planHealthExport({
     }
     final receipt = receipts[w.uuid];
     final state = receipt?.state;
-    final hasCopy =
-        state == HealthExportState.confirmed ||
-        state == HealthExportState.writing;
+    // Any receipt other than the two final skip states may stand for a copy
+    // in the health store (a failed or blocked rewrite keeps the earlier one).
+    final mayHaveCopy =
+        receipt != null &&
+        state != HealthExportState.skippedWatch &&
+        state != HealthExportState.supersededByWatch;
 
     if (watchLinkedWorkoutUuids.contains(w.uuid)) {
-      if (hasCopy) {
-        removals.add(SupersedeByWatch(w.uuid, receipt!.platformRecordId));
+      if (mayHaveCopy) {
+        removals.add(SupersedeByWatch(w.uuid, receipt.platformRecordId));
       }
       continue;
     }
     if (w.deleted) {
-      if (hasCopy || state == HealthExportState.deleting) {
-        removals.add(DeleteOwnCopy(w.uuid, receipt!.platformRecordId));
+      if (mayHaveCopy) {
+        removals.add(DeleteOwnCopy(w.uuid, receipt.platformRecordId));
       } else if (receipt == null && isIos) {
         removals.add(LookupDeletedCopy(w));
       }
