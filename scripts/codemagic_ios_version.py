@@ -21,18 +21,18 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from codemagic_release_version import (  # noqa: E402
+    AUTO,
+    ResolveError,
+    VERSION_NAME,
+)
+
 BUNDLE_ID = "in.beyondrep.app"
-AUTO = "AUTO"
-# CFBundleShortVersionString: one to three period-separated integers.
-VERSION_NAME = re.compile(r"(0|[1-9][0-9]{0,3})(\.(0|[1-9][0-9]{0,3})){0,2}\Z")
 # Positive integer, no leading zero. Also a valid Android versionCode.
 BUILD_NUMBER = re.compile(r"[1-9][0-9]{0,9}\Z")
 MAX_BUILD_NUMBER = 2_100_000_000
 PUBSPEC_VERSION = re.compile(r"^version:\s*([^\s+#]+)", re.MULTILINE)
-
-
-class ResolveError(Exception):
-    pass
 
 
 def asc(*args: str) -> str:
