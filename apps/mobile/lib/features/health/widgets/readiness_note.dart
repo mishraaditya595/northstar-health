@@ -7,12 +7,12 @@ import '../application/health_overview.dart';
 import '../application/health_summary_controller.dart';
 import '../domain/readiness.dart';
 
-const _lowTitle = 'Recovery is low today';
+const _lowTitle = 'Energy is low right now';
 const _advice =
     'Consider dropping a set per exercise or keeping effort around RPE 7.';
 const _plansUnchanged = 'Your plans are not changed';
 
-/// In-memory flag: the owner and local day the low-readiness note was last
+/// In-memory flag: the owner and local day the low-energy note was last
 /// shown before a workout start. Never persisted.
 class ReadinessStartNoteShown
     extends Notifier<({String owner, DateTime day})?> {
@@ -27,7 +27,7 @@ final readinessStartNoteShownProvider =
       ReadinessStartNoteShown.new,
     );
 
-/// Returns true at once unless today's readiness is Low and the note has not
+/// Returns true at once unless energy now is Low and the note has not
 /// been shown today for this owner. Uses only the current overview value and
 /// never waits for a health read. A dismissed note counts as "Not now".
 Future<bool> confirmReadinessBeforeStart(
@@ -36,12 +36,10 @@ Future<bool> confirmReadinessBeforeStart(
 ) async {
   final owner = ref.read(healthOwnerIdProvider);
   final overview = ref.read(healthOverviewProvider).value;
-  final readiness = overview == null
+  final energy = overview == null
       ? null
-      : todaysReadiness(overview, ref.read(localNowProvider))?.result;
-  if (owner == null ||
-      readiness is! ReadinessReady ||
-      readiness.readiness.band != ReadinessBand.low) {
+      : currentEnergyScore(overview, ref.read(localNowProvider));
+  if (owner == null || energy == null || energy.band != ReadinessBand.low) {
     return true;
   }
   final now = ref.read(localNowProvider);

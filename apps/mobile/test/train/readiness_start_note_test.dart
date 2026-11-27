@@ -2,6 +2,7 @@ import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
+import 'package:beyondrep/features/health/domain/energy.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/features/health/widgets/readiness_note.dart';
 import 'package:beyondrep/features/train/active_workout_state.dart';
@@ -148,13 +149,48 @@ Future<void> _tapStart(WidgetTester tester) async {
 
 HealthOverview _low() => overview(readiness: _ready(48));
 
+/// A good morning start drained to Low energy by a workout.
+HealthOverview _drained() {
+  final start = _ready(80);
+  return overview(
+    readiness: start,
+    energy: energySection(
+      start,
+      energy: Energy(
+        value: 45,
+        band: readinessBandOf(45),
+        start: 80,
+        items: const [],
+      ),
+      wake: DateTime(2026, 11, 24, 6, 31),
+    ),
+  );
+}
+
+/// A low start but no waking day, so no energy.
+HealthOverview _lowStartNoEnergy() {
+  final start = _ready(40);
+  return overview(
+    readiness: start,
+    energy: SectionData(
+      EnergyOverview(
+        day: DateTime(2026, 11, 24),
+        wake: null,
+        start: (start as SectionData<ReadinessOverview>).value,
+        energy: null,
+        learning: const EnergyLearning(),
+      ),
+    ),
+  );
+}
+
 void main() {
   testWidgets('first low-day start shows the note, the second does not', (
     tester,
   ) async {
     await _pump(tester, _low());
     await _tapStart(tester);
-    expect(find.text('Recovery is low today'), findsOneWidget);
+    expect(find.text('Energy is low right now'), findsOneWidget);
     expect(find.textContaining('Your plans are not changed'), findsNWidgets(2));
     expect(_actions.started, isEmpty);
     await tester.tap(find.text('Start workout'));
@@ -164,6 +200,24 @@ void main() {
     await _tapStart(tester);
     expect(_actions.started, ['plan-1', 'plan-1']);
     expect(find.text('Not now'), findsNothing);
+  });
+
+  testWidgets('a good start drained to low energy shows the note', (
+    tester,
+  ) async {
+    await _pump(tester, _drained());
+    await _tapStart(tester);
+    expect(find.text('Energy is low right now'), findsOneWidget);
+    expect(_actions.started, isEmpty);
+  });
+
+  testWidgets('a low start without energy never shows the note', (
+    tester,
+  ) async {
+    await _pump(tester, _lowStartNoEnergy());
+    await _tapStart(tester);
+    expect(find.text('Not now'), findsNothing);
+    expect(_actions.started, ['plan-1']);
   });
 
   testWidgets('an unfinished workout blocks the start before the note', (

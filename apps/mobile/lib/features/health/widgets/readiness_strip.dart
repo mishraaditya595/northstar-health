@@ -5,9 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../core/clock.dart';
 import '../../../core/design/beyondrep_theme.dart';
 import '../application/health_overview.dart';
+import '../domain/energy.dart';
 import '../domain/readiness.dart';
-import 'readiness_card.dart';
 import 'energy_text.dart';
+import 'readiness_card.dart';
 
 String _bandName(ReadinessBand band) => switch (band) {
   ReadinessBand.good => 'Good',
@@ -15,10 +16,10 @@ String _bandName(ReadinessBand band) => switch (band) {
   ReadinessBand.low => 'Low',
 };
 
-/// Today's readiness inside the Train start card: a tappable strip in the
-/// band's colours, or one muted line while the baseline builds. Renders
-/// nothing while loading, on error, when health is not connected or without
-/// a score; health never blocks or changes Train.
+/// Energy now inside the Train start card: a tappable strip in the band's
+/// colours, or one muted line while the baseline builds. Renders nothing
+/// while loading, on error, when health is not connected or without a
+/// score; health never blocks or changes Train.
 class ReadinessStrip extends ConsumerStatefulWidget {
   const ReadinessStrip({super.key});
 
@@ -53,40 +54,48 @@ class _ReadinessStripState extends ConsumerState<ReadinessStrip> {
   Widget build(BuildContext context) {
     final overview = ref.watch(healthOverviewProvider).value;
     if (overview == null) return const SizedBox.shrink();
-    final readiness = todaysReadiness(overview, ref.watch(localNowProvider));
-    if (readiness == null) return const SizedBox.shrink();
-    return switch (readiness.result) {
-      ReadinessReady(readiness: final r) => _Ready(readiness: r),
-      ReadinessNotReady(:final daysUntilBaseline?) => Padding(
-        padding: const EdgeInsets.only(bottom: 14),
-        child: Text(
-          energyBuildingText(daysUntilBaseline),
-          style: Theme.of(context).textTheme.bodySmall
-              ?.copyWith(color: Theme.of(context).mutedColor),
-        ),
+    final now = ref.watch(localNowProvider);
+    final today = currentEnergy(overview, now);
+    final energy = today?.energy;
+    if (energy != null) {
+      return _Ready(energy: energy, learning: today!.learning);
+    }
+    final building = energyBuilding(overview, now);
+    if (building == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Text(
+        energyBuildingText(building.days),
+        style: Theme.of(context).textTheme.bodySmall
+            ?.copyWith(color: Theme.of(context).mutedColor),
       ),
-      ReadinessNotReady() => const SizedBox.shrink(),
-    };
+    );
   }
 }
 
 class _Ready extends StatelessWidget {
-  const _Ready({required this.readiness});
+  const _Ready({required this.energy, required this.learning});
 
-  final Readiness readiness;
+  final Energy energy;
+  final EnergyLearning learning;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final band = readiness.band;
+    final band = energy.band;
     final color = readinessBandColor(theme, band);
     final words = readinessBandWords(band);
+    final learningText = energyLearningText(learning);
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Semantics(
         container: true,
         button: true,
-        label: 'Readiness ${readiness.value}, $words. See why',
+        label: [
+          'Energy ${energy.value}, $words.',
+          ?learningText,
+          'See why',
+        ].join(' '),
         excludeSemantics: true,
         child: Material(
           color: readinessBandSoftColor(theme, band),
@@ -99,7 +108,7 @@ class _Ready extends StatelessWidget {
               child: Row(
                 children: [
                   Text(
-                    '${readiness.value}',
+                    '${energy.value}',
                     style: theme.textTheme.titleLarge?.copyWith(
                       color: color,
                       fontWeight: FontWeight.w800,
@@ -111,11 +120,18 @@ class _Ready extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${_bandName(band)} readiness. $words.',
+                          '${_bandName(band)} energy. $words.',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
                         ),
+                        if (learningText != null)
+                          Text(
+                            learningText,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.mutedColor,
+                            ),
+                          ),
                         if (band == ReadinessBand.low)
                           Text(
                             'Your plans are not changed',
