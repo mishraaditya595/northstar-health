@@ -70,6 +70,7 @@ void main() {
   late _Link link;
   late String? user;
   late int stored;
+  late List<DateTime> imported;
   late List<String> order;
   late WatchWorkoutInbox inbox;
 
@@ -91,6 +92,7 @@ void main() {
       stored++;
       order.add('onStored');
     },
+    onImported: imported.add,
   );
 
   setUp(() {
@@ -99,6 +101,7 @@ void main() {
     link = _Link();
     user = accountA;
     stored = 0;
+    imported = [];
     order = [];
     inbox = build();
   });
@@ -120,6 +123,20 @@ void main() {
       expect(ack.reason, isNull);
       expect(ack.ackedMessageId, message.messageId);
       expect(ack.accountKey, watchAccountKey(accountA));
+    },
+  );
+
+  test(
+    'reports the start of an imported workout, also for a duplicate, never for an ignored one',
+    () async {
+      final message = _fixture(accountKey: watchAccountKey(accountA));
+      await inbox.handle(message);
+      expect(imported, [DateTime.utc(2026, 10, 23, 11)]);
+      await inbox.handle(message);
+      expect(imported, hasLength(2));
+      imported.clear();
+      await inbox.handle(_fixture(accountKey: watchAccountKey(accountB)));
+      expect(imported, isEmpty);
     },
   );
 

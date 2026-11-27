@@ -246,6 +246,23 @@ class LiveWatchWorkoutController extends Notifier<LiveWatchState> {
           c,
   ];
 
+  /// A `completed_workout` was imported: the workout on the phone's card is
+  /// finished even when its `ended` state was lost. The message carries no
+  /// session id, so the card is matched by its start time (the same instant
+  /// the watch wrote into both messages).
+  void dropImported({required DateTime startedAt}) {
+    final current = state.workout;
+    if (current == null || !current.startedAt.isAtSameMomentAs(startedAt)) {
+      return;
+    }
+    _remember(current.sessionId.toLowerCase());
+    _lastReceived = null;
+    state = LiveWatchState(
+      ended: LiveWatchEnd(sessionId: current.sessionId, completed: true),
+    );
+    _syncTimer();
+  }
+
   void _remember(String sessionId) {
     _ended.add(sessionId);
     if (_ended.length > 5) _ended.removeAt(0);

@@ -154,6 +154,25 @@ void main() {
     },
   );
 
+  testWidgets(
+    'an imported completed workout drops the card of the same start, a late state does not bring it back',
+    (tester) async {
+      final h = _Harness(tester);
+      await h.start();
+      h.link.receive(_state());
+      expect(h.state.isLive, isTrue);
+      h.live.dropImported(startedAt: _t0.add(const Duration(minutes: 5)));
+      expect(h.state.workout, isNotNull);
+      h.live.dropImported(startedAt: _t0);
+      expect(h.state.workout, isNull);
+      expect(h.state.ended?.sessionId, _session);
+      expect(h.state.ended?.completed, isTrue);
+      h.link.receive(_state(at: const Duration(seconds: 30)));
+      expect(h.state.workout, isNull);
+      h.dispose();
+    },
+  );
+
   testWidgets('a state owned by the phone is not a watch workout', (
     tester,
   ) async {
