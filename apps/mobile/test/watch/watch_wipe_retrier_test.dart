@@ -18,6 +18,12 @@ const wipe2 = '77777777-3333-4333-8333-000000000002';
 
 class _Link implements WatchLink {
   bool reachable = true;
+  WatchDeviceStatus device = const WatchDeviceStatus(
+    supported: true,
+    paired: true,
+    installed: true,
+    reachable: true,
+  );
   final transfers = <String>[];
   final contexts = <Map<String, String>>[];
   final state = StreamController<void>.broadcast();
@@ -35,7 +41,7 @@ class _Link implements WatchLink {
   @override
   Stream<void> get watchReachabilityChanges => const Stream.empty();
   @override
-  Future<WatchDeviceStatus> status() async => WatchDeviceStatus.unsupported;
+  Future<WatchDeviceStatus> status() async => device;
   @override
   Stream<String> get messages => incoming.stream;
 }
@@ -179,6 +185,60 @@ void main() {
         });
       },
     );
+
+    test('no paired watch persists and sends nothing', () async {
+      final link = _Link()
+        ..device = const WatchDeviceStatus(
+          supported: true,
+          paired: false,
+          installed: false,
+          reachable: false,
+        );
+      final queue = WatchWipeQueue(await SharedPreferences.getInstance());
+      await announceWatchAccountDeleted(
+        link: link,
+        userId: accountA,
+        ids: _Ids(wipe1),
+        nowUtc: DateTime.utc(2026, 11, 27, 8),
+        queue: Future.value(queue),
+      );
+      expect(queue.pending(), isEmpty);
+      expect(link.transfers, isEmpty);
+      expect(link.contexts, isEmpty);
+    });
+
+    test('a paired watch without the app persists nothing', () async {
+      final link = _Link()
+        ..device = const WatchDeviceStatus(
+          supported: true,
+          paired: true,
+          installed: false,
+          reachable: false,
+        );
+      final queue = WatchWipeQueue(await SharedPreferences.getInstance());
+      await announceWatchAccountDeleted(
+        link: link,
+        userId: accountA,
+        ids: _Ids(wipe1),
+        nowUtc: DateTime.utc(2026, 11, 27, 8),
+        queue: Future.value(queue),
+      );
+      expect(queue.pending(), isEmpty);
+    });
+
+    test('an unsupported platform (Android) persists nothing', () async {
+      final link = _Link()..device = WatchDeviceStatus.unsupported;
+      final queue = WatchWipeQueue(await SharedPreferences.getInstance());
+      await announceWatchAccountDeleted(
+        link: link,
+        userId: accountA,
+        ids: _Ids(wipe1),
+        nowUtc: DateTime.utc(2026, 11, 27, 8),
+        queue: Future.value(queue),
+      );
+      expect(queue.pending(), isEmpty);
+      expect(link.transfers, isEmpty);
+    });
 
     test('a failing queue never stops the immediate send', () async {
       final link = _Link();

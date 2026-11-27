@@ -30,10 +30,12 @@ final watchMessageIdsProvider = Provider<UuidFactory>(
 
 /// Tells the watch an account was permanently deleted so it drops that
 /// account's unsent workouts too. Reads no provider, so the account
-/// controller can call it after the signed-in scope has gone. The wipe is
-/// persisted first (outside the account store, which deletion removes) and
-/// resent by `WatchWipeRetrier` until the watch acks it. Sends nothing now
-/// when no watch with the app is paired.
+/// controller can call it after the signed-in scope has gone. Does nothing
+/// unless a watch with the app is paired: then the wipe is persisted first
+/// (outside the account store, which deletion removes) and resent by
+/// `WatchWipeRetrier` until the watch acks it. Nothing is persisted on
+/// Android or without a paired watch with the app, so no deleted account's
+/// key is left behind. Sends nothing now when the watch is out of reach.
 Future<void> announceWatchAccountDeleted({
   required WatchLink link,
   required String userId,
@@ -41,6 +43,10 @@ Future<void> announceWatchAccountDeleted({
   required DateTime nowUtc,
   required Future<WatchWipeQueue> queue,
 }) async {
+  // Listened to now so a failing open is never reported as unhandled.
+  final opened = queue.then<WatchWipeQueue?>((q) => q, onError: (_) => null);
+  final device = await link.status();
+  if (!device.supported || !device.paired || !device.installed) return;
   final messageId = ids.newId();
   final json = jsonEncode(
     buildAccountCleared(
@@ -51,7 +57,9 @@ Future<void> announceWatchAccountDeleted({
     ).toJson(),
   );
   try {
-    await (await queue).add(PendingWatchWipe(messageId: messageId, json: json));
+    await (await opened)?.add(
+      PendingWatchWipe(messageId: messageId, json: json),
+    );
   } catch (_) {
     // Never stops the immediate send.
   }

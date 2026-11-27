@@ -374,6 +374,12 @@ void main() {
     tester,
   ) async {
     final h = _Harness(tester, reachable: false);
+    h.link.deviceOverride = const WatchDeviceStatus(
+      supported: true,
+      paired: true,
+      installed: true,
+      reachable: false,
+    );
     await h.start();
     await _elapse(tester, const Duration(seconds: 3));
     await h.container
