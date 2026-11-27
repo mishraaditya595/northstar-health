@@ -123,6 +123,16 @@ void main() {
     },
   );
 
+  test('an upper-case workout id is stored and acked stored', () async {
+    final message = _fixture(
+      accountKey: watchAccountKey(accountA),
+      edit: (w) => w['workout_id'] = (w['workout_id']! as String).toUpperCase(),
+    );
+    expect(await inbox.handle(message), WatchImportResult.stored);
+    expect(link.ackAt(0).result, 'stored');
+    expect(store.box<WorkoutSessionEntity>().count(), 1);
+  });
+
   test('ack is sent only after the import returned', () async {
     final events = <String>[];
     final recording = _RecordingLink(events);

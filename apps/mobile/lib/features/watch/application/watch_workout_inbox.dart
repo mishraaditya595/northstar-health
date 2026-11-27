@@ -54,7 +54,7 @@ class WatchWorkoutInbox {
     try {
       snapshot = WorkoutRestorePage.parseWorkout(
         message.workout,
-        workoutId: message.workout['workout_id']! as String,
+        workoutId: (message.workout['workout_id']! as String).toLowerCase(),
         origins: {WorkoutOrigin.watch},
       );
     } on FormatException {
