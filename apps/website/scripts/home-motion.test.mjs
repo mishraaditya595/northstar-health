@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cinematicFrame, progressForScroll, settleFactor, introFits, stackReach, fitMobileStack, MAX_STACK_SIZE, MIN_STACK_SIZE, MOTION_QUERY } from '../src/scripts/home-motion.mjs';
+import { cinematicFrame, progressForScroll, settleFactor, setIfChanged, stackRank, introFits, stackReach, fitMobileStack, MAX_STACK_SIZE, MIN_STACK_SIZE, MOTION_QUERY } from '../src/scripts/home-motion.mjs';
 import { countUpText } from '../src/scripts/home-reveal.mjs';
 
 test('scroll progress is clamped to the pinned track', () => {
@@ -38,9 +38,66 @@ test('settling covers the same distance per second at 60 Hz and 120 Hz', () => {
   const at60 = 1 - settleFactor(1000/60);
   const at120 = 1 - settleFactor(1000/120);
   assert.ok(Math.abs(at60 - at120*at120) < 1e-9);
-  assert.ok(Math.abs(settleFactor(1000/60) - .16) < 1e-9);
+  assert.ok(Math.abs(settleFactor(1000/60) - .34) < 1e-9);
   assert.equal(settleFactor(0), 0);
   assert.ok(settleFactor(10000) > .999 && settleFactor(10000) <= 1);
+});
+test('the scene follows the scroll closely', () => {
+  for (const hz of [60, 120]) {
+    let current = 0;
+    for (let i = 0; i < hz / 10; i++) current += (1 - current) * settleFactor(1000 / hz);
+    assert.ok(current >= .9, `${hz} Hz covered ${current} after 100 ms`);
+  }
+});
+test('scene copy and the progress meter get their own layer, only when motion is on', () => {
+  const css = readFileSync(new URL('../src/styles/home-motion.css', import.meta.url), 'utf8');
+  const at = css.indexOf('@media (prefers-reduced-motion: no-preference)');
+  assert.ok(at > 0);
+  const end = css.indexOf('\n@media (max-width: 720px)', at);
+  assert.ok(end > at);
+  const motion = css.slice(at, end);
+  assert.match(motion, /\.motion-ready \.cine-scene \{[^}]*will-change: transform, opacity/);
+  assert.match(motion, /\.cine-meter i \{[^}]*will-change: transform/);
+  assert.equal(css.slice(0, at).includes('will-change'), false);
+  assert.equal(css.slice(end).includes('will-change'), false);
+});
+const rankOf = rigs => stackRank(rigs.map(order => ({ order })));
+test('stackRank ranks rigs 1..3 by order, ties going to the higher index', () => {
+  assert.deepEqual(rankOf([10, 5, 10]), [2, 1, 3]);
+  assert.deepEqual(rankOf([1, 2, 3]), [1, 2, 3]);
+  assert.deepEqual(rankOf([7, 7, 7]), [1, 2, 3]);
+});
+test('the stacking rank changes rarely and always matches the order', () => {
+  for (const [w, h] of [[1440, 900], [390, 844]]) {
+    let prev, changes = 0;
+    for (let i = 0; i <= 1000; i++) {
+      const { rigs } = cinematicFrame(i / 1000, w, h);
+      const rank = stackRank(rigs);
+      const sorted = rigs.map((r, j) => [r.order, j]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(x => x[1]);
+      assert.deepEqual(sorted.map(j => rank[j]), [1, 2, 3]);
+      if (prev && prev.join() !== rank.join()) changes++;
+      prev = rank;
+    }
+    assert.ok(changes <= 6, `${w}x${h}: ${changes} rank changes`);
+  }
+  for (const p of [0, .5, 1]) {
+    const f = cinematicFrame(p, 1440, 900);
+    assert.equal(f.rigs[f.active].opacity, 1);
+    assert.equal(stackRank(f.rigs)[f.active], 3);
+  }
+});
+test('setIfChanged writes a style value only when it differs from the last one written', () => {
+  const cache = new Map(), el = {}, other = {}, writes = [];
+  const write = v => writes.push(v);
+  assert.equal(setIfChanged(cache, el, 'opacity', '1', write), true);
+  assert.equal(setIfChanged(cache, el, 'opacity', '1', write), false);
+  assert.equal(setIfChanged(cache, el, 'transform', '1', write), true);
+  assert.equal(setIfChanged(cache, other, 'opacity', '1', write), true);
+  assert.equal(setIfChanged(cache, el, 'opacity', '0', write), true);
+  assert.equal(setIfChanged(cache, el, 'opacity', '1', write), true);
+  assert.equal(writes.length, 5);
+  cache.clear();
+  assert.equal(setIfChanged(cache, el, 'opacity', '1', write), true);
 });
 test('the pinned intro only runs when every chapter clears the nav and the chapter bar', () => {
   const desktop = { stageHeight: 900, navHeight: 92, bottomHeight: 94, mobile: false };
