@@ -396,7 +396,7 @@ The phone's history detail for an Apple Watch workout shows average and max hear
 
 ## Phase 4 stage 5a: live watch workout on the phone (device checks, none run)
 
-A workout started on the Apple Watch is followed and controlled from the iPhone over HealthKit workout mirroring (iOS 17 and watchOS 10), with `WCSession.sendMessage` as the fallback. Implemented in source, **not released or device-verified**; the Swift parts have never been compiled or run. Every row is not run.
+A workout started on the Apple Watch is followed and controlled from the iPhone over HealthKit workout mirroring (iOS 17 and watchOS 10), with `WCSession.sendMessage` as the fallback. Implemented in source, **not released or device-verified**; the Swift builds and passes its tests on CI only. Every row is not run.
 
 Open decisions to verify first:
 
