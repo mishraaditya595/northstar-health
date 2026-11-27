@@ -170,7 +170,8 @@
               "status": "planned",
               "input_unit": "kg",
               "reps": 8,
-              "load_grams": 60000
+              "load_grams": 60000,
+              "rest_seconds": 90
             },
             {
               "set_id": "dddddddd-dddd-4ddd-8ddd-000000000003",
@@ -179,7 +180,8 @@
               "status": "planned",
               "input_unit": "kg",
               "reps": 8,
-              "load_grams": 60000
+              "load_grams": 60000,
+              "rest_seconds": 90
             }
           ]
         },

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
+import 'package:beyondrep/core/design/dialogs.dart';
 import 'package:beyondrep/core/ids/uuid_factory.dart';
 import 'package:beyondrep/features/account/account_auth_controller.dart';
 import 'package:beyondrep/features/account/account_auth_provider.dart';
@@ -354,6 +355,102 @@ void main() {
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
     expect(find.text('Apple Watch workout'), findsOneWidget);
+    await h.close();
+  });
+
+  testWidgets(
+    'a second workout in the same foreground does not open the page, coming back to the foreground does',
+    (tester) async {
+      final h = _Harness(tester);
+      await h.pump(initial: '/train');
+      await h.receive(_state());
+      await tester.pumpAndSettle();
+      expect(find.text('Apple Watch workout'), findsOneWidget);
+      h.router.pop();
+      await tester.pumpAndSettle();
+      const other = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+      await h.receive(_state(at: 5, session: other));
+      await tester.pumpAndSettle();
+      expect(find.text('Apple Watch workout'), findsNothing);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(find.text('Apple Watch workout'), findsOneWidget);
+      await h.close();
+    },
+  );
+
+  testWidgets('the first fresh state after coming back opens the page', (
+    tester,
+  ) async {
+    final h = _Harness(tester);
+    await h.pump(initial: '/train');
+    for (final s in [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+      AppLifecycleState.hidden,
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(s);
+    }
+    await tester.pumpAndSettle();
+    await h.receive(_state());
+    await tester.pumpAndSettle();
+    expect(find.text('Apple Watch workout'), findsOneWidget);
+    await h.close();
+  });
+
+  testWidgets('never opens over a dialog, opens on the next state after it', (
+    tester,
+  ) async {
+    final h = _Harness(tester);
+    await h.pump(
+      initial: '/train',
+      home: Consumer(
+        builder: (context, ref, _) => TextButton(
+          onPressed: () => showNsConfirm(
+            context,
+            title: 'Test dialog',
+            message: 'Synthetic',
+            cancelLabel: 'No',
+            confirmLabel: 'Yes',
+          ),
+          child: const Text('Ask'),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Ask'));
+    await tester.pumpAndSettle();
+    await h.receive(_state());
+    await tester.pumpAndSettle();
+    expect(find.text('Test dialog'), findsOneWidget);
+    expect(find.text('Apple Watch workout'), findsNothing);
+    await tester.tap(find.text('No'));
+    await tester.pumpAndSettle();
+    await h.receive(_state(at: 3));
+    await tester.pumpAndSettle();
+    expect(find.text('Apple Watch workout'), findsOneWidget);
+    await h.close();
+  });
+
+  testWidgets('an account switch forgets which sessions were opened', (
+    tester,
+  ) async {
+    final h = _Harness(tester);
+    await h.pump(initial: '/train');
+    await h.receive(_state());
+    await tester.pumpAndSettle();
+    expect(h.container.read(liveWatchOpenedSessionsProvider), {_session});
+    await h.auth.signOut();
+    h.api.verifiedId = accountB;
+    await tester.pump();
+    expect(h.container.read(liveWatchOpenedSessionsProvider), isEmpty);
     await h.close();
   });
 

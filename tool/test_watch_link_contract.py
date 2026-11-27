@@ -159,6 +159,8 @@ def reference_session_state(case):
                 ):
                     if st.get(src):
                         item[dst] = st[src]
+                if 1 <= (st.get("rest_seconds") or 0) <= 3600:
+                    item["rest_seconds"] = st["rest_seconds"]
                 if current is None and status != "ended":
                     current = st["set_id"]
             elif d["status"] == "skipped":

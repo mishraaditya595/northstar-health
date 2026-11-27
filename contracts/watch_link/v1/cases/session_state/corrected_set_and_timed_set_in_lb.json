@@ -221,7 +221,8 @@
               "status": "planned",
               "input_unit": "lb",
               "reps": 8,
-              "load_grams": 60000
+              "load_grams": 60000,
+              "rest_seconds": 90
             }
           ]
         },
