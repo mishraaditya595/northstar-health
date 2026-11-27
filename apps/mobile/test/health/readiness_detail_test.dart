@@ -661,6 +661,11 @@ void main() {
       expect(find.text('Since you woke'), findsNothing);
       expect(find.text('How energy works'), findsNothing);
       expect(find.text("Couldn't read · Try again"), findsOneWidget);
+      expect(
+        find.bySemanticsLabel(RegExp(r'^No Energy data\.')),
+        findsOneWidget,
+      );
+      expect(find.bySemanticsLabel(RegExp('No Readiness data')), findsNothing);
       await tester.tap(find.text("Couldn't read · Try again"));
       await tester.pumpAndSettle();
       expect(controller.refreshCalls, 1);

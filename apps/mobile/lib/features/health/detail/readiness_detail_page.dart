@@ -67,7 +67,7 @@ class _ReadinessDetailPageState extends ConsumerState<ReadinessDetailPage> {
           children: [
             DetailUnavailable(
               gap: gap,
-              metricName: 'Readiness',
+              metricName: 'Energy',
               platform: overview.platform,
               onRetry: retry,
             ),
