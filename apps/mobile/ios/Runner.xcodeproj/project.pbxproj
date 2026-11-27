@@ -37,6 +37,7 @@
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
+		82210AFFBBC53876CD29F72C /* LiveLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5E53FD59768B175247055D3 /* LiveLink.swift */; };
 		82FCC4038072860C8B7503A8 /* BeyondRepWatchCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E1F976DFA0863688161BBFD /* BeyondRepWatchCore.swift */; };
 		86D465EAE092D6B565191B26 /* WatchJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F32C42732BB70A7DA26A175 /* WatchJournal.swift */; };
 		880ECBB0331D7F88661F76A6 /* PhoneInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBAC2D1D0D675CBC09F97278 /* PhoneInbox.swift */; };
@@ -185,6 +186,7 @@
 		F09921EEBB1C7379249B4037 /* PreviewData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PreviewData.swift; path = Sources/Features/Preview/PreviewData.swift; sourceTree = "<group>"; };
 		F3C9AAC37819865F8456917F /* RestClock.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RestClock.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Session/RestClock.swift; sourceTree = "<group>"; };
 		F3F013D6265556FD223D2DB0 /* HealthGlanceReader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HealthGlanceReader.swift; path = Sources/HealthKit/HealthGlanceReader.swift; sourceTree = "<group>"; };
+		F5E53FD59768B175247055D3 /* LiveLink.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveLink.swift; path = Sources/Connectivity/LiveLink.swift; sourceTree = "<group>"; };
 		F73B7C160984F878ED540D2B /* WorkoutView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WorkoutView.swift; path = Sources/Features/Workout/WorkoutView.swift; sourceTree = "<group>"; };
 		FBAC2D1D0D675CBC09F97278 /* PhoneInbox.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PhoneInbox.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Link/PhoneInbox.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -332,6 +334,7 @@
 				F3F013D6265556FD223D2DB0 /* HealthGlanceReader.swift */,
 				D083A00A0CED1ED2FDB62DF6 /* CommandApplier.swift */,
 				65B03F6FDD06F3863DB51B1A /* SessionStateBuilder.swift */,
+				F5E53FD59768B175247055D3 /* LiveLink.swift */,
 			);
 			name = BeyondRepWatch;
 			path = ../../watch_os;
@@ -560,6 +563,7 @@
 				95B55FAB19BF9C40DF1D7DD0 /* HealthGlanceReader.swift in Sources */,
 				3EFCD21A5FD980F21338CB65 /* CommandApplier.swift in Sources */,
 				B669770CB33B6F13D7646AF7 /* SessionStateBuilder.swift in Sources */,
+				82210AFFBBC53876CD29F72C /* LiveLink.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

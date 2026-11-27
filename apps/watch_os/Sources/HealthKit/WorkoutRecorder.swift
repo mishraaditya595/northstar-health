@@ -55,6 +55,14 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     /// The average heart rate of the session so far, for the summary only.
     @Published private(set) var averageHeartRate: Int?
 
+    /// True while the workout session is mirrored to the iPhone (iOS 17+). The
+    /// mirrored session is the live link's first choice and keeps the phone
+    /// app alive in the background.
+    private(set) var isMirroring = false
+    /// A live message the phone sent through the mirrored session (a
+    /// `session_command`). The model decides what it means.
+    var onRemoteMessage: (@MainActor (Data) -> Void)?
+
     private let store = HKHealthStore()
     private var session: HKWorkoutSession?
     private var builder: HKLiveWorkoutBuilder?
@@ -83,6 +91,49 @@ final class WorkoutRecorder: NSObject, ObservableObject {
         averageHeartRate = nil
         session.startActivity(with: date)
         try await builder.beginCollection(at: date)
+        await startMirroring()
+    }
+
+    /// Mirrors the session to the iPhone. A failure (no iPhone in reach, an
+    /// iPhone below iOS 17) leaves the live link on WatchConnectivity.
+    private func startMirroring() async {
+        guard let session else { return }
+        do {
+            try await session.startMirroringToCompanionDevice()
+            isMirroring = true
+        } catch {
+            isMirroring = false
+        }
+    }
+
+    /// Sends one live message through the mirrored session. False when there
+    /// is no mirrored session, so the caller can use the fallback.
+    func send(_ data: Data) -> Bool {
+        guard isMirroring, let session else { return false }
+        session.sendToRemoteWorkoutSession(data: data) { _, _ in }
+        return true
+    }
+
+    /// Like `send`, but returns once HealthKit reports the data handled or
+    /// after `timeout` seconds, so the last state goes out before the session
+    /// ends and a slow link never holds up finishing.
+    func sendAndWait(_ data: Data, timeout: TimeInterval) async {
+        guard isMirroring, let session else { return }
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            let once = Once()
+            session.sendToRemoteWorkoutSession(data: data) { _, _ in
+                once.run { continuation.resume() }
+            }
+            DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
+                once.run { continuation.resume() }
+            }
+        }
+    }
+
+    private func stopMirroring() {
+        guard isMirroring, let session else { return }
+        isMirroring = false
+        session.stopMirroringToCompanionDevice { _, _ in }
     }
 
     func pause() { session?.pause() }
@@ -93,6 +144,7 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     /// or nil when HealthKit is unavailable, denied or failed.
     func finish(at date: Date) async -> String? {
         guard let session, let builder else { return nil }
+        stopMirroring()
         session.end()
         var uuid: String?
         do {
@@ -110,6 +162,7 @@ final class WorkoutRecorder: NSObject, ObservableObject {
 
     /// Ends the session and deletes whatever it collected.
     func discard() {
+        stopMirroring()
         session?.end()
         builder?.discardWorkout()
         clear()
@@ -126,6 +179,7 @@ final class WorkoutRecorder: NSObject, ObservableObject {
             session = recovered
             self.builder = builder
             if let workoutId { self.workoutId = workoutId }
+            await startMirroring()
             return true
         } catch {
             return false
@@ -159,6 +213,7 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     }
 
     private func clear() {
+        isMirroring = false
         session = nil
         builder = nil
         workoutId = nil
@@ -172,6 +227,39 @@ extension WorkoutRecorder: HKWorkoutSessionDelegate {
     ) {}
 
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {}
+
+    /// The iPhone sent live data (a `session_command`) through the mirrored session.
+    nonisolated func workoutSession(
+        _ workoutSession: HKWorkoutSession, didReceiveDataFromRemoteWorkoutSession data: [Data]
+    ) {
+        Task { @MainActor [weak self] in
+            for item in data { self?.onRemoteMessage?(item) }
+        }
+    }
+
+    /// The mirror dropped (the iPhone app ended it or went out of reach); live
+    /// messages use WatchConnectivity until the workout ends.
+    nonisolated func workoutSession(
+        _ workoutSession: HKWorkoutSession, didDisconnectFromRemoteDeviceWithError error: Error?
+    ) {
+        Task { @MainActor [weak self] in
+            self?.isMirroring = false
+        }
+    }
+}
+
+/// Runs a body once, from whichever thread gets there first.
+private final class Once {
+    private let lock = NSLock()
+    private var done = false
+
+    func run(_ body: () -> Void) {
+        lock.lock()
+        let first = !done
+        done = true
+        lock.unlock()
+        if first { body() }
+    }
 }
 
 extension WorkoutRecorder: HKLiveWorkoutBuilderDelegate {
