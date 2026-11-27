@@ -49,22 +49,50 @@ The hosted Supabase project named in `SUPABASE_URL` must already have all commit
 
 ## Version name and build number
 
-**Start new build** shows two inputs. Both default to `AUTO`.
+**Start new build** shows three inputs.
 
-| Input | `AUTO` | Manual value |
+| Input | Default | Meaning |
 | --- | --- | --- |
-| `version_name` (shown to users, `CFBundleShortVersionString`) | the part before `+` of `version:` in `apps/mobile/pubspec.yaml` | one to three numbers separated by dots, such as `1.2.0` |
-| `build_number` (`CFBundleVersion`) | the highest build of `in.beyondrep.app` in App Store Connect, across all versions, plus one | a whole number higher than that latest build |
+| `release_type` | `Fix or optimisation` | What kind of release this is. It decides the version name. |
+| `version_name` | `AUTO` | Only for `Exact version`: a version such as `1.2.0`. Leave `AUTO` otherwise. |
+| `build_number` | `AUTO` | `AUTO` is the highest build of `in.beyondrep.app` in App Store Connect, across all versions, plus one. A manual value must be a whole number above that build. |
 
-`scripts/codemagic_ios_version.py` looks up the latest build with the Codemagic `app-store-connect` CLI (`apps list` by bundle ID, then `get-latest-testflight-build-number --all-versions`), using the `Codemagic Signing` integration. No extra variable or credential is needed. The step fails before the build starts if a value is malformed, a manual build number is not above the latest, or the lookup fails. It never falls back to Codemagic's `$BUILD_NUMBER`, which restarts at 1 if the workflow is renamed or the Codemagic app is recreated.
+Versions are `MAJOR.FEATURE.FIX`. The version name is `CFBundleShortVersionString`; the build number is `CFBundleVersion`.
 
-Don't start two `AUTO` runs at once, or a second run before App Store Connect lists the first upload: both would pick the same number and the later upload is rejected after the build.
+| Release type | New version, from the current one `X.Y.Z` |
+| --- | --- |
+| `Fix or optimisation` | `X.Y.Z+1` |
+| `Feature` | `X.Y+1.0` |
+| `Major` | `X+1.0.0` |
+| `Same version, new build` | `X.Y.Z` (a new build of the same version) |
+| `Exact version` | `version_name`, which must not be below `X.Y.Z` |
 
-The `+N` part of the pubspec version is not used for TestFlight builds. To change the default version name, bump `version:` in pubspec in a PR.
+The current version is the highest version found in:
+
+- App Store Connect: TestFlight and App Store versions of the iOS app.
+- Google Play: every release name on every track, but only when the `ns_google_play` credentials are set.
+
+If neither store has a version, the current version is `0.0.0`, so a fix gives `0.0.1`. The pubspec version is not read.
+
+`ns_google_play` is optional for iOS. Without the Play credentials, iOS uses App Store Connect alone and prints a note. With them, a Play lookup failure stops the job.
+
+`scripts/codemagic_ios_version.py` uses the Codemagic `app-store-connect` CLI and the `Codemagic Signing` integration. No extra variable or credential is needed. The step prints one line, such as `Release type Fix or optimisation: 0.6.1 -> 0.6.2, build number 42`.
+
+The step fails before the build starts when:
+
+- `version_name` is set but the type is not `Exact version`.
+- `Exact version` has an invalid `version_name`, or one below the current version.
+- `Same version, new build` finds no current version.
+- A manual build number is malformed or not above the latest build.
+- An App Store Connect lookup fails.
+
+It never falls back to Codemagic's `$BUILD_NUMBER`, which restarts at 1 if the workflow is renamed or the Codemagic app is recreated.
+
+Don't start two runs at once, or a second run before App Store Connect lists the first upload: both would pick the same build number and the later upload is rejected after the build.
 
 ## Run
 
-1. Codemagic → **Start new build** → branch `main` → workflow `mobile-ios-testflight`. Leave both inputs on `AUTO`, or set them as described above.
+1. Codemagic → **Start new build** → branch `main` → workflow `mobile-ios-testflight`. Pick a `release_type` and leave the other inputs on `AUTO`, or set them as described above.
 2. When the build finishes, App Store Connect processes the IPA (usually 5–30 minutes). Internal testers then get it in the TestFlight app.
 3. Record the commit SHA, version name, build number (printed by the resolve step) and outcome in the P2-08 evidence before describing the build anywhere.
 

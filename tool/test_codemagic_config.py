@@ -150,16 +150,28 @@ class CodemagicTemplateTest(unittest.TestCase):
                 "certificates": ["Apple Distribution"],
             },
         )
-        self.assertEqual(env["groups"], ["ns_mobile_supabase_public"])
+        # ns_google_play is optional for iOS: without it App Store Connect alone is used.
+        self.assertEqual(env["groups"], ["ns_mobile_supabase_public", "ns_google_play"])
         self.assertEqual(
             env["vars"],
             {
+                "NS_RELEASE_TYPE": "${{ inputs.release_type }}",
                 "NS_VERSION_NAME": "${{ inputs.version_name }}",
                 "NS_BUILD_NUMBER": "${{ inputs.build_number }}",
             },
         )
         inputs = workflow["inputs"]
-        self.assertEqual(set(inputs), {"version_name", "build_number"})
+        self.assertEqual(set(inputs), {"release_type", "version_name", "build_number"})
+        self.assertEqual(inputs["release_type"]["type"], "choice")
+        self.assertEqual(
+            inputs["release_type"]["options"],
+            [
+                "Fix or optimisation", "Feature", "Major",
+                "Same version, new build", "Exact version",
+            ],
+        )
+        self.assertEqual(inputs["release_type"]["default"], "Fix or optimisation")
+        self.assertIn("Exact version", inputs["version_name"]["description"])
         for name in ("version_name", "build_number"):
             self.assertEqual(inputs[name]["type"], "string")
             # Codemagic rejects empty interpolated inputs; AUTO is the default.

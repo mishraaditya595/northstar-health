@@ -211,8 +211,18 @@ workflows:
     integrations:
       app_store_connect: Codemagic Signing
     inputs:
+      release_type:
+        description: "What kind of release this is. The version is worked out from the highest in App Store Connect (and Google Play, if set up)"
+        type: choice
+        default: "Fix or optimisation"
+        options:
+          - "Fix or optimisation"
+          - "Feature"
+          - "Major"
+          - "Same version, new build"
+          - "Exact version"
       version_name:
-        description: "Version name such as 1.2.0, or AUTO for the pubspec version"
+        description: "Only for Exact version: a version such as 1.2.0. Leave AUTO otherwise"
         type: string
         # Codemagic environment.vars rejects empty interpolated input values.
         default: "AUTO"
@@ -236,7 +246,10 @@ workflows:
           - Apple Distribution
       groups:
         - ns_mobile_supabase_public
+        # Optional for iOS: Play credentials let the version also consider Google Play.
+        - ns_google_play
       vars:
+        NS_RELEASE_TYPE: "${{ inputs.release_type }}"
         NS_VERSION_NAME: "${{ inputs.version_name }}"
         NS_BUILD_NUMBER: "${{ inputs.build_number }}"
     scripts:
@@ -253,7 +266,7 @@ workflows:
           esac
       - name: "Resolve version name and build number"
         script: |
-          python3 ../../scripts/codemagic_ios_version.py pubspec.yaml
+          python3 ../../scripts/codemagic_ios_version.py
       - name: "Install locked dependencies"
         script: |
           flutter pub get --enforce-lockfile

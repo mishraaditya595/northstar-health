@@ -2,10 +2,15 @@
 """Resolve the TestFlight version name and build number for Codemagic.
 
 Inputs (from the manual build form, via environment variables):
-  NS_VERSION_NAME  AUTO, or a version such as 1.2.0 (one to three integers)
+  NS_RELEASE_TYPE  Fix or optimisation, Feature, Major, Same version, new
+                   build, or Exact version
+  NS_VERSION_NAME  AUTO, or a version such as 1.2.0 (only for Exact version)
   NS_BUILD_NUMBER  AUTO, or a positive integer
 
-AUTO version name takes the part before "+" of `version:` in pubspec.yaml.
+The current version is the highest version in App Store Connect (TestFlight
+and App Store, iOS) and, when GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS is set,
+Google Play. The release type decides the next version from it; see
+codemagic_release_version.py.
 AUTO build number is the highest build of in.beyondrep.app in App Store
 Connect (all versions) plus one. A manual build number must be higher than
 that, so a run fails here instead of after a long build and upload.
@@ -26,6 +31,9 @@ from codemagic_release_version import (  # noqa: E402
     VERSION_NAME,
     app_store_app_id,
     asc,
+    current_version,
+    format_version,
+    next_version,
 )
 
 # Positive integer, no leading zero. Also a valid Android versionCode.
@@ -85,11 +93,14 @@ def resolve_build(raw: str) -> str:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 2:
-        print("usage: codemagic_ios_version.py PUBSPEC", file=sys.stderr)
+    if len(argv) != 1:
+        print("usage: codemagic_ios_version.py", file=sys.stderr)
         return 2
     try:
-        version = resolve_version(os.environ.get("NS_VERSION_NAME", ""), Path(argv[1]))
+        release_type = os.environ.get("NS_RELEASE_TYPE", "").strip()
+        current = current_version(play_optional=False)
+        new = next_version(release_type, os.environ.get("NS_VERSION_NAME", ""), current)
+        version = format_version(new)
         build = resolve_build(os.environ.get("NS_BUILD_NUMBER", ""))
     except ResolveError as error:
         print(f"Version check failed: {error}", file=sys.stderr)
@@ -97,7 +108,8 @@ def main(argv: list[str]) -> int:
     with open(os.environ["CM_ENV"], "a", encoding="utf-8") as env_file:
         env_file.write(f"BEYONDREP_VERSION_NAME={version}\n")
         env_file.write(f"BEYONDREP_BUILD_NUMBER={build}\n")
-    print(f"Version name {version}, build number {build}")
+    before = format_version(current) if current is not None else "none"
+    print(f"Release type {release_type}: {before} -> {version}, build number {build}")
     return 0
 
 
