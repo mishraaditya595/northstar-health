@@ -8,21 +8,20 @@ Inputs (from the manual build form, via environment variables):
   NS_BUILD_NUMBER  AUTO, or a positive integer (the Android versionCode)
   NS_PLAY_TRACK    none, internal or alpha (where the job uploads the AAB)
 
-The current version is the highest version in App Store Connect (TestFlight
-and App Store, iOS) and Google Play (every release name on every track). The
-release type decides the next version from it; see codemagic_release_version.py.
-Only the first build, a manual build number with NS_PLAY_TRACK=none, may go
-on when the Google Play version lookup fails.
+The current version is the highest TestFlight version in App Store Connect
+(iOS) and Google Play (every release name on every track). The release type
+decides the next version from it; see codemagic_release_version.py.
 AUTO build number is the highest versionCode of in.beyondrep.app in Google
 Play (every track and every uploaded bundle) plus one. A manual build number
 must be higher than that, so a run fails here instead of at upload.
 
 Google Play is read with the Codemagic `google-play` CLI and the service
 account JSON in GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS (Codemagic group
-ns_google_play); this script never prints it. Only a manual build number with
-NS_PLAY_TRACK=none may go on when the credentials are missing or the lookup
-fails: that is the very first build, whose AAB is uploaded by hand in Play
-Console because Google Play only accepts API uploads after that.
+ns_google_play); this script never prints it. Google Play is required except
+for the very first build: only a manual build number with NS_PLAY_TRACK=none
+may go on when the credentials are missing or a Play lookup (version or build
+number) fails. That AAB is uploaded by hand in Play Console because Google
+Play only accepts API uploads after that.
 
 The result is appended to $CM_ENV as BEYONDREP_VERSION_NAME and
 BEYONDREP_BUILD_NUMBER for later build steps.

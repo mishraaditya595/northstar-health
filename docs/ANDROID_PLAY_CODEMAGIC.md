@@ -68,12 +68,12 @@ Versions are `MAJOR.FEATURE.FIX`. The version name is `versionName`; the build n
 
 The current version is the highest version found in:
 
-- Google Play: every release name on every track.
-- App Store Connect: TestFlight and App Store versions of the iOS app.
+- Google Play: every release name on every track that has at least two dot-separated parts (a name such as `3` is ignored).
+- App Store Connect: TestFlight versions of the iOS app (every App Store build is first a TestFlight build; the App Store version list is not read because of its placeholder `1.0`).
 
 If neither store has a version, the current version is `0.0.0`, so a fix gives `0.0.1`. The pubspec version is not read.
 
-The job uses the existing `Codemagic Signing` App Store Connect integration to read the iOS versions. No new credential is needed. An App Store Connect lookup failure stops the job.
+The job uses the existing `Codemagic Signing` App Store Connect integration to read the iOS versions. No new credential is needed. An App Store Connect lookup failure stops the job. To keep iOS and Android on the same number for one release, run the second platform with `Same version, new build` after the first upload shows in its store (TestFlight processing can take a few minutes).
 
 The Play release name is now the version, such as `0.6.2`. The upload step passes it with `--release-name`. Release names that are not a version are ignored when the current version is worked out.
 

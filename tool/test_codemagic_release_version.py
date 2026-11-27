@@ -167,18 +167,20 @@ class StoreVersionLookupTest(unittest.TestCase):
             return []
         return [json.loads(line) for line in self.log.read_text().splitlines()]
 
-    def test_asc_reads_testflight_and_app_store_versions(self):
-        self.setup_asc(
-            pre=[("IOS", "0.5.0"), ("IOS", "0.6.0")], store=[("IOS", "0.4.2")]
-        )
+    def test_asc_reads_testflight_versions_only(self):
+        self.setup_asc(pre=[("IOS", "0.5.0"), ("IOS", "0.6.0")])
         self.assertEqual(rv.current_version(play_optional=False), (0, 6, 0))
         self.assertIn(
             ["asc", "apps", "pre-release-versions", "6700000001", "--json"],
             self.calls(),
         )
-        self.assertIn(
-            ["asc", "apps", "app-store-versions", "6700000001", "--json"],
-            self.calls(),
+
+    def test_app_store_placeholder_version_is_never_read(self):
+        # App Store Connect auto-creates an App Store version "1.0".
+        self.setup_asc(pre=[("IOS", "0.6.1")], store=[("IOS", "1.0")])
+        self.assertEqual(rv.current_version(play_optional=False), (0, 6, 1))
+        self.assertFalse(
+            [c for c in self.calls() if "app-store-versions" in c]
         )
 
     def test_asc_counts_only_ios_platform(self):
@@ -231,6 +233,13 @@ class StoreVersionLookupTest(unittest.TestCase):
         ])
         self.assertEqual(rv.current_version(play_optional=False), (0, 6, 0))
 
+    def test_play_ignores_one_part_release_names(self):
+        self.setup_asc(pre=[("IOS", "0.6.0")])
+        self.setup_play([
+            {"track": "internal", "releases": [{"name": "3"}, {"name": "12"}]},
+        ])
+        self.assertEqual(rv.current_version(play_optional=False), (0, 6, 0))
+
     def test_blank_play_credentials_skip_play(self):
         self.setup_asc(pre=[("IOS", "0.6.0")])
         os.environ[rv.CREDENTIALS] = "   "
@@ -245,7 +254,12 @@ class StoreVersionLookupTest(unittest.TestCase):
             rv.current_version(play_optional=False)
         self.assertIn("permission denied", str(ctx.exception))
         self.assertNotIn("fake-credentials", str(ctx.exception))
+        self.out.truncate(0)
         self.assertEqual(rv.current_version(play_optional=True), (0, 6, 0))
+        note = self.out.getvalue()
+        self.assertIn("Google Play not checked", note)
+        self.assertIn("Using App Store Connect only", note)
+        self.assertNotIn("fake-credentials", note)
 
     def test_asc_failure_always_stops(self):
         self.setup_asc(pre=[("IOS", "0.6.0")])

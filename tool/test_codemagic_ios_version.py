@@ -130,10 +130,10 @@ class IosVersionResolverTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.exported()["BEYONDREP_VERSION_NAME"], "1.0.0")
 
-    def test_highest_of_prerelease_and_app_store_versions_is_current(self):
-        result = self.run_resolver(NS_FAKE_STORE=store("0.9.0"))
+    def test_app_store_placeholder_version_is_ignored(self):
+        result = self.run_resolver(NS_FAKE_STORE=store("1.0"))
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.exported()["BEYONDREP_VERSION_NAME"], "0.9.1")
+        self.assertEqual(self.exported()["BEYONDREP_VERSION_NAME"], "0.6.2")
 
     def test_no_store_versions_starts_from_zero(self):
         result = self.run_resolver(NS_FAKE_PRERELEASE="[]", NS_FAKE_LATEST="")
@@ -193,20 +193,22 @@ class IosVersionResolverTest(unittest.TestCase):
                 self.cm_env.write_text("", encoding="utf-8")
                 result = self.run_resolver(GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS=value)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertIn("not reading versions from Google Play", result.stdout)
+                self.assertIn("Google Play not checked", result.stdout)
                 self.assertEqual(self.exported()["BEYONDREP_VERSION_NAME"], "0.6.2")
 
-    def test_play_lookup_failure_with_credentials_stops_ios(self):
+    def test_play_lookup_failure_does_not_stop_ios(self):
         temp = Path(self.tmp.name)
         play = temp / "google-play"
         play.write_text(
             "#!/usr/bin/env python3\nimport sys\nsys.exit(2)\n", encoding="utf-8"
         )
         play.chmod(0o755)
-        result = self.run_resolver(GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS="{}")
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Google Play lookup failed", result.stderr)
-        self.assertEqual(self.cm_env.read_text(encoding="utf-8"), "")
+        result = self.run_resolver(GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS="secret-json")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Google Play not checked", result.stdout)
+        self.assertIn("Using App Store Connect only", result.stdout)
+        self.assertNotIn("secret-json", result.stdout + result.stderr)
+        self.assertEqual(self.exported()["BEYONDREP_VERSION_NAME"], "0.6.2")
 
     def test_no_pubspec_argument_is_accepted(self):
         result = subprocess.run(

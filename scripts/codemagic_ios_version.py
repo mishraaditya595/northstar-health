@@ -7,9 +7,11 @@ Inputs (from the manual build form, via environment variables):
   NS_VERSION_NAME  AUTO, or a version such as 1.2.0 (only for Exact version)
   NS_BUILD_NUMBER  AUTO, or a positive integer
 
-The current version is the highest version in App Store Connect (TestFlight
-and App Store, iOS) and, when GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS is set,
-Google Play. The release type decides the next version from it; see
+The current version is the highest TestFlight version in App Store Connect
+(iOS; every App Store build is first a TestFlight build) and, when
+GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS is set and works, Google Play. Google
+Play is optional here: missing credentials or a failed lookup print a note and
+the job goes on with App Store Connect alone. The release type decides the next version from it; see
 codemagic_release_version.py.
 AUTO build number is the highest build of in.beyondrep.app in App Store
 Connect (all versions) plus one. A manual build number must be higher than
@@ -81,7 +83,7 @@ def main(argv: list[str]) -> int:
         return 2
     try:
         release_type = os.environ.get("NS_RELEASE_TYPE", "").strip()
-        current = current_version(play_optional=False)
+        current = current_version(play_optional=True)
         new = next_version(release_type, os.environ.get("NS_VERSION_NAME", ""), current)
         version = format_version(new)
         build = resolve_build(os.environ.get("NS_BUILD_NUMBER", ""))

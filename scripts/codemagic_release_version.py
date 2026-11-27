@@ -11,7 +11,7 @@ already published:
 Versions are MAJOR.FEATURE.FIX. Inputs of one or two parts are padded with
 zeros and the output always has three parts. With no current version the
 base is 0.0.0. This module holds the shared primitives (ResolveError, AUTO,
-VERSION_NAME, the App Store Connect and Google Play lookups) and imports no
+VERSION_NAME, the App Store Connect (TestFlight) and Google Play lookups) and imports no
 other script. Authentication comes from the integrations' environment; no
 credential value is read or printed here.
 """
@@ -94,16 +94,15 @@ def _collect(texts: Iterable[object]) -> list[Version]:
 
 
 def asc_versions() -> list[Version]:
+    """TestFlight versions only. Every App Store build is first a TestFlight
+    build, and the App Store version list holds an auto-created "1.0"
+    placeholder that would wrongly make the current version 1.0.0."""
     app_id = app_store_app_id()
     texts = []
-    for command, key in (
-        ("pre-release-versions", "version"),
-        ("app-store-versions", "versionString"),
-    ):
-        for item in _asc_json_list("apps", command, app_id, "--json"):
-            attributes = item.get("attributes") if isinstance(item, dict) else None
-            if isinstance(attributes, dict) and attributes.get("platform") == "IOS":
-                texts.append(attributes.get(key))
+    for item in _asc_json_list("apps", "pre-release-versions", app_id, "--json"):
+        attributes = item.get("attributes") if isinstance(item, dict) else None
+        if isinstance(attributes, dict) and attributes.get("platform") == "IOS":
+            texts.append(attributes.get("version"))
     return _collect(texts)
 
 
@@ -143,20 +142,26 @@ def play_versions() -> list[Version]:
         for release in releases if isinstance(releases, list) else []:
             if isinstance(release, dict):
                 texts.append(release.get("name"))
-    return _collect(texts)
+    # A one-part name such as "3" is a release label, not a version.
+    return _collect(
+        t for t in texts if isinstance(t, str) and len(t.strip().split(".")) >= 2
+    )
 
 
 def current_version(*, play_optional: bool) -> Optional[Version]:
     found = asc_versions()
     if not os.environ.get(CREDENTIALS, "").strip():
-        print(f"{CREDENTIALS} is not set: not reading versions from Google Play.")
+        print(
+            f"Google Play not checked: {CREDENTIALS} is not set. "
+            "Using App Store Connect only."
+        )
     else:
         try:
             found += play_versions()
         except ResolveError as error:
             if not play_optional:
                 raise
-            print(f"{error} Going on without Google Play versions.")
+            print(f"Google Play not checked: {error} Using App Store Connect only.")
     return highest(found)
 
 

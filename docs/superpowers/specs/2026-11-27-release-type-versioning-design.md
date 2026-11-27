@@ -53,8 +53,8 @@ The owner picked A on 2026-11-27, and agreed to a "same version, new build" opti
 
 The current version is the highest version, compared number by number, across:
 
-1. **App Store Connect:** the TestFlight versions (`app-store-connect apps pre-release-versions <app_id> --json`) and the App Store versions (`apps app-store-versions <app_id> --json`) for `in.beyondrep.app`, with the app id found the way the build-number lookup already finds it.
-2. **Google Play:** the release names on every track (`google-play tracks list --package-name in.beyondrep.app --json`). A release name that is not a version is ignored.
+1. **App Store Connect:** the TestFlight versions (`app-store-connect apps pre-release-versions <app_id> --json`) for `in.beyondrep.app`, with the app id found the way the build-number lookup already finds it.
+2. **Google Play:** the release names on every track (`google-play tracks list --package-name in.beyondrep.app --json`). A release name that is not a version, or has only one part (`3`), is ignored.
 
 A version with one or two numbers is read as three (`0.6` is `0.6.0`). If neither store has any version, the current version is `0.0.0`.
 
@@ -67,6 +67,10 @@ Failure rules:
 - An App Store Connect lookup failure always stops the job.
 - In Google Play, if the app has no releases yet (true until Android's first upload by hand), Play contributes nothing. Any other Play failure (bad credentials, network) stops the job.
 - The existing exception stays: the Android first build (`play_track: none`, manual build number, no Play credentials) may skip the Play lookup, so App Store Connect alone decides the version.
+
+Revised after final review:
+- App Store versions are not read. App Store Connect auto-creates an App Store version `1.0` in PREPARE_FOR_SUBMISSION, which would make every current version 1.0.0. Every App Store build is first a TestFlight build, so TestFlight alone is enough.
+- Google Play is optional on iOS, always: missing credentials or a failed lookup print a note and iOS uses App Store Connect alone. Android still requires Play, except for the first build.
 
 ### Exact versions
 

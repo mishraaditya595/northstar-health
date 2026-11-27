@@ -69,17 +69,18 @@ Versions are `MAJOR.FEATURE.FIX`. The version name is `CFBundleShortVersionStrin
 
 The current version is the highest version found in:
 
-- App Store Connect: TestFlight and App Store versions of the iOS app.
-- Google Play: every release name on every track, but only when the `ns_google_play` credentials are set.
+- App Store Connect: TestFlight versions of the iOS app (every App Store build is first a TestFlight build; the App Store version list is not read because App Store Connect creates a placeholder `1.0` there).
+- Google Play: release names with at least two dot-separated parts on every track, when the `ns_google_play` credentials are set and the lookup works.
 
 If neither store has a version, the current version is `0.0.0`, so a fix gives `0.0.1`. The pubspec version is not read.
 
-`ns_google_play` is optional for iOS. Without the Play credentials, iOS uses App Store Connect alone and prints a note. With them, a Play lookup failure stops the job.
+`ns_google_play` is optional for iOS. Without the Play credentials, iOS uses App Store Connect alone and prints a note. A failed Play lookup also prints a note (`Google Play not checked: ...`, never a credential) and the job goes on. Google Play never stops the iOS job. To keep iOS and Android on the same number for one release, run the second platform with `Same version, new build` after the first upload shows in its store (TestFlight processing can take a few minutes).
 
 `scripts/codemagic_ios_version.py` uses the Codemagic `app-store-connect` CLI and the `Codemagic Signing` integration. No extra variable or credential is needed. The step prints one line, such as `Release type Fix or optimisation: 0.6.1 -> 0.6.2, build number 42`.
 
 The step fails before the build starts when:
 
+- The release type is empty or unknown.
 - `version_name` is set but the type is not `Exact version`.
 - `Exact version` has an invalid `version_name`, or one below the current version.
 - `Same version, new build` finds no current version.
