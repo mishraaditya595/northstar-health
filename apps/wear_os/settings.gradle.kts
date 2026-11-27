@@ -4,8 +4,13 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+    // Versions live here (not in the root build) so a build without an Android SDK can
+    // configure only :core, see `beyondrep.coreOnly` below.
     plugins {
         id("com.android.application") version "8.9.2"
+        id("org.jetbrains.kotlin.android") version "2.1.20"
+        id("org.jetbrains.kotlin.plugin.compose") version "2.1.20"
+        id("org.jetbrains.kotlin.jvm") version "2.1.20"
     }
 }
 dependencyResolutionManagement {
