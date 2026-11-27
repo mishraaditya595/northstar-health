@@ -515,9 +515,9 @@ void main() {
     testWidgets('days without a baseline draw no bar and skip the average', (
       tester,
     ) async {
-      // Heart data from day -16: day -2 is the first with 14 earlier days.
+      // Heart data from day -5: day -2 is the first with 3 earlier days.
       final reader = FakeHealthReader()..sleep = _nights(-40);
-      _heartFrom(reader, -16);
+      _heartFrom(reader, -5);
       await _pump(tester, _overview(_nights(-40), reader), reader);
       await _selectRange(tester, '7 days');
 
@@ -553,9 +553,9 @@ void main() {
     testWidgets('the previous period hides with under 5 scored days', (
       tester,
     ) async {
-      // From day -24: the previous week scores only days -10 to -7.
+      // From day -13: the previous week scores only days -10 to -7.
       final reader = FakeHealthReader()..sleep = _nights(-40);
-      _heartFrom(reader, -24);
+      _heartFrom(reader, -13);
       await _pump(tester, _overview(_nights(-40), reader), reader);
       await _selectRange(tester, '7 days');
 

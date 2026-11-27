@@ -788,7 +788,27 @@ void main() {
       expect(r.restingHrVsNormal, isNull);
     });
 
-    test('fewer than 14 baseline days has no baseline', () async {
+    test('fewer than 3 baseline days has no baseline', () async {
+      syntheticWeek();
+      fake.series[HealthSeriesType.hrv] = [
+        for (var i = -2; i < 0; i++)
+          _sample(_day(i).add(const Duration(hours: 14)), 40),
+        _sample(DateTime(2026, 11, 24, 2), 50),
+      ];
+      fake.series[HealthSeriesType.restingHeartRate] = [
+        for (var i = -2; i < 0; i++)
+          _sample(_day(i).add(const Duration(hours: 8)), 58),
+        _sample(DateTime(2026, 11, 24, 7), 54),
+      ];
+      final c = container();
+      final o = (await c.read(healthOverviewProvider.future))!;
+      final r = (o.readiness as SectionData<ReadinessOverview>).value;
+      expect(r.hrvBaseline, isNull);
+      expect(r.hrvVsNormal, isNull);
+      expect((r.result as ReadinessNotReady).daysUntilBaseline, 1);
+    });
+
+    test('5 HRV days now give a baseline of 5 days', () async {
       syntheticWeek();
       fake.series[HealthSeriesType.hrv] = [
         for (var i = -5; i < 0; i++)
@@ -798,13 +818,7 @@ void main() {
       final c = container();
       final o = (await c.read(healthOverviewProvider.future))!;
       final r = (o.readiness as SectionData<ReadinessOverview>).value;
-      expect(r.hrvBaseline, isNull);
-      expect(r.hrvVsNormal, isNull);
-      expect(
-        (r.result as ReadinessNotReady).daysUntilBaseline,
-        5,
-        reason: 'the longer history (9 resting HR days) counts',
-      );
+      expect(r.hrvBaseline!.days, 5);
     });
 
     test('Android reports RMSSD, not SDNN', () async {

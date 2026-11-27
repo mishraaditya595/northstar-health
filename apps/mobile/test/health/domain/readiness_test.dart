@@ -95,6 +95,17 @@ void main() {
       expect(baselineOf(n(14), today, sdFloor: hrvSdFloor), isNotNull);
     });
 
+    test('with minDays 3: null with 2 days, value with 3', () {
+      List<DayValue> n(int c) => [
+        for (var i = 1; i <= c; i++) (day: daysAgo(i), value: 45.0),
+      ];
+      expect(baselineOf(n(2), today, sdFloor: hrvSdFloor, minDays: 3), isNull);
+      expect(
+        baselineOf(n(3), today, sdFloor: hrvSdFloor, minDays: 3),
+        isNotNull,
+      );
+    });
+
     test('applies the floor', () {
       final b = baselineOf(
         series(List.filled(20, 45.0)),
@@ -238,13 +249,28 @@ void main() {
     expect(v.parts.fold(0.0, (a, p) => a + p.weight), closeTo(1, 1e-9));
   });
 
-  test('HRV today with 9 baseline days, no RHR is not ready', () {
+  test('HRV today with 3 baseline days and no RHR scores', () {
+    final v = ready(
+      score(
+        lastNight: nightOn(today, asleep: 450),
+        sleepScore: scoreOf(80),
+        prior: weekOf(450, count: 2),
+        hrv: series(List.filled(3, 50.0), todayValue: 50),
+      ),
+    );
+    expect(v.parts.map((p) => p.input), [
+      ReadinessInput.hrv,
+      ReadinessInput.sleep,
+    ]);
+  });
+
+  test('HRV today with 2 baseline days, no RHR is not ready', () {
     final r = score(
       lastNight: nightOn(today, asleep: 450),
-      hrv: series(List.filled(9, 50.0), todayValue: 50),
+      hrv: series(List.filled(2, 50.0), todayValue: 50),
     );
     expect(r, isA<ReadinessNotReady>());
-    expect((r as ReadinessNotReady).daysUntilBaseline, 5);
+    expect((r as ReadinessNotReady).daysUntilBaseline, 1);
   });
 
   test('HRV without baseline drops out while RHR is ready', () {
@@ -252,7 +278,7 @@ void main() {
       score(
         lastNight: nightOn(today, asleep: 450),
         sleepScore: scoreOf(80),
-        hrv: series(List.filled(9, 50.0), todayValue: 50),
+        hrv: series(List.filled(2, 50.0), todayValue: 50),
         rhr: series(alternating(20, 60, 2), todayValue: 60),
       ),
     );
@@ -294,20 +320,41 @@ void main() {
 
   test('no sleep and baseline building names both', () {
     final r = score(
-      hrv: series(List.filled(9, 50.0), todayValue: 50),
+      hrv: series(List.filled(2, 50.0), todayValue: 50),
     ) as ReadinessNotReady;
     expect(r.noSleep, isTrue);
     expect(r.noHrvOrRhrToday, isFalse);
-    expect(r.daysUntilBaseline, 5);
+    expect(r.daysUntilBaseline, 1);
   });
 
   test('daysUntilBaseline uses the larger count', () {
     final r = score(
       lastNight: nightOn(today, asleep: 450),
-      hrv: series(List.filled(9, 50.0), todayValue: 50),
-      rhr: series(List.filled(12, 60.0), todayValue: 60),
+      hrv: series(List.filled(1, 50.0), todayValue: 50),
+      rhr: series(List.filled(2, 60.0), todayValue: 60),
     ) as ReadinessNotReady;
-    expect(r.daysUntilBaseline, 2);
+    expect(r.daysUntilBaseline, 1);
+  });
+
+  test('baselineDays is the larger used baseline', () {
+    final v = ready(
+      score(
+        lastNight: nightOn(today, asleep: 450),
+        hrv: series(List.filled(5, 50.0), todayValue: 50),
+        rhr: series(List.filled(9, 60.0), todayValue: 60),
+      ),
+    );
+    expect(v.baselineDays, 9);
+  });
+
+  test('baselineDays is 5 with only the HRV part', () {
+    final v = ready(
+      score(
+        lastNight: nightOn(today, asleep: 450),
+        hrv: series(List.filled(5, 50.0), todayValue: 50),
+      ),
+    );
+    expect(v.baselineDays, 5);
   });
 
   test('zero-minute week skips sleep debt without throwing', () {

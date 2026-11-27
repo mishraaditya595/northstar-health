@@ -461,8 +461,18 @@ Section<ReadinessOverview> _readiness(
   };
   final hrvToday = _valueOn(hrvDaily, today);
   final rhrToday = _valueOn(rhrDaily, today);
-  final hrvBaseline = baselineOf(hrvDaily, today, sdFloor: hrvSdFloor);
-  final rhrBaseline = baselineOf(rhrDaily, today, sdFloor: rhrSdFloor);
+  final hrvBaseline = baselineOf(
+    hrvDaily,
+    today,
+    sdFloor: hrvSdFloor,
+    minDays: readinessBaselineMinDays,
+  );
+  final rhrBaseline = baselineOf(
+    rhrDaily,
+    today,
+    sdFloor: rhrSdFloor,
+    minDays: readinessBaselineMinDays,
+  );
   final night = sleep?.lastNight;
   return SectionData(
     ReadinessOverview(
