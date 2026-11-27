@@ -76,6 +76,22 @@ def reference_replay(events):
     }
 
 
+def cross_field_errors(message):
+    """Rules JSON Schema cannot express (see the contract README)."""
+    if message.get("type") != "health_snapshot":
+        return []
+    body, errors = message["body"], []
+    inputs = [f["input"] for f in body.get("readiness", {}).get("factors", [])]
+    if len(inputs) != len(set(inputs)):
+        errors.append("duplicate readiness factor input")
+    dates = [d["local_date"] for d in body.get("week", [])]
+    if any(a >= b for a, b in zip(dates, dates[1:])):
+        errors.append("week local_date not strictly ascending")
+    if dates and dates[-1] > body["local_date"]:
+        errors.append("week ends after local_date")
+    return errors
+
+
 class WatchLinkContractTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -98,10 +114,11 @@ class WatchLinkContractTest(unittest.TestCase):
         for path in fixtures:
             with self.subTest(file=path.name):
                 self.validator.validate(load(path))
+                self.assertEqual(cross_field_errors(load(path)), [])
 
     def test_invalid_messages(self):
         fixtures = sorted((LINK / "fixtures/invalid").glob("*.json"))
-        self.assertGreaterEqual(len(fixtures), 14)
+        self.assertGreaterEqual(len(fixtures), 20)
         names = {p.stem for p in fixtures}
         for expected in (
             "missing_account_key",
@@ -112,12 +129,22 @@ class WatchLinkContractTest(unittest.TestCase):
             "command_unknown",
             "ack_bad_result",
             "event_v1_inside",
+            "health_snapshot_factor_unknown_input",
+            "health_snapshot_factor_duplicate",
+            "health_snapshot_week_out_of_order",
+            "health_snapshot_week_eight_days",
+            "health_snapshot_week_after_local_date",
+            "health_snapshot_factor_status_too_long",
+            "health_snapshot_usual_negative",
         ):
             self.assertIn(expected, names)
         for path in fixtures:
             with self.subTest(file=path.name):
+                data = load(path)
                 self.assertTrue(
-                    list(self.validator.iter_errors(load(path))), path.name
+                    list(self.validator.iter_errors(data))
+                    or cross_field_errors(data),
+                    path.name,
                 )
 
     def test_completed_set_cannot_have_reps_and_duration(self):
@@ -131,7 +158,7 @@ class WatchLinkContractTest(unittest.TestCase):
             text = json.dumps(load(path)).lower()
             has = any(w in text for w in words)
             with self.subTest(file=path.name):
-                self.assertEqual(has, path.stem == "health_snapshot")
+                self.assertEqual(has, path.stem.startswith("health_snapshot"))
 
     def test_replay_cases(self):
         cases = sorted((LINK / "cases/replay").glob("*.json"))

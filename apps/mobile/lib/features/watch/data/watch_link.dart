@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../domain/watch_status.dart';
+
 /// The phone's side of the Apple Watch link. It carries opaque JSON strings
 /// built by `watch_snapshots.dart`; all decisions stay in Dart.
 abstract interface class WatchLink {
@@ -21,6 +23,16 @@ abstract interface class WatchLink {
   /// unpaired or gets the app installed, so a send that was dropped for lack
   /// of a reachable watch can be tried again.
   Stream<void> get watchStateChanges;
+
+  /// Fires when only the watch's reachability changed (it woke or went out of
+  /// range). Nothing needs resending; the status just refreshes.
+  Stream<void> get watchReachabilityChanges;
+
+  /// What iOS says about the paired watch; unsupported without a bridge.
+  Future<WatchDeviceStatus> status();
+
+  /// JSON strings the watch sent (acknowledgments), as they arrive.
+  Stream<String> get messages;
 }
 
 /// iOS bridge (`ios/Runner/WatchLinkBridge.swift`). A missing plugin or a
@@ -37,27 +49,72 @@ class MethodChannelWatchLink implements WatchLink {
   /// callback, so a stale instance cannot remove a newer one's handler.
   static MethodChannelWatchLink? _handling;
 
+  /// Which streams have a listener; the handler stays while any does.
+  final Set<String> _listening = {};
+
   late final StreamController<void> _changes = StreamController<void>.broadcast(
-    onListen: _attach,
-    onCancel: _detach,
+    onListen: () => _attach('changes'),
+    onCancel: () => _detach('changes'),
   );
 
-  void _attach() {
+  late final StreamController<void> _reachability =
+      StreamController<void>.broadcast(
+        onListen: () => _attach('reachability'),
+        onCancel: () => _detach('reachability'),
+      );
+
+  late final StreamController<String> _messages =
+      StreamController<String>.broadcast(
+        onListen: () => _attach('messages'),
+        onCancel: () => _detach('messages'),
+      );
+
+  void _attach(String which) {
+    _listening.add(which);
     _handling = this;
     channel.setMethodCallHandler((call) async {
       if (call.method == 'watchStateChanged') _changes.add(null);
+      if (call.method == 'watchReachabilityChanged') _reachability.add(null);
+      if (call.method == 'watchMessage' && call.arguments is String) {
+        _messages.add(call.arguments as String);
+      }
       return null;
     });
   }
 
-  void _detach() {
-    if (!identical(_handling, this)) return;
+  void _detach(String which) {
+    _listening.remove(which);
+    if (_listening.isNotEmpty || !identical(_handling, this)) return;
     _handling = null;
     channel.setMethodCallHandler(null);
   }
 
   @override
   Stream<void> get watchStateChanges => _changes.stream;
+
+  @override
+  Stream<void> get watchReachabilityChanges => _reachability.stream;
+
+  @override
+  Stream<String> get messages => _messages.stream;
+
+  @override
+  Future<WatchDeviceStatus> status() async {
+    try {
+      final raw = await channel.invokeMapMethod<String, Object?>('watchStatus');
+      if (raw == null) return WatchDeviceStatus.unsupported;
+      return WatchDeviceStatus(
+        supported: raw['supported'] == true,
+        paired: raw['paired'] == true,
+        installed: raw['installed'] == true,
+        reachable: raw['reachable'] == true,
+      );
+    } on MissingPluginException {
+      return WatchDeviceStatus.unsupported;
+    } on PlatformException {
+      return WatchDeviceStatus.unsupported;
+    }
+  }
 
   @override
   Future<bool> isReachableForUpdates() async {
@@ -108,6 +165,15 @@ class NoopWatchLink implements WatchLink {
 
   @override
   Stream<void> get watchStateChanges => const Stream<void>.empty();
+
+  @override
+  Stream<void> get watchReachabilityChanges => const Stream<void>.empty();
+
+  @override
+  Future<WatchDeviceStatus> status() async => WatchDeviceStatus.unsupported;
+
+  @override
+  Stream<String> get messages => const Stream<String>.empty();
 }
 
 final watchLinkProvider = Provider<WatchLink>(

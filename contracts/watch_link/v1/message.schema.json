@@ -474,6 +474,41 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 140
+            },
+            "factors": {
+              "type": "array",
+              "maxItems": 4,
+              "items": {
+                "type": "object",
+                "required": [
+                  "input",
+                  "status",
+                  "tone"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "input": {
+                    "enum": [
+                      "sleep",
+                      "hrv",
+                      "resting_hr",
+                      "training_load"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 24
+                  },
+                  "tone": {
+                    "enum": [
+                      "good",
+                      "neutral",
+                      "caution"
+                    ]
+                  }
+                }
+              }
             }
           }
         },
@@ -496,6 +531,14 @@
               "minimum": 0
             },
             "rem_minutes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "core_minutes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "awake_minutes": {
               "type": "integer",
               "minimum": 0
             }
@@ -522,6 +565,53 @@
         "active_energy_kcal": {
           "type": "integer",
           "minimum": 0
+        },
+        "resting_hr_usual_bpm": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "hrv_usual_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "week": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 7,
+          "items": {
+            "type": "object",
+            "required": [
+              "local_date"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "local_date": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+              },
+              "asleep_minutes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sleep_score": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "resting_hr_bpm": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "hrv_ms": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "steps": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
         }
       }
     },

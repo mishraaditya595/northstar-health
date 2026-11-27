@@ -2,14 +2,16 @@ import Foundation
 import WatchConnectivity
 
 /// Receives the phone's application context and one-off user info and hands
-/// them to the model. The phone is the only sender; nothing is sent back in
-/// this stage.
+/// them to the model. The only thing sent back is an `ack` (ids and a result,
+/// never health values) for each message the watch stored.
 final class PhoneLink: NSObject, WCSessionDelegate {
     private weak var model: AppModel?
 
+    @MainActor
     init(model: AppModel) {
         self.model = model
         super.init()
+        model.link = self
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
         session.delegate = self
@@ -20,6 +22,8 @@ final class PhoneLink: NSObject, WCSessionDelegate {
         _ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?
     ) {
         guard activationState == .activated else { return }
+        let reachable = session.isReachable
+        onMain { $0.setPhoneReachable(reachable) }
         // The context the phone sent while the watch app was not running.
         let context = session.receivedApplicationContext
         deliver(context: context)
@@ -31,6 +35,19 @@ final class PhoneLink: NSObject, WCSessionDelegate {
 
     func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
         onMain { $0.receive(userInfo: userInfo) }
+    }
+
+    func sessionReachabilityDidChange(_ session: WCSession) {
+        let reachable = session.isReachable
+        onMain { $0.setPhoneReachable(reachable) }
+    }
+
+    /// Queued by the system, so an ack survives the phone being away.
+    func send(acks: [String]) {
+        guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
+        for json in acks {
+            WCSession.default.transferUserInfo(["json": json])
+        }
     }
 
     private func deliver(context: [String: Any]) {

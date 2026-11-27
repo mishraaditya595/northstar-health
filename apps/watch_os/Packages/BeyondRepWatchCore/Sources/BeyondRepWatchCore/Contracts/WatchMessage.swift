@@ -111,24 +111,64 @@ public struct WatchMessage {
         case "health_snapshot":
             let b = try body(
                 ["local_date", "as_of_utc"],
-                ["readiness", "sleep", "resting_hr_bpm", "hrv_ms", "hrv_kind", "steps", "active_energy_kcal"])
+                [
+                    "readiness", "sleep", "resting_hr_bpm", "hrv_ms", "hrv_kind", "steps", "active_energy_kcal",
+                    "resting_hr_usual_bpm", "hrv_usual_ms", "week",
+                ])
             let date = try b.localDate("local_date")
             _ = try b.dateTime("as_of_utc")
             if b.has("readiness") {
-                let r = try b.object("readiness", required: ["score", "band", "headline", "reason"])
+                let r = try b.object(
+                    "readiness", required: ["score", "band", "headline", "reason"], optional: ["factors"])
                 _ = try r.int("score", max: 100)
                 _ = try r.oneOf("band", ["good", "fair", "low"])
                 _ = try r.string("headline", max: 60)
                 _ = try r.string("reason", max: 140)
+                if r.has("factors") {
+                    var inputs = Set<String>()
+                    for item in try r.array("factors", max: 4) {
+                        let f = try StrictObject(item, required: ["input", "status", "tone"])
+                        let input = try f.oneOf("input", ["sleep", "hrv", "resting_hr", "training_load"])
+                        // Each input appears once; JSON Schema cannot say so.
+                        guard inputs.insert(input).inserted else { throw ContractError("invalid_value") }
+                        _ = try f.string("status", max: 24)
+                        _ = try f.oneOf("tone", ["good", "neutral", "caution"])
+                    }
+                }
             }
             if b.has("sleep") {
                 let s = try b.object(
-                    "sleep", required: [], optional: ["score", "asleep_minutes", "deep_minutes", "rem_minutes"])
+                    "sleep", required: [],
+                    optional: ["score", "asleep_minutes", "deep_minutes", "rem_minutes", "core_minutes", "awake_minutes"])
                 _ = try s.optionalInt("score", max: 100)
                 _ = try s.optionalInt("asleep_minutes")
                 _ = try s.optionalInt("deep_minutes")
                 _ = try s.optionalInt("rem_minutes")
+                _ = try s.optionalInt("core_minutes")
+                _ = try s.optionalInt("awake_minutes")
             }
+            if b.has("week") {
+                let week = try b.array("week", max: 7)
+                if week.isEmpty { throw ContractError("invalid_value") }
+                var previous: String?
+                for item in week {
+                    let d = try StrictObject(
+                        item, required: ["local_date"],
+                        optional: ["asleep_minutes", "sleep_score", "resting_hr_bpm", "hrv_ms", "steps"])
+                    let dayDate = try d.localDate("local_date")
+                    // Dates are zero-padded, so string order is date order.
+                    if let previous, dayDate <= previous { throw ContractError("invalid_value") }
+                    if dayDate > date { throw ContractError("invalid_value") }
+                    previous = dayDate
+                    _ = try d.optionalInt("asleep_minutes")
+                    _ = try d.optionalInt("sleep_score", max: 100)
+                    _ = try d.optionalInt("resting_hr_bpm")
+                    _ = try d.optionalInt("hrv_ms")
+                    _ = try d.optionalInt("steps")
+                }
+            }
+            _ = try b.optionalInt("resting_hr_usual_bpm")
+            _ = try b.optionalInt("hrv_usual_ms")
             _ = try b.optionalInt("resting_hr_bpm")
             _ = try b.optionalInt("hrv_ms")
             if b.has("hrv_kind") { _ = try b.oneOf("hrv_kind", ["sdnn", "rmssd"]) }

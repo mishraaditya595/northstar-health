@@ -9,12 +9,74 @@ import 'package:beyondrep/features/account/account_auth_provider.dart';
 import 'package:beyondrep/features/account/account_sync_page.dart';
 import 'package:beyondrep/features/sync/workout_conflict_resolution.dart';
 import 'package:beyondrep/features/sync/workout_upload_coordinator.dart';
+import 'package:beyondrep/features/watch/application/watch_status_provider.dart';
+import 'package:beyondrep/features/watch/domain/watch_status.dart';
 import 'package:beyondrep/features/workouts/data/objectbox_workout_outbox.dart';
 
 import '../support/fake_account_auth.dart';
 
+class _SeededWatch extends WatchLinkStateNotifier {
+  _SeededWatch(this.initial);
+  final WatchLinkState initial;
+  @override
+  WatchLinkState build() => initial;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  Future<void> pumpPage(WidgetTester tester, WatchLinkState? watch) async {
+    final api = FakeAuthApi()..sessionId = accountA;
+    final auth = controller(api, FakeBoundAccountStore()..saved = accountA);
+    addTearDown(auth.dispose);
+    addTearDown(api.dispose);
+    await auth.restore();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          accountAuthControllerProvider.overrideWithValue(auth),
+          workoutSyncFlagsProvider.overrideWithValue(const {}),
+          blockedWorkoutCountProvider.overrideWithValue(0),
+          workoutRestoreBlockedCodeProvider.overrideWithValue(null),
+          if (watch != null)
+            watchLinkStateProvider.overrideWith(() => _SeededWatch(watch)),
+        ],
+        child: MaterialApp(
+          theme: BeyondRepTheme.build(Brightness.light),
+          home: const Scaffold(body: AccountSyncPage()),
+        ),
+      ),
+    );
+  }
+
+  testWidgets('no Apple Watch section without a paired watch', (tester) async {
+    await pumpPage(tester, null);
+    expect(find.text('Cloud session ready'), findsOneWidget);
+    expect(find.text('APPLE WATCH'), findsNothing);
+    expect(find.text('BeyondRep on watch'), findsNothing);
+  });
+
+  testWidgets('the Apple Watch section sits above cloud backup', (
+    tester,
+  ) async {
+    await pumpPage(
+      tester,
+      const WatchLinkState(
+        status: WatchWaiting(),
+        device: WatchDeviceStatus(
+          supported: true,
+          paired: true,
+          installed: true,
+          reachable: true,
+        ),
+      ),
+    );
+    expect(find.text('Waiting for the watch'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('APPLE WATCH')).dy,
+      lessThan(tester.getTopLeft(find.text('Cloud session ready')).dy),
+    );
+  });
 
   testWidgets(
     'shows account-local counts, paused cursor and does not claim synced',

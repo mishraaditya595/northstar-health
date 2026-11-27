@@ -31,6 +31,10 @@ String todayEyebrow(DateTime local) =>
     '${weekdayName(local).toUpperCase()} · ${local.day} '
     '${_months[local.month - 1].substring(0, 3).toUpperCase()} ${local.year}';
 
+/// "24 Nov".
+String shortDateLabel(DateTime local) =>
+    '${local.day} ${_months[local.month - 1].substring(0, 3)}';
+
 /// "Tuesday, 24 November".
 String longDayLabel(DateTime local) =>
     '${weekdayName(local)}, ${local.day} ${_months[local.month - 1]}';

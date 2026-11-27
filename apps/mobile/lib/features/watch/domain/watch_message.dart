@@ -144,17 +144,43 @@ sealed class WatchMessage {
             'hrv_kind',
             'steps',
             'active_energy_kcal',
+            'resting_hr_usual_bpm',
+            'hrv_usual_ms',
+            'week',
           },
         );
         if (b.has('readiness')) {
           final r = b.object(
             'readiness',
             required: {'score', 'band', 'headline', 'reason'},
+            optional: {'factors'},
           );
           r.integer('score', max: 100);
           r.oneOf('band', {'good', 'fair', 'low'});
           r.string('headline', max: 60);
           r.string('reason', max: 140);
+          if (r.has('factors')) {
+            final inputs = <String>{};
+            for (final f in r.list('factors', max: 4)) {
+              final factor = StrictObject(
+                f,
+                required: {'input', 'status', 'tone'},
+              );
+              // Each input appears once; JSON Schema cannot say so.
+              if (!inputs.add(
+                factor.oneOf('input', {
+                  'sleep',
+                  'hrv',
+                  'resting_hr',
+                  'training_load',
+                }),
+              )) {
+                throw const WatchContractException('invalid_value');
+              }
+              factor.string('status', max: 24);
+              factor.oneOf('tone', {'good', 'neutral', 'caution'});
+            }
+          }
         }
         if (b.has('sleep')) {
           final s = b.object(
@@ -165,18 +191,53 @@ sealed class WatchMessage {
               'asleep_minutes',
               'deep_minutes',
               'rem_minutes',
+              'core_minutes',
+              'awake_minutes',
             },
           );
           s.optionalInteger('score', max: 100);
           s.optionalInteger('asleep_minutes');
           s.optionalInteger('deep_minutes');
           s.optionalInteger('rem_minutes');
+          s.optionalInteger('core_minutes');
+          s.optionalInteger('awake_minutes');
+        }
+        final localDate = b.localDate('local_date');
+        if (b.has('week')) {
+          final week = b.list('week', max: 7);
+          if (week.isEmpty) throw const WatchContractException('invalid_value');
+          String? previous;
+          for (final d in week) {
+            final day = StrictObject(
+              d,
+              required: {'local_date'},
+              optional: {
+                'asleep_minutes',
+                'sleep_score',
+                'resting_hr_bpm',
+                'hrv_ms',
+                'steps',
+              },
+            );
+            final date = day.localDate('local_date');
+            // Dates are zero-padded, so string order is date order.
+            if ((previous != null && date.compareTo(previous) <= 0) ||
+                date.compareTo(localDate) > 0) {
+              throw const WatchContractException('invalid_value');
+            }
+            previous = date;
+            day.optionalInteger('asleep_minutes');
+            day.optionalInteger('sleep_score', max: 100);
+            day.optionalInteger('resting_hr_bpm');
+            day.optionalInteger('hrv_ms');
+            day.optionalInteger('steps');
+          }
         }
         return HealthSnapshot(
           messageId: id,
           sentAtUtc: sent,
           accountKey: key,
-          localDate: b.localDate('local_date'),
+          localDate: localDate,
           asOfUtc: b.dateTime('as_of_utc'),
           readiness: b.has('readiness') ? b.copyOfObject('readiness') : null,
           sleep: b.has('sleep') ? b.copyOfObject('sleep') : null,
@@ -187,6 +248,14 @@ sealed class WatchMessage {
               : null,
           steps: b.optionalInteger('steps'),
           activeEnergyKcal: b.optionalInteger('active_energy_kcal'),
+          restingHrUsualBpm: b.optionalInteger('resting_hr_usual_bpm'),
+          hrvUsualMs: b.optionalInteger('hrv_usual_ms'),
+          week: b.has('week')
+              ? [
+                  for (final d in b.list('week'))
+                    deepCopyJson(d)! as Map<String, Object?>,
+                ]
+              : null,
         );
       case 'workout_event':
         final b = body({'event'});
@@ -435,6 +504,9 @@ final class HealthSnapshot extends WatchMessage {
     this.hrvKind,
     this.steps,
     this.activeEnergyKcal,
+    this.restingHrUsualBpm,
+    this.hrvUsualMs,
+    this.week,
   });
 
   final String localDate;
@@ -446,6 +518,11 @@ final class HealthSnapshot extends WatchMessage {
   final String? hrvKind;
   final int? steps;
   final int? activeEnergyKcal;
+  final int? restingHrUsualBpm;
+  final int? hrvUsualMs;
+
+  /// Up to 7 local days ending on [localDate], oldest first.
+  final List<Map<String, Object?>>? week;
 
   @override
   String get type => 'health_snapshot';
@@ -461,6 +538,9 @@ final class HealthSnapshot extends WatchMessage {
     'hrv_kind': ?hrvKind,
     'steps': ?steps,
     'active_energy_kcal': ?activeEnergyKcal,
+    'resting_hr_usual_bpm': ?restingHrUsualBpm,
+    'hrv_usual_ms': ?hrvUsualMs,
+    'week': ?week,
   };
 }
 

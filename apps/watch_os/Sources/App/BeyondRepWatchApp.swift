@@ -14,7 +14,7 @@ struct BeyondRepWatchApp: App {
 
     var body: some Scene {
         WindowGroup {
-            HomeView(model: model)
+            RootView(model: model)
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active { model.refresh() }
                 }
