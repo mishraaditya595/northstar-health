@@ -8,7 +8,6 @@ final class FollowerSessionTests: XCTestCase {
     private let set1 = "dddddddd-dddd-4ddd-8ddd-dddddddddd01"
     private let set2 = "dddddddd-dddd-4ddd-8ddd-dddddddddd02"
     private let t0 = Date(timeIntervalSince1970: 1_792_000_000)
-    private var counter = 0
 
     private func ids() -> () -> String {
         var n = 0
@@ -43,9 +42,9 @@ final class FollowerSessionTests: XCTestCase {
                     "sets": [
                         set1Status == "completed"
                             ? ["set_id": set1, "position": 0, "kind": "working", "status": "completed",
-                               "input_unit": "kg", "reps": 8, "load_grams": 60000]
+                               "input_unit": "kg", "reps": 8, "load_grams": 60000] as [String: Any]
                             : ["set_id": set1, "position": 0, "kind": "working", "status": set1Status,
-                               "input_unit": "kg", "reps": 8, "load_grams": 60000, "rest_seconds": 75],
+                               "input_unit": "kg", "reps": 8, "load_grams": 60000, "rest_seconds": 75] as [String: Any],
                         ["set_id": set2, "position": 1, "kind": "working", "status": "planned", "input_unit": "lb"],
                     ],
                 ] as [String: Any],
@@ -323,5 +322,42 @@ final class FollowerSessionTests: XCTestCase {
         let c = try XCTUnwrap(follower.logSet(setId: set1, reps: 8, loadGrams: 60000, now: t0))
         let text = c.json.lowercased()
         for word in ["heart", "kcal", "energy", "bpm"] { XCTAssertFalse(text.contains(word), word) }
+    }
+
+    func testPauseTransitionsAreReportedOncePerChange() {
+        let follower = session()
+        // An active first state is no change.
+        XCTAssertEqual(follower.receive(phoneState(at: 1), now: t0), .accepted)
+        XCTAssertNil(follower.pauseTransition)
+        // Paused: the HealthKit session must pause.
+        XCTAssertEqual(
+            follower.receive(phoneState(at: 2, status: "paused", pausedAt: 2), now: t0.addingTimeInterval(2)),
+            .accepted)
+        XCTAssertEqual(follower.pauseTransition, .pause)
+        // Paused again (the 30 s beat): nothing new.
+        XCTAssertEqual(
+            follower.receive(phoneState(at: 3, status: "paused", pausedAt: 2), now: t0.addingTimeInterval(3)),
+            .accepted)
+        XCTAssertNil(follower.pauseTransition)
+        // Active again: resume.
+        XCTAssertEqual(follower.receive(phoneState(at: 4, pausedSeconds: 2), now: t0.addingTimeInterval(4)), .accepted)
+        XCTAssertEqual(follower.pauseTransition, .resume)
+    }
+
+    func testAFirstPausedStatePausesTheSession() {
+        let follower = session()
+        XCTAssertEqual(
+            follower.receive(phoneState(at: 1, status: "paused", pausedAt: 1), now: t0.addingTimeInterval(1)),
+            .accepted)
+        XCTAssertEqual(follower.pauseTransition, .pause)
+    }
+
+    func testAnIgnoredStateKeepsNoStalePauseTransition() {
+        let follower = session()
+        _ = follower.receive(phoneState(at: 2, status: "paused", pausedAt: 2), now: t0)
+        XCTAssertEqual(follower.pauseTransition, .pause)
+        // An older state is ignored; the transition was already taken.
+        XCTAssertEqual(follower.receive(phoneState(at: 1), now: t0), .ignored)
+        XCTAssertNil(follower.pauseTransition)
     }
 }

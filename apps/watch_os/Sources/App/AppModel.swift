@@ -61,11 +61,13 @@ final class AppModel: ObservableObject {
     private var followerTicker: Task<Void, Never>?
     private var followerJoinedAt = Date()
     private var followerPersisted = false
+    private var followerLastJoinAt = Date.distantPast
     /// A restore that is running, so a launch by the iPhone waits for it
     /// before it decides whether the watch has its own session.
     private var restoreTask: Task<Void, Never>?
     /// The first state must arrive within this time of the launch.
     private static let followerConnectLimit: TimeInterval = 60
+    private static let followerJoinEvery: TimeInterval = 30
 
     private let journal: WatchJournal?
     private let inbox: PhoneInbox?
@@ -314,8 +316,10 @@ final class AppModel: ObservableObject {
         await restoreTask?.value
         guard let account = boundAccount, workout == nil, follower == nil, !isStarting, summary == nil else { return }
         // Set before the first await so a second launch cannot join twice.
-        follower = FollowerSession(accountKey: account.accountKey, makeId: { UUID().uuidString.lowercased() })
+        let created = FollowerSession(accountKey: account.accountKey, makeId: { UUID().uuidString.lowercased() })
+        follower = created
         followerJoinedAt = Date()
+        followerLastJoinAt = .distantPast
         followerPersisted = false
         revision += 1
         await endingTask?.value
@@ -326,11 +330,21 @@ final class AppModel: ObservableObject {
             // Without a HealthKit session there is no heart rate and no
             // HKWorkout: the watch does not follow.
             recorder.discard()
-            follower = nil
-            revision += 1
+            if follower === created {
+                follower = nil
+                revision += 1
+            }
+            return
+        }
+        // The follower ended or was replaced while HealthKit started: this
+        // session would run for nothing.
+        guard follower === created else {
+            recorder.discard()
             return
         }
         startFollowerTicker()
+        // The watch does not know the phone's session yet: ask for its state.
+        sendFollowerJoin(sessionId: nil)
     }
 
     /// Picks a follower up after a relaunch: its row names the session and
@@ -353,16 +367,21 @@ final class AppModel: ObservableObject {
             startFollowerTicker()
             sendFollowerJoin(sessionId: row.sessionId)
         } else {
-            if case .found(let uuid) = await recorder.savedWorkout(workoutId: row.sessionId) {
+            switch await recorder.savedWorkout(workoutId: row.sessionId) {
+            case .found(let uuid):
                 queueLink(sessionId: row.sessionId, accountKey: row.accountKey, healthkitWorkoutUuid: uuid)
-            } else {
+            case .notFound:
                 try? journal.clearFollower()
+            case .failed:
+                // HealthKit could not answer (locked store, query error): keep the row, try again next launch.
+                break
             }
         }
     }
 
-    private func sendFollowerJoin(sessionId: String) {
+    private func sendFollowerJoin(sessionId: String?) {
         guard let follower else { return }
+        followerLastJoinAt = Date()
         let message = WatchMessage(
             messageId: UUID().uuidString.lowercased(), sentAtUtc: Self.liveTimestamp.string(from: Date()),
             accountKey: follower.accountKey, body: .join(sessionId: sessionId))
@@ -389,6 +408,13 @@ final class AppModel: ObservableObject {
                 recorder.adopt(workoutId: sessionId)
                 // The phone sends its state again at once; later states keep it fresh.
                 sendFollowerJoin(sessionId: sessionId)
+            }
+            // The HealthKit session follows the phone's pause so heart rate and
+            // active energy are not counted while the workout is paused.
+            switch follower.pauseTransition {
+            case .pause: recorder.pause()
+            case .resume: recorder.resume()
+            case nil: break
             }
         case .ended(let end):
             if let sessionId = follower.sessionId { recorder.adopt(workoutId: sessionId) }
@@ -468,6 +494,14 @@ final class AppModel: ObservableObject {
         if let end = follower.silenceEnd(now: now) {
             endFollower(end)
             return
+        }
+        // No state, or a stale one: the phone's end may have been missed. Ask
+        // again every 30 s; the phone answers with its state or, when the
+        // workout is over, an `ended` state.
+        if (follower.state == nil || follower.isStale(now: now)),
+            now.timeIntervalSince(followerLastJoinAt) >= Self.followerJoinEvery
+        {
+            sendFollowerJoin(sessionId: follower.sessionId)
         }
         for json in follower.dueResends(now: now) { liveLink.send(json: json) }
         revision += 1

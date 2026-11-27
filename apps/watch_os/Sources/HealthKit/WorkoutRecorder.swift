@@ -100,19 +100,16 @@ final class WorkoutRecorder: NSObject, ObservableObject {
         await startMirroring()
     }
 
-    /// Mirrors the session to the iPhone. A failure (no iPhone in reach, an
-    /// iPhone below iOS 17) leaves the live link on WatchConnectivity; the
-    /// next heartbeat tries again (`retryMirroringIfNeeded`). An error that
-    /// says the session is already mirrored counts as mirroring.
     /// Names the BeyondRep workout the running session belongs to, so the one
     /// saved `HKWorkout` carries its id. Only for a session started without one.
     func adopt(workoutId: String) {
         if self.workoutId == nil { self.workoutId = workoutId }
     }
 
-    /// True while a HealthKit session exists (running or recovered).
-    var hasSession: Bool { session != nil }
-
+    /// Mirrors the session to the iPhone. A failure (no iPhone in reach, an
+    /// iPhone below iOS 17) leaves the live link on WatchConnectivity; the
+    /// next heartbeat tries again (`retryMirroringIfNeeded`). An error that
+    /// says the session is already mirrored counts as mirroring.
     private func startMirroring() async {
         guard let session, !isStartingMirror else { return }
         isStartingMirror = true

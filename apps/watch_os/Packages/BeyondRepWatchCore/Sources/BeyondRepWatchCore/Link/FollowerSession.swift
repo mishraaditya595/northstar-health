@@ -134,6 +134,13 @@ public enum FollowerEnd: Equatable {
     case discard(sessionId: String)
 }
 
+/// A change of the phone workout between running and paused, so the watch's
+/// HealthKit session follows it.
+public enum FollowerPause: Equatable {
+    case pause
+    case resume
+}
+
 public enum FollowerReceive: Equatable {
     /// The state is the newest; read `state`.
     case accepted
@@ -191,6 +198,9 @@ public final class FollowerSession {
     /// The session this follower belongs to: the first state's, or the one
     /// recovered after a relaunch.
     public private(set) var sessionId: String?
+    /// Set by `receive`: the pause or resume the newest state implies, nil when
+    /// the paused flag did not change (or the state was not accepted).
+    public private(set) var pauseTransition: FollowerPause?
 
     private let makeId: () -> String
     private var lastReceived: Date?
@@ -220,6 +230,7 @@ public final class FollowerSession {
 
     @discardableResult
     public func receive(_ message: WatchMessage, now: Date) -> FollowerReceive {
+        pauseTransition = nil
         guard let incoming = PhoneWorkoutState(message: message) else { return .ignored }
         guard incoming.accountKey == accountKey else { return .wrongAccount }
         if ended.contains(incoming.sessionId) { return .ignored }
@@ -239,6 +250,8 @@ public final class FollowerSession {
                 ? .finish(sessionId: incoming.sessionId) : .discard(sessionId: incoming.sessionId)
             return .ended(end)
         }
+        let wasPaused = state?.isPaused ?? false
+        if incoming.isPaused != wasPaused { pauseTransition = incoming.isPaused ? .pause : .resume }
         state = incoming
         lastReceived = now
         commands = commands.compactMap { settle($0, in: incoming) }
