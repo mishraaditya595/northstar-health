@@ -36,6 +36,14 @@ final class WatchLinkBridge: NSObject, WCSessionDelegate {
     }
   }
 
+  /// Tells Dart only the reachability changed: the status refreshes, nothing
+  /// is sent again.
+  private func notifyReachabilityChanged() {
+    DispatchQueue.main.async { [weak self] in
+      self?.channel?.invokeMethod("watchReachabilityChanged", arguments: nil)
+    }
+  }
+
   private func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard let session = session() else {
       switch call.method {
@@ -92,7 +100,7 @@ final class WatchLinkBridge: NSObject, WCSessionDelegate {
   }
 
   func sessionReachabilityDidChange(_ session: WCSession) {
-    notifyWatchStateChanged()
+    notifyReachabilityChanged()
   }
 
   /// The watch's acknowledgments arrive as user info (`["json": String]`) and

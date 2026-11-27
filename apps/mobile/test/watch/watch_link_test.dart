@@ -57,6 +57,28 @@ void main() {
     },
   );
 
+  test(
+    'a reachability call reaches its own stream, not the state one',
+    () async {
+      handle(null);
+      final link = MethodChannelWatchLink();
+      var reach = 0;
+      var changes = 0;
+      final a = link.watchReachabilityChanges.listen((_) => reach++);
+      final b = link.watchStateChanges.listen((_) => changes++);
+      await messenger.handlePlatformMessage(
+        _channel.name,
+        _channel.codec.encodeMethodCall(
+          const MethodCall('watchReachabilityChanged'),
+        ),
+        (_) {},
+      );
+      expect([reach, changes], [1, 0]);
+      await a.cancel();
+      await b.cancel();
+    },
+  );
+
   test('transfer sends json', () async {
     handle(null);
     await MethodChannelWatchLink().transfer('{"type":"x"}');

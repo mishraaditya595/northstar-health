@@ -46,7 +46,15 @@ class _FakeLink implements WatchLink {
   Stream<void> get watchStateChanges => stateChanges.stream;
 
   /// What the watch sent back; tests add acks here.
-  final incoming = StreamController<String>.broadcast();
+  int messageListens = 0;
+  late final incoming = StreamController<String>.broadcast(
+    onListen: () => messageListens++,
+  );
+
+  final reachabilityChanges = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get watchReachabilityChanges => reachabilityChanges.stream;
 
   @override
   Stream<String> get messages => incoming.stream;
@@ -672,6 +680,144 @@ void main() {
         isTrue,
       );
       expect((await WatchStatusStore.open()).installHintDismissed, isTrue);
+    });
+
+    testWidgets('Not now stays hidden after a watch state change and resync', (
+      tester,
+    ) async {
+      final h = _Harness(tester, reachable: false);
+      await h.start();
+      await _elapse(tester, const Duration(seconds: 3));
+      await h.container
+          .read(watchLinkStateProvider.notifier)
+          .dismissInstallHint();
+      h.link.stateChanges.add(null);
+      await _elapse(tester, const Duration(seconds: 3));
+      h.container.read(localNowProvider);
+      expect(
+        h.container.read(watchLinkStateProvider).installHintDismissed,
+        isTrue,
+      );
+      h.health.replace(
+        overview(ownerId: accountA, readAt: DateTime(2026, 11, 24, 7, 58)),
+      );
+      await _elapse(tester, const Duration(seconds: 3));
+      expect(
+        h.container.read(watchLinkStateProvider).installHintDismissed,
+        isTrue,
+      );
+    });
+
+    testWidgets(
+      'the first send is remembered as unconfirmed, the oldest stays',
+      (tester) async {
+        final h = _Harness(tester);
+        await h.start();
+        await _elapse(tester, const Duration(seconds: 3));
+        final store = await WatchStatusStore.open();
+        final key = watchAccountKey(accountA);
+        expect(store.unconfirmedSince(key), confirmedNow);
+        h.health.replace(
+          overview(ownerId: accountA, readAt: DateTime(2026, 11, 24, 7, 59)),
+        );
+        h.link.stateChanges.add(null);
+        await _elapse(tester, const Duration(seconds: 3));
+        expect(store.unconfirmedSince(key), confirmedNow);
+      },
+    );
+
+    testWidgets('a confirming ack clears the unconfirmed time', (tester) async {
+      final h = _Harness(tester);
+      await h.start();
+      await _elapse(tester, const Duration(seconds: 3));
+      h.link.incoming.add(_ack(_idOf(h.link.contexts.last, 'health_snapshot')));
+      await _elapse(tester, const Duration(milliseconds: 10));
+      final store = await WatchStatusStore.open();
+      expect(store.unconfirmedSince(watchAccountKey(accountA)), isNull);
+    });
+
+    testWidgets('sign out clears the unconfirmed time', (tester) async {
+      final h = _Harness(tester);
+      await h.start();
+      await _elapse(tester, const Duration(seconds: 3));
+      await h.auth.signOut();
+      await _elapse(tester, const Duration(milliseconds: 10));
+      final store = await WatchStatusStore.open();
+      expect(store.unconfirmedSince(watchAccountKey(accountA)), isNull);
+    });
+
+    testWidgets('opening the app after 3 days away shows synced, not stale', (
+      tester,
+    ) async {
+      final earlier = DateTime(2026, 11, 21, 9);
+      final store = await WatchStatusStore.open();
+      await store.setConfirmedAt(watchAccountKey(accountA), earlier);
+      final h = _Harness(tester);
+      await h.start();
+      await _elapse(tester, const Duration(seconds: 3));
+      expect(h.container.read(watchStatusProvider), WatchSynced(earlier));
+    });
+
+    testWidgets('an unconfirmed send 48 hours old turns stale until an ack', (
+      tester,
+    ) async {
+      final earlier = DateTime(2026, 11, 20, 9);
+      final store = await WatchStatusStore.open();
+      final key = watchAccountKey(accountA);
+      await store.setConfirmedAt(key, earlier);
+      await store.setUnconfirmedSince(key, DateTime(2026, 11, 22, 8));
+      final h = _Harness(tester);
+      await h.start();
+      await _elapse(tester, const Duration(seconds: 3));
+      expect(h.container.read(watchStatusProvider), WatchStale(earlier));
+      h.link.incoming.add(_ack(_idOf(h.link.contexts.last, 'health_snapshot')));
+      await _elapse(tester, const Duration(milliseconds: 10));
+      expect(h.container.read(watchStatusProvider), WatchSynced(confirmedNow));
+    });
+
+    testWidgets('a reachability change refreshes status and resends nothing', (
+      tester,
+    ) async {
+      final h = _Harness(tester);
+      await h.start();
+      await _elapse(tester, const Duration(seconds: 3));
+      expect(h.link.contexts, hasLength(1));
+      expect(h.container.read(watchLinkStateProvider).device.reachable, isTrue);
+      h.link.deviceOverride = const WatchDeviceStatus(
+        supported: true,
+        paired: true,
+        installed: true,
+        reachable: false,
+      );
+      h.link.reachabilityChanges.add(null);
+      await _elapse(tester, const Duration(seconds: 3));
+      expect(h.link.contexts, hasLength(1));
+      expect(
+        h.container.read(watchLinkStateProvider).device.reachable,
+        isFalse,
+      );
+    });
+
+    testWidgets('no message subscription while the device is unsupported', (
+      tester,
+    ) async {
+      final h = _Harness(tester);
+      h.link.deviceOverride = WatchDeviceStatus.unsupported;
+      await h.start();
+      await _elapse(tester, const Duration(seconds: 5));
+      expect(h.link.messageListens, 0);
+    });
+
+    testWidgets('messages are subscribed once the device is supported', (
+      tester,
+    ) async {
+      final h = _Harness(tester);
+      await h.start();
+      expect(h.link.messageListens, 0);
+      await _elapse(tester, const Duration(seconds: 3));
+      h.link.stateChanges.add(null);
+      await _elapse(tester, const Duration(seconds: 3));
+      expect(h.link.messageListens, 1);
     });
   });
 }

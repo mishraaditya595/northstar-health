@@ -71,7 +71,8 @@ final class WatchSynced extends WatchStatus {
 final class WatchStale extends WatchStatus {
   const WatchStale(this.at);
 
-  /// The last confirmation, 48 hours or more ago.
+  /// The last confirmation; a send after it has gone unconfirmed for 48
+  /// hours or more.
   final DateTime at;
 
   @override
@@ -87,7 +88,7 @@ WatchStatus watchStatusOf({
   required WatchDeviceStatus device,
   required bool signedIn,
   required DateTime? lastConfirmedAt,
-  required DateTime? lastSentAt,
+  required DateTime? unconfirmedSince,
   required DateTime now,
 }) {
   if (!signedIn || !device.supported || !device.paired) {
@@ -96,10 +97,11 @@ WatchStatus watchStatusOf({
   if (!device.installed) return const WatchNotInstalled();
   final confirmed = lastConfirmedAt;
   if (confirmed == null) return const WatchWaiting();
-  // Stale needs something sent after the last confirmation: with nothing
-  // newer to confirm, the old confirmation is still the truth.
-  final sentSince = lastSentAt != null && lastSentAt.isAfter(confirmed);
-  if (sentSince && now.difference(confirmed) >= watchStaleAfter) {
+  // Stale is a send the watch has left unconfirmed for 48 hours: opening
+  // the app after days away, with nothing sent yet, still shows the old
+  // confirmation as synced.
+  final waiting = unconfirmedSince;
+  if (waiting != null && now.difference(waiting) >= watchStaleAfter) {
     return WatchStale(confirmed);
   }
   return WatchSynced(confirmed);

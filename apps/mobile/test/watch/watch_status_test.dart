@@ -15,12 +15,12 @@ WatchStatus _status({
   WatchDeviceStatus device = _installed,
   bool signedIn = true,
   DateTime? confirmed,
-  DateTime? sent,
+  DateTime? unconfirmed,
 }) => watchStatusOf(
   device: device,
   signedIn: signedIn,
   lastConfirmedAt: confirmed,
-  lastSentAt: sent,
+  unconfirmedSince: unconfirmed,
   now: _now,
 );
 
@@ -49,7 +49,7 @@ void main() {
 
     test('hidden when signed out, whatever the watch says', () {
       expect(
-        _status(signedIn: false, confirmed: _now, sent: _now),
+        _status(signedIn: false, confirmed: _now, unconfirmed: _now),
         isA<WatchHidden>(),
       );
     });
@@ -70,41 +70,53 @@ void main() {
     });
 
     test('waiting when installed and never confirmed', () {
-      expect(_status(sent: _now), isA<WatchWaiting>());
+      expect(_status(unconfirmed: _now), isA<WatchWaiting>());
       expect(_status(), isA<WatchWaiting>());
     });
 
     test('synced with the confirmed time when it is recent', () {
       final at = _now.subtract(const Duration(hours: 3));
-      final s = _status(confirmed: at, sent: _now);
+      final s = _status(confirmed: at, unconfirmed: _now);
       expect(s, isA<WatchSynced>());
       expect((s as WatchSynced).at, at);
     });
 
-    test('exactly 48 hours is stale when something newer was sent', () {
-      final at = _now.subtract(const Duration(hours: 48));
-      final s = _status(confirmed: at, sent: _now);
+    test('an unconfirmed send exactly 48 hours old is stale', () {
+      final at = _now.subtract(const Duration(hours: 60));
+      final s = _status(
+        confirmed: at,
+        unconfirmed: _now.subtract(const Duration(hours: 48)),
+      );
       expect(s, isA<WatchStale>());
       expect((s as WatchStale).at, at);
     });
 
-    test('47 hours 59 minutes is still synced', () {
-      final at = _now.subtract(const Duration(hours: 47, minutes: 59));
-      expect(_status(confirmed: at, sent: _now), isA<WatchSynced>());
-    });
-
-    test('confirmed after the last send is never stale', () {
+    test('an unconfirmed send 47 hours 59 minutes old is still synced', () {
       final at = _now.subtract(const Duration(hours: 100));
       expect(
-        _status(confirmed: at, sent: at.subtract(const Duration(minutes: 1))),
+        _status(
+          confirmed: at,
+          unconfirmed: _now.subtract(const Duration(hours: 47, minutes: 59)),
+        ),
         isA<WatchSynced>(),
       );
-      expect(_status(confirmed: at, sent: at), isA<WatchSynced>());
     });
 
-    test('old confirmation and nothing sent since is synced, not stale', () {
+    test('an old confirmation with nothing unconfirmed is synced', () {
       final at = _now.subtract(const Duration(hours: 100));
       expect(_status(confirmed: at), isA<WatchSynced>());
+    });
+
+    test('a fresh unconfirmed send after days away is not stale', () {
+      final at = _now.subtract(const Duration(hours: 72));
+      expect(_status(confirmed: at, unconfirmed: _now), isA<WatchSynced>());
+    });
+
+    test('never confirmed stays waiting however old the send', () {
+      expect(
+        _status(unconfirmed: _now.subtract(const Duration(hours: 90))),
+        isA<WatchWaiting>(),
+      );
     });
   });
 
@@ -133,6 +145,28 @@ void main() {
   });
 
   group('WatchStatusStore', () {
+    test(
+      'keeps the oldest unconfirmed send per account and clears it',
+      () async {
+        SharedPreferences.setMockInitialValues({'other': 'kept'});
+        final store = await WatchStatusStore.open();
+        expect(store.unconfirmedSince('a'), isNull);
+        final at = DateTime(2026, 11, 25, 9);
+        await store.setUnconfirmedSince('a', at);
+        expect(store.unconfirmedSince('a'), at);
+        expect(store.unconfirmedSince('b'), isNull);
+        await store.clearUnconfirmed('a');
+        expect(store.unconfirmedSince('a'), isNull);
+        await store.setUnconfirmedSince('a', at);
+        await store.clear();
+        expect(store.unconfirmedSince('a'), isNull);
+        expect(
+          (await SharedPreferences.getInstance()).getString('other'),
+          'kept',
+        );
+      },
+    );
+
     test('keeps a confirmed time per account and the dismissed flag', () async {
       SharedPreferences.setMockInitialValues({'other': 'kept'});
       final store = await WatchStatusStore.open();

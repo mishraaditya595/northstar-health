@@ -24,6 +24,10 @@ abstract interface class WatchLink {
   /// of a reachable watch can be tried again.
   Stream<void> get watchStateChanges;
 
+  /// Fires when only the watch's reachability changed (it woke or went out of
+  /// range). Nothing needs resending; the status just refreshes.
+  Stream<void> get watchReachabilityChanges;
+
   /// What iOS says about the paired watch; unsupported without a bridge.
   Future<WatchDeviceStatus> status();
 
@@ -53,6 +57,12 @@ class MethodChannelWatchLink implements WatchLink {
     onCancel: () => _detach('changes'),
   );
 
+  late final StreamController<void> _reachability =
+      StreamController<void>.broadcast(
+        onListen: () => _attach('reachability'),
+        onCancel: () => _detach('reachability'),
+      );
+
   late final StreamController<String> _messages =
       StreamController<String>.broadcast(
         onListen: () => _attach('messages'),
@@ -64,6 +74,7 @@ class MethodChannelWatchLink implements WatchLink {
     _handling = this;
     channel.setMethodCallHandler((call) async {
       if (call.method == 'watchStateChanged') _changes.add(null);
+      if (call.method == 'watchReachabilityChanged') _reachability.add(null);
       if (call.method == 'watchMessage' && call.arguments is String) {
         _messages.add(call.arguments as String);
       }
@@ -80,6 +91,9 @@ class MethodChannelWatchLink implements WatchLink {
 
   @override
   Stream<void> get watchStateChanges => _changes.stream;
+
+  @override
+  Stream<void> get watchReachabilityChanges => _reachability.stream;
 
   @override
   Stream<String> get messages => _messages.stream;
@@ -151,6 +165,9 @@ class NoopWatchLink implements WatchLink {
 
   @override
   Stream<void> get watchStateChanges => const Stream<void>.empty();
+
+  @override
+  Stream<void> get watchReachabilityChanges => const Stream<void>.empty();
 
   @override
   Future<WatchDeviceStatus> status() async => WatchDeviceStatus.unsupported;

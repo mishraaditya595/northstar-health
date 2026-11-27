@@ -26,7 +26,7 @@ for three things.
 | D2 | **Home and Train are two vertical pages** (`TabView` with `.verticalPage`), with the system page dots beside the crown. A round green **Train** button in the bottom corner of Home jumps to the Train page. On first launch only, a full-screen hint says "Turn the crown for your workouts" with a "Got it" button. | Adi: "Many users might not even know that they have to scroll" |
 | D3 | Train shows today's program workout first (a highlighted card), then the plans. It stays read-only in this stage: there is no Start button until stage 4. | Mockup |
 | D4 | Detail screens (in a `NavigationStack` pushed from Home): **Sleep** (score, time asleep, a stages bar with Deep/Core/REM/Awake, the 7-night average), **Resting HR** and **HRV** (today, usual, 7-day line), **Steps** (today so far, 7-day bars with today highlighted), **Readiness** (one line per input with the phone's wording). | "yes" to detail screens; mockup |
-| D5 | **Phone rule:** a problem is a banner at the **top** of Today, and an OK status is a quiet line at the **bottom** of Today ("Apple Watch · synced 10:43"). Tapping either opens Account & sync, which gets a new **Apple Watch** section above Cloud backup. | Adi: "On the top, if watch app is not connected. If everything works well, in the bottom." |
+| D5 | **Phone rule:** a problem is a banner at the **top** of Today, and an OK status is a quiet line at the **bottom** of Today ("Apple Watch · synced Today 10:43" (or "synced Tue 10:43")). Tapping either opens Account & sync, which gets a new **Apple Watch** section above Cloud backup. | Adi: "On the top, if watch app is not connected. If everything works well, in the bottom." |
 | D6 | **People without an Apple Watch see nothing.** No banner, footer or section unless iOS reports a paired Apple Watch. Android and iPad show nothing (Wear OS is a later phase). | Comment: "Will this show for users who don't even use the apple watch?" |
 | D7 | The "BeyondRep isn't on your watch yet" banner has **Show me how** and **Not now**. Not now hides that banner for good on this phone, and the state stays visible on Account & sync. | Mockup |
 | D8 | "Synced" is **confirmed by the watch**: the watch replies with an `ack` when it has stored the phone's data. The phone never claims a sync it has not heard back about. | Mockup note "What synced means" |
@@ -160,8 +160,8 @@ unconfirmed context was sent, and now:
 | `hidden` | not supported, or no paired watch, or signed out | nothing | no Apple Watch section |
 | `notInstalled` | paired, app not installed | top banner (unless dismissed) | "BeyondRep on watch: Not installed" |
 | `waiting` | installed, never confirmed yet | nothing (it settles within minutes) | "Waiting for the watch" |
-| `synced(at)` | installed, the latest context is confirmed, or the last confirmation is under 48 h old | bottom line "Apple Watch · synced 10:43" | "Connected", "Last synced Today 10:43" |
-| `stale(at)` | installed, the last confirmation is 48 h or older, and something newer was sent | top banner "Your watch hasn't synced since Tue 10:43" with "Open the BeyondRep app on your watch" | "Last synced Tue 10:43" in caution colour |
+| `synced(at)` | installed, a confirmation exists, and no send has waited unconfirmed for 48 h | bottom line "Apple Watch · synced 10:43" | "Connected", "Last synced Today 10:43" |
+| `stale(at)` | installed, a confirmation exists, and the oldest send since it that the watch has not confirmed is 48 h old or older (kept per account on the phone, cleared by a confirming ack, sign-out and deletion; opening the app after days away shows synced until a send goes unconfirmed that long) | top banner "Your watch hasn't synced since Tue 10:43" with "Open the BeyondRep app on your watch" | "Last synced Tue 10:43" in caution colour |
 
 - The last confirmed time and the "Not now" choice live in
   `SharedPreferences`. The confirmed time is keyed by account key, and both are
