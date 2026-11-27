@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -176,6 +177,26 @@ void main() {
       expect(importer.readCursor().blockedCode, isNull);
     },
   );
+
+  test('retryLocal works for a watch-origin workout', () {
+    seed();
+    final sessions = store.box<WorkoutSessionEntity>();
+    sessions.put(sessions.getAll().single..origin = 'beyondrep_watch');
+    conflict();
+    importer.resolveReviewedWorkout(
+      workoutUuid: workout,
+      expectedLocalRevision: 1,
+      review: review(),
+      action: WorkoutResolutionAction.retryLocal,
+    );
+    final records = store.box<WorkoutSyncOutboxEntity>().getAll()
+      ..sort((a, b) => a.localRevision.compareTo(b.localRevision));
+    expect(records.map((op) => op.state), ['superseded', 'pending']);
+    expect(
+      (jsonDecode(records.last.payloadJson) as Map)['origin'],
+      'beyondrep_watch',
+    );
+  });
 
   test('retry local requeues a new immutable op at fresh server CAS', () {
     seed();

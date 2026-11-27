@@ -23,11 +23,14 @@ import '../support/fake_account_auth.dart';
 const workoutId = '00000000-0000-4000-8000-000000000101';
 const operationId = '00000000-0000-4000-8000-000000000201';
 
-String completedPayload([String id = workoutId]) => jsonEncode({
+String completedPayload([
+  String id = workoutId,
+  String origin = 'northstar_phone',
+]) => jsonEncode({
   'schema_version': 1,
   'workout_id': id,
   'status': 'completed',
-  'origin': 'northstar_phone',
+  'origin': origin,
   'name': 'Rows',
   'started_at_utc': '2026-10-25T09:00:00Z',
   'completed_at_utc': '2026-10-25T10:00:00Z',
@@ -158,6 +161,22 @@ void main() {
     store.box<WorkoutSyncOutboxEntity>().put(op);
     return op;
   }
+
+  test('a beyondrep_watch upsert is a valid upload', () async {
+    queued(payload: completedPayload(workoutId, 'beyondrep_watch'));
+    await uploader.drain();
+    expect(transport.sent, [operationId]);
+    expect(
+      store.box<WorkoutSyncOutboxEntity>().getAll().single.state,
+      'acknowledged',
+    );
+  });
+
+  test('an unknown origin upsert is never uploaded', () async {
+    queued(payload: completedPayload(workoutId, 'beyondrep_wear'));
+    await uploader.drain();
+    expect(transport.sent, isEmpty);
+  });
 
   test(
     'authenticated upload uses CAS revision zero and persists ACK',

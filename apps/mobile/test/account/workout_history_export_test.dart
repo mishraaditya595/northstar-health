@@ -205,6 +205,20 @@ void main() {
     );
   });
 
+  test('a beyondrep_watch row is exported unchanged', () async {
+    final row = exportRow(0);
+    (row['payload'] as Map<String, dynamic>)['origin'] = 'beyondrep_watch';
+    final data = jsonDecode(
+      await makeExporter(FakeExportReader([row])).exportJson(),
+    ) as Map<String, dynamic>;
+    final workouts = data['workouts'] as List<dynamic>;
+    expect(workouts, hasLength(1));
+    expect(
+      ((workouts.single as Map)['payload'] as Map)['origin'],
+      'beyondrep_watch',
+    );
+  });
+
   test('out-of-order and duplicated keys fail closed', () async {
     final reader = FakeExportReader([exportRow(2), exportRow(1)]);
     await expectLater(

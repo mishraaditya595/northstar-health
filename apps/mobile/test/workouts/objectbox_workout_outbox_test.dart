@@ -821,4 +821,128 @@ void main() {
     expect(set['duration_seconds'], 45);
     expect(set['reps'], isNull);
   });
+
+  group('watch-origin workouts', () {
+    final at = DateTime.utc(2026, 10, 25, 9).millisecondsSinceEpoch;
+
+    void seedCompleted({
+      String origin = 'beyondrep_watch',
+      int? reps = 8,
+      int? seconds,
+    }) {
+      store.box<WorkoutSessionEntity>().put(
+        WorkoutSessionEntity(
+          uuid: workoutId,
+          name: 'Watch session',
+          status: 'completed',
+          origin: origin,
+          revision: 1,
+          startedAtMs: at,
+          completedAtMs: at + 3600000,
+          originalOffsetMinutes: 330,
+          updatedAtMs: at + 3600000,
+        ),
+      );
+      store.box<WorkoutExerciseEntity>().put(
+        WorkoutExerciseEntity(
+          uuid: exerciseId,
+          sessionUuid: workoutId,
+          position: 0,
+          nameSnapshot: 'Seated row',
+        ),
+      );
+      store.box<WorkoutSetEntity>().put(
+        WorkoutSetEntity(
+          uuid: setId,
+          exerciseUuid: exerciseId,
+          position: 0,
+          kind: 'working',
+          status: 'completed',
+          reps: reps,
+          durationSeconds: seconds,
+          loadGrams: reps == null ? null : 60000,
+          completedAtMs: at + 60000,
+          updatedAtMs: at + 60000,
+        ),
+      );
+    }
+
+    test('a completed watch-origin session queues a payload with origin '
+        'beyondrep_watch', () {
+      seedCompleted();
+      store.runInTransaction(TxMode.write, () {
+        outbox.enqueueCompletedInTransaction(workoutId);
+      });
+      final op = outbox.pending().single;
+      final dto = jsonDecode(op.payloadJson) as Map<String, dynamic>;
+      expect(dto['origin'], 'beyondrep_watch');
+      expect(dto['workout_id'], workoutId);
+    });
+
+    test('requireValid throws InvalidCloudSnapshot and writes no row', () {
+      seedCompleted(reps: null);
+      expect(
+        () => store.runInTransaction(TxMode.write, () {
+          outbox.enqueueCompletedInTransaction(workoutId, requireValid: true);
+        }),
+        throwsA(
+          isA<InvalidCloudSnapshot>().having(
+            (e) => e.code,
+            'code',
+            'invalid_snapshot',
+          ),
+        ),
+      );
+      expect(store.box<WorkoutSyncOutboxEntity>().count(), 0);
+    });
+
+    test(
+      'without requireValid an invalid snapshot is still queued blocked',
+      () {
+        seedCompleted(reps: null);
+        store.runInTransaction(TxMode.write, () {
+          outbox.enqueueCompletedInTransaction(workoutId);
+        });
+        expect(outbox.blockedCount(), 1);
+      },
+    );
+
+    test('a watch-origin workout can be deleted with a delete operation', () {
+      seedCompleted();
+      final realIds = ObjectBoxWorkoutOutbox(store); // SingleUuid repeats ids.
+      store.runInTransaction(TxMode.write, () {
+        realIds.enqueueCompletedInTransaction(workoutId);
+      });
+      final result = realIds.deleteCompletedWorkout(
+        sessionUuid: workoutId,
+        expectedLocalRevision: 1,
+        clock: () => DateTime.utc(2026, 10, 27),
+      );
+      expect(result, CompletedWorkoutDeleteResult.cloudDeleteQueued);
+      expect(
+        store.box<WorkoutSyncOutboxEntity>().getAll().map((o) => o.action),
+        containsAll(['upsert', 'delete']),
+      );
+    });
+
+    test('an unknown origin still cannot be queued', () {
+      seedCompleted(origin: 'health_connect_import');
+      expect(
+        () => store.runInTransaction(TxMode.write, () {
+          outbox.enqueueCompletedInTransaction(workoutId);
+        }),
+        throwsStateError,
+      );
+      expect(store.box<WorkoutSyncOutboxEntity>().count(), 0);
+    });
+
+    test('backfill picks up a completed watch workout', () {
+      seedCompleted();
+      expect(outbox.backfillCompleted(), 1);
+      expect(
+        (jsonDecode(outbox.pending().single.payloadJson) as Map)['origin'],
+        'beyondrep_watch',
+      );
+    });
+  });
 }
