@@ -1,6 +1,6 @@
 # Phase 5: save phone workouts to Apple Health / Health Connect
 
-**Date:** 2026-11-27 · **Status:** draft for Adi's review (builder check done) · **Builds on:** ADR-0003 (WorkoutHealthExport), ADR-0008 (reads), ADR-0011 (outside workouts), ADR-0012 (Apple Watch) · **New ADR:** ADR-0014
+**Date:** 2026-11-27 · **Status:** approved by Adi 2026-11-27 · **Builds on:** ADR-0003 (WorkoutHealthExport), ADR-0008 (reads), ADR-0011 (outside workouts), ADR-0012 (Apple Watch) · **New ADR:** ADR-0014
 
 ## 1. Intent
 
@@ -54,7 +54,7 @@ Why: user-owned data and a store-ready app. A user who logs on the phone should 
 - New ObjectBox entity `HealthExportSettingEntity { ownerAccountId @Unique, enabledAtMs }`: a row means the account turned saving on. Never synced. Removed by the account local cleanup like other account rows.
 - Health tab, in the settings area next to Disconnect: a switch row "Save workouts to Apple Health" / "...to Health Connect" with a one-line status ("42 saved", "3 waiting", "Allow access in Settings" when denied). Shown on both platforms whenever the health store is available (independent of the read connection). Component kit only.
 - Turning it on opens a kit bottom sheet first: "BeyondRep will save each workout you finish on this phone to Apple Health as Strength training, with its name, start and end. Your past workouts here are saved too. Heart rate and calories are not included. Apple Watch workouts are already in Apple Health and are not saved twice." Buttons: "Turn on" (then the platform permission prompt) and "Not now".
-- If the user denies, the switch row stays on with "Allow access in Settings" and an action that opens the health settings (existing `openSettings`). *(My call: keep the user's intent; turning it off is explicit.)*
+- If the user denies, the switch row stays on with "Allow access in Settings" and a sheet with "Open Settings" (existing `openSettings`) and "Stop saving". *(My call: keep the user's intent; turning it off is explicit.)*
 - Turning it off: no more writes and no deletes; entries already saved stay in the health store. Receipts are kept, so turning it on again does not rewrite them.
 
 ### 5.2 What is exported
@@ -77,7 +77,7 @@ It includes workouts restored from the cloud (Adi: all past workouts). Record wr
 ### 5.4 Receipts and the state machine
 
 New ObjectBox entity `HealthExportReceiptEntity`:
-`workoutUuid @Unique`, `platform` (`healthkit` | `health_connect`), `state`, `exportedRevision` (int, 0 = none), `platformRecordId` (HK UUID on iOS; on Android the clientRecordId), `attempts`, `lastAttemptAtMs`, `updatedAtMs`. Platform ids are local only, never synced or logged.
+`workoutUuid @Unique`, `platform` (`healthkit` | `health_connect`), `state`, `exportedRevision` (int, 0 = none), `platformRecordId` (HK UUID on iOS; on Android the Health Connect record id), `attempts`, `lastAttemptAtMs`, `updatedAtMs`. Platform ids are local only, never synced or logged.
 
 States (subset of `HEALTH_DATA.md`'s machine): `writing` → `confirmed`; `failedRetryable`; `blocked` (permission denied, not retried until access changes); `skippedWatch`; `supersededByWatch`; `deleting` → row removed.
 

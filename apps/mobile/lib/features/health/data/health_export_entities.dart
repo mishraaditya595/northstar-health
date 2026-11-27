@@ -37,7 +37,7 @@ class HealthExportReceiptEntity {
   /// The workout `updatedAtMs` last written; 0 when nothing was written.
   int exportedVersion;
 
-  /// HKWorkout UUID on iOS, the client record id on Android.
+  /// HKWorkout UUID on iOS, the Health Connect record id on Android.
   String? platformRecordId;
 
   int attempts;

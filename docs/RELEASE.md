@@ -476,7 +476,7 @@ Opt-in per-account write of completed phone workouts. Implemented in source, **n
 | iPhone with a paired watch: a workout finished on the phone is not written for 10 minutes | not run |
 | Our own saved workouts do not show up under "From other apps" or add to training load | not run |
 | Health Connect not installed or needs update: the row is hidden or says so, nothing crashes, no write | not run |
-| Revoke write access in Settings, resume the app: the row says "Allow access in Settings", tapping opens settings; after allowing it and resuming, waiting workouts are saved | not run |
+| Revoke write access in Settings, resume the app: the row says "Allow access in Settings", tapping opens a sheet whose "Open Settings" opens settings; after allowing it and resuming, waiting workouts are saved | not run |
 | Switch off: no new writes, no deletes, entries already saved stay; switching on again does not rewrite them | not run |
 | Airplane mode and low-power: a workout finished offline is saved locally and exported without needing the network | not run |
 | Account A on, sign out, account B: B shows Off and writes nothing | not run |

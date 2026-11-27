@@ -135,26 +135,29 @@ void main() {
     );
   });
 
-  test('turning off and on while a pass awaits a write saves the workout once', () async {
-    addWorkout(1);
-    final gate = Completer<void>();
-    writer.writeGate = gate.future;
-    final c = container();
-    await c.read(healthExportControllerProvider.future);
-    final n = c.read(healthExportControllerProvider.notifier);
-    final first = n.turnOn();
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(writer.writes, hasLength(1));
-    await n.turnOff();
-    final second = n.turnOn();
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    gate.complete();
-    await Future.wait([first, second]);
-    expect(writer.writes, hasLength(1));
-    final status =
-        c.read(healthExportControllerProvider).requireValue as HealthExportOn;
-    expect(status.saved, 1);
-  });
+  test(
+    'turning off and on while a pass awaits a write saves the workout once',
+    () async {
+      addWorkout(1);
+      final gate = Completer<void>();
+      writer.writeGate = gate.future;
+      final c = container();
+      await c.read(healthExportControllerProvider.future);
+      final n = c.read(healthExportControllerProvider.notifier);
+      final first = n.turnOn();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(writer.writes, hasLength(1));
+      await n.turnOff();
+      final second = n.turnOn();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      gate.complete();
+      await Future.wait([first, second]);
+      expect(writer.writes, hasLength(1));
+      final status =
+          c.read(healthExportControllerProvider).requireValue as HealthExportOn;
+      expect(status.saved, 1);
+    },
+  );
 
   test(
     'needsAccess is true after a denied pass and clears once access is granted',
