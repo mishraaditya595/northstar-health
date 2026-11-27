@@ -7,6 +7,7 @@ import '../../core/design/dialogs.dart';
 import '../../core/design/inputs.dart';
 import '../../core/design/page_header.dart';
 import '../sync/workout_conflict_resolution.dart';
+import '../watch/widgets/watch_account_section.dart';
 import '../sync/workout_upload_coordinator.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
 import 'account_auth_controller.dart';
@@ -205,6 +206,7 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
                 32 + MediaQuery.paddingOf(context).bottom,
               ),
               children: [
+                const WatchAccountSection(),
                 Text(
                   'BACKUP & PRIVACY',
                   style: Theme.of(context).textTheme.labelSmall,

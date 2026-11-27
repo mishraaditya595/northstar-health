@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:beyondrep/core/clock.dart';
@@ -17,6 +18,8 @@ import 'package:beyondrep/features/progress/workout_history_state.dart';
 import 'package:beyondrep/features/today/today_page.dart';
 import 'package:beyondrep/features/train/active_workout_state.dart';
 import 'package:beyondrep/features/train/train_library_state.dart';
+import 'package:beyondrep/features/watch/application/watch_status_provider.dart';
+import 'package:beyondrep/features/watch/domain/watch_status.dart';
 import 'package:beyondrep/features/workouts/domain/live_workout_engine.dart';
 import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
 import 'package:beyondrep/features/workouts/domain/workout_models.dart';
@@ -71,6 +74,13 @@ class _FakeActions implements WorkoutActions {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _SeededWatch extends WatchLinkStateNotifier {
+  _SeededWatch(this.initial);
+  final WatchLinkState initial;
+  @override
+  WatchLinkState build() => initial;
+}
+
 void main() {
   late List<String> pushed;
   late _FakeActions actions;
@@ -82,6 +92,7 @@ void main() {
     AsyncValue<ActiveWorkoutView?> unfinished = const AsyncData(null),
     bool settle = true,
     HealthOverview? health,
+    List<Override> overrides = const [],
   }) async {
     actions = _FakeActions();
     tester.view.physicalSize = const Size(390, 1600);
@@ -151,6 +162,7 @@ void main() {
             ),
           ),
           accountAuthControllerProvider.overrideWithValue(auth),
+          ...overrides,
           if (health != null) ...[
             fakeHealthOverview(FakeHealthOverviewController(health)),
             healthOwnerIdProvider.overrideWith((ref) => 'synthetic-owner'),
@@ -164,6 +176,76 @@ void main() {
     );
     settle ? await tester.pumpAndSettle() : await tester.pump();
   }
+
+  testWidgets('without a paired watch Today shows nothing about it', (
+    tester,
+  ) async {
+    await show(tester);
+    expect(find.textContaining('watch'), findsNothing);
+    expect(find.textContaining('Apple Watch'), findsNothing);
+  });
+
+  testWidgets('watch not installed puts its banner above the hero', (
+    tester,
+  ) async {
+    await show(
+      tester,
+      overrides: [
+        watchLinkStateProvider.overrideWith(
+          () => _SeededWatch(
+            const WatchLinkState(
+              status: WatchNotInstalled(),
+              device: WatchDeviceStatus(
+                supported: true,
+                paired: true,
+                installed: false,
+                reachable: false,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+    final banner = find.textContaining(
+      "BeyondRep isn't on your watch yet",
+      findRichText: true,
+    );
+    expect(banner, findsOneWidget);
+    expect(
+      tester.getTopLeft(banner).dy,
+      lessThan(tester.getTopLeft(find.text('No plans yet')).dy),
+    );
+  });
+
+  testWidgets('a synced watch adds one quiet line at the bottom', (
+    tester,
+  ) async {
+    await show(
+      tester,
+      overrides: [
+        watchLinkStateProvider.overrideWith(
+          () => _SeededWatch(
+            WatchLinkState(
+              status: WatchSynced(DateTime(2026, 11, 24, 10, 43)),
+              device: const WatchDeviceStatus(
+                supported: true,
+                paired: true,
+                installed: true,
+                reachable: true,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+    final footer = find.text('Apple Watch · synced 10:43 AM');
+    await tester.scrollUntilVisible(footer, 200);
+    expect(footer, findsOneWidget);
+    expect(
+      tester.getTopLeft(footer).dy,
+      greaterThan(tester.getTopLeft(find.text('This week')).dy),
+    );
+  });
 
   testWidgets('header shows the real date and no demo label', (tester) async {
     await show(tester);

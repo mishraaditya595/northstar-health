@@ -22,6 +22,8 @@ import '../sync/workout_upload_coordinator.dart';
 import '../sync/workout_conflict_resolution.dart';
 import '../train/active_workout_state.dart';
 import '../train/train_library_state.dart';
+import '../watch/widgets/watch_status_banner.dart';
+import '../watch/widgets/watch_status_footer.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
 import 'backup_status_notice.dart';
 import 'today_overview.dart';
@@ -241,6 +243,7 @@ class _TodayPageState extends ConsumerState<TodayPage> {
         padding: padding,
         children: [
           header,
+          const WatchStatusBanner(),
           backup,
           const SizedBox(height: 24),
           NsSplitColumns(
@@ -255,6 +258,7 @@ class _TodayPageState extends ConsumerState<TodayPage> {
             ],
             side: const [SectionHeading('Recent health'), TodayHealthRow()],
           ),
+          const WatchStatusFooter(),
         ],
       );
     }
@@ -262,6 +266,7 @@ class _TodayPageState extends ConsumerState<TodayPage> {
       padding: padding,
       children: [
         header,
+        const WatchStatusBanner(),
         backup,
         const SizedBox(height: 24),
         hero,
@@ -272,6 +277,7 @@ class _TodayPageState extends ConsumerState<TodayPage> {
         const SizedBox(height: 27),
         const SectionHeading('This week'),
         weekCard,
+        const WatchStatusFooter(),
       ],
     );
   }
