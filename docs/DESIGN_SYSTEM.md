@@ -47,7 +47,8 @@ All of these live in `apps/mobile/lib/core/design/`. Look comes from `BeyondRepT
 | Sub-page back control | `NsBackButton` (in `AppBar`) | `page_header.dart` |
 | Row with glyph, title, subtitle | `NsListCard` | `page_header.dart` |
 | Status pill (`warning: true` for attention states, prototype amber) | `NsTag` | `page_header.dart` |
-| Tinted note or hint | `InsightCard` | `page_header.dart` |
+| Tinted note or hint (optional second, quieter action under the text, optional whole-card tap with ink) | `InsightCard` | `page_header.dart` |
+| Quiet one-line status with a dot, optional 48 dp tap | `NsStatusLine` | `status_line.dart` |
 | Section title with right label | `SectionHeading` | `section.dart` |
 | Headline number card with optional trend, icon and info button | `StatTile` + `NsTrend` | `stats.dart` |
 | Outlined "i" explain button (48 dp target) | `NsInfoButton` | `info_button.dart` |

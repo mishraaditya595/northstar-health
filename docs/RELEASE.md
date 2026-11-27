@@ -11,7 +11,7 @@
 - Watch iOS embedding, companion bundle identifiers, signing, TestFlight archive/physical pairing and watch-only source experiment must not be confused.
 - Wear OS uses final app identity/signing, Play Console declarations and physical round-watch layout tests; package IDs in scaffolding are placeholders.
 - Keep FlutterWatch custom toolchain out of stable builds; experimental comparison only.
-- **Versioning:** `version:` in `apps/mobile/pubspec.yaml` is the default user-visible version name; bump it in a PR. The manual TestFlight job takes optional `version_name` and `build_number` inputs and, on `AUTO`, uses the pubspec version and the latest App Store Connect build plus one ([details](IOS_TESTFLIGHT_CODEMAGIC.md#version-name-and-build-number)). The manual Android Play job does the same with the latest Google Play versionCode plus one ([details](ANDROID_PLAY_CODEMAGIC.md#version-name-and-versioncode)).
+- **Versioning:** the manual TestFlight and Play jobs take a `release_type` input (`Fix or optimisation`, `Feature`, `Major`, `Same version, new build`, `Exact version`). The version name is worked out from the highest version in App Store Connect and Google Play, and the build number is the latest store build plus one on `AUTO` ([iOS details](IOS_TESTFLIGHT_CODEMAGIC.md#version-name-and-build-number), [Android details](ANDROID_PLAY_CODEMAGIC.md#version-name-and-versioncode)). The pubspec `version:` is not read by these jobs.
 
 **Controlled backend deployment pipeline:** Codemagic now has [two manual Supabase jobs for database migrations and Edge Functions](SUPABASE_CODEMAGIC_DEPLOY.md), with preview/deploy inputs, project-bound protected credentials, explicit target confirmation and operator acceptance. The existence of these workflows is **not evidence of any hosted deployment**. Nine app/watch Codemagic builds remain templates; the manual [`mobile-ios-testflight` job](IOS_TESTFLIGHT_CODEMAGIC.md) uploads for internal TestFlight testing only and the manual [`mobile-android-release` job](ANDROID_PLAY_CODEMAGIC.md) uploads only drafts to Play testing tracks. Neither is a release.
 
@@ -146,6 +146,30 @@ The iPhone app sends the signed-in account's plans and today's numbers to the Be
 | The BeyondRep icon shows in the iPhone Watch app and on the watch | not run |
 | Large text and VoiceOver on a small and a large watch: tiles read "Resting heart rate, 54 beats per minute" and "Steps, no data", nothing clipped | not run |
 | Watch signing through the Codemagic job works without the fallback profile (see IOS_TESTFLIGHT_CODEMAGIC.md) | not run |
+
+## Phase 4 watch glance redesign and sync status (owner actions, none done)
+
+The two-page watch app, its detail screens and the watch status on the iPhone are implemented in source, **not released or device-verified**. The Swift unit tests run in `watchos_smoke.yml`; none of these device checks is CI. Every row is not run.
+
+| Check | Result |
+| --- | --- |
+| TestFlight build installs on the watch; Home shows the readiness hero and an even 2x2 grid with a status line on each tile | not run |
+| The Train button in the bottom corner of Home opens the Train page; the crown also scrolls between Home and Train; the "Turn the crown for your workouts" hint shows once and "Got it" dismisses it for good | not run |
+| Train shows today's program workout first, then the plans, with no Start button | not run |
+| Every tile, the hero and the top status line open a detail screen; sleep shows stages, resting HR and HRV a dashed usual line, steps bars with today highlighted, readiness one line per input; a day without data has no mark, never 0 | not run |
+| The detail values match the phone's Health tab and the readiness words match the phone | not run |
+| Large text and VoiceOver on a 41 mm and a larger watch: tiles read "Resting heart rate 61 beats per minute, 2 below your usual", the grid falls back to one column, nothing clipped | not run |
+| Turn Bluetooth off on the iPhone: the watch top line says "Phone not nearby", the Sync screen shows the dated data; turn it on: "Synced" with the time | not run |
+| Open the watch app before signing in on the phone: the Sync screen says "Open BeyondRep on your iPhone" | not run |
+| The iPhone shows "Apple Watch · synced" at the bottom of Today only after the watch has confirmed; Account & sync shows Connected, Installed, Last synced and what was sent | not run |
+| Delete the watch app: the iPhone shows "BeyondRep isn't on your watch yet" at the top of Today; "Show me how" opens the three steps; "Not now" hides the banner for good while Account & sync still says Not installed | not run |
+| Leave the watch out of use for two days while the iPhone app keeps sending: the iPhone banner says the watch has not synced since the last confirmation | not run |
+| An iPhone with no paired Apple Watch, an iPad and an Android phone show no banner, no footer and no Apple Watch section | not run |
+| After local midnight the watch shows no detail screen from the day before | not run |
+| An old watch build next to the new phone build shows dashes, no crash (the new snapshot is rejected until the watch updates) | not run |
+| After updating from the previous build, the watch sync line appears once the phone sends (it reads "Not paired" style until then) | not run |
+| Relaunch the watch app several times: the "Synced" day and time on Home does not move until the iPhone sends something new | not run |
+| Open the iPhone app after three days away: Today shows the old synced time, not the "hasn't synced" banner; the banner appears only when a send has gone unconfirmed for 48 hours | not run |
 
 ## Phase 4 stage 1: tablet layouts (owner actions, none done)
 

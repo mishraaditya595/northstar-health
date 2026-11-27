@@ -2,21 +2,26 @@
 """Resolve the Google Play version name and version code for Codemagic.
 
 Inputs (from the manual build form, via environment variables):
-  NS_VERSION_NAME  AUTO, or a version such as 1.2.0 (one to three integers)
+  NS_RELEASE_TYPE  Fix or optimisation, Feature, Major, Same version, new
+                   build, or Exact version
+  NS_VERSION_NAME  AUTO, or a version such as 1.2.0 (only for Exact version)
   NS_BUILD_NUMBER  AUTO, or a positive integer (the Android versionCode)
   NS_PLAY_TRACK    none, internal or alpha (where the job uploads the AAB)
 
-AUTO version name takes the part before "+" of `version:` in pubspec.yaml.
+The current version is the highest TestFlight version in App Store Connect
+(iOS) and Google Play (every release name on every track). The release type
+decides the next version from it; see codemagic_release_version.py.
 AUTO build number is the highest versionCode of in.beyondrep.app in Google
 Play (every track and every uploaded bundle) plus one. A manual build number
 must be higher than that, so a run fails here instead of at upload.
 
 Google Play is read with the Codemagic `google-play` CLI and the service
 account JSON in GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS (Codemagic group
-ns_google_play); this script never prints it. Only a manual build number with
-NS_PLAY_TRACK=none may go on when the credentials are missing or the lookup
-fails: that is the very first build, whose AAB is uploaded by hand in Play
-Console because Google Play only accepts API uploads after that.
+ns_google_play); this script never prints it. Google Play is required except
+for the very first build: only a manual build number with NS_PLAY_TRACK=none
+may go on when the credentials are missing or a Play lookup (version or build
+number) fails. That AAB is uploaded by hand in Play Console because Google
+Play only accepts API uploads after that.
 
 The result is appended to $CM_ENV as BEYONDREP_VERSION_NAME and
 BEYONDREP_BUILD_NUMBER for later build steps.
@@ -28,18 +33,21 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from codemagic_ios_version import (  # noqa: E402
+from codemagic_release_version import (  # noqa: E402
     AUTO,
-    BUILD_NUMBER,
+    CREDENTIALS,
+    PACKAGE_NAME,
     ResolveError,
-    resolve_version,
+    current_version,
+    format_version,
+    next_version,
 )
 
-PACKAGE_NAME = "in.beyondrep.app"
+# Positive integer, no leading zero (a valid Android versionCode).
+BUILD_NUMBER = re.compile(r"[1-9][0-9]{0,9}\Z")
 TRACKS = ("none", "internal", "alpha")
 # Google Play's largest allowed versionCode.
 MAX_VERSION_CODE = 2_100_000_000
-CREDENTIALS = "GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS"
 
 
 def latest_play_build() -> int:
@@ -113,8 +121,8 @@ def resolve_build(raw: str, track: str) -> str:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 2:
-        print("usage: codemagic_android_version.py PUBSPEC", file=sys.stderr)
+    if len(argv) != 1:
+        print("usage: codemagic_android_version.py", file=sys.stderr)
         return 2
     track = os.environ.get("NS_PLAY_TRACK", "").strip()
     try:
@@ -122,17 +130,21 @@ def main(argv: list[str]) -> int:
             raise ResolveError(
                 f"Invalid play_track {track!r}: use one of {', '.join(TRACKS)}."
             )
-        version = resolve_version(
-            os.environ.get("NS_VERSION_NAME", ""), Path(argv[1])
-        )
-        build = resolve_build(os.environ.get("NS_BUILD_NUMBER", ""), track)
+        release_type = os.environ.get("NS_RELEASE_TYPE", "").strip()
+        raw_build = os.environ.get("NS_BUILD_NUMBER", "")
+        first_build = raw_build.strip() != AUTO and track == "none"
+        current = current_version(play_optional=first_build)
+        new = next_version(release_type, os.environ.get("NS_VERSION_NAME", ""), current)
+        version = format_version(new)
+        build = resolve_build(raw_build, track)
     except ResolveError as error:
         print(f"Version check failed: {error}", file=sys.stderr)
         return 1
     with open(os.environ["CM_ENV"], "a", encoding="utf-8") as env_file:
         env_file.write(f"BEYONDREP_VERSION_NAME={version}\n")
         env_file.write(f"BEYONDREP_BUILD_NUMBER={build}\n")
-    print(f"Version name {version}, build number {build}")
+    before = format_version(current) if current is not None else "none"
+    print(f"Release type {release_type}: {before} -> {version}, build number {build}")
     return 0
 
 

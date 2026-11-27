@@ -2,10 +2,17 @@
 """Resolve the TestFlight version name and build number for Codemagic.
 
 Inputs (from the manual build form, via environment variables):
-  NS_VERSION_NAME  AUTO, or a version such as 1.2.0 (one to three integers)
+  NS_RELEASE_TYPE  Fix or optimisation, Feature, Major, Same version, new
+                   build, or Exact version
+  NS_VERSION_NAME  AUTO, or a version such as 1.2.0 (only for Exact version)
   NS_BUILD_NUMBER  AUTO, or a positive integer
 
-AUTO version name takes the part before "+" of `version:` in pubspec.yaml.
+The current version is the highest TestFlight version in App Store Connect
+(iOS; every App Store build is first a TestFlight build) and, when
+GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS is set and works, Google Play. Google
+Play is optional here: missing credentials or a failed lookup print a note and
+the job goes on with App Store Connect alone. The release type decides the
+next version from it; see codemagic_release_version.py.
 AUTO build number is the highest build of in.beyondrep.app in App Store
 Connect (all versions) plus one. A manual build number must be higher than
 that, so a run fails here instead of after a long build and upload.
@@ -14,54 +21,29 @@ The result is appended to $CM_ENV as BEYONDREP_VERSION_NAME and
 BEYONDREP_BUILD_NUMBER for later build steps. Authentication comes from the
 App Store Connect integration's environment; no credential is read here.
 """
-import json
 import os
 from pathlib import Path
 import re
-import subprocess
 import sys
 
-BUNDLE_ID = "in.beyondrep.app"
-AUTO = "AUTO"
-# CFBundleShortVersionString: one to three period-separated integers.
-VERSION_NAME = re.compile(r"(0|[1-9][0-9]{0,3})(\.(0|[1-9][0-9]{0,3})){0,2}\Z")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from codemagic_release_version import (  # noqa: E402
+    AUTO,
+    ResolveError,
+    app_store_app_id,
+    asc,
+    current_version,
+    format_version,
+    next_version,
+)
+
 # Positive integer, no leading zero. Also a valid Android versionCode.
 BUILD_NUMBER = re.compile(r"[1-9][0-9]{0,9}\Z")
 MAX_BUILD_NUMBER = 2_100_000_000
-PUBSPEC_VERSION = re.compile(r"^version:\s*([^\s+#]+)", re.MULTILINE)
-
-
-class ResolveError(Exception):
-    pass
-
-
-def asc(*args: str) -> str:
-    try:
-        result = subprocess.run(
-            ["app-store-connect", *args],
-            capture_output=True, text=True, timeout=300,
-        )
-    except (OSError, subprocess.TimeoutExpired) as error:
-        raise ResolveError(f"App Store Connect lookup failed: {error}")
-    if result.returncode != 0:
-        detail = result.stderr.strip().splitlines()[-1:] or [""]
-        raise ResolveError(
-            f"App Store Connect lookup failed (exit {result.returncode}): "
-            f"{detail[0]} Check the 'Codemagic Signing' integration, or that "
-            "codemagic-cli-tools is 0.69 or newer (needs --all-versions)."
-        )
-    return result.stdout.strip()
 
 
 def latest_testflight_build() -> int:
-    try:
-        apps = json.loads(asc(
-            "apps", "list", "--bundle-id-identifier", BUNDLE_ID,
-            "--strict-match-identifier", "--json",
-        ))
-        app_id = str(apps[0]["id"])
-    except (ValueError, LookupError, TypeError):
-        raise ResolveError(f"No App Store Connect app found for {BUNDLE_ID}.")
+    app_id = app_store_app_id()
     latest = asc(
         "get-latest-testflight-build-number", app_id,
         "--platform", "IOS", "--all-versions",
@@ -73,21 +55,6 @@ def latest_testflight_build() -> int:
             f"App Store Connect returned an unexpected build number: {latest!r}"
         )
     return int(latest)
-
-
-def resolve_version(raw: str, pubspec: Path) -> str:
-    value = raw.strip()
-    if value == AUTO:
-        match = PUBSPEC_VERSION.search(pubspec.read_text(encoding="utf-8"))
-        if not match:
-            raise ResolveError(f"No version: line found in pubspec {pubspec}.")
-        value = match.group(1)
-    if not VERSION_NAME.match(value):
-        raise ResolveError(
-            f"Invalid version name {value!r}: use one to three numbers "
-            "separated by dots, such as 1.2.0, or AUTO."
-        )
-    return value
 
 
 def resolve_build(raw: str) -> str:
@@ -111,11 +78,14 @@ def resolve_build(raw: str) -> str:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 2:
-        print("usage: codemagic_ios_version.py PUBSPEC", file=sys.stderr)
+    if len(argv) != 1:
+        print("usage: codemagic_ios_version.py", file=sys.stderr)
         return 2
     try:
-        version = resolve_version(os.environ.get("NS_VERSION_NAME", ""), Path(argv[1]))
+        release_type = os.environ.get("NS_RELEASE_TYPE", "").strip()
+        current = current_version(play_optional=True)
+        new = next_version(release_type, os.environ.get("NS_VERSION_NAME", ""), current)
+        version = format_version(new)
         build = resolve_build(os.environ.get("NS_BUILD_NUMBER", ""))
     except ResolveError as error:
         print(f"Version check failed: {error}", file=sys.stderr)
@@ -123,7 +93,8 @@ def main(argv: list[str]) -> int:
     with open(os.environ["CM_ENV"], "a", encoding="utf-8") as env_file:
         env_file.write(f"BEYONDREP_VERSION_NAME={version}\n")
         env_file.write(f"BEYONDREP_BUILD_NUMBER={build}\n")
-    print(f"Version name {version}, build number {build}")
+    before = format_version(current) if current is not None else "none"
+    print(f"Release type {release_type}: {before} -> {version}, build number {build}")
     return 0
 
 

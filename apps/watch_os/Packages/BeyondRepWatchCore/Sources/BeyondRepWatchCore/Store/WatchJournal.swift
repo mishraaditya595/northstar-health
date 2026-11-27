@@ -52,7 +52,9 @@ public final class WatchJournal {
                 try db.execute("ALTER TABLE binding ADD COLUMN sent_at_ms INTEGER NOT NULL DEFAULT 0")
             }
             try db.execute("CREATE TABLE IF NOT EXISTS cleared(account_key TEXT PRIMARY KEY, sent_at_ms INTEGER NOT NULL)")
-            try db.setUserVersion(4)
+            // Version 5 adds when the watch last stored phone data (the sync line).
+            try db.execute("CREATE TABLE IF NOT EXISTS link_state(slot INTEGER PRIMARY KEY CHECK(slot = 1), last_received_ms INTEGER NOT NULL)")
+            try db.setUserVersion(5)
         }
     }
 
@@ -187,6 +189,19 @@ public final class WatchJournal {
             [.text(key), .int(sentAtMs)])
     }
 
+    /// Remembers when the watch last stored phone data. Only the time is
+    /// kept; it drives the "Synced 10:43" line and holds no health values.
+    public func recordReceived(atMs: Int64) throws {
+        try db.execute(
+            "INSERT OR REPLACE INTO link_state(slot, last_received_ms) VALUES(1,?)", [.int(atMs)])
+    }
+
+    public func lastReceivedMs() throws -> Int64? {
+        let rows = try db.query("SELECT last_received_ms FROM link_state WHERE slot = 1")
+        guard case .int(let ms)? = rows.first?.first else { return nil }
+        return ms
+    }
+
     /// Deletes every health snapshot that is not for `localDate`.
     public func purgeHealth(exceptLocalDate localDate: String) throws {
         try db.execute("DELETE FROM health WHERE local_date != ?", [.text(localDate)])
@@ -239,6 +254,9 @@ public final class WatchJournal {
         try db.transaction {
             try db.execute("DELETE FROM plans WHERE account_key = ?", [.text(key)])
             try db.execute("DELETE FROM health WHERE account_key = ?", [.text(key)])
+            // The received time belongs to the bound account, so it goes with it.
+            try db.execute(
+                "DELETE FROM link_state WHERE EXISTS (SELECT 1 FROM binding WHERE account_key = ?)", [.text(key)])
             try db.execute("DELETE FROM binding WHERE account_key = ?", [.text(key)])
             guard wipeUnsent else { return }
             try db.execute(

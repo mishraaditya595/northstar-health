@@ -258,7 +258,7 @@ final class WatchJournalTests: XCTestCase {
         XCTAssertNil(try journal.binding())
     }
 
-    func testJournalMigratesUserVersion2To4KeepingOutboxRows() throws {
+    func testJournalMigratesUserVersion2To5KeepingOutboxRows() throws {
         // A database written before the binding table existed.
         let old = try SQLiteDatabase(url: url)
         try old.execute("CREATE TABLE outbox(message_id TEXT PRIMARY KEY, account_key TEXT NOT NULL, json TEXT NOT NULL, created_at TEXT NOT NULL)")
@@ -275,7 +275,7 @@ final class WatchJournalTests: XCTestCase {
         try journal.saveBinding(TestMessages.binding())
         XCTAssertEqual(try journal.binding()?.accountKey, TestMessages.keyA)
         let check = try SQLiteDatabase(url: url)
-        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(4))
+        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(5))
     }
 
     func testJournalMigratesAVersion3BindingTableKeepingItsRow() throws {
@@ -301,5 +301,42 @@ final class WatchJournalTests: XCTestCase {
         let reopened = try WatchJournal(url: url)
         XCTAssertEqual(try reopened.clearedAt(TestMessages.keyA), 2_000)
         XCTAssertNil(try reopened.clearedAt(TestMessages.keyB))
+    }
+
+    func testMigrationFromVersion4KeepsData() throws {
+        let old = try SQLiteDatabase(url: url)
+        try old.execute("CREATE TABLE binding(slot INTEGER PRIMARY KEY CHECK(slot = 1), account_key TEXT NOT NULL, unit TEXT NOT NULL, message_id TEXT NOT NULL DEFAULT '', sent_at_ms INTEGER NOT NULL DEFAULT 0)")
+        try old.execute(
+            "INSERT INTO binding(slot, account_key, unit, message_id, sent_at_ms) VALUES(1,?,?,?,?)",
+            [.text(TestMessages.keyA), .text("lb"), .text("77777777-3333-4333-8333-000000000001"), .int(5)])
+        try old.setUserVersion(4)
+
+        let journal = try WatchJournal(url: url)
+        XCTAssertEqual(try journal.binding()?.accountKey, TestMessages.keyA)
+        XCTAssertEqual(try journal.bindingState()?.sentAtMs, 5)
+        XCTAssertNil(try journal.lastReceivedMs())
+        try journal.recordReceived(atMs: 1_234)
+        XCTAssertEqual(try journal.lastReceivedMs(), 1_234)
+        let check = try SQLiteDatabase(url: url)
+        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(5))
+    }
+
+    func testRecordedReceivedTimeKeepsTheLatestAndSurvivesReopen() throws {
+        var journal: WatchJournal? = try WatchJournal(url: url)
+        try journal!.recordReceived(atMs: 1_000)
+        try journal!.recordReceived(atMs: 2_000)
+        journal = nil
+        let reopened = try WatchJournal(url: url)
+        XCTAssertEqual(try reopened.lastReceivedMs(), 2_000)
+    }
+
+    func testClearAccountDeletesTheReceivedTimeOnlyForTheBoundKey() throws {
+        let journal = try WatchJournal(url: url)
+        try journal.saveBinding(TestMessages.binding(TestMessages.keyA))
+        try journal.recordReceived(atMs: 1_000)
+        try journal.clearAccount(TestMessages.keyB, wipeUnsent: false)
+        XCTAssertEqual(try journal.lastReceivedMs(), 1_000)
+        try journal.clearAccount(TestMessages.keyA, wipeUnsent: false)
+        XCTAssertNil(try journal.lastReceivedMs())
     }
 }

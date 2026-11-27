@@ -57,6 +57,18 @@ final class ContractFixtureTests: XCTestCase {
         try rejects("contracts/watch_link/v1/fixtures/invalid", minimum: 14) { _ = try WatchMessage(json: $0) }
     }
 
+    func testHealthSnapshotStillRejectsUnknownKey() throws {
+        let data = try FixtureLoader.json("contracts/watch_link/v1/fixtures/valid/health_snapshot_full.json")
+        var message = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        var body = try XCTUnwrap(message["body"] as? [String: Any])
+        body["bedtime"] = "23:40"
+        message["body"] = body
+        let changed = try JSONSerialization.data(withJSONObject: message)
+        XCTAssertThrowsError(try WatchMessage(json: changed)) { error in
+            XCTAssertEqual((error as? ContractError)?.code, "unknown_key")
+        }
+    }
+
     func testReplayCaseEventsDecode() throws {
         for file in try FixtureLoader.files(in: "contracts/watch_link/v1/cases/replay") {
             let object = try JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any]

@@ -13,9 +13,12 @@ import '../../progress/workout_history_state.dart';
 import '../../programs/application/program_providers.dart';
 import '../../train/train_library_state.dart';
 import '../data/watch_link.dart';
+import '../data/watch_status_store.dart';
 import '../domain/watch_account_key.dart';
 import '../domain/watch_message.dart';
+import '../domain/watch_status.dart';
 import 'watch_snapshots.dart';
+import 'watch_status_provider.dart';
 
 /// Ids for outgoing watch messages; tests replace it.
 final watchMessageIdsProvider = Provider<UuidFactory>(
@@ -58,7 +61,9 @@ class WatchSyncController {
     : _auth = _ref.read(accountAuthControllerProvider),
       _link = _ref.read(watchLinkProvider),
       _ids = _ref.read(watchMessageIdsProvider),
-      _clock = _ref.read(wallClockProvider) {
+      _clock = _ref.read(wallClockProvider),
+      _store = _openStore(_ref.read(watchStatusStoreProvider)) {
+    _lastUser = _auth?.userId;
     _auth?.addListener(_onAuthChanged);
     _lifecycle = AppLifecycleListener(onResume: _schedule);
     _ref.listen(healthOverviewProvider, (_, _) => _schedule());
@@ -71,6 +76,10 @@ class WatchSyncController {
       _lastSignature = null;
       _schedule();
     });
+    _reachability = _link.watchReachabilityChanges.listen(
+      (_) => unawaited(_refreshDevice()),
+    );
+    unawaited(_loadPersisted());
     _schedule();
   }
 
@@ -81,6 +90,9 @@ class WatchSyncController {
   final DateTime Function() _clock;
   late final AppLifecycleListener _lifecycle;
   late final StreamSubscription<void> _stateChanges;
+  late final StreamSubscription<void> _reachability;
+  StreamSubscription<String>? _messages;
+  final Future<WatchStatusStore?> _store;
   Timer? _timer;
   bool _disposed = false;
   bool _syncing = false;
@@ -88,6 +100,116 @@ class WatchSyncController {
   /// The account key the watch was last sent, so a sign-out can clear it.
   String? _boundKey;
   String? _lastSignature;
+  String? _lastUser;
+
+  // What the status is built from. The confirmed time is the only part that
+  // outlives the process (WatchStatusStore); nothing here holds health values.
+  WatchDeviceStatus _device = WatchDeviceStatus.unsupported;
+  DateTime? _confirmedAt;
+  DateTime? _unconfirmedSince;
+  String? _sentSummary;
+
+  /// What the next [_publish] sets the dismissed flag to. The flag itself
+  /// lives in [watchLinkStateProvider] so "Not now" cannot be undone by a
+  /// rebuild; only loading and forgetting set it here.
+  bool? _dismissedNext;
+  Set<String> _latestIds = {};
+  Set<String> _previousIds = {};
+
+  static Future<WatchStatusStore?> _openStore(
+    Future<WatchStatusStore> opening,
+  ) => opening.then<WatchStatusStore?>((s) => s, onError: (_) => null);
+
+  /// Reads the confirmed time, the oldest unconfirmed send and the dismissed
+  /// flag for the signed-in account.
+  Future<void> _loadPersisted() async {
+    final user = _auth?.userId;
+    final store = await _store;
+    if (_disposed || store == null || user == null || _auth?.userId != user) {
+      return;
+    }
+    _confirmedAt = store.confirmedAt(watchAccountKey(user));
+    _unconfirmedSince = store.unconfirmedSince(watchAccountKey(user));
+    _dismissedNext =
+        store.installHintDismissed ||
+        _ref.read(watchLinkStateProvider).installHintDismissed;
+    _publish();
+  }
+
+  void _publish() {
+    if (_disposed) return;
+    final dismissed =
+        _dismissedNext ??
+        _ref.read(watchLinkStateProvider).installHintDismissed;
+    _dismissedNext = null;
+    _ref
+        .read(watchLinkStateProvider.notifier)
+        .update(
+          WatchLinkState(
+            status: watchStatusOf(
+              device: _device,
+              signedIn: _auth?.userId != null,
+              lastConfirmedAt: _confirmedAt,
+              unconfirmedSince: _unconfirmedSince,
+              now: _clock(),
+            ),
+            device: _device,
+            sentSummary: _sentSummary,
+            installHintDismissed: dismissed,
+          ),
+        );
+  }
+
+  /// A confirmation counts only from the signed-in account, as `stored` or
+  /// `duplicate`, for the health or plans message of the latest or previous
+  /// context this phone sent.
+  void _onMessage(String json) {
+    final user = _auth?.userId;
+    if (user == null) return;
+    final WatchMessage message;
+    try {
+      message = WatchMessage.fromJson(jsonDecode(json) as Map<String, Object?>);
+    } catch (_) {
+      return;
+    }
+    if (message is! Ack) return;
+    final key = watchAccountKey(user);
+    if (message.accountKey != key) return;
+    if (message.result != 'stored' && message.result != 'duplicate') return;
+    final acked = message.ackedMessageId.toLowerCase();
+    if (!_latestIds.contains(acked) && !_previousIds.contains(acked)) return;
+    final at = _clock();
+    _confirmedAt = at;
+    _unconfirmedSince = null;
+    unawaited(() async {
+      try {
+        final store = await _store;
+        await store?.setConfirmedAt(key, at);
+        await store?.clearUnconfirmed(key);
+      } catch (_) {
+        // The confirmation still shows for this session.
+      }
+    }());
+    _publish();
+  }
+
+  /// Sign-out and deletion: forget what the watch confirmed and the dismissed
+  /// banner, in memory and on disk.
+  void _forget() {
+    _confirmedAt = null;
+    _unconfirmedSince = null;
+    _sentSummary = null;
+    _dismissedNext = false;
+    _latestIds = {};
+    _previousIds = {};
+    unawaited(() async {
+      try {
+        await (await _store)?.clear();
+      } catch (_) {
+        // Nothing to clear when preferences are unavailable.
+      }
+    }());
+  }
 
   void _schedule() {
     if (_disposed) return;
@@ -102,6 +224,13 @@ class WatchSyncController {
     if (_boundKey != null && key != _boundKey) {
       _clearBound(emptyContext: key == null);
     }
+    if (user != _lastUser) {
+      _lastUser = user;
+      // Signed out before anything was sent, or a new account: start clean.
+      _forget();
+      unawaited(_loadPersisted());
+      _publish();
+    }
     _schedule();
   }
 
@@ -112,6 +241,7 @@ class WatchSyncController {
     if (old == null) return;
     _boundKey = null;
     _lastSignature = null;
+    _forget();
     _timer?.cancel();
     final json = jsonEncode(
       buildAccountCleared(
@@ -140,6 +270,14 @@ class WatchSyncController {
     try {
       final user = _auth?.userId;
       if (user == null) return;
+      final device = await _link.status();
+      if (_disposed || _auth?.userId != user) return;
+      _device = device;
+      // Acknowledgments come only from a watch that is there to send them.
+      if (device.supported) _messages ??= _link.messages.listen(_onMessage);
+      _publish();
+      // iPad, Android and no paired watch: nothing is sent or shown.
+      if (!device.supported) return;
       if (!await _link.isReachableForUpdates()) return;
       if (_disposed || _auth?.userId != user) return;
 
@@ -188,10 +326,50 @@ class WatchSyncController {
       await _link.updateContext({
         for (final m in messages) m.type: jsonEncode(m.toJson()),
       });
-      if (_boundKey == key) _lastSignature = signature;
+      if (_boundKey == key) {
+        _lastSignature = signature;
+        _noteSent(key);
+        _previousIds = _latestIds;
+        _latestIds = {
+          for (final m in [plans, health])
+            if (m != null) m.messageId.toLowerCase(),
+        };
+        _sentSummary = watchSentSummary(
+          hasReadiness: health?.readiness != null,
+          hasHealth: health != null,
+          planCount: plans?.plans.length ?? 0,
+        );
+        _publish();
+      }
     } finally {
       _syncing = false;
     }
+  }
+
+  /// The first send after a confirmation starts the unconfirmed clock; later
+  /// sends keep it, so it always marks the oldest send nobody confirmed.
+  void _noteSent(String key) {
+    if (_unconfirmedSince != null) return;
+    final at = _clock();
+    _unconfirmedSince = at;
+    unawaited(() async {
+      try {
+        await (await _store)?.setUnconfirmedSince(key, at);
+      } catch (_) {
+        // The clock still runs for this session.
+      }
+    }());
+  }
+
+  /// A reachability change only refreshes what the status shows.
+  Future<void> _refreshDevice() async {
+    if (_disposed) return;
+    final user = _auth?.userId;
+    if (user == null) return;
+    final device = await _link.status();
+    if (_disposed || _auth?.userId != user) return;
+    _device = device;
+    _publish();
   }
 
   /// Bytes the message takes in the context: its key and its JSON string.
@@ -211,12 +389,15 @@ class WatchSyncController {
   }
 
   /// Permanent deletion: the watch also drops the account's unsent workouts.
-  Future<void> accountDeleted(String userId) => announceWatchAccountDeleted(
-    link: _link,
-    userId: userId,
-    ids: _ids,
-    nowUtc: _clock().toUtc(),
-  );
+  Future<void> accountDeleted(String userId) {
+    _forget();
+    return announceWatchAccountDeleted(
+      link: _link,
+      userId: userId,
+      ids: _ids,
+      nowUtc: _clock().toUtc(),
+    );
+  }
 
   void dispose() {
     if (_disposed) return;
@@ -227,6 +408,8 @@ class WatchSyncController {
     _auth?.removeListener(_onAuthChanged);
     _lifecycle.dispose();
     unawaited(_stateChanges.cancel());
+    unawaited(_reachability.cancel());
+    unawaited(_messages?.cancel());
   }
 }
 

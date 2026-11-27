@@ -107,7 +107,7 @@ completed set needs `completed_at_utc` and either `reps` or `duration_seconds`.
 
 ## Watch link v1
 
-Phone-to-watch and watch-to-phone messages (account binding, plans and health snapshots, live session state and commands, completed workouts, ACKs) are defined in `contracts/watch_link/v1`. Events inside them use `contracts/workout_sync/v2` (RPE, timed sets, catalogue exercise ids); `contracts/workout_sync/v1` stays as it was. The replay cases under `contracts/watch_link/v1/cases/replay` are the shared test for ordering, duplicates, gaps and corrections. See [ADR-0012](adr/0012-apple-watch-companion.md).
+Phone-to-watch and watch-to-phone messages (account binding, plans and health snapshots, live session state and commands, completed workouts, ACKs) are defined in `contracts/watch_link/v1`. Events inside them use `contracts/workout_sync/v2` (RPE, timed sets, catalogue exercise ids); `contracts/workout_sync/v1` stays as it was. The replay cases under `contracts/watch_link/v1/cases/replay` are the shared test for ordering, duplicates, gaps and corrections. See [ADR-0012](adr/0012-apple-watch-companion.md). The watch answers the phone's plans and health messages with an `ack` (ids and a result only); the phone shows "synced" only after hearing one (see the ADR-0012 amendment of 2026-11-27 and the [watch glance and sync status design](superpowers/specs/2026-11-27-watch-glance-redesign-and-sync-status-design.md)).
 
 ## Workout owner / platform writer matrix
 

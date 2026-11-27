@@ -47,13 +47,50 @@ With **Play App Signing**, Google holds the app signing key and this upload key 
 
 ## Version name and versionCode
 
-`scripts/codemagic_android_version.py` mirrors the iOS resolver (issue #49):
+`scripts/codemagic_android_version.py` mirrors the iOS resolver (issue #49). **Start new build** shows four inputs.
 
-- `version_name`: `AUTO` uses the part before `+` of `version:` in `pubspec.yaml`.
-- `build_number`: `AUTO` uses the highest versionCode Google Play has for `in.beyondrep.app` (all tracks and uploaded bundles) plus one. A manual number must be higher than that.
-- Only a manual `build_number` with `play_track` `none` may go on without Play credentials or when the lookup fails. That is the first build in step 3 above.
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `release_type` | `Fix or optimisation` | What kind of release this is. It decides the version name. |
+| `version_name` | `AUTO` | Only for `Exact version`: a version such as `1.2.0`. Leave `AUTO` otherwise. |
+| `build_number` | `AUTO` | `AUTO` is the highest versionCode Google Play has for `in.beyondrep.app` (all tracks and uploaded bundles) plus one. A manual number must be higher than that. |
+| `play_track` | `none` | `none`, `internal` or `alpha`. |
 
-Tested offline by `tool/test_codemagic_android_version.py` against a stub CLI.
+Versions are `MAJOR.FEATURE.FIX`. The version name is `versionName`; the build number is `versionCode`.
+
+| Release type | New version, from the current one `X.Y.Z` |
+| --- | --- |
+| `Fix or optimisation` | `X.Y.Z+1` |
+| `Feature` | `X.Y+1.0` |
+| `Major` | `X+1.0.0` |
+| `Same version, new build` | `X.Y.Z` (a new build of the same version) |
+| `Exact version` | `version_name`, which must not be below `X.Y.Z` |
+
+The current version is the highest version found in:
+
+- Google Play: every release name on every track that has at least two dot-separated parts (a name such as `3` is ignored).
+- App Store Connect: TestFlight versions of the iOS app (every App Store build is first a TestFlight build; the App Store version list is not read because of its placeholder `1.0`).
+
+If neither store has a version, the current version is `0.0.0`, so a fix gives `0.0.1`. The pubspec version is not read.
+
+The job uses the existing `Codemagic Signing` App Store Connect integration to read the iOS versions. No new credential is needed. An App Store Connect lookup failure stops the job. To keep iOS and Android on the same number for one release, run the second platform with `Same version, new build` after the first upload shows in its store (TestFlight processing can take a few minutes).
+
+The Play release name is now the version, such as `0.6.2`. The upload step passes it with `--release-name`. Release names that are not a version are ignored when the current version is worked out.
+
+The step prints one line, such as `Release type Fix or optimisation: 0.6.1 -> 0.6.2, build number 42`.
+
+The step fails before the build starts when:
+
+- `version_name` is set but the type is not `Exact version`.
+- `Exact version` has an invalid `version_name`, or one below the current version.
+- `Same version, new build` finds no current version.
+- A manual build number is malformed or not above the latest Play build.
+- An App Store Connect lookup fails.
+- A Google Play lookup fails, except on the first build below.
+
+Only a manual `build_number` with `play_track` `none` may go on without Play credentials or when a Play lookup fails. That is the first build in step 3 above.
+
+Tested offline by `tool/test_codemagic_android_version.py` against stub CLIs.
 
 ## Not covered
 

@@ -7,16 +7,21 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0171CD6165343CCB0116D414 /* TrainPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4958CB03F18EF358B6DFDDB7 /* TrainPage.swift */; };
 		05F0664CF3F44D4B71F2DFF7 /* BeyondRepWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 711130B0406401E13B88A88E /* BeyondRepWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		07D32F64788ADC36A35E6566 /* StrictJSON.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23B23ACBDB406903F061B0A3 /* StrictJSON.swift */; };
+		0C46DEE8440A7276103B99CA /* HomePage.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA8B7EAD2120CD01A525B747 /* HomePage.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		227C009787F5D049D483B05C /* WatchTimestamp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97895DE206C2E05C8D551E51 /* WatchTimestamp.swift */; };
 		23E66041E36C6BBEB9F80AC2 /* SQLiteDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = EACCDFF18434C7D881E6EC8B /* SQLiteDatabase.swift */; };
 		27CCC00FC446BE5C66E7F642 /* WatchMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A486A12E0DB473247D4FDEA5 /* WatchMessage.swift */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
+		3BD89137A75E82DE480C5906 /* LocalDay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A850FDEA329070E57679EE51 /* LocalDay.swift */; };
+		3CF663ED59F6FAE0BC9A98E5 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F411AC49441268A2909982 /* RootView.swift */; };
 		5BCBB67E3E214A5F94F61915 /* WorkoutEventV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = E01924EFB10273514249E577 /* WorkoutEventV2.swift */; };
 		5BCF22A25D41FE1D5A8A317F /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77A0E08A8BE709F8B8E981A7 /* AppModel.swift */; };
+		7148F147EC8063A48572FA0D /* SleepDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38A33A2CAA39030FFFC7B6CA /* SleepDetailView.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
@@ -24,15 +29,23 @@
 		86D465EAE092D6B565191B26 /* WatchJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F32C42732BB70A7DA26A175 /* WatchJournal.swift */; };
 		880ECBB0331D7F88661F76A6 /* PhoneInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBAC2D1D0D675CBC09F97278 /* PhoneInbox.swift */; };
 		8A0CCEAA4FA1F5B7908B9941 /* GlanceState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25F0DF83892AD4212BA3F512 /* GlanceState.swift */; };
+		92A7DD0F40ADF088D72ADB20 /* TrendDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E59B27878629CCF5C41040AC /* TrendDetailView.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		97ED9F5A9081FA1A02430800 /* WorkoutReplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D8DF1C030752E6A34884798 /* WorkoutReplay.swift */; };
+		9C46E684C672AEA792FF8D57 /* AckBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A904C7275EC8796789BA230A /* AckBuilder.swift */; };
 		A1B2C3D40001000100000001 /* WatchLinkBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D40001000100000002 /* WatchLinkBridge.swift */; };
-		A513701EEAF007B2B3B1394A /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEF56AB9614799FBE1D280FB /* HomeView.swift */; };
 		A645C629B904EA8BFFA5DF6E /* BeyondRepWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B8DB1F4B57901D7CB80BCE /* BeyondRepWatchApp.swift */; };
 		AE71FA975B8276592C888D31 /* SessionMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03E7005D26BF7444CE33E284 /* SessionMachine.swift */; };
+		B72B2290818F2F34845BE328 /* ReadinessDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A3F91E8528C4B764316CFDD /* ReadinessDetailView.swift */; };
 		BA5914729E62229D59B54A0D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DA7376967BF3D83F7EB44FEC /* Assets.xcassets */; };
+		BEAC4190E8772EC9AA6D386B /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFAA7FAB09B6F66E9C0BE506 /* Palette.swift */; };
+		BFE1972AECA9805E3AE86558 /* SyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE847FF357D91EE7164E4B8C /* SyncView.swift */; };
+		C46F61C5DC5869259ED114D8 /* SyncLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC5926A135D54CCEDA2AB17 /* SyncLine.swift */; };
+		E46CAEA98318EE4CF30536D8 /* TrainHintView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8922D0083E9A278F8A0F90F /* TrainHintView.swift */; };
+		E80D8B78FD694479F4C0F71D /* PreviewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09921EEBB1C7379249B4037 /* PreviewData.swift */; };
+		EDA37E177D777522F20207E0 /* DetailModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24078E90AC9B69698E1B53C4 /* DetailModel.swift */; };
 		F285411EBA3615ADF3E2E8CB /* PhoneLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32F3ADFC812B732E49D72E2 /* PhoneLink.swift */; };
 		F8AFD0C5052CB048FABD9824 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 10B2E749E5052D5521938EBC /* libsqlite3.tbd */; };
 /* End PBXBuildFile section */
@@ -83,14 +96,19 @@
 		10B2E749E5052D5521938EBC /* libsqlite3.tbd */ = {isa = PBXFileReference; includeInIndex = 1; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
+		1A3F91E8528C4B764316CFDD /* ReadinessDetailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ReadinessDetailView.swift; path = Sources/Features/Detail/ReadinessDetailView.swift; sourceTree = "<group>"; };
 		1F32C42732BB70A7DA26A175 /* WatchJournal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WatchJournal.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Store/WatchJournal.swift; sourceTree = "<group>"; };
 		23B23ACBDB406903F061B0A3 /* StrictJSON.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StrictJSON.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Contracts/StrictJSON.swift; sourceTree = "<group>"; };
+		24078E90AC9B69698E1B53C4 /* DetailModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DetailModel.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Glance/DetailModel.swift; sourceTree = "<group>"; };
 		25F0DF83892AD4212BA3F512 /* GlanceState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GlanceState.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Glance/GlanceState.swift; sourceTree = "<group>"; };
+		2AC5926A135D54CCEDA2AB17 /* SyncLine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SyncLine.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Glance/SyncLine.swift; sourceTree = "<group>"; };
 		2D8DF1C030752E6A34884798 /* WorkoutReplay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WorkoutReplay.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Session/WorkoutReplay.swift; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		38A33A2CAA39030FFFC7B6CA /* SleepDetailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SleepDetailView.swift; path = Sources/Features/Detail/SleepDetailView.swift; sourceTree = "<group>"; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		3E1F976DFA0863688161BBFD /* BeyondRepWatchCore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BeyondRepWatchCore.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/BeyondRepWatchCore.swift; sourceTree = "<group>"; };
+		4958CB03F18EF358B6DFDDB7 /* TrainPage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrainPage.swift; path = Sources/Features/Train/TrainPage.swift; sourceTree = "<group>"; };
 		711130B0406401E13B88A88E /* BeyondRepWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BeyondRepWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -110,13 +128,21 @@
 		A1B2C3D41F2E3D4C5B6A7981 /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
 		A1B8DB1F4B57901D7CB80BCE /* BeyondRepWatchApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BeyondRepWatchApp.swift; path = Sources/App/BeyondRepWatchApp.swift; sourceTree = "<group>"; };
 		A486A12E0DB473247D4FDEA5 /* WatchMessage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WatchMessage.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Contracts/WatchMessage.swift; sourceTree = "<group>"; };
+		A850FDEA329070E57679EE51 /* LocalDay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LocalDay.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Glance/LocalDay.swift; sourceTree = "<group>"; };
+		A904C7275EC8796789BA230A /* AckBuilder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AckBuilder.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Link/AckBuilder.swift; sourceTree = "<group>"; };
+		AFAA7FAB09B6F66E9C0BE506 /* Palette.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Palette.swift; path = Sources/Features/Design/Palette.swift; sourceTree = "<group>"; };
 		BEDAD8F6420CB2AAA8CE9493 /* Watch.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = Watch.xcconfig; path = Flutter/Watch.xcconfig; sourceTree = "<group>"; };
 		C32F3ADFC812B732E49D72E2 /* PhoneLink.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PhoneLink.swift; path = Sources/Connectivity/PhoneLink.swift; sourceTree = "<group>"; };
+		C8922D0083E9A278F8A0F90F /* TrainHintView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrainHintView.swift; path = Sources/Features/Onboarding/TrainHintView.swift; sourceTree = "<group>"; };
+		CE847FF357D91EE7164E4B8C /* SyncView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SyncView.swift; path = Sources/Features/Sync/SyncView.swift; sourceTree = "<group>"; };
 		DA7376967BF3D83F7EB44FEC /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = Sources/Resources/Assets.xcassets; sourceTree = "<group>"; };
+		DA8B7EAD2120CD01A525B747 /* HomePage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HomePage.swift; path = Sources/Features/Home/HomePage.swift; sourceTree = "<group>"; };
 		E01924EFB10273514249E577 /* WorkoutEventV2.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WorkoutEventV2.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Contracts/WorkoutEventV2.swift; sourceTree = "<group>"; };
+		E1F411AC49441268A2909982 /* RootView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RootView.swift; path = Sources/Features/Root/RootView.swift; sourceTree = "<group>"; };
+		E59B27878629CCF5C41040AC /* TrendDetailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrendDetailView.swift; path = Sources/Features/Detail/TrendDetailView.swift; sourceTree = "<group>"; };
 		EACCDFF18434C7D881E6EC8B /* SQLiteDatabase.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SQLiteDatabase.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Store/SQLiteDatabase.swift; sourceTree = "<group>"; };
+		F09921EEBB1C7379249B4037 /* PreviewData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PreviewData.swift; path = Sources/Features/Preview/PreviewData.swift; sourceTree = "<group>"; };
 		FBAC2D1D0D675CBC09F97278 /* PhoneInbox.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PhoneInbox.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Link/PhoneInbox.swift; sourceTree = "<group>"; };
-		FEF56AB9614799FBE1D280FB /* HomeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HomeView.swift; path = Sources/Features/Home/HomeView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -214,7 +240,6 @@
 				77A0E08A8BE709F8B8E981A7 /* AppModel.swift */,
 				A1B8DB1F4B57901D7CB80BCE /* BeyondRepWatchApp.swift */,
 				C32F3ADFC812B732E49D72E2 /* PhoneLink.swift */,
-				FEF56AB9614799FBE1D280FB /* HomeView.swift */,
 				3E1F976DFA0863688161BBFD /* BeyondRepWatchCore.swift */,
 				23B23ACBDB406903F061B0A3 /* StrictJSON.swift */,
 				A486A12E0DB473247D4FDEA5 /* WatchMessage.swift */,
@@ -227,6 +252,20 @@
 				1F32C42732BB70A7DA26A175 /* WatchJournal.swift */,
 				97895DE206C2E05C8D551E51 /* WatchTimestamp.swift */,
 				DA7376967BF3D83F7EB44FEC /* Assets.xcassets */,
+				AFAA7FAB09B6F66E9C0BE506 /* Palette.swift */,
+				1A3F91E8528C4B764316CFDD /* ReadinessDetailView.swift */,
+				38A33A2CAA39030FFFC7B6CA /* SleepDetailView.swift */,
+				E59B27878629CCF5C41040AC /* TrendDetailView.swift */,
+				DA8B7EAD2120CD01A525B747 /* HomePage.swift */,
+				C8922D0083E9A278F8A0F90F /* TrainHintView.swift */,
+				F09921EEBB1C7379249B4037 /* PreviewData.swift */,
+				E1F411AC49441268A2909982 /* RootView.swift */,
+				CE847FF357D91EE7164E4B8C /* SyncView.swift */,
+				4958CB03F18EF358B6DFDDB7 /* TrainPage.swift */,
+				24078E90AC9B69698E1B53C4 /* DetailModel.swift */,
+				A850FDEA329070E57679EE51 /* LocalDay.swift */,
+				2AC5926A135D54CCEDA2AB17 /* SyncLine.swift */,
+				A904C7275EC8796789BA230A /* AckBuilder.swift */,
 			);
 			name = BeyondRepWatch;
 			path = ../../watch_os;
@@ -408,7 +447,6 @@
 				5BCF22A25D41FE1D5A8A317F /* AppModel.swift in Sources */,
 				A645C629B904EA8BFFA5DF6E /* BeyondRepWatchApp.swift in Sources */,
 				F285411EBA3615ADF3E2E8CB /* PhoneLink.swift in Sources */,
-				A513701EEAF007B2B3B1394A /* HomeView.swift in Sources */,
 				82FCC4038072860C8B7503A8 /* BeyondRepWatchCore.swift in Sources */,
 				07D32F64788ADC36A35E6566 /* StrictJSON.swift in Sources */,
 				27CCC00FC446BE5C66E7F642 /* WatchMessage.swift in Sources */,
@@ -420,6 +458,20 @@
 				23E66041E36C6BBEB9F80AC2 /* SQLiteDatabase.swift in Sources */,
 				86D465EAE092D6B565191B26 /* WatchJournal.swift in Sources */,
 				227C009787F5D049D483B05C /* WatchTimestamp.swift in Sources */,
+				BEAC4190E8772EC9AA6D386B /* Palette.swift in Sources */,
+				B72B2290818F2F34845BE328 /* ReadinessDetailView.swift in Sources */,
+				7148F147EC8063A48572FA0D /* SleepDetailView.swift in Sources */,
+				92A7DD0F40ADF088D72ADB20 /* TrendDetailView.swift in Sources */,
+				0C46DEE8440A7276103B99CA /* HomePage.swift in Sources */,
+				E46CAEA98318EE4CF30536D8 /* TrainHintView.swift in Sources */,
+				E80D8B78FD694479F4C0F71D /* PreviewData.swift in Sources */,
+				3CF663ED59F6FAE0BC9A98E5 /* RootView.swift in Sources */,
+				BFE1972AECA9805E3AE86558 /* SyncView.swift in Sources */,
+				0171CD6165343CCB0116D414 /* TrainPage.swift in Sources */,
+				EDA37E177D777522F20207E0 /* DetailModel.swift in Sources */,
+				3BD89137A75E82DE480C5906 /* LocalDay.swift in Sources */,
+				C46F61C5DC5869259ED114D8 /* SyncLine.swift in Sources */,
+				9C46E684C672AEA792FF8D57 /* AckBuilder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

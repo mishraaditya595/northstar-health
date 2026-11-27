@@ -21,12 +21,18 @@ enum TestMessages {
     }
 
     static func plans(
-        _ key: String = keyA, names: [String] = ["Synthetic push day"], today: (id: String, label: String, date: String)? = nil
+        _ key: String = keyA, names: [String] = ["Synthetic push day"], today: (id: String, label: String, date: String)? = nil,
+        exerciseCount: Int = 0
     ) -> WatchMessage {
         var raw: [String: Any] = [
             "generated_at_utc": "2026-10-23T01:00:00Z",
             "plans": names.enumerated().map { (i, name) -> [String: Any] in
-                ["plan_id": "plan-\(i)", "name": name, "exercises": [] as [Any]]
+                [
+                    "plan_id": "plan-\(i)", "name": name,
+                    "exercises": (0..<exerciseCount).map { n -> [String: Any] in
+                        ["exercise_id": "ex-\(n)", "name": "Move \(n)", "kind": "reps", "sets": [] as [Any]]
+                    },
+                ]
             },
             "recent_exercises": [] as [Any],
         ]

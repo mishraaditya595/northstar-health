@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:beyondrep/core/units/load_units.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
+import 'package:beyondrep/features/health/domain/sleep_nights.dart';
+import 'package:beyondrep/features/health/domain/sleep_score.dart';
 import 'package:beyondrep/features/health/widgets/readiness_card.dart';
 import 'package:beyondrep/features/programs/application/program_providers.dart';
 import 'package:beyondrep/features/programs/domain/program_models.dart';
@@ -261,6 +263,8 @@ void main() {
         'asleep_minutes': 372,
         'deep_minutes': 63,
         'rem_minutes': 93,
+        'core_minutes': 216,
+        'awake_minutes': 22,
       });
       expect(m.activeEnergyKcal, 412);
       expect(m.asOfUtc, overviewReadAt.toUtc().toIso8601String());
@@ -304,6 +308,10 @@ void main() {
         'band': 'good',
         'headline': readinessBandWords(readiness.band),
         'reason': readinessReasons(o, value, readiness),
+        'factors': [
+          for (final f in readinessFactors(o, value, readiness))
+            {'input': f.input, 'status': f.status, 'tone': f.tone},
+        ],
       });
       _roundTrip(m);
     });
@@ -344,6 +352,178 @@ void main() {
         messageId: _id,
       )!;
       expect(m.sleep, isNull);
+    });
+  });
+
+  group('health snapshot extras', () {
+    final localNow = DateTime(2026, 11, 24, 8);
+
+    HealthSnapshot build(HealthOverview o) => buildHealthSnapshot(
+      accountKey: _key,
+      overview: o,
+      localNow: localNow,
+      messageId: _id,
+    )!;
+
+    SleepOverview nightsOf(List<SleepNight> nights, {bool staged = true}) =>
+        SleepOverview(
+          lastNight: nights.last,
+          score: staged ? const SleepScore(value: 74, contributors: {}) : null,
+          sleepAvgHr: null,
+          nights: nights,
+          vsWeek: null,
+        );
+
+    test('week holds the 7 days ending today, oldest first', () {
+      final m = build(overview(readiness: _ready(77)));
+      final week = m.week!;
+      expect(
+        [for (final d in week) d['local_date']],
+        [
+          '2026-11-18',
+          '2026-11-19',
+          '2026-11-20',
+          '2026-11-21',
+          '2026-11-22',
+          '2026-11-23',
+          '2026-11-24',
+        ],
+      );
+      // Resting HR and HRV come from the daily series, rounded.
+      expect(week.last['resting_hr_bpm'], 54);
+      expect(week.last['hrv_ms'], 52);
+      expect(week.first['resting_hr_bpm'], 55);
+      _roundTrip(m);
+    });
+
+    test(
+      'a day with no values is left out and a missing metric key is absent',
+      () {
+        final o = overview(
+          sleep: SectionData(
+            nightsOf([
+              night(date: DateTime(2026, 11, 22), asleep: 400),
+              night(),
+            ]),
+          ),
+          heart: SectionData(
+            HeartOverview(
+              restingHr: null,
+              restingHrDaily: [(day: DateTime(2026, 11, 20), value: 58.4)],
+              hrv: null,
+              hrvDaily: const [],
+              vo2Max: null,
+              vo2MaxDaily: const [],
+              restingHrVsMonth: null,
+              hrvVsNormal: null,
+              hrvIsSdnn: true,
+            ),
+          ),
+          activity: SectionData(
+            ActivityOverview(
+              stepsToday: null,
+              stepsDaily: const [],
+              activeEnergyToday: null,
+              activeEnergyDaily: const [],
+              stepsWeekAverage: null,
+            ),
+          ),
+        );
+        final week = build(o).week!;
+        expect(
+          [for (final d in week) d['local_date']],
+          ['2026-11-20', '2026-11-22', '2026-11-24'],
+        );
+        expect(week[0], {'local_date': '2026-11-20', 'resting_hr_bpm': 58});
+        expect(week[1], {'local_date': '2026-11-22', 'asleep_minutes': 400});
+        expect(week[2].containsKey('steps'), isFalse);
+        expect(week[2].containsKey('hrv_ms'), isFalse);
+        expect(week[2]['asleep_minutes'], 372);
+        expect(week[2]['sleep_score'], 74);
+      },
+    );
+
+    test('no week at all when no day has a value', () {
+      final o = overview(
+        sleep: const SectionGap(MetricGap.noData),
+        heart: const SectionGap(MetricGap.noData),
+        activity: const SectionGap(MetricGap.noData),
+      );
+      expect(build(o).week, isNull);
+      expect(build(o).bodyJson.containsKey('week'), isFalse);
+    });
+
+    test("today's steps in week come from stepsToday", () {
+      final week = build(overview()).week!;
+      // The daily series holds 10200 for today; the live count wins.
+      expect(week.last['steps'], 8214);
+      expect(week[5]['steps'], isNot(8214));
+    });
+
+    test('core and awake minutes only when the night has stages', () {
+      final staged = build(overview()).sleep!;
+      expect(staged['core_minutes'], 216);
+      expect(staged['awake_minutes'], 22);
+      final plain = build(
+        overview(
+          sleep: SectionData(
+            sleepOverview(night(deep: 0, rem: 0), staged: false),
+          ),
+        ),
+      ).sleep!;
+      expect(plain.containsKey('core_minutes'), isFalse);
+      expect(plain.containsKey('awake_minutes'), isFalse);
+      expect(plain.containsKey('deep_minutes'), isFalse);
+    });
+
+    test('usual values only when a baseline exists', () {
+      final without = build(overview(readiness: _ready(77)));
+      expect(without.restingHrUsualBpm, isNull);
+      expect(without.hrvUsualMs, isNull);
+      expect(without.bodyJson.containsKey('hrv_usual_ms'), isFalse);
+
+      final value = (_ready(77) as SectionData<ReadinessOverview>).value;
+      final withBaseline = build(
+        overview(
+          readiness: SectionData(
+            ReadinessOverview(
+              result: value.result,
+              hasHrv: true,
+              hasRestingHr: true,
+              hasSleep: true,
+              hrvVsNormal: null,
+              restingHrVsNormal: null,
+              hrvBaseline: const Baseline(mean: 58.6, sd: 4, days: 20),
+              restingHrBaseline: const Baseline(mean: 56.4, sd: 1.5, days: 20),
+              hrvIsSdnn: true,
+            ),
+          ),
+        ),
+      );
+      expect(withBaseline.restingHrUsualBpm, 56);
+      expect(withBaseline.hrvUsualMs, 59);
+      _roundTrip(withBaseline);
+    });
+
+    test('factors copied into readiness', () {
+      final m = build(overview(readiness: _ready(77)));
+      final factors = m.readiness!['factors']! as List;
+      expect([for (final f in factors) (f as Map)['input']], ['sleep', 'hrv']);
+    });
+
+    test('full week snapshot stays under watchSnapshotMaxBytes', () {
+      final m = build(overview(readiness: _ready(77)));
+      expect(
+        utf8.encode(jsonEncode(m.toJson())).length,
+        lessThan(watchSnapshotMaxBytes ~/ 4),
+      );
+    });
+
+    test('round-trips through WatchMessage.fromJson', () {
+      final m = build(overview(readiness: _ready(77)));
+      final back = _roundTrip(m) as HealthSnapshot;
+      expect(back.week, m.week);
+      expect(back.toJson(), m.toJson());
     });
   });
 

@@ -10,6 +10,12 @@ import BeyondRepWatchCore
 @MainActor
 final class AppModel: ObservableObject {
     @Published private(set) var glance: GlanceState = .notPaired
+    @Published private(set) var syncLine: SyncLine = .notPaired
+    @Published private(set) var isPhoneReachable = false
+    private var details: [Metric: DetailModel] = [:]
+
+    /// Sends the acks for what the inbox stored; set by `PhoneLink`.
+    weak var link: PhoneLink?
 
     private let journal: WatchJournal?
     private let inbox: PhoneInbox?
@@ -30,22 +36,56 @@ final class AppModel: ObservableObject {
     }
 
     func receive(applicationContext: [String: Any]) {
-        try? inbox?.receive(applicationContext: applicationContext)
+        acknowledge(try? inbox?.receive(applicationContext: applicationContext))
         refresh()
     }
 
     func receive(userInfo: [String: Any]) {
-        try? inbox?.receive(userInfo: userInfo)
+        acknowledge(try? inbox?.receive(userInfo: userInfo))
         refresh()
     }
 
-    /// Recomputes the glance; also called when the app becomes active.
+    /// Tells the phone what the watch stored. An ack carries ids and a result
+    /// only; the phone is the one that says "synced".
+    private func acknowledge(_ outcomes: [AckOutcome]?) {
+        guard let outcomes, !outcomes.isEmpty else { return }
+        let now = Date()
+        link?.send(acks: outcomes.map { AckBuilder.json(for: $0, messageId: UUID(), now: now) })
+    }
+
+    func setPhoneReachable(_ reachable: Bool) {
+        isPhoneReachable = reachable
+        refresh()
+    }
+
+    func detail(for metric: Metric) -> DetailModel? {
+        details[metric]
+    }
+
+    /// Recomputes the glance, the detail screens and the sync line; also
+    /// called when the app becomes active.
     func refresh() {
         guard let journal else { return }
+        let now = Date()
         if let next = try? GlanceState.make(
-            journal: journal, now: Date(), timeZone: .current, locale: .current)
+            journal: journal, now: now, timeZone: .current, locale: .current)
         {
             glance = next
+        }
+        var next: [Metric: DetailModel] = [:]
+        for metric in [Metric.sleep, .restingHr, .hrv, .steps] {
+            if let detail = try? DetailModel.make(
+                metric: metric, journal: journal, now: now, timeZone: .current, locale: .current)
+            {
+                next[metric] = detail
+            }
+        }
+        details = next
+        if let line = try? SyncLine.make(
+            journal: journal, isPhoneReachable: isPhoneReachable, now: now, timeZone: .current,
+            locale: .current)
+        {
+            syncLine = line
         }
     }
 

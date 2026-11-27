@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../../core/units/load_units.dart';
 import '../../health/application/health_overview.dart';
 import '../../health/domain/daily_series.dart';
+import '../../health/domain/health_types.dart';
 import '../../health/domain/readiness.dart';
 import '../../health/widgets/readiness_card.dart';
 import '../../programs/application/program_providers.dart';
@@ -260,6 +261,7 @@ HealthSnapshot? buildHealthSnapshot({
     final r = (scored.result as ReadinessReady).readiness;
     final headline = readinessBandWords(r.band);
     final reason = readinessReasons(overview, scored, r);
+    final factors = readinessFactors(overview, scored, r);
     readiness = {
       'score': r.value.clamp(0, 100),
       'band': switch (r.band) {
@@ -269,6 +271,11 @@ HealthSnapshot? buildHealthSnapshot({
       },
       'headline': _cap(headline, 60),
       'reason': _cap(reason.isEmpty ? headline : reason, 140),
+      if (factors.isNotEmpty)
+        'factors': [
+          for (final f in factors)
+            {'input': f.input, 'status': _cap(f.status, 24), 'tone': f.tone},
+        ],
     };
   }
 
@@ -281,6 +288,8 @@ HealthSnapshot? buildHealthSnapshot({
       'asleep_minutes': night.asleep.inMinutes,
       if (night.hasStages) 'deep_minutes': night.deep.inMinutes,
       if (night.hasStages) 'rem_minutes': night.rem.inMinutes,
+      if (night.hasStages) 'core_minutes': night.light.inMinutes,
+      if (night.hasStages) 'awake_minutes': night.awake.inMinutes,
     };
   }
 
@@ -317,5 +326,54 @@ HealthSnapshot? buildHealthSnapshot({
     hrvKind: sdnn == null ? null : (sdnn ? 'sdnn' : 'rmssd'),
     steps: steps,
     activeEnergyKcal: energy,
+    restingHrUsualBpm: scored?.restingHrBaseline?.mean.round(),
+    hrvUsualMs: scored?.hrvBaseline?.mean.round(),
+    week: _week(overview, today),
   );
+}
+
+/// The 7 local days ending [today], oldest first. A metric with no value for
+/// a day is left out of that day, and a day with no values is left out. Only
+/// last night carries a sleep score: it is the one night the phone scores.
+/// Today's steps are the live count, not the daily series.
+List<Map<String, Object?>>? _week(HealthOverview overview, DateTime today) {
+  final sleep = switch (overview.sleep) {
+    SectionData(:final value) => value,
+    SectionGap() => null,
+  };
+  final heart = switch (overview.heart) {
+    SectionData(:final value) => value,
+    SectionGap() => null,
+  };
+  final activity = switch (overview.activity) {
+    SectionData(:final value) => value,
+    SectionGap() => null,
+  };
+
+  int? valueOn(List<DayValue>? series, DateTime day) {
+    for (final d in series ?? const <DayValue>[]) {
+      if (dayOf(d.day) == day) return d.value.round();
+    }
+    return null;
+  }
+
+  final days = <Map<String, Object?>>[];
+  for (var back = 6; back >= 0; back--) {
+    final day = DateTime(today.year, today.month, today.day - back);
+    final night = sleep?.nights.where((n) => dayOf(n.date) == day).firstOrNull;
+    final isLastNight = night != null && night == sleep!.lastNight;
+    final steps = back == 0
+        ? activity?.stepsToday?.round()
+        : valueOn(activity?.stepsDaily, day);
+    final entry = <String, Object?>{
+      'asleep_minutes': ?night?.asleep.inMinutes,
+      'sleep_score': ?(isLastNight ? sleep.score?.value : null),
+      'resting_hr_bpm': ?valueOn(heart?.restingHrDaily, day),
+      'hrv_ms': ?valueOn(heart?.hrvDaily, day),
+      'steps': ?steps,
+    };
+    if (entry.isEmpty) continue;
+    days.add({'local_date': _localDate(day), ...entry});
+  }
+  return days.isEmpty ? null : days;
 }

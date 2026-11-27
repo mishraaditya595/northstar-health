@@ -90,9 +90,87 @@ String readinessReasons(
       : reasons[0].toUpperCase() + reasons.substring(1);
 }
 
+/// One readiness input as the watch shows it: [input] is a `watch_link`
+/// contract string, [status] at most 24 code points, [tone] `good`,
+/// `neutral` or `caution`.
+class ReadinessFactor {
+  const ReadinessFactor({
+    required this.input,
+    required this.status,
+    required this.tone,
+  });
+
+  final String input;
+  final String status;
+  final String tone;
+}
+
+/// The inputs behind a score with the same trend words as
+/// [readinessReasons]: sleep, HRV, resting HR, then training load.
+List<ReadinessFactor> readinessFactors(
+  HealthOverview overview,
+  ReadinessOverview value,
+  Readiness readiness,
+) {
+  final inputs = {for (final p in readiness.parts) p.input};
+  ReadinessFactor vsUsual(
+    String input,
+    TrendResult? t, {
+    required TrendDirection better,
+  }) {
+    final direction = t?.direction;
+    return ReadinessFactor(
+      input: input,
+      status: switch (direction) {
+        TrendDirection.up => 'Above usual',
+        TrendDirection.down => 'Below usual',
+        _ => 'About usual',
+      },
+      tone: direction == null || direction == TrendDirection.flat
+          ? 'neutral'
+          : direction == better
+          ? 'good'
+          : 'caution',
+    );
+  }
+
+  final sleep = switch (overview.sleep) {
+    SectionData(:final value) => value,
+    SectionGap() => null,
+  };
+  final ratio = readiness.loadRatio;
+  return [
+    if (inputs.contains(ReadinessInput.sleep) && sleep != null)
+      ReadinessFactor(
+        input: 'sleep',
+        status: 'Slept ${formatDuration(sleep.lastNight.asleep)}',
+        tone: sleep.lastNight.asleep >= const Duration(hours: 7)
+            ? 'good'
+            : sleep.lastNight.asleep < const Duration(hours: 6)
+            ? 'caution'
+            : 'neutral',
+      ),
+    if (inputs.contains(ReadinessInput.hrv))
+      vsUsual('hrv', value.hrvVsNormal, better: TrendDirection.up),
+    if (inputs.contains(ReadinessInput.restingHr))
+      vsUsual(
+        'resting_hr',
+        value.restingHrVsNormal,
+        better: TrendDirection.down,
+      ),
+    if (ratio != null)
+      ReadinessFactor(
+        input: 'training_load',
+        status: ratio > 1.3 ? 'Above usual' : 'Normal',
+        tone: ratio > 1.3 ? 'caution' : 'neutral',
+      ),
+  ];
+}
+
 /// Energy hero on the Health tab: the score with its change since morning and
-/// reasons, or what is missing for one. [overview] is null while loading. [onTap] opens the
-/// detail for a score and handles Manage / Try again for a gap.
+/// reasons, or what is missing for one. [overview] is null while loading.
+/// [onTap] opens the detail for a score and handles Manage / Try again for a
+/// gap.
 class ReadinessCard extends StatelessWidget {
   const ReadinessCard({
     required this.overview,
