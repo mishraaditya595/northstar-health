@@ -1,7 +1,7 @@
 """Version parsing and release-type bump rules for the Codemagic version scripts.
 
 A release type picks how the next version name follows the highest version
-already published (or the pubspec version when nothing is published):
+already published:
   Fix or optimisation      MAJOR.FEATURE.FIX -> MAJOR.FEATURE.FIX+1
   Feature                  MAJOR.FEATURE.FIX -> MAJOR.FEATURE+1.0
   Major                    MAJOR.FEATURE.FIX -> MAJOR+1.0.0
@@ -11,9 +11,14 @@ already published (or the pubspec version when nothing is published):
 Versions are MAJOR.FEATURE.FIX. Inputs of one or two parts are padded with
 zeros and the output always has three parts. With no current version the
 base is 0.0.0. This module holds the shared primitives (ResolveError, AUTO,
-VERSION_NAME) and imports no other script.
+VERSION_NAME, the App Store Connect and Google Play lookups) and imports no
+other script. Authentication comes from the integrations' environment; no
+credential value is read or printed here.
 """
+import json
+import os
 import re
+import subprocess
 from typing import Iterable, Optional
 
 AUTO = "AUTO"
@@ -30,9 +35,129 @@ RELEASE_TYPES = (FIX, FEATURE, MAJOR, SAME, EXACT)
 Version = tuple[int, int, int]
 MAX_PART = 9999
 
+BUNDLE_ID = "in.beyondrep.app"
+PACKAGE_NAME = "in.beyondrep.app"
+CREDENTIALS = "GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS"
+
 
 class ResolveError(Exception):
     pass
+
+
+def asc(*args: str) -> str:
+    try:
+        result = subprocess.run(
+            ["app-store-connect", *args],
+            capture_output=True, text=True, timeout=300,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise ResolveError(f"App Store Connect lookup failed: {error}")
+    if result.returncode != 0:
+        detail = result.stderr.strip().splitlines()[-1:] or [""]
+        raise ResolveError(
+            f"App Store Connect lookup failed (exit {result.returncode}): "
+            f"{detail[0]} Check the 'Codemagic Signing' integration, or that "
+            "codemagic-cli-tools is 0.69 or newer (needs --all-versions)."
+        )
+    return result.stdout.strip()
+
+
+def app_store_app_id() -> str:
+    try:
+        apps = json.loads(asc(
+            "apps", "list", "--bundle-id-identifier", BUNDLE_ID,
+            "--strict-match-identifier", "--json",
+        ))
+        return str(apps[0]["id"])
+    except (ValueError, LookupError, TypeError):
+        raise ResolveError(f"No App Store Connect app found for {BUNDLE_ID}.")
+
+
+def _asc_json_list(*args: str) -> list:
+    try:
+        items = json.loads(asc(*args))
+    except ValueError:
+        raise ResolveError(f"App Store Connect returned invalid JSON for {args[1]}.")
+    if not isinstance(items, list):
+        raise ResolveError(f"App Store Connect returned unexpected JSON for {args[1]}.")
+    return items
+
+
+def _collect(texts: Iterable[object]) -> list[Version]:
+    found = []
+    for text in texts:
+        if isinstance(text, str):
+            parsed = parse_version(text)
+            if parsed is not None:
+                found.append(parsed)
+    return found
+
+
+def asc_versions() -> list[Version]:
+    app_id = app_store_app_id()
+    texts = []
+    for command, key in (
+        ("pre-release-versions", "version"),
+        ("app-store-versions", "versionString"),
+    ):
+        for item in _asc_json_list("apps", command, app_id, "--json"):
+            attributes = item.get("attributes") if isinstance(item, dict) else None
+            if isinstance(attributes, dict) and attributes.get("platform") == "IOS":
+                texts.append(attributes.get(key))
+    return _collect(texts)
+
+
+def play_versions() -> list[Version]:
+    try:
+        result = subprocess.run(
+            [
+                "google-play", "tracks", "list",
+                "--package-name", PACKAGE_NAME,
+                "--credentials", f"@env:{CREDENTIALS}",
+                "--json",
+            ],
+            capture_output=True, text=True, timeout=300,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise ResolveError(f"Google Play lookup failed: {error}")
+    if result.returncode != 0:
+        detail = result.stderr.strip().splitlines()[-1:] or [""]
+        raise ResolveError(
+            f"Google Play lookup failed (exit {result.returncode}): {detail[0]} "
+            f"Check that the {PACKAGE_NAME} app exists in Play Console and the "
+            "service account in ns_google_play has access to it."
+        )
+    try:
+        tracks = json.loads(result.stdout)
+    except ValueError:
+        raise ResolveError("Google Play returned invalid JSON for the track list.")
+    if not isinstance(tracks, list):
+        raise ResolveError("Google Play returned unexpected JSON for the track list.")
+    texts = []
+    for item in tracks:
+        # codemagic-cli-tools wraps each Track as {"track": {"track": ..., ...}}.
+        track = item.get("track") if isinstance(item, dict) else None
+        if isinstance(track, dict):
+            item = track
+        releases = item.get("releases") if isinstance(item, dict) else None
+        for release in releases if isinstance(releases, list) else []:
+            if isinstance(release, dict):
+                texts.append(release.get("name"))
+    return _collect(texts)
+
+
+def current_version(*, play_optional: bool) -> Optional[Version]:
+    found = asc_versions()
+    if not os.environ.get(CREDENTIALS, "").strip():
+        print(f"{CREDENTIALS} is not set: not reading versions from Google Play.")
+    else:
+        try:
+            found += play_versions()
+        except ResolveError as error:
+            if not play_optional:
+                raise
+            print(f"{error} Going on without Google Play versions.")
+    return highest(found)
 
 
 def parse_version(text: str) -> Optional[Version]:

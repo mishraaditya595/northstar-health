@@ -14,11 +14,9 @@ The result is appended to $CM_ENV as BEYONDREP_VERSION_NAME and
 BEYONDREP_BUILD_NUMBER for later build steps. Authentication comes from the
 App Store Connect integration's environment; no credential is read here.
 """
-import json
 import os
 from pathlib import Path
 import re
-import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -26,42 +24,18 @@ from codemagic_release_version import (  # noqa: E402
     AUTO,
     ResolveError,
     VERSION_NAME,
+    app_store_app_id,
+    asc,
 )
 
-BUNDLE_ID = "in.beyondrep.app"
 # Positive integer, no leading zero. Also a valid Android versionCode.
 BUILD_NUMBER = re.compile(r"[1-9][0-9]{0,9}\Z")
 MAX_BUILD_NUMBER = 2_100_000_000
 PUBSPEC_VERSION = re.compile(r"^version:\s*([^\s+#]+)", re.MULTILINE)
 
 
-def asc(*args: str) -> str:
-    try:
-        result = subprocess.run(
-            ["app-store-connect", *args],
-            capture_output=True, text=True, timeout=300,
-        )
-    except (OSError, subprocess.TimeoutExpired) as error:
-        raise ResolveError(f"App Store Connect lookup failed: {error}")
-    if result.returncode != 0:
-        detail = result.stderr.strip().splitlines()[-1:] or [""]
-        raise ResolveError(
-            f"App Store Connect lookup failed (exit {result.returncode}): "
-            f"{detail[0]} Check the 'Codemagic Signing' integration, or that "
-            "codemagic-cli-tools is 0.69 or newer (needs --all-versions)."
-        )
-    return result.stdout.strip()
-
-
 def latest_testflight_build() -> int:
-    try:
-        apps = json.loads(asc(
-            "apps", "list", "--bundle-id-identifier", BUNDLE_ID,
-            "--strict-match-identifier", "--json",
-        ))
-        app_id = str(apps[0]["id"])
-    except (ValueError, LookupError, TypeError):
-        raise ResolveError(f"No App Store Connect app found for {BUNDLE_ID}.")
+    app_id = app_store_app_id()
     latest = asc(
         "get-latest-testflight-build-number", app_id,
         "--platform", "IOS", "--all-versions",
