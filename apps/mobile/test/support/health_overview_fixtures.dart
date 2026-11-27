@@ -1,5 +1,7 @@
 import 'package:beyondrep/features/health/application/health_overview.dart';
+import 'package:beyondrep/features/health/domain/energy.dart';
 import 'package:beyondrep/features/health/domain/health_types.dart';
+import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/features/health/domain/sleep_nights.dart';
 import 'package:beyondrep/features/health/domain/sleep_score.dart';
 import 'package:beyondrep/features/health/domain/trend.dart';
@@ -100,20 +102,78 @@ HealthOverview overview({
   Section<BodyOverview>? body,
   Section<ReadinessOverview>? readiness,
   Section<WorkoutsOverview>? workouts,
+  Section<EnergyOverview>? energy,
   DateTime? readAt,
-}) => HealthOverview(
-  ownerId: ownerId,
-  readAt: readAt ?? overviewReadAt,
-  platform: platform,
-  readableFrom: null,
-  needsMoreAccess: needsMoreAccess,
-  sleep: sleep ?? SectionData(sleepOverview(night())),
-  heart: heart ?? SectionData(fullHeart),
-  activity: activity ?? SectionData(fullActivity),
-  body: body ?? SectionData(fullBody),
-  readiness: readiness ?? const SectionGap(MetricGap.noData),
-  workouts: workouts ?? const SectionGap(MetricGap.noData),
-);
+}) {
+  final at = readAt ?? overviewReadAt;
+  final start =
+      readiness ?? const SectionGap<ReadinessOverview>(MetricGap.noData);
+  final scored =
+      start is SectionData<ReadinessOverview> &&
+      start.value.result is ReadinessReady;
+  return HealthOverview(
+    ownerId: ownerId,
+    readAt: at,
+    platform: platform,
+    readableFrom: null,
+    needsMoreAccess: needsMoreAccess,
+    sleep: sleep ?? SectionData(sleepOverview(night())),
+    heart: heart ?? SectionData(fullHeart),
+    activity: activity ?? SectionData(fullActivity),
+    body: body ?? SectionData(fullBody),
+    readiness: start,
+    workouts: workouts ?? const SectionGap(MetricGap.noData),
+    energy:
+        energy ??
+        energySection(
+          start,
+          wake: scored ? DateTime(at.year, at.month, at.day, 6, 31) : null,
+          day: DateTime(at.year, at.month, at.day),
+        ),
+  );
+}
+
+/// The energy section for [start]: the start's gap, or its data with, for a
+/// scored start without [energy], an energy equal to the start with no items.
+Section<EnergyOverview> energySection(
+  Section<ReadinessOverview> start, {
+  Energy? energy,
+  EnergyLearning learning = const EnergyLearning(),
+  DateTime? wake,
+  DateTime? day,
+}) {
+  switch (start) {
+    case SectionGap(:final gap):
+      return SectionGap(gap);
+    case SectionData(:final value):
+      final result = value.result;
+      final held =
+          energy ??
+          (result is ReadinessReady
+              ? Energy(
+                  value: result.readiness.value,
+                  band: result.readiness.band,
+                  start: result.readiness.value,
+                  items: const [],
+                )
+              : null);
+      return SectionData(
+        EnergyOverview(
+          day:
+              day ??
+              DateTime(
+                overviewReadAt.year,
+                overviewReadAt.month,
+                overviewReadAt.day,
+              ),
+          wake: wake,
+          start: value,
+          energy: held,
+          learning: learning,
+        ),
+      );
+  }
+}
 
 /// iPhone without a wearable: no sleep or heart data, steps and a manual
 /// weight only.

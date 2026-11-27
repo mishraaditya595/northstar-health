@@ -5,6 +5,7 @@ import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
 import 'package:beyondrep/features/health/data/health_connection_repository.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
+import 'package:beyondrep/features/health/domain/energy.dart';
 import 'package:beyondrep/features/health/domain/health_types.dart';
 import 'package:beyondrep/features/health/domain/outside_workouts.dart';
 import 'package:beyondrep/features/progress/data/objectbox_workout_history_repository.dart';
@@ -17,6 +18,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fake_health_reader.dart';
+import '../support/health_overview_fixtures.dart';
 
 const _ownerA = 'owner-a';
 const _ownerB = 'owner-b';
@@ -1049,6 +1051,238 @@ void main() {
       final merge = c.read(workoutMergeProvider)!;
       expect(merge.mergedIntoSession['s']!.single.id, 'merged');
       expect(merge.standalone.single.id, 'alone');
+    });
+  });
+
+  group('energy', () {
+    /// A completed BeyondRep session starting at [start].
+    WorkoutSessionRecord loggedAt(String id, DateTime start, Duration length) =>
+        WorkoutSessionRecord(
+          uuid: id,
+          name: 'Logged',
+          status: WorkoutStatus.completed,
+          startedAtUtc: start.toUtc(),
+          completedAtUtc: start.add(length).toUtc(),
+          originalOffsetMinutes: 0,
+          revision: 1,
+        );
+
+    EnergyOverview energyOf(HealthOverview o) =>
+        (o.energy as SectionData<EnergyOverview>).value;
+
+    int readyValue(EnergyOverview e) =>
+        ((e.start.result) as ReadinessReady).readiness.value;
+
+    List<(EnergyItemKind, int)> points(EnergyOverview e) => [
+      for (final i in e.energy!.items) (i.kind, i.points),
+    ];
+
+    void usualActiveDays({int hourOfToday = -1}) {
+      fake.totals[HealthTotalType.activeEnergy] = [
+        for (var d = 14; d <= 23; d++)
+          for (var h = 0; h < 24; h++)
+            (
+              from: DateTime(2026, 11, d, h),
+              to: DateTime(2026, 11, d, h + 1),
+              value: 20.0,
+              source: 'Synthetic watch',
+            ),
+        for (final (h, v) in [
+          (6, 20.0),
+          (7, 20.0),
+          (9, 300.0),
+          (10, 20.0),
+          (11, 84.0),
+          (12, 84.0),
+          (13, 20.0),
+          (14, 20.0),
+        ])
+          (
+            from: DateTime(2026, 11, 24, h),
+            to: DateTime(2026, 11, 24, h + 1),
+            value: v,
+            source: 'Synthetic watch',
+          ),
+      ];
+    }
+
+    test('energy starts at readiness and drains for a workout finished '
+        'today', () async {
+      readinessWeek();
+      now = DateTime(2026, 11, 24, 15);
+      history = _FakeHistory([_logged('today', 0)]);
+      final o = (await container().read(healthOverviewProvider.future))!;
+      final e = energyOf(o);
+      final readiness =
+          (o.readiness as SectionData<ReadinessOverview>).value.result
+              as ReadinessReady;
+      expect(readyValue(e), readiness.readiness.value);
+      expect(points(e), [(EnergyItemKind.workout, -10)]);
+      expect(e.energy!.value, readiness.readiness.value - 10);
+      expect(e.day, DateTime(2026, 11, 24));
+      expect(e.wake, DateTime(2026, 11, 24, 6, 30));
+    });
+
+    test('after midnight the waking day continues', () async {
+      readinessWeek();
+      now = DateTime(2026, 11, 25, 0, 40);
+      history = _FakeHistory([
+        loggedAt(
+          'late',
+          DateTime(2026, 11, 24, 23, 30),
+          const Duration(hours: 1),
+        ),
+      ]);
+      final o = (await container().read(healthOverviewProvider.future))!;
+      final e = energyOf(o);
+      expect(e.day, DateTime(2026, 11, 24));
+      expect(points(e), [
+        (EnergyItemKind.workout, -10),
+        (EnergyItemKind.awake, -5),
+      ]);
+      final r = (o.readiness as SectionData<ReadinessOverview>).value.result;
+      expect(r, isA<ReadinessNotReady>());
+      expect((r as ReadinessNotReady).noSleep, true);
+    });
+
+    test('next morning before sleep syncs there is no energy', () async {
+      readinessWeek();
+      now = DateTime(2026, 11, 25, 7, 30);
+      final o = (await container().read(healthOverviewProvider.future))!;
+      final e = energyOf(o);
+      expect(e.wake, isNull);
+      expect(e.energy, isNull);
+      final r = e.start.result;
+      expect(r, isA<ReadinessNotReady>());
+      expect((r as ReadinessNotReady).noSleep, true);
+    });
+
+    test('active calories above the usual hour drain, skipping the workout '
+        'hour', () async {
+      readinessWeek();
+      now = DateTime(2026, 11, 24, 15);
+      history = _FakeHistory([_logged('today', 0)]);
+      usualActiveDays();
+      final o = (await container().read(healthOverviewProvider.future))!;
+      expect(points(energyOf(o)), [
+        (EnergyItemKind.workout, -10),
+        (EnergyItemKind.activeDay, -3),
+      ]);
+    });
+
+    test('not allowed active energy adds no active item', () async {
+      readinessWeek();
+      now = DateTime(2026, 11, 24, 15);
+      history = _FakeHistory([_logged('today', 0)]);
+      usualActiveDays();
+      fake.totalsResults[HealthTotalType.activeEnergy] =
+          const SeriesNotAllowed();
+      final o = (await container().read(healthOverviewProvider.future))!;
+      final e = energyOf(o);
+      expect(e.energy, isNotNull);
+      expect(
+        e.energy!.items.any((i) => i.kind == EnergyItemKind.activeDay),
+        false,
+      );
+    });
+
+    test('a nap today credits energy', () async {
+      readinessWeek();
+      now = DateTime(2026, 11, 24, 15);
+      history = _FakeHistory([_logged('today', 0)]);
+      fake.sleep = [
+        ...fake.sleep,
+        _seg(
+          DateTime(2026, 11, 24, 13),
+          DateTime(2026, 11, 24, 13, 30),
+          SleepStage.light,
+        ),
+      ];
+      final o = (await container().read(healthOverviewProvider.future))!;
+      final e = energyOf(o);
+      expect(points(e), [
+        (EnergyItemKind.workout, -10),
+        (EnergyItemKind.nap, 6),
+      ]);
+      expect(e.energy!.value, readyValue(e) - 4);
+    });
+
+    test('learning counts sessions in the last 90 days', () async {
+      readinessWeek();
+      history = _FakeHistory([for (var i = 1; i <= 8; i++) _logged('s$i', i)]);
+      var e = energyOf(
+        (await container().read(healthOverviewProvider.future))!,
+      );
+      expect(e.learning.workoutsNeeded, 12);
+      expect(e.learning.daysNeeded, isNull);
+
+      history = _FakeHistory(const [], fail: true);
+      e = energyOf((await container().read(healthOverviewProvider.future))!);
+      expect(e.learning.workoutsNeeded, isNull);
+    });
+
+    test("account B never sees A's energy", () async {
+      readinessWeek();
+      repo.connect(_ownerB, DateTime(2026, 11, 1));
+      final c = container();
+      final a = (await c.read(healthOverviewProvider.future))!;
+      expect(energyOf(a).energy, isNotNull);
+
+      fake.series.remove(HealthSeriesType.hrv);
+      fake.series.remove(HealthSeriesType.restingHeartRate);
+      fake.sleepGate = Completer<void>();
+      c.read(_ownerProvider.notifier).set(_ownerB);
+      while (fake.sleepCalls.length < 2) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      final mid = c.read(healthOverviewProvider);
+      expect(mid.isLoading, true);
+      expect(mid.value, isNull);
+
+      fake.sleepGate!.complete();
+      final b = (await c.read(healthOverviewProvider.future))!;
+      expect(b.ownerId, _ownerB);
+      final e = energyOf(b);
+      expect(e.start.result, isA<ReadinessNotReady>());
+      expect(e.energy, isNull);
+    });
+
+    ReadinessOverview startOf(ReadinessResult result) => ReadinessOverview(
+      result: result,
+      hasHrv: true,
+      hasRestingHr: true,
+      hasSleep: true,
+      hrvVsNormal: null,
+      restingHrVsNormal: null,
+      hrvBaseline: null,
+      restingHrBaseline: null,
+      hrvIsSdnn: true,
+    );
+
+    test('currentEnergy lasts 20 hours from the wake time', () {
+      final o = overview(
+        readiness: SectionData(
+          startOf(
+            ReadinessReady(
+              Readiness(value: 78, band: readinessBandOf(78), parts: const []),
+            ),
+          ),
+        ),
+      );
+      expect(currentEnergy(o, DateTime(2026, 11, 25, 2, 31)), isNotNull);
+      expect(hasStaleEnergy(o, DateTime(2026, 11, 25, 2, 31)), false);
+      expect(currentEnergy(o, DateTime(2026, 11, 25, 2, 32)), isNull);
+      expect(hasStaleEnergy(o, DateTime(2026, 11, 25, 2, 32)), true);
+    });
+
+    test('currentEnergy without a wake time lasts the calendar day', () {
+      final o = overview(
+        readiness: SectionData(startOf(const ReadinessNotReady(noSleep: true))),
+      );
+      expect(o.energy, isA<SectionData<EnergyOverview>>());
+      expect(currentEnergy(o, DateTime(2026, 11, 24, 23, 59)), isNotNull);
+      expect(currentEnergy(o, DateTime(2026, 11, 25, 0, 1)), isNull);
+      expect(currentEnergy(overview(), DateTime(2026, 11, 24, 8)), isNull);
     });
   });
 }
