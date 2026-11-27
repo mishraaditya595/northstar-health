@@ -41,6 +41,7 @@ class WatchStatusBanner extends ConsumerWidget {
           secondaryActionLabel: 'Not now',
           onSecondaryAction: () =>
               ref.read(watchLinkStateProvider.notifier).dismissInstallHint(),
+          onTap: () => context.push('/today/account'),
         ),
       );
     }
@@ -51,27 +52,18 @@ class WatchStatusBanner extends ConsumerWidget {
         ref.watch(localNowProvider),
       );
       return _padded(
-        Semantics(
-          button: true,
-          onTapHint: 'Open Account and sync',
-          child: InkWell(
-            borderRadius: BorderRadius.circular(22),
-            onTap: () => context.push('/today/account'),
-            child: InsightCard(
-              icon: Icons.watch_off_outlined,
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: "Your watch hasn't synced since $since",
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  const TextSpan(
-                    text: '\nOpen the BeyondRep app on your watch',
-                  ),
-                ],
+        InsightCard(
+          icon: Icons.watch_off_outlined,
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: "Your watch hasn't synced since $since",
+                style: const TextStyle(fontWeight: FontWeight.w800),
               ),
-            ),
+              const TextSpan(text: '\nOpen the BeyondRep app on your watch'),
+            ],
           ),
+          onTap: () => context.push('/today/account'),
         ),
       );
     }

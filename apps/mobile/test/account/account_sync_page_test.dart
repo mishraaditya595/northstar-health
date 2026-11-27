@@ -52,7 +52,7 @@ void main() {
   testWidgets('no Apple Watch section without a paired watch', (tester) async {
     await pumpPage(tester, null);
     expect(find.text('Cloud session ready'), findsOneWidget);
-    expect(find.text('Apple Watch'), findsNothing);
+    expect(find.text('APPLE WATCH'), findsNothing);
     expect(find.text('BeyondRep on watch'), findsNothing);
   });
 
@@ -73,7 +73,7 @@ void main() {
     );
     expect(find.text('Waiting for the watch'), findsOneWidget);
     expect(
-      tester.getTopLeft(find.text('Apple Watch')).dy,
+      tester.getTopLeft(find.text('APPLE WATCH')).dy,
       lessThan(tester.getTopLeft(find.text('Cloud session ready')).dy),
     );
   });

@@ -205,11 +205,32 @@ void main() {
   testWidgets('synced shows footer last and no banner', (tester) async {
     await _pump(tester, _state(WatchSynced(_todayAt)));
     expect(find.byType(InsightCard), findsNothing);
-    expect(find.text('Apple Watch · synced 10:43 AM'), findsOneWidget);
+    expect(find.text('Apple Watch · synced Today 10:43 AM'), findsOneWidget);
     expect(
       tester.getTopLeft(find.byType(NsStatusLine)).dy,
       greaterThan(tester.getTopLeft(find.text('Other content')).dy),
     );
+  });
+
+  testWidgets('footer names the day when the sync was not today', (
+    tester,
+  ) async {
+    await _pump(tester, _state(WatchSynced(_tuesday)));
+    expect(find.text('Apple Watch · synced Tue 10:43 AM'), findsOneWidget);
+  });
+
+  testWidgets('tapping the install banner text opens Account and sync', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _state(const WatchNotInstalled(), device: _notInstalled),
+    );
+    await tester.tap(
+      find.textContaining("isn't on your watch yet", findRichText: true),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Account page'), findsOneWidget);
   });
 
   testWidgets('waiting shows nothing on Today', (tester) async {
@@ -247,7 +268,11 @@ void main() {
         _state(WatchSynced(_todayAt), summary: 'Readiness, health, 3 plans'),
         section: true,
       );
-      expect(find.text('Apple Watch'), findsWidgets);
+      expect(find.text('APPLE WATCH'), findsOneWidget);
+      expect(
+        tester.getSemantics(find.text('APPLE WATCH')),
+        matchesSemantics(label: 'APPLE WATCH', isHeader: true),
+      );
       expect(find.text('Connected'), findsOneWidget);
       expect(find.text('Installed'), findsOneWidget);
       expect(find.text('Today 10:43 AM'), findsOneWidget);
@@ -278,6 +303,26 @@ void main() {
       expect(find.text('Not synced recently'), findsOneWidget);
       expect(find.text('Tue 10:43 AM'), findsOneWidget);
       expect(find.byIcon(Icons.error_outline), findsOneWidget);
+    });
+
+    testWidgets('a confirmation more than 6 days old shows a date', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        _state(WatchSynced(DateTime(2026, 11, 20, 10, 43))),
+        section: true,
+      );
+      expect(find.text('20 Nov 10:43 AM'), findsOneWidget);
+    });
+
+    testWidgets('exactly 6 days old still shows the weekday', (tester) async {
+      await _pump(
+        tester,
+        _state(WatchSynced(DateTime(2026, 11, 21, 10, 43))),
+        section: true,
+      );
+      expect(find.text('Sat 10:43 AM'), findsOneWidget);
     });
 
     testWidgets('sent summary row only when something was sent', (

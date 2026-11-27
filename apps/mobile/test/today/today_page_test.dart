@@ -238,7 +238,7 @@ void main() {
         ),
       ],
     );
-    final footer = find.text('Apple Watch · synced 10:43 AM');
+    final footer = find.text('Apple Watch · synced Today 10:43 AM');
     await tester.scrollUntilVisible(footer, 200);
     expect(footer, findsOneWidget);
     expect(

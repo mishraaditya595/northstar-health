@@ -30,12 +30,11 @@ class WatchAccountSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Apple Watch',
-          style: theme.textTheme.titleLarge,
-          semanticsLabel: 'Apple Watch',
+        Semantics(
+          header: true,
+          child: Text('APPLE WATCH', style: theme.textTheme.labelSmall),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 18),
         NsListCard(
           icon: Icons.watch_outlined,
           title: switch (status) {

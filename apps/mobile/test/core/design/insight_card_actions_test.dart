@@ -30,6 +30,44 @@ void main() {
     expect(taps, 1);
   });
 
+  testWidgets('onTap makes the whole card a tap target with visible ink', (
+    tester,
+  ) async {
+    var taps = 0;
+    await tester.pumpWidget(
+      _app(
+        Brightness.light,
+        InsightCard(
+          icon: Icons.watch_outlined,
+          text: const TextSpan(text: 'Whole card'),
+          onTap: () => taps++,
+        ),
+      ),
+    );
+    expect(
+      find.descendant(
+        of: find.byType(InsightCard),
+        matching: find.byType(InkWell),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Whole card'));
+    expect(taps, 1);
+  });
+
+  testWidgets('without onTap there is no ink well', (tester) async {
+    await tester.pumpWidget(
+      _app(
+        Brightness.light,
+        const InsightCard(
+          icon: Icons.watch_outlined,
+          text: TextSpan(text: 'Plain'),
+        ),
+      ),
+    );
+    expect(find.byType(InkWell), findsNothing);
+  });
+
   for (final brightness in Brightness.values) {
     testWidgets(
       'two actions both fire and fit at text scale 2 in $brightness',
