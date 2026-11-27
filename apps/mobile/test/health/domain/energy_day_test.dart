@@ -173,14 +173,24 @@ void main() {
         20,
       );
     });
-    test('a day with no buckets is not a usual day (no zeros)', () {
-      // 6 days with data, a gap day (27-7 empty), and one more with data.
+    test('a day whose buckets are all 0 is not a usual day', () {
+      // 6 days with data, plus 27-7 with a 0 kcal bucket in every hour.
       final hourly = [
-        for (final i in [1, 2, 3, 4, 5, 6])
-          for (var h = 0; h < 24; h++) bucket(t(h, 0, 27 - i), 20),
+        ...usualDays(6),
+        for (var h = 0; h < 24; h++) bucket(t(h, 0, 20), 0),
         bucket(t(8), 40),
       ];
       expect(activeExcessKcal(hourly, day: day, now: now), isNull);
+    });
+    test('an empty day in between is not a usual day (no zeros)', () {
+      // 6 days with data (27-1..27-6), 27-7 empty, 27-8 with data: 7 usual
+      // days, so the usual 08:00 is 140 / 7 = 20 and the excess is 40 - 20.
+      final hourly = [
+        ...usualDays(6),
+        for (var h = 0; h < 24; h++) bucket(t(h, 0, 19), 20),
+        bucket(t(8), 40),
+      ];
+      expect(activeExcessKcal(hourly, day: day, now: now), 20);
     });
     test('the 05:00-06:00 bucket before waking is ignored', () {
       final v = activeExcessKcal(
