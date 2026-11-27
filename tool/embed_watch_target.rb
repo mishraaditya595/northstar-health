@@ -27,6 +27,8 @@ SOURCE_DIRS = [
   "Sources",
   "Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore",
 ].freeze
+HEALTH_SHARE_USAGE = "BeyondRep reads your heart rate and active energy during a workout on your watch."
+HEALTH_UPDATE_USAGE = "BeyondRep saves each strength workout you finish on your watch to Apple Health."
 # Resource folders referenced by the watch target (asset catalog with the icon).
 RESOURCE_GLOB = "Sources/**/*.xcassets"
 
@@ -102,6 +104,14 @@ watch.build_configurations.each do |config|
     "CODE_SIGN_STYLE" => "Automatic",
     "ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS" => "NO",
     "ASSETCATALOG_COMPILER_APPICON_NAME" => "AppIcon",
+    # HealthKit workout recording (stage 4b): the entitlement, the partial
+    # Info.plist with the workout background mode, and the usage strings. The
+    # plist is a build setting, not a resource (a copy would clash with the
+    # generated Info.plist).
+    "CODE_SIGN_ENTITLEMENTS" => "#{WATCH_ROOT}/BeyondRepWatch.entitlements",
+    "INFOPLIST_FILE" => "#{WATCH_ROOT}/Sources/Resources/Info.plist",
+    "INFOPLIST_KEY_NSHealthShareUsageDescription" => HEALTH_SHARE_USAGE,
+    "INFOPLIST_KEY_NSHealthUpdateUsageDescription" => HEALTH_UPDATE_USAGE,
   )
 end
 

@@ -53,6 +53,7 @@
 		F285411EBA3615ADF3E2E8CB /* PhoneLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32F3ADFC812B732E49D72E2 /* PhoneLink.swift */; };
 		F40EF61EA925EFC3BF88C23E /* RestClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3C9AAC37819865F8456917F /* RestClock.swift */; };
 		F8AFD0C5052CB048FABD9824 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 10B2E749E5052D5521938EBC /* libsqlite3.tbd */; };
+		FC0FDA2DB9112A82FBA21DD4 /* WorkoutRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B17C584CF67286B0EA2FA0A /* WorkoutRecorder.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -108,6 +109,7 @@
 		24078E90AC9B69698E1B53C4 /* DetailModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DetailModel.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Glance/DetailModel.swift; sourceTree = "<group>"; };
 		25F0DF83892AD4212BA3F512 /* GlanceState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GlanceState.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Glance/GlanceState.swift; sourceTree = "<group>"; };
 		2AC5926A135D54CCEDA2AB17 /* SyncLine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SyncLine.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Glance/SyncLine.swift; sourceTree = "<group>"; };
+		2B17C584CF67286B0EA2FA0A /* WorkoutRecorder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WorkoutRecorder.swift; path = Sources/HealthKit/WorkoutRecorder.swift; sourceTree = "<group>"; };
 		2D8DF1C030752E6A34884798 /* WorkoutReplay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WorkoutReplay.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Session/WorkoutReplay.swift; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -281,6 +283,7 @@
 				9448487299EC553B04D911A5 /* WorkoutCursor.swift */,
 				8EA03EBF58BC1C519EAACCBD /* WorkoutTemplate.swift */,
 				5A92E162B0EA79951A9CFCEE /* WorkoutController.swift */,
+				2B17C584CF67286B0EA2FA0A /* WorkoutRecorder.swift */,
 			);
 			name = BeyondRepWatch;
 			path = ../../watch_os;
@@ -492,6 +495,7 @@
 				11DBB18882EA7F05733C5EDD /* WorkoutCursor.swift in Sources */,
 				8C38E348F9EE87EE7654A9E1 /* WorkoutTemplate.swift in Sources */,
 				66CF32CA00242B3F1D95194A /* WorkoutController.swift in Sources */,
+				FC0FDA2DB9112A82FBA21DD4 /* WorkoutRecorder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -557,10 +561,14 @@
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
+				CODE_SIGN_ENTITLEMENTS = ../../watch_os/BeyondRepWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ../../watch_os/Sources/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = BeyondRep;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "BeyondRep reads your heart rate and active energy during a workout on your watch.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "BeyondRep saves each strength workout you finish on your watch to Apple Health.";
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = in.beyondrep.app;
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
@@ -583,10 +591,14 @@
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
+				CODE_SIGN_ENTITLEMENTS = ../../watch_os/BeyondRepWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ../../watch_os/Sources/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = BeyondRep;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "BeyondRep reads your heart rate and active energy during a workout on your watch.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "BeyondRep saves each strength workout you finish on your watch to Apple Health.";
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = in.beyondrep.app;
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
@@ -889,10 +901,14 @@
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
+				CODE_SIGN_ENTITLEMENTS = ../../watch_os/BeyondRepWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ../../watch_os/Sources/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = BeyondRep;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "BeyondRep reads your heart rate and active energy during a workout on your watch.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "BeyondRep saves each strength workout you finish on your watch to Apple Health.";
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = in.beyondrep.app;
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
