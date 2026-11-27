@@ -123,6 +123,8 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
               '${started.hour.toString().padLeft(2, '0')}:'
               '${started.minute.toString().padLeft(2, '0')}',
             ),
+            if (session.origin == WorkoutOrigin.watch)
+              const NsTag('Apple Watch'),
             if (syncFlag != null) NsTag(syncFlag.label, warning: true),
           ],
         ),

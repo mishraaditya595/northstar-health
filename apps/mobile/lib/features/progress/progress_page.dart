@@ -744,6 +744,8 @@ class _SessionSummaryCard extends StatelessWidget {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
+                  if (session.origin == WorkoutOrigin.watch)
+                    const NsTag('Apple Watch'),
                   if (syncFlag != null) NsTag(syncFlag!.label, warning: true),
                 ],
               ),

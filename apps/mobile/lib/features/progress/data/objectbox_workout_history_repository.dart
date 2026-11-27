@@ -77,7 +77,9 @@ class ObjectBoxWorkoutHistoryRepository implements WorkoutHistoryRepository {
       final query = _sessions
           .query(
             WorkoutSessionEntity_.status.equals(WorkoutStatus.completed.name) &
-                WorkoutSessionEntity_.origin.equals('northstar_phone') &
+                WorkoutSessionEntity_.origin.oneOf([
+                  for (final o in WorkoutOrigin.values) o.wire,
+                ]) &
                 WorkoutSessionEntity_.deletedAtMs.isNull() &
                 WorkoutSessionEntity_.completedAtMs.notNull(),
           )
@@ -176,6 +178,7 @@ class ObjectBoxWorkoutHistoryRepository implements WorkoutHistoryRepository {
             originalOffsetMinutes: s.originalOffsetMinutes,
             revision: s.revision,
             planUuid: s.planUuid,
+            origin: WorkoutOrigin.fromWire(s.origin)!,
             exercises: List.unmodifiable(workoutExercises),
             sets: List.unmodifiable(workoutSets),
           ),
