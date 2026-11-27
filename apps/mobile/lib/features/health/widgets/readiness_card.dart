@@ -45,15 +45,10 @@ Color readinessBandSoftColor(ThemeData theme, ReadinessBand band) {
   };
 }
 
-/// `Readiness starts after 4 more days with data.`
-String readinessBuildingText(int days) =>
-    'Readiness starts after $days more ${days == 1 ? 'day' : 'days'} '
-    'with data.';
-
 String readinessBandWords(ReadinessBand band) => switch (band) {
   ReadinessBand.good => 'Good to train',
   ReadinessBand.fair => 'Train as planned, watch effort',
-  ReadinessBand.low => 'Recovery low',
+  ReadinessBand.low => 'Take it easier',
 };
 
 String readinessHrvName(bool sdnn) => sdnn ? 'HRV (SDNN)' : 'HRV (RMSSD)';

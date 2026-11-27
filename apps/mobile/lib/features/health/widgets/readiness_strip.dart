@@ -7,6 +7,7 @@ import '../../../core/design/beyondrep_theme.dart';
 import '../application/health_overview.dart';
 import '../domain/readiness.dart';
 import 'readiness_card.dart';
+import 'energy_text.dart';
 
 String _bandName(ReadinessBand band) => switch (band) {
   ReadinessBand.good => 'Good',
@@ -59,7 +60,7 @@ class _ReadinessStripState extends ConsumerState<ReadinessStrip> {
       ReadinessNotReady(:final daysUntilBaseline?) => Padding(
         padding: const EdgeInsets.only(bottom: 14),
         child: Text(
-          readinessBuildingText(daysUntilBaseline),
+          energyBuildingText(daysUntilBaseline),
           style: Theme.of(context).textTheme.bodySmall
               ?.copyWith(color: Theme.of(context).mutedColor),
         ),

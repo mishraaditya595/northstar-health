@@ -528,7 +528,7 @@ void main() {
       ),
     );
     expect(
-      find.text('Readiness starts after 4 more days with data.'),
+      find.text('Energy starts after 4 more days with data.'),
       findsOneWidget,
     );
     expect(find.byType(NsScoreRing), findsNothing);
@@ -562,7 +562,7 @@ void main() {
         ),
       );
       expect(find.byType(NsScoreRing), findsNothing);
-      expect(find.textContaining('Readiness starts'), findsNothing);
+      expect(find.textContaining('Energy starts'), findsNothing);
       expect(find.text('Sleep'), findsOneWidget);
       expect(find.text('Resting HR'), findsOneWidget);
     }

@@ -288,7 +288,7 @@ void main() {
     for (final (value, words) in [
       (70, 'Good to train'),
       (69, 'Train as planned, watch effort'),
-      (49, 'Recovery low'),
+      (49, 'Take it easier'),
     ]) {
       await pump(tester, overview(readiness: ready(value: value)));
       expect(find.text(words), findsOneWidget);

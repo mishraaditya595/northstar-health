@@ -17,6 +17,7 @@ import 'health_actions_mixin.dart';
 import 'health_connect_card.dart';
 import 'metric_info_sheet.dart';
 import 'readiness_card.dart';
+import 'energy_text.dart';
 import 'readiness_hero.dart';
 import 'today_health_tiles.dart';
 
@@ -107,7 +108,7 @@ class _TodayHealthRowState extends ConsumerState<TodayHealthRow>
       ),
       ReadinessNotReady(:final daysUntilBaseline?) => InsightCard(
         icon: Icons.bolt_outlined,
-        text: TextSpan(text: readinessBuildingText(daysUntilBaseline)),
+        text: TextSpan(text: energyBuildingText(daysUntilBaseline)),
       ),
       _ => null,
     };

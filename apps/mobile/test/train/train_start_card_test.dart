@@ -188,7 +188,7 @@ void main() {
       tester,
     ) async {
       await open(tester, health: _today(_ready(41)));
-      expect(find.text('Low readiness. Recovery low.'), findsOneWidget);
+      expect(find.text('Low readiness. Take it easier.'), findsOneWidget);
       expect(find.text('Your plans are not changed'), findsOneWidget);
       final score = tester.widget<Text>(find.text('41'));
       expect(score.style?.color, BeyondRepPalette.redLight);
@@ -211,7 +211,7 @@ void main() {
     testWidgets('building baseline shows the N more days line', (tester) async {
       await open(tester, health: _today(_building));
       expect(
-        find.text('Readiness starts after 5 more days with data.'),
+        find.text('Energy starts after 5 more days with data.'),
         findsOneWidget,
       );
       expect(find.byIcon(Icons.chevron_right), findsNothing);
@@ -228,7 +228,7 @@ void main() {
       ) async {
         await open(tester, health: health);
         expect(find.textContaining('readiness.'), findsNothing);
-        expect(find.textContaining('Readiness starts'), findsNothing);
+        expect(find.textContaining('Energy starts'), findsNothing);
         expect(find.text('Build the work.'), findsOneWidget);
         expect(find.text('Quick workout'), findsOneWidget);
       });
@@ -429,7 +429,7 @@ void main() {
     await open(tester, health: _today(_ready(41)), textScale: 2, width: 320);
     expect(errors.map((e) => e.toString()), isEmpty);
     for (final text in [
-      'Low readiness. Recovery low.',
+      'Low readiness. Take it easier.',
       'Start Synthetic push',
     ]) {
       final rect = tester.getRect(find.text(text));
