@@ -19,12 +19,20 @@ const _commands = {
   'log_set',
   'correct_set',
   'skip_set',
+  'add_set',
   'start_rest',
   'clear_rest',
   'pause',
   'resume',
   'finish',
   'discard',
+};
+
+const _rejectReasons = {
+  'unknown_session',
+  'unknown_set',
+  'invalid_values',
+  'not_allowed',
 };
 
 const _setValueKeys = {'reps', 'duration_seconds', 'load_grams', 'rpe'};
@@ -278,8 +286,39 @@ sealed class WatchMessage {
             'last_sequence',
             'exercises',
           },
-          {'current_set_id', 'rest_deadline_utc'},
+          {
+            'current_set_id',
+            'rest_deadline_utc',
+            'end_reason',
+            'paused_at_utc',
+            'paused_seconds',
+            'applied_command_ids',
+            'rejected_commands',
+          },
         );
+        final status = b.oneOf('status', {'active', 'paused', 'ended'});
+        // `end_reason` goes with `ended` and `paused_at_utc` with `paused`.
+        if (b.has('end_reason') != (status == 'ended') ||
+            (b.has('paused_at_utc') && status != 'paused')) {
+          throw const WatchContractException('invalid_value');
+        }
+        if (b.has('end_reason')) {
+          b.oneOf('end_reason', {'completed', 'discarded'});
+        }
+        if (b.has('paused_at_utc')) b.dateTime('paused_at_utc');
+        b.optionalInteger('paused_seconds');
+        if (b.has('applied_command_ids')) {
+          for (final id in b.list('applied_command_ids', max: 20)) {
+            StrictObject({'id': id}, required: {'id'}).uuid('id');
+          }
+        }
+        if (b.has('rejected_commands')) {
+          for (final r in b.list('rejected_commands', max: 20)) {
+            final o = StrictObject(r, required: {'command_id', 'reason'});
+            o.uuid('command_id');
+            o.oneOf('reason', _rejectReasons);
+          }
+        }
         for (final e in b.list('exercises', max: 120)) {
           final x = StrictObject(
             e,
@@ -308,7 +347,7 @@ sealed class WatchMessage {
           accountKey: key,
           sessionId: b.uuid('session_id'),
           owner: b.oneOf('owner', {'watch', 'phone'}),
-          status: b.oneOf('status', {'active', 'paused'}),
+          status: status,
           name: b.string('name', max: 120),
           startedAtUtc: b.dateTime('started_at_utc'),
           lastSequence: b.integer('last_sequence'),
@@ -318,13 +357,44 @@ sealed class WatchMessage {
           restDeadlineUtc: b.has('rest_deadline_utc')
               ? b.dateTime('rest_deadline_utc')
               : null,
+          endReason: b.has('end_reason')
+              ? b.map['end_reason']! as String
+              : null,
+          pausedAtUtc: b.has('paused_at_utc')
+              ? b.map['paused_at_utc']! as String
+              : null,
+          pausedSeconds: b.optionalInteger('paused_seconds'),
+          appliedCommandIds: b.has('applied_command_ids')
+              ? List<String>.from(b.map['applied_command_ids']! as List)
+              : const [],
+          rejectedCommands: b.has('rejected_commands')
+              ? [
+                  for (final r in b.map['rejected_commands']! as List)
+                    (
+                      commandId: (r as Map)['command_id']! as String,
+                      reason: r['reason']! as String,
+                    ),
+                ]
+              : const [],
           exercises: deepCopyJson(b.map['exercises'])! as List<Object?>,
         );
       case 'session_command':
         final b = body(
           {'session_id', 'command_id', 'command'},
-          {'set', 'rest_seconds'},
+          {'set', 'rest_seconds', 'exercise_id'},
         );
+        final command = b.oneOf('command', _commands);
+        // The schema requires `set` for these and `exercise_id` for add_set.
+        if (const {'log_set', 'correct_set', 'skip_set'}.contains(command) &&
+            !b.has('set')) {
+          throw const WatchContractException('missing_field');
+        }
+        if (b.has('exercise_id') != (command == 'add_set')) {
+          throw WatchContractException(
+            command == 'add_set' ? 'missing_field' : 'unknown_key',
+          );
+        }
+        if (b.has('exercise_id')) b.string('exercise_id', max: 128);
         if (b.has('set')) {
           final s = b.object(
             'set',
@@ -339,7 +409,10 @@ sealed class WatchMessage {
           accountKey: key,
           sessionId: b.uuid('session_id'),
           commandId: b.uuid('command_id'),
-          command: b.oneOf('command', _commands),
+          command: command,
+          exerciseId: b.has('exercise_id')
+              ? b.map['exercise_id']! as String
+              : null,
           set: b.has('set') ? b.copyOfObject('set') : null,
           restSeconds: b.optionalInteger('rest_seconds', min: 1, max: 3600),
         );
@@ -588,6 +661,11 @@ final class SessionState extends WatchMessage {
     required this.exercises,
     this.currentSetId,
     this.restDeadlineUtc,
+    this.endReason,
+    this.pausedAtUtc,
+    this.pausedSeconds,
+    this.appliedCommandIds = const [],
+    this.rejectedCommands = const [],
   });
 
   final String sessionId;
@@ -598,6 +676,19 @@ final class SessionState extends WatchMessage {
   final int lastSequence;
   final String? currentSetId;
   final String? restDeadlineUtc;
+
+  /// `completed` or `discarded`, only when [status] is `ended`.
+  final String? endReason;
+
+  /// Only while paused.
+  final String? pausedAtUtc;
+
+  /// The total of earlier pauses, in seconds.
+  final int? pausedSeconds;
+
+  /// Phone commands the watch applied, newest last, at most 20.
+  final List<String> appliedCommandIds;
+  final List<({String commandId, String reason})> rejectedCommands;
   final List<Object?> exercises;
 
   @override
@@ -613,6 +704,15 @@ final class SessionState extends WatchMessage {
     'last_sequence': lastSequence,
     'current_set_id': ?currentSetId,
     'rest_deadline_utc': ?restDeadlineUtc,
+    'end_reason': ?endReason,
+    'paused_at_utc': ?pausedAtUtc,
+    'paused_seconds': ?pausedSeconds,
+    if (appliedCommandIds.isNotEmpty) 'applied_command_ids': appliedCommandIds,
+    if (rejectedCommands.isNotEmpty)
+      'rejected_commands': [
+        for (final r in rejectedCommands)
+          {'command_id': r.commandId, 'reason': r.reason},
+      ],
     'exercises': exercises,
   };
 }
@@ -627,11 +727,15 @@ final class SessionCommand extends WatchMessage {
     required this.command,
     this.set,
     this.restSeconds,
+    this.exerciseId,
   });
 
   final String sessionId;
   final String commandId;
   final String command;
+
+  /// Only for `add_set`.
+  final String? exerciseId;
   final Map<String, Object?>? set;
   final int? restSeconds;
 
@@ -643,6 +747,7 @@ final class SessionCommand extends WatchMessage {
     'session_id': sessionId,
     'command_id': commandId,
     'command': command,
+    'exercise_id': ?exerciseId,
     'set': ?set,
     'rest_seconds': ?restSeconds,
   };
