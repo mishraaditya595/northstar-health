@@ -28,7 +28,7 @@ class _Connections implements HealthConnectionRepository {
   @override
   void connect(String ownerAccountId, DateTime at) {}
   @override
-  void disconnect(String ownerAccountId) {}
+  void disconnect(String ownerAccountId) => connected.remove(ownerAccountId);
   @override
   int accessScope(String ownerAccountId) => 0;
   @override
@@ -95,6 +95,28 @@ void main() {
     final c = container(connected: const {});
     expect(await c.read(ownWorkoutHealthProvider(_key).future), isNull);
     expect(fake.ownWorkoutCalls, isEmpty);
+  });
+
+  test('disconnecting health while listened to hides the values', () async {
+    fake.ownWorkout = const SeriesData(OwnWorkoutHealth(averageBpm: 100));
+    final connections = _Connections({'owner-a'});
+    final c = ProviderContainer(
+      overrides: [
+        healthReaderProvider.overrideWithValue(fake),
+        healthConnectionRepositoryProvider.overrideWithValue(connections),
+        healthOwnerIdProvider.overrideWith((ref) => ref.watch(_ownerProvider)),
+        watchWorkoutPlatformIdProvider.overrideWith((ref, uuid) => 'hk-1'),
+      ],
+    );
+    addTearDown(c.dispose);
+    c.listen(ownWorkoutHealthProvider(_key), (_, _) {});
+    expect(
+      (await c.read(ownWorkoutHealthProvider(_key).future))?.averageBpm,
+      100,
+    );
+
+    await c.read(healthSummaryProvider.notifier).disconnect();
+    expect(await c.read(ownWorkoutHealthProvider(_key).future), isNull);
   });
 
   test('returns null when the workout is not found', () async {

@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/health_connection_repository.dart';
 import '../data/health_reader.dart';
 import '../domain/own_workout_health.dart';
 import 'health_summary_controller.dart';
@@ -26,9 +25,12 @@ final ownWorkoutHealthProvider = FutureProvider.autoDispose
         watchWorkoutPlatformIdProvider(key.workoutUuid),
       );
       if (platformId == null) return null;
-      if (!ref.read(healthConnectionRepositoryProvider).isConnected(owner)) {
-        return null;
-      }
+      // Rebuilds when the connection flips, so a disconnect hides the values
+      // on a mounted page (same source as the health overview).
+      final connected = await ref.watch(
+        healthSummaryProvider.selectAsync((s) => s is HealthConnected),
+      );
+      if (!connected || !ref.mounted) return null;
       final SeriesResult<OwnWorkoutHealth?> result;
       try {
         result = await ref
