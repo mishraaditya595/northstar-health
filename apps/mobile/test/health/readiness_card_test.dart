@@ -544,22 +544,22 @@ void main() {
     });
   }
 
-  testWidgets('ready readiness card has an About Readiness button', (
+  testWidgets('ready readiness card has an About Energy button', (
     tester,
   ) async {
     await pump(tester, overview(readiness: ready()));
-    expect(find.bySemanticsLabel('About Readiness'), findsOneWidget);
-    await tester.tap(find.bySemanticsLabel('About Readiness'));
+    expect(find.bySemanticsLabel('About Energy'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('About Energy'));
     await tester.pumpAndSettle();
     expect(find.text('What it tells you'), findsOneWidget);
     expect(find.text('detail readiness'), findsNothing);
   });
 
-  testWidgets('not enough data card has an About Readiness button', (
+  testWidgets('not enough data card has an About Energy button', (
     tester,
   ) async {
     await pump(tester, overview());
-    expect(find.bySemanticsLabel('About Readiness'), findsOneWidget);
+    expect(find.bySemanticsLabel('About Energy'), findsOneWidget);
   });
 
   group('readinessReasons training load', () {

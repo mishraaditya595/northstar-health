@@ -417,7 +417,7 @@ void main() {
     expect(find.text('ENERGY NOW · FAIR'), findsOneWidget);
     expect(find.text('55'), findsOneWidget);
     expect(find.text('Train as planned, watch effort'), findsOneWidget);
-    expect(find.bySemanticsLabel('About Readiness'), findsOneWidget);
+    expect(find.bySemanticsLabel('About Energy'), findsOneWidget);
     // The grid keeps all four tiles beside the hero.
     expect(find.text('Resting HR'), findsOneWidget);
     expect(find.text('Workouts'), findsOneWidget);
@@ -644,7 +644,7 @@ void main() {
       tester.getRect(find.text('Train as planned, watch effort')),
     ];
     final controls = [
-      tester.getRect(find.bySemanticsLabel('About Readiness')),
+      tester.getRect(find.bySemanticsLabel('About Energy')),
       tester.getRect(
         find.descendant(
           of: find.byType(ReadinessHero),

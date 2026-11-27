@@ -65,15 +65,16 @@ void main() {
     }
   });
 
-  test('readiness copy names the training load input', () {
-    expect(
-      explanationFor(MetricKey.readiness, HealthPlatformKind.appleHealth).what,
-      endsWith(
-        "your HRV, resting heart rate, last night's sleep and your sleep over "
-        'the past week, plus your recent training load once you have 14 days '
-        'of workout history.',
-      ),
+  test('the readiness key explains energy', () {
+    final e = explanationFor(
+      MetricKey.readiness,
+      HealthPlatformKind.appleHealth,
     );
+    expect(e.title, 'Energy');
+    expect(e.summary, 'How much energy you have to train right now');
+    expect(e.what, contains('your recent training load'));
+    expect(e.tells, endsWith('the score can move more.'));
+    expect(e.inBeyondRep, contains('Apple Watch'));
   });
 
   test('training load and other-app workouts copy', () {
