@@ -71,10 +71,6 @@ class ReservedWorkoutUpload {
   final int expectedServerRevision;
 }
 
-/// Whether a completed workout was only removed locally, or also needs a
-/// server-side tombstone. No remote record is created for a never-synced log.
-/// A snapshot that cannot be sent to the cloud. Carries a code only, never
-/// workout content.
 class InvalidCloudSnapshot implements Exception {
   const InvalidCloudSnapshot(this.code);
 
@@ -85,6 +81,8 @@ class InvalidCloudSnapshot implements Exception {
   String toString() => 'InvalidCloudSnapshot($code)';
 }
 
+/// Whether a completed workout was only removed locally, or also needs a
+/// server-side tombstone. No remote record is created for a never-synced log.
 enum CompletedWorkoutDeleteResult {
   alreadyDeleted,
   localOnly,
