@@ -459,3 +459,25 @@ The phone owns the workout; the watch follows it and saves the one `HKWorkout`. 
 | Pause time is kept in memory on the phone: after a phone relaunch during a pause, the watch clock counts the earlier pause as workout time (display only; the saved workout is unchanged) | not run |
 | Old watch app with the new phone: `startWatchApp` brings the old watch app to Home on every phone workout (it cannot join); nothing else changes | not run |
 | A relaunch while HealthKit cannot answer (device locked): the follower row is kept and retried at the next launch, not dropped | not run |
+
+## Phase 5: save phone workouts to Apple Health / Health Connect (ADR-0014, device checks, none run)
+
+Opt-in per-account write of completed phone workouts. Implemented in source, **not released or device-verified**. Every row is not run.
+
+| Check | Result |
+|---|---|
+| iPhone first use: Health tab, switch, sheet "Turn on" shows the HealthKit workout prompt once; "Not now" shows no prompt | not run |
+| Android first use: the Health Connect permission sheet lists exercise write and read; "Not now" shows none | not run |
+| Backfill of a real history (more than 50 workouts): all appear in Apple Health / Health Connect after a few passes, one entry each, none twice | not run |
+| Finish a workout on the phone: one Strength training entry with the workout name's start and end, no heart rate or calories, appears within a pass | not run |
+| Delete a workout in BeyondRep: the entry is gone from Apple Health / Health Connect | not run |
+| Edit-free rewrite: restore the account on a second phone (same Apple ID or a Health Connect device): no second entry appears for existing workouts | not run |
+| The Apple Watch joined a phone workout (stage 5b): exactly one entry in Apple Health, ours is removed or never written | not run |
+| iPhone with a paired watch: a workout finished on the phone is not written for 10 minutes | not run |
+| Our own saved workouts do not show up under "From other apps" or add to training load | not run |
+| Health Connect not installed or needs update: the row is hidden or says so, nothing crashes, no write | not run |
+| Revoke write access in Settings, resume the app: the row says "Allow access in Settings", tapping opens settings; after allowing it and resuming, waiting workouts are saved | not run |
+| Switch off: no new writes, no deletes, entries already saved stay; switching on again does not rewrite them | not run |
+| Airplane mode and low-power: a workout finished offline is saved locally and exported without needing the network | not run |
+| Account A on, sign out, account B: B shows Off and writes nothing | not run |
+| Store disclosures: App Privacy answers, App Store review notes, Play Health apps declaration and the privacy policy mention the write permission before release | not run |

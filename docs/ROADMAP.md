@@ -76,6 +76,8 @@ Apple Watch recording plus wide-window layouts for tablets, designed together in
 
 Opt-in write of one BeyondRep-owned workout summary, export receipts and platform-specific retry/reconciliation. Avoid double writing Apple Watch `HKWorkout` or Android sessions; imported workouts stay read-only. Resolve app-owned edits/deletion UX before shipping.
 
+**Phase 5 stage 1 (implemented in source, not released or device-verified, ADR-0014):** a per-account switch in the Health tab saves every completed phone workout (past and new) to Apple Health / Health Connect as one strength-training entry with its name, start and end, no heart rate, calories or distance. Local receipts in ObjectBox give retry, crash safety (iOS adopts an own copy, Android upserts by client record id), delete-follows and never a second entry for a workout the Apple Watch saved. Watch and outside workouts are never written. Design: [spec](superpowers/specs/2026-11-27-phase-5-health-export-design.md); notes: [P5-01](implementation/phase-5/p5-01-workout-health-export.md); device checks are open in [RELEASE.md](RELEASE.md). Wear OS heart rate and calories on top of this writer are a later stage.
+
 ## Later phase — Wear OS companion
 
 Wear OS recording (Health Services session, haptics, battery behaviour) is its own later phase, reusing the message format and the shared language-neutral test files from Phase 4, and built when a Wear OS watch is available for device testing. Validate Flutter UI on Wear OS vs Compose before committing; no production dependency on an experimental engine without real tests.

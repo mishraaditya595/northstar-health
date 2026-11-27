@@ -208,6 +208,6 @@ Copy (iOS shown; Android replaces "Apple Health" with "Health Connect"):
 - Modify: `docs/HEALTH_DATA.md` (export section: states actually used), `docs/OBJECTBOX.md` (receipt row), `docs/PRIVACY_POLICY_INPUTS.md` (new write permission and plist text), `docs/RELEASE.md` (Phase 5 device rows: first-use prompt iPhone and Android, backfill of a real history, delete removes the entry, 5b with the watch joined leaves one entry, Health Connect not installed, revoke write access then resume), `docs/ROADMAP.md` (Phase 5 "implemented in source, not released or device-verified"), `CLAUDE.md` (Project state line; remove "phone HealthKit/Health Connect writes" from Not implemented, keep "exports" wording accurate), `docs/implementation/README.md` index.
 - Test: none new.
 
-- [ ] **Step 1:** Write the ADR and docs above.
-- [ ] **Step 2: Run all checks** from `apps/mobile/`: `dart format --output=none --set-exit-if-changed lib test`, `flutter analyze`, `flutter test`; from repo root `python3 -m unittest discover -s tool -p 'test_*.py'`. Expected: all pass, no analyzer issues.
-- [ ] **Step 3: Commit** `docs(phase-5): ADR-0014 and release gates for saving workouts to health`.
+- [x] **Step 1:** Write the ADR and docs above.
+- [x] **Step 2: Run all checks** from `apps/mobile/`: `dart format --output=none --set-exit-if-changed lib test`, `flutter analyze`, `flutter test`; from repo root `python3 -m unittest discover -s tool -p 'test_*.py'`. Expected: all pass, no analyzer issues.
+- [x] **Step 3: Commit** `docs(phase-5): ADR-0014 and release gates for saving workouts to health`.

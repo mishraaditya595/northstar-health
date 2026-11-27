@@ -55,6 +55,8 @@ Only for **completed BeyondRep-owned sessions**, not drafts or imported workouts
 
 ### Export receipt state machine
 
+**Implemented (Phase 5, ADR-0014, in source, not released or device-verified):** the states actually used are `writing` -> `confirmed`, `failedRetryable`, `blocked`, `skippedWatch`, `supersededByWatch` and `deleting` (the receipt row is removed once our copy is deleted). The receipt is committed as `writing` before the platform call. Only `northstar_phone` completed workouts are written, as one strength-training entry with name, start and end (no heart rate, calories, distance or sets). The platform id is the lowercase workout UUID (iOS `syncIdentifier`, Android `clientRecordId`) and the version is the workout's `updatedAtMs`. iOS reads BeyondRep's own saved workouts around a workout before its first write to adopt an existing copy or skip one the watch saved. The switch is off by default, per account, and independent of the read connection and of cloud backup. The generic machine below is the long-term design.
+
 `not_requested` -> `pending` -> `exporting` -> `confirmed`  
 Any uncertain interruption -> `reconciliation_required`; recoverable error -> `failed_retryable`; permanent permission/error -> `blocked`. Store platform, BeyondRep workout UUID, platform identifier when available, attempted revision, completion status and observed app-owned record identifiers in ObjectBox. Separate permission from cloud-backup setting.
 
