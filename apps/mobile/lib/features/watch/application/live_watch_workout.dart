@@ -361,6 +361,7 @@ class LiveWatchWorkoutController extends Notifier<LiveWatchState> {
     int? durationSeconds,
     int? loadGrams,
     num? rpe,
+    String? inputUnit,
   }) {
     final workout = state.workout;
     final set = workout?.setById(setId);
@@ -374,7 +375,7 @@ class LiveWatchWorkoutController extends Notifier<LiveWatchState> {
         'exercise_id': exercise.exerciseId,
         'position': set.position,
         'kind': set.kind,
-        'input_unit': set.inputUnit ?? 'kg',
+        'input_unit': inputUnit ?? set.inputUnit ?? 'kg',
         'reps': ?reps,
         'duration_seconds': ?durationSeconds,
         if (loadGrams != null && loadGrams > 0) 'load_grams': loadGrams,

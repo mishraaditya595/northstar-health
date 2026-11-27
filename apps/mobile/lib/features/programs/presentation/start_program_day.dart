@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/clock.dart';
 import '../../health/widgets/readiness_note.dart';
 import '../../train/active_workout_state.dart';
+import '../../watch/widgets/live_watch_auto_open.dart';
 import '../application/program_providers.dart';
 import '../domain/program_models.dart';
 import '../domain/program_schedule.dart';
@@ -29,6 +30,7 @@ Future<void> startProgramDay(
     ref.invalidate(activeWorkoutProvider);
   }
 
+  if (openLiveWatchWorkoutInstead(context, ref)) return;
   final active = ref.read(activeWorkoutProvider);
   if (active.value != null || active.hasError) {
     startFailed();
