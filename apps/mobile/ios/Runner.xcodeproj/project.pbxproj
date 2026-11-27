@@ -63,6 +63,7 @@
 		BEAC4190E8772EC9AA6D386B /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFAA7FAB09B6F66E9C0BE506 /* Palette.swift */; };
 		BFE1972AECA9805E3AE86558 /* SyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE847FF357D91EE7164E4B8C /* SyncView.swift */; };
 		C46F61C5DC5869259ED114D8 /* SyncLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC5926A135D54CCEDA2AB17 /* SyncLine.swift */; };
+		C6234CEEC173ED0650154736 /* OrphanSessionPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C92BD3AD0AF390DB75DD6063 /* OrphanSessionPolicy.swift */; };
 		E46CAEA98318EE4CF30536D8 /* TrainHintView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8922D0083E9A278F8A0F90F /* TrainHintView.swift */; };
 		E74D5E2657BC14BB64DEF0C9 /* SummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16B5F07520DB50B08C1C6FA9 /* SummaryView.swift */; };
 		E80D8B78FD694479F4C0F71D /* PreviewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09921EEBB1C7379249B4037 /* PreviewData.swift */; };
@@ -174,6 +175,7 @@
 		C32F3ADFC812B732E49D72E2 /* PhoneLink.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PhoneLink.swift; path = Sources/Connectivity/PhoneLink.swift; sourceTree = "<group>"; };
 		C3B67ED898925823EB39619B /* RestPage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RestPage.swift; path = Sources/Features/Workout/RestPage.swift; sourceTree = "<group>"; };
 		C8922D0083E9A278F8A0F90F /* TrainHintView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrainHintView.swift; path = Sources/Features/Onboarding/TrainHintView.swift; sourceTree = "<group>"; };
+		C92BD3AD0AF390DB75DD6063 /* OrphanSessionPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OrphanSessionPolicy.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Session/OrphanSessionPolicy.swift; sourceTree = "<group>"; };
 		CE847FF357D91EE7164E4B8C /* SyncView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SyncView.swift; path = Sources/Features/Sync/SyncView.swift; sourceTree = "<group>"; };
 		CFA3DBB46BE38CEBC6FB952A /* OverviewPage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OverviewPage.swift; path = Sources/Features/Workout/OverviewPage.swift; sourceTree = "<group>"; };
 		D083A00A0CED1ED2FDB62DF6 /* CommandApplier.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CommandApplier.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Link/CommandApplier.swift; sourceTree = "<group>"; };
@@ -338,6 +340,7 @@
 				D083A00A0CED1ED2FDB62DF6 /* CommandApplier.swift */,
 				65B03F6FDD06F3863DB51B1A /* SessionStateBuilder.swift */,
 				F5E53FD59768B175247055D3 /* LiveLink.swift */,
+				C92BD3AD0AF390DB75DD6063 /* OrphanSessionPolicy.swift */,
 			);
 			name = BeyondRepWatch;
 			path = ../../watch_os;
@@ -567,6 +570,7 @@
 				3EFCD21A5FD980F21338CB65 /* CommandApplier.swift in Sources */,
 				B669770CB33B6F13D7646AF7 /* SessionStateBuilder.swift in Sources */,
 				82210AFFBBC53876CD29F72C /* LiveLink.swift in Sources */,
+				C6234CEEC173ED0650154736 /* OrphanSessionPolicy.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

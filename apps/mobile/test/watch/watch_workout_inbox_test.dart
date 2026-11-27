@@ -126,19 +126,16 @@ void main() {
     },
   );
 
-  test(
-    'reports the start of an imported workout, also for a duplicate, never for an ignored one',
-    () async {
-      final message = _fixture(accountKey: watchAccountKey(accountA));
-      await inbox.handle(message);
-      expect(imported, [DateTime.utc(2026, 10, 23, 11)]);
-      await inbox.handle(message);
-      expect(imported, hasLength(2));
-      imported.clear();
-      await inbox.handle(_fixture(accountKey: watchAccountKey(accountB)));
-      expect(imported, isEmpty);
-    },
-  );
+  test('reports the start of an imported workout, also for a duplicate, never for an ignored one', () async {
+    final message = _fixture(accountKey: watchAccountKey(accountA));
+    await inbox.handle(message);
+    expect(imported, [DateTime.utc(2026, 10, 23, 11)]);
+    await inbox.handle(message);
+    expect(imported, hasLength(2));
+    imported.clear();
+    await inbox.handle(_fixture(accountKey: watchAccountKey(accountB)));
+    expect(imported, isEmpty);
+  });
 
   test('an upper-case workout id is stored and acked stored', () async {
     final message = _fixture(

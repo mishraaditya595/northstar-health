@@ -44,7 +44,8 @@
 - **Commands:**
   - Each command has a new UUID `command_id`. The phone keeps it pending until a state lists it in `applied_command_ids`, and resends the same command id every 5 s while pending and the link is up, for at most 30 s. After that the row shows "Not saved on your watch" and offers retry.
   - The watch applies a given command id at most once, and an already-applied id is not an error.
-  - A `log_set` or `correct_set` on a completed set becomes `set_corrected` (ADR-0012 decision 6).
+  - A `log_set` or `correct_set` on a completed set becomes `set_corrected` (ADR-0012 decision 6); on a set never logged either becomes `set_logged` and starts the set's rest.
+  - `applied_command_ids` holds at most 20 ids; an id the phone resent (a duplicate) is listed in the next states even when older, so a retry is confirmed.
   - `finish` runs the watch's own two-step finish (`markCompleted`, HealthKit finish, `queueCompleted`). `discard` requires a confirm dialog on the phone (kit dialog).
 - **UI (phone):**
   - Design kit only (`lib/core/design/`); `test/design_kit_guard_test.dart` must pass.
@@ -94,7 +95,7 @@
 
 **Files:**
 - Create `Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Link/SessionStateBuilder.swift` and `Link/CommandApplier.swift`.
-- Modify `Store/WatchJournal.swift` (v7 migration: table `applied_commands(command_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, applied_at_ms INTEGER NOT NULL, result TEXT NOT NULL, reason TEXT)`, rows deleted when their session leaves active or paused) and `Session/WorkoutController.swift` (only what the applier needs, for example `logOrCorrect(setValues:)` if it is missing).
+- Modify `Store/WatchJournal.swift` (v7 migration: table `applied_commands(session_id TEXT NOT NULL, command_id TEXT NOT NULL, result TEXT NOT NULL DEFAULT 'applied', reason TEXT, applied_at_ms INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(session_id, command_id))`, rows deleted when their session is abandoned or when the phone acks its completed workout, so a resent `finish` stays a duplicate) and `Session/WorkoutController.swift` (only what the applier needs, for example `logOrCorrect(setValues:)` if it is missing).
 - Tests: `SessionStateBuilderTests.swift` (golden cases from Task 1), `CommandApplierTests.swift`, `WatchJournalTests.swift` (migration v6 to v7 on an old database).
 
 - [ ] Failing tests:
