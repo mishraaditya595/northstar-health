@@ -43,7 +43,9 @@ final class WorkoutCursorTests: XCTestCase {
 
     func testPrefillUsesLastCompletedSetOfSameExercise() throws {
         var t = try template()
-        // The next set targets 62.5 kg x 6, the logged one was 60 kg x 8.
+        // Both sets are working sets. The next targets 62.5 kg x 6, the
+        // logged one was 60 kg x 8. (A warm-up never prefills a working set.)
+        t.exercises[0].sets[0].kind = "working"
         t.exercises[0].sets[1].targetLoadGrams = 62500
         t.exercises[0].sets[1].targetReps = 6
         let first = t.exercises[0].sets[0]
