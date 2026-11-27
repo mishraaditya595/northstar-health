@@ -246,7 +246,7 @@ final class PhoneInboxTests: XCTestCase {
 
     func testReplayedDuplicatesDoNotMoveTheReceivedTime() throws {
         let first = M.date("2026-10-23T05:00:00Z")
-        let ctx = context(M.binding(M.keyA), M.plans(M.keyA), M.health(M.keyA))
+        let ctx = try context(M.binding(M.keyA), M.plans(M.keyA), M.health(M.keyA))
         _ = try inbox.receive(applicationContext: ctx, now: first)
         XCTAssertEqual(try journal.lastReceivedMs(), 1_792_731_600_000)
 
