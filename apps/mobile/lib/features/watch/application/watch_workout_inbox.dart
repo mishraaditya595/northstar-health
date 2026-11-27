@@ -6,6 +6,7 @@ import '../../../core/clock.dart';
 import '../../../core/ids/uuid_factory.dart';
 import '../../account/account_auth_provider.dart';
 import '../../health/application/health_overview.dart';
+import '../../health/application/workout_health_export_controller.dart';
 import '../../programs/application/program_providers.dart';
 import '../../progress/workout_history_state.dart';
 import '../../sync/workout_restore_feed.dart';
@@ -167,8 +168,12 @@ final watchWorkoutInboxProvider = Provider<WatchWorkoutInbox>((ref) {
       ref.invalidate(workoutSyncFlagsProvider);
       ref.invalidate(ownPlatformWorkoutIdsProvider);
       ref.read(workoutUploadKickProvider)?.call();
+      ref.read(healthExportKickProvider)();
     },
-    onLinked: () => ref.invalidate(ownPlatformWorkoutIdsProvider),
+    onLinked: () {
+      ref.invalidate(ownPlatformWorkoutIdsProvider);
+      ref.read(healthExportKickProvider)();
+    },
     onImported: (startedAt) => ref
         .read(liveWatchWorkoutProvider.notifier)
         .dropImported(startedAt: startedAt),

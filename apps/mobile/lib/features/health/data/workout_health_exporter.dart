@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/storage/objectbox_store_provider.dart';
 import '../../../objectbox.g.dart';
 import '../../watch/data/watch_workout_receipt_entity.dart';
 import '../../workouts/data/workout_entities.dart';
@@ -79,6 +82,9 @@ class WorkoutHealthExporter {
     }
     return result;
   }
+
+  /// Counts from the stored workouts and receipts; no platform call.
+  ExportPassResult summary() => _summary(_candidates(), _watchLinked());
 
   DateTime _utc(int ms) => DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true);
 
@@ -399,3 +405,32 @@ class WorkoutHealthExporter {
     }
   }
 }
+
+typedef WorkoutHealthExporterFactory = WorkoutHealthExporter Function({
+  required String accountId,
+  required bool Function() stillCurrent,
+  required bool Function() watchPaired,
+  required DateTime Function() clock,
+});
+
+/// Builds an exporter over the signed-in account's store. Tests override it.
+final workoutHealthExporterFactoryProvider =
+    Provider<WorkoutHealthExporterFactory>((ref) {
+      final store = ref.watch(objectBoxStoreProvider);
+      final repository = ref.watch(healthExportRepositoryProvider);
+      final writer = ref.watch(healthWorkoutWriterProvider);
+      return ({
+        required accountId,
+        required stillCurrent,
+        required watchPaired,
+        required clock,
+      }) => WorkoutHealthExporter(
+        store: store,
+        accountId: accountId,
+        repository: repository,
+        writer: writer,
+        stillCurrent: stillCurrent,
+        watchPaired: watchPaired,
+        clock: clock,
+      );
+    });

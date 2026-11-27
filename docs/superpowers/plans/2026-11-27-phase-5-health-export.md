@@ -174,11 +174,11 @@ Behaviour:
   - `HealthExportHost` (`ConsumerStatefulWidget`, `WidgetsBindingObserver`): kick after first frame, on `AppLifecycleState.resumed`, and when the signed-in user id changes to non-null. Mirrors `CatalogRefreshHost`.
 - `stillCurrent` for the exporter = the signed-in user id still equals the pass's account id.
 
-- [ ] **Step 1: Write failing tests:** controller `is Off by default, On after turnOn with saved count`; `turnOn requests access once and runs a pass`; `turnOff stops later passes writing`; `Unavailable when the store is unavailable`; `needsAccess true after a denied pass`; host `kicks on resume and on sign-in`; inbox `onLinked calls the export kick` (extend `test/watch/watch_workout_inbox_test.dart` or the provider test that builds the inbox).
-- [ ] **Step 2: Run** those tests — expected FAIL.
-- [ ] **Step 3: Implement** the controller, kick provider, host and the four call sites (each call site is one line).
-- [ ] **Step 4: Run** the new tests plus `flutter test test/train test/progress test/watch` — expected PASS.
-- [ ] **Step 5: Commit** `feat(health): run health export on finish, delete, watch link and resume`.
+- [x] **Step 1: Write failing tests:** controller `is Off by default, On after turnOn with saved count`; `turnOn requests access once and runs a pass`; `turnOff stops later passes writing`; `Unavailable when the store is unavailable`; `needsAccess true after a denied pass`; host `kicks on resume and on sign-in`; inbox `onLinked calls the export kick` (extend `test/watch/watch_workout_inbox_test.dart` or the provider test that builds the inbox).
+- [x] **Step 2: Run** those tests — expected FAIL.
+- [x] **Step 3: Implement** the controller, kick provider, host and the four call sites (each call site is one line).
+- [x] **Step 4: Run** the new tests plus `flutter test test/train test/progress test/watch` — expected PASS.
+- [x] **Step 5: Commit** `feat(health): run health export on finish, delete, watch link and resume`.
 
 ### Task 6: Health tab row and first-use sheet
 
