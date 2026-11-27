@@ -370,6 +370,7 @@ final class WatchJournalTests: XCTestCase {
         XCTAssertNotNil(try journal.binding())
         XCTAssertNotNil(try journal.plans(accountKey: key))
         XCTAssertNil(try journal.clearedAt(key))
+        XCTAssertNotNil(try journal.health(accountKey: key, forLocalDate: "2026-10-23"))
     }
 
     func testNoPruneWithoutLastReceived() throws {
@@ -430,6 +431,24 @@ final class WatchJournalTests: XCTestCase {
         XCTAssertFalse(try journal.pruneStale(nowMs: receivedMs))
         for n in 1...5 { XCTAssertNil(try journal.clearedAt("account-\(n)"), "account-\(n)") }
         for n in 6...25 { XCTAssertEqual(try journal.clearedAt("account-\(n)"), Int64(n)) }
+    }
+
+    func testCapKeepsTheTombstoneJustWrittenEvenWhenItIsTheOldest() throws {
+        let journal = try WatchJournal(url: url)
+        let inbox = PhoneInbox(journal: journal)
+        let context: [String: Any] = ["account_binding": try TestMessages.json(TestMessages.binding(key))]
+        let received = Date(timeIntervalSince1970: Double(receivedMs) / 1000)
+        try inbox.receive(applicationContext: context, now: received)
+        let sentAt = try XCTUnwrap(try journal.bindingState()).sentAtMs
+        for n in 1...20 { try journal.recordCleared("other-\(n)", sentAtMs: sentAt + Int64(n)) }
+        XCTAssertTrue(try journal.pruneStale(nowMs: receivedMs + 91 * dayMs))
+        XCTAssertEqual(try journal.clearedAt(key), sentAt)
+        XCTAssertNil(try journal.clearedAt("other-1"))
+        for n in 2...20 { XCTAssertEqual(try journal.clearedAt("other-\(n)"), sentAt + Int64(n)) }
+        let ignoredBefore = inbox.ignoredCount
+        try inbox.receive(applicationContext: context, now: received.addingTimeInterval(91 * 86_400))
+        XCTAssertNil(try journal.binding())
+        XCTAssertEqual(inbox.ignoredCount, ignoredBefore + 1)
     }
 
     func testPruneRecordsTheBindingsSendTimeAsTheTombstone() throws {

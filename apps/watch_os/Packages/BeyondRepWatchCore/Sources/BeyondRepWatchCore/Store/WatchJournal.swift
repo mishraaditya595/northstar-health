@@ -450,12 +450,13 @@ public final class WatchJournal {
     /// when the binding was dropped. Nothing is dropped while a workout is
     /// active or paused, and unsent workouts are never dropped. The binding's
     /// send time becomes the account's tombstone, so a replay of the old
-    /// application context is ignored. Tombstones are capped by count, never
-    /// by age, because the watch replays the last application context on launch.
+    /// application context is ignored and is never removed by the cap of
+    /// the same call. Tombstones are capped by count, never by age, because the watch replays the last application context on launch.
     @discardableResult
     public func pruneStale(nowMs: Int64, maxSilenceDays: Int = 90, maxTombstones: Int = 20) throws -> Bool {
         try db.transaction { () throws -> Bool in
             var dropped = false
+            var droppedKey = ""
             if let binding = try bindingState(), let received = try lastReceivedMs(),
                 received < nowMs - Int64(maxSilenceDays) * 86_400_000
             {
@@ -466,12 +467,17 @@ public final class WatchJournal {
                     try recordCleared(binding.accountKey, sentAtMs: binding.sentAtMs)
                     try clearAccount(binding.accountKey, wipeUnsent: false)
                     dropped = true
+                    droppedKey = binding.accountKey
                 }
             }
+            // The tombstone just written may be older than the others (it
+            // carries the binding's send time), so it is kept and the newest
+            // others fill the rest of the cap.
             try db.execute(
-                "DELETE FROM cleared WHERE account_key NOT IN "
-                    + "(SELECT account_key FROM cleared ORDER BY sent_at_ms DESC, account_key LIMIT ?)",
-                [.int(Int64(maxTombstones))])
+                "DELETE FROM cleared WHERE account_key != ? AND account_key NOT IN "
+                    + "(SELECT account_key FROM cleared WHERE account_key != ? "
+                    + "ORDER BY sent_at_ms DESC, account_key LIMIT ?)",
+                [.text(droppedKey), .text(droppedKey), .int(Int64(dropped ? maxTombstones - 1 : maxTombstones))])
             return dropped
         }
     }

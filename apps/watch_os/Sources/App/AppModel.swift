@@ -91,9 +91,10 @@ final class AppModel: ObservableObject {
         details[metric]
     }
 
-    /// Drops a binding the phone has not refreshed for 90 days (never during a
-    /// workout, never unsent workouts). Errors are ignored; the next call retries.
+    /// Drops a binding the phone has not refreshed for 90 days (never during or while
+    /// starting a workout, never unsent workouts). Errors are ignored; the next call retries.
     func pruneStale() {
+        guard !isStarting, workout == nil else { return }
         _ = try? journal?.pruneStale(nowMs: Int64(Date().timeIntervalSince1970 * 1000))
     }
 
