@@ -307,11 +307,13 @@ select is((public.sync_workout('00000000-0000-4000-8000-000000000014',
 
 -- A second phone that never saw the workout resends it from the watch with
 -- expected revision 0: the tombstone still wins, never a silent resurrection.
-select is((public.sync_workout('00000000-0000-4000-8000-000000000015',
+select is((select jsonb_build_object('result',r->>'result','reason',r->>'reason')
+ from (select public.sync_workout('00000000-0000-4000-8000-000000000015',
  '00000000-0000-4000-8000-000000000101',0,'upsert',
  jsonb_set(current_setting('northstar.fixture')::jsonb,
- '{origin}','"beyondrep_watch"'::jsonb))->>'result'),
- 'conflict','watch workout resent at expected revision 0 stays a conflict');
+ '{origin}','"beyondrep_watch"'::jsonb)) as r) q),
+ '{"result":"conflict","reason":"deleted"}'::jsonb,
+ 'watch workout resent at expected revision 0 stays a deleted-tombstone conflict');
 
 -- Account B sees none of A's records; writer identity is derived from JWT.
 select set_config('request.jwt.claims',
