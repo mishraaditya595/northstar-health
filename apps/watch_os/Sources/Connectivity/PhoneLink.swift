@@ -1,5 +1,8 @@
 import Foundation
 import WatchConnectivity
+#if canImport(BeyondRepWatchCore)
+import BeyondRepWatchCore
+#endif
 
 /// Receives the phone's application context and one-off user info and hands
 /// them to the model. The only thing sent back is an `ack` (ids and a result,
@@ -48,6 +51,29 @@ final class PhoneLink: NSObject, WCSessionDelegate {
         for json in acks {
             WCSession.default.transferUserInfo(["json": json])
         }
+    }
+
+    /// Queues a finished workout for the phone. The system keeps the transfer
+    /// until the phone receives it, so it survives the phone being away.
+    func send(completed message: WatchMessage) {
+        guard WCSession.isSupported(), WCSession.default.activationState == .activated,
+            let data = try? message.jsonData()
+        else { return }
+        WCSession.default.transferUserInfo(["json": String(decoding: data, as: UTF8.self)])
+    }
+
+    /// Message ids of transfers still in flight, so one is not queued twice.
+    func outstandingIds() -> Set<String> {
+        guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return [] }
+        var ids = Set<String>()
+        for transfer in WCSession.default.outstandingUserInfoTransfers where transfer.isTransferring {
+            guard let text = transfer.userInfo["json"] as? String,
+                let object = (try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? [String: Any],
+                let id = object["message_id"] as? String
+            else { continue }
+            ids.insert(id.lowercased())
+        }
+        return ids
     }
 
     private func deliver(context: [String: Any]) {

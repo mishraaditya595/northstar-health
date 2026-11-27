@@ -10,6 +10,8 @@ import HealthKit
 final class WorkoutRecorder: NSObject, ObservableObject {
     @Published private(set) var heartRate: Int?
     @Published private(set) var activeKilocalories: Double?
+    /// The average heart rate of the session so far, for the summary only.
+    @Published private(set) var averageHeartRate: Int?
 
     private let store = HKHealthStore()
     private var session: HKWorkoutSession?
@@ -46,6 +48,7 @@ final class WorkoutRecorder: NSObject, ObservableObject {
         self.workoutId = workoutId
         heartRate = nil
         activeKilocalories = nil
+        averageHeartRate = nil
         session.startActivity(with: date)
         try await builder.beginCollection(at: date)
     }
@@ -137,6 +140,7 @@ extension WorkoutRecorder: HKLiveWorkoutBuilderDelegate {
     ) {
         var bpm: Int?
         var kcal: Double?
+        var average: Int?
         for type in collectedTypes {
             guard let quantityType = type as? HKQuantityType,
                 let statistics = workoutBuilder.statistics(for: quantityType)
@@ -144,6 +148,7 @@ extension WorkoutRecorder: HKLiveWorkoutBuilderDelegate {
             if quantityType == HKQuantityType(.heartRate) {
                 let unit = HKUnit.count().unitDivided(by: .minute())
                 bpm = statistics.mostRecentQuantity().map { Int($0.doubleValue(for: unit).rounded()) }
+                average = statistics.averageQuantity().map { Int($0.doubleValue(for: unit).rounded()) }
             } else if quantityType == HKQuantityType(.activeEnergyBurned) {
                 kcal = statistics.sumQuantity()?.doubleValue(for: .kilocalorie())
             }
@@ -151,6 +156,7 @@ extension WorkoutRecorder: HKLiveWorkoutBuilderDelegate {
         Task { @MainActor [weak self] in
             if let bpm { self?.heartRate = bpm }
             if let kcal { self?.activeKilocalories = kcal }
+            if let average { self?.averageHeartRate = average }
         }
     }
 }

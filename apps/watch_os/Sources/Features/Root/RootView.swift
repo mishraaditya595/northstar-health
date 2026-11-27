@@ -12,6 +12,9 @@ enum WatchRoute: Hashable {
     case metric(Metric)
     case readiness
     case sync
+    /// Today's program workout, or the plan with this id.
+    case today
+    case plan(String)
 }
 
 /// Home and Train are two vertical pages (the crown scrolls between them);
@@ -33,13 +36,34 @@ struct RootView: View {
             set: { if !$0 { didShowTrainHint = true } })
     }
 
+    private var isRecording: Bool {
+        guard let status = model.workout?.status else { return false }
+        return status == "active" || status == "paused"
+    }
+
     var body: some View {
+        Group {
+            if let summary = model.summary {
+                SummaryView(model: model, summary: summary)
+            } else if isRecording {
+                WorkoutView(model: model)
+            } else {
+                browser
+            }
+        }
+        .task { await model.restoreWorkout() }
+    }
+
+    private var browser: some View {
         NavigationStack {
             TabView(selection: $page) {
                 HomePage(glance: model.glance, syncLine: model.syncLine, page: $page)
                     .tag(WatchPage.home)
-                TrainPage(glance: model.glance)
-                    .tag(WatchPage.train)
+                TrainPage(
+                    glance: model.glance, canStart: model.canStart,
+                    onQuickWorkout: { Task { await model.startWorkout(.quick()) } }
+                )
+                .tag(WatchPage.train)
             }
             .tabViewStyle(.verticalPage)
             .navigationDestination(for: WatchRoute.self) { route in
@@ -72,7 +96,11 @@ struct RootView: View {
                 NoDataView()
             }
         case .sync:
-            SyncView(line: model.syncLine)
+            SyncView(line: model.syncLine, waiting: model.waiting)
+        case .today:
+            PlanPreviewView(model: model, planId: nil)
+        case .plan(let id):
+            PlanPreviewView(model: model, planId: id)
         }
     }
 }
