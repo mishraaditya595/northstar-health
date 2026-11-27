@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(66);
+select plan(67);
 
 insert into auth.users(id,email) values
  ('00000000-0000-4000-8000-0000000000a1','northstar-p2-a@example.invalid'),
@@ -304,6 +304,14 @@ select is((public.sync_workout('00000000-0000-4000-8000-000000000014',
  '00000000-0000-4000-8000-000000000101',3,'upsert',
  current_setting('northstar.fixture')::jsonb)->>'result'),
  'conflict','tombstoned workout cannot be silently resurrected');
+
+-- A second phone that never saw the workout resends it from the watch with
+-- expected revision 0: the tombstone still wins, never a silent resurrection.
+select is((public.sync_workout('00000000-0000-4000-8000-000000000015',
+ '00000000-0000-4000-8000-000000000101',0,'upsert',
+ jsonb_set(current_setting('northstar.fixture')::jsonb,
+ '{origin}','"beyondrep_watch"'::jsonb))->>'result'),
+ 'conflict','watch workout resent at expected revision 0 stays a conflict');
 
 -- Account B sees none of A's records; writer identity is derived from JWT.
 select set_config('request.jwt.claims',
