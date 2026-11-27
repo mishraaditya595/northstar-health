@@ -77,6 +77,16 @@ public final class WorkoutController {
     public var cursor: WorkoutCursor {
         WorkoutCursor(template: template, state: machine.state, focusExerciseId: focusExerciseId)
     }
+    /// Where "Add set" goes: the exercise of the most recently logged set, else
+    /// the focused exercise, else the last exercise of the template.
+    public var addSetExerciseId: String? {
+        var logged: String?
+        for event in machine.events.sorted(by: { $0.header.sequence < $1.header.sequence }) {
+            if case .setLogged(_, let values) = event { logged = values.exerciseId }
+        }
+        return logged ?? focusExerciseId ?? template.exercises.last?.exerciseId
+    }
+
     /// True with at least one completed working set, the rule the builder
     /// enforces: warm-ups alone cannot be saved.
     public var canSave: Bool { machine.state.completedSets >= 1 }

@@ -10,6 +10,8 @@ struct RestPage: View {
     @ObservedObject var model: AppModel
     let controller: WorkoutController
 
+    @Environment(\.isLuminanceReduced) private var dimmed
+
     private var deadline: Date? { _ = model.revision; return controller.restDeadline }
 
     var body: some View {
@@ -18,7 +20,7 @@ struct RestPage: View {
                 .font(.footnote.weight(.heavy))
                 .foregroundStyle(Palette.secondary)
             if let deadline {
-                TimelineView(.periodic(from: .now, by: 1)) { context in
+                TimelineView(.periodic(from: .now, by: dimmed ? 60 : 1)) { context in
                     ring(remaining: max(0, deadline.timeIntervalSince(context.date)))
                 }
                 HStack(spacing: 6) {
@@ -53,7 +55,8 @@ struct RestPage: View {
                 .trim(from: 0, to: fraction)
                 .stroke(Palette.performance, style: StrokeStyle(lineWidth: 8, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            Text(String(format: "%d:%02d", seconds / 60, seconds % 60))
+            // The always-on dimmed state shows whole minutes, no seconds.
+            Text(dimmed ? "\(max(1, (seconds + 59) / 60)) min" : String(format: "%d:%02d", seconds / 60, seconds % 60))
                 .font(.title2.weight(.bold).monospacedDigit())
                 .minimumScaleFactor(0.6)
                 .foregroundStyle(Palette.ink)

@@ -145,6 +145,20 @@ final class WorkoutControllerTests: XCTestCase {
         XCTAssertEqual(hk, uuid)
     }
 
+    func testAddSetGoesToTheMostRecentlyLoggedExercise() throws {
+        let controller = try start(try TemplateFixtures.template())
+        let press = controller.template.exercises[0]
+        let plank = controller.template.exercises[1]
+        XCTAssertEqual(controller.addSetExerciseId, plank.exerciseId)  // nothing logged: the last exercise
+        controller.focus(exerciseId: press.exerciseId)
+        XCTAssertEqual(controller.addSetExerciseId, press.exerciseId)  // focused
+        controller.focus(exerciseId: plank.exerciseId)
+        _ = try logCurrent(controller)  // the plank is focused, so it is logged first
+        controller.focus(exerciseId: press.exerciseId)
+        _ = try logCurrent(controller)  // a press set
+        XCTAssertEqual(controller.addSetExerciseId, press.exerciseId)
+    }
+
     func testOnlyWarmupsCannotBeSaved() throws {
         let controller = try start(try TemplateFixtures.template())
         XCTAssertFalse(controller.canSave)

@@ -23,15 +23,18 @@ struct SetPage: View {
     private var timed: Bool { current?.exercise.kind == "duration" }
 
     var body: some View {
-        VStack(spacing: 6) {
-            topRow
-            if let position = current, let values {
-                content(position: position, values: values)
-            } else {
-                allDone
+        // Scrolls so "Log set" stays reachable at large Dynamic Type sizes.
+        ScrollView {
+            VStack(spacing: 6) {
+                topRow
+                if let position = current, let values {
+                    content(position: position, values: values)
+                } else {
+                    allDone
+                }
             }
+            .padding(.horizontal, 6)
         }
-        .padding(.horizontal, 6)
         .background(Palette.canvas)
         .focusable()
         .onAppear { reset() }
@@ -81,7 +84,6 @@ struct SetPage: View {
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Palette.ink)
                 .lineLimit(2)
-                .minimumScaleFactor(0.8)
             Text("Set \(position.indexInExercise + 1) of \(position.countInExercise)")
                 .font(.caption2)
                 .foregroundStyle(Palette.secondary)
@@ -150,9 +152,9 @@ struct SetPage: View {
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Palette.ink)
                 .multilineTextAlignment(.center)
-            if let last = controller.template.exercises.last {
+            if let exerciseId = controller.addSetExerciseId {
                 Button("Add set") {
-                    _ = try? controller.addSet(exerciseId: last.exerciseId)
+                    _ = try? controller.addSet(exerciseId: exerciseId)
                     model.act { _ in }
                 }
                 .frame(minHeight: 44)
