@@ -11,6 +11,12 @@ class FakeWatchLiveLink implements WatchLiveLink {
   /// Every command JSON the phone sent, including resends.
   final sent = <String>[];
 
+  /// Every `session_state` JSON the phone sent for its own workout.
+  final states = <String>[];
+
+  /// How often the phone asked the watch to launch its app.
+  int watchAppStarts = 0;
+
   /// What [sendCommand] answers; false models "no live path".
   bool canSend = true;
 
@@ -26,6 +32,18 @@ class FakeWatchLiveLink implements WatchLiveLink {
   @override
   Future<bool> sendCommand(String json) async {
     sent.add(json);
+    return canSend;
+  }
+
+  @override
+  Future<bool> sendState(String json) async {
+    states.add(json);
+    return canSend;
+  }
+
+  @override
+  Future<bool> startWatchApp() async {
+    watchAppStarts++;
     return canSend;
   }
 

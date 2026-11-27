@@ -34,6 +34,7 @@ class WatchWorkoutInbox {
     required this.clock,
     required this.onStored,
     this.onImported,
+    this.onLinked,
   });
 
   final WatchLink link;
@@ -46,6 +47,10 @@ class WatchWorkoutInbox {
   /// Called with the start time of a workout the phone now holds (stored or
   /// already stored), so a live card of the same workout can go.
   final void Function(DateTime startedAt)? onImported;
+
+  /// Called when a `workout_link` stored a new receipt, so the HKWorkout it
+  /// names is hidden from outside workouts.
+  final void Function()? onLinked;
 
   /// Null when the message was ignored (signed out, another account, or the
   /// account changed while importing): nothing was acknowledged.
@@ -87,6 +92,43 @@ class WatchWorkoutInbox {
     return _ack(message, key, result);
   }
 
+  /// A `workout_link`: the watch saved the one HKWorkout of a phone workout.
+  /// The receipt commits first and the ack follows; an unknown or unfinished
+  /// workout gets no ack, so the watch resends. Null when ignored.
+  Future<WatchLinkResult?> handleLink(WorkoutLink message) async {
+    final user = signedInUserId();
+    if (user == null) return null;
+    final key = watchAccountKey(user);
+    if (message.accountKey != key) return null;
+    final WatchLinkResult result;
+    try {
+      result = importer(user).linkPhoneWorkout(
+        messageId: message.messageId,
+        workoutUuid: message.workoutId,
+        platformWorkoutUuid: message.healthkitWorkoutUuid,
+      );
+    } on StateError catch (e) {
+      if (e.message == 'account_changed') return null;
+      rethrow;
+    }
+    if (result == WatchLinkResult.unknown) return result;
+    if (result == WatchLinkResult.stored) onLinked?.call();
+    final ack = buildAck(
+      accountKey: key,
+      ackedMessageId: message.messageId,
+      result: switch (result) {
+        WatchLinkResult.stored => 'stored',
+        WatchLinkResult.duplicate => 'duplicate',
+        _ => 'rejected',
+      },
+      reason: result == WatchLinkResult.invalid ? 'invalid' : null,
+      messageId: ids.newId(),
+      nowUtc: clock().toUtc(),
+    );
+    await link.transfer(jsonEncode(ack.toJson()));
+    return result;
+  }
+
   Future<WatchImportResult> _ack(
     CompletedWorkout message,
     String key,
@@ -126,6 +168,7 @@ final watchWorkoutInboxProvider = Provider<WatchWorkoutInbox>((ref) {
       ref.invalidate(ownPlatformWorkoutIdsProvider);
       ref.read(workoutUploadKickProvider)?.call();
     },
+    onLinked: () => ref.invalidate(ownPlatformWorkoutIdsProvider),
     onImported: (startedAt) => ref
         .read(liveWatchWorkoutProvider.notifier)
         .dropImported(startedAt: startedAt),

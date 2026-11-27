@@ -21,6 +21,7 @@ import '../domain/watch_status.dart';
 import 'watch_snapshots.dart';
 import 'watch_status_provider.dart';
 import 'watch_wipe_retrier.dart';
+import 'phone_live_session.dart';
 import 'watch_workout_inbox.dart';
 
 /// Ids for outgoing watch messages; tests replace it.
@@ -198,6 +199,15 @@ class WatchSyncController {
         _ref
             .read(watchWorkoutInboxProvider)
             .handle(message)
+            .then<void>((_) {}, onError: (_) {}),
+      );
+      return;
+    }
+    if (message is WorkoutLink) {
+      unawaited(
+        _ref
+            .read(watchWorkoutInboxProvider)
+            .handleLink(message)
             .then<void>((_) {}, onError: (_) {}),
       );
       return;
@@ -459,6 +469,9 @@ class WatchSyncHost extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(watchSyncControllerProvider);
+    // The phone's own workout is broadcast to the watch for as long as the
+    // signed-in scope lives; reading the notifier does not rebuild on state.
+    ref.watch(phoneLiveSessionProvider.notifier);
     return child;
   }
 }

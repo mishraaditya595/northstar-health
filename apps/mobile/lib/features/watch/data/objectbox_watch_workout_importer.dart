@@ -14,6 +14,10 @@ import 'watch_workout_receipt_entity.dart';
 
 enum WatchImportResult { stored, duplicate, invalid }
 
+/// How a `workout_link` was handled. [unknown] gets no ack, so the watch
+/// resends it; [invalid] is acked as rejected.
+enum WatchLinkResult { stored, duplicate, unknown, invalid }
+
 /// Rolls the import transaction back; never leaves the importer.
 class _InvalidImport implements Exception {
   const _InvalidImport();
@@ -132,6 +136,53 @@ class ObjectBoxWatchWorkoutImporter {
     } on _InvalidImport {
       return WatchImportResult.invalid;
     }
+  }
+
+  /// Records the HKWorkout the watch saved while following a workout the phone
+  /// owns: one receipt, no workout, set or outbox write (the cloud origin
+  /// stays the phone's). Receipt and account check commit in one transaction.
+  /// Throws `StateError('account_changed')` like [importCompleted].
+  WatchLinkResult linkPhoneWorkout({
+    required String messageId,
+    required String workoutUuid,
+    required String platformWorkoutUuid,
+  }) {
+    final message = messageId.toLowerCase();
+    final workout = workoutUuid.toLowerCase();
+    _checkAccount();
+    return _store.runInTransaction(TxMode.write, () {
+      final byMessage = _one(
+        _receipts,
+        WatchWorkoutReceiptEntity_.messageId,
+        message,
+      );
+      final byWorkout = _one(
+        _receipts,
+        WatchWorkoutReceiptEntity_.workoutUuid,
+        workout,
+      );
+      if (byMessage != null && byMessage.workoutUuid != workout) {
+        return WatchLinkResult.invalid;
+      }
+      if (byMessage != null || byWorkout != null) {
+        return WatchLinkResult.duplicate;
+      }
+      final session = _one(_sessions, WorkoutSessionEntity_.uuid, workout);
+      if (session == null || session.status != 'completed') {
+        return WatchLinkResult.unknown;
+      }
+      if (session.deletedAtMs != null) return WatchLinkResult.invalid;
+      _receipts.put(
+        WatchWorkoutReceiptEntity(
+          workoutUuid: workout,
+          messageId: message,
+          platformWorkoutUuid: platformWorkoutUuid.toLowerCase(),
+          receivedAtMs: _clock().toUtc().millisecondsSinceEpoch,
+        ),
+      );
+      _checkAccount();
+      return WatchLinkResult.stored;
+    });
   }
 
   /// Only when the plan exists here and belongs to that program; otherwise the

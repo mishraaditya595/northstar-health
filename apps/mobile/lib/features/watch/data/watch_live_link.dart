@@ -19,6 +19,16 @@ abstract interface class WatchLiveLink {
   /// Sends one command. False when no live path to the watch exists right
   /// now; the caller decides whether to try again.
   Future<bool> sendCommand(String json);
+
+  /// Sends a `session_state` of a workout the phone owns to the watch (the
+  /// mirrored session, else `sendMessage` while reachable). False when no
+  /// live path exists right now; the next state tries again.
+  Future<bool> sendState(String json);
+
+  /// Asks the paired watch to launch its app for a workout (traditional
+  /// strength training). False when it could not be asked; never an error,
+  /// and no permission is requested.
+  Future<bool> startWatchApp();
 }
 
 /// iOS bridge. A missing plugin or a platform error never reaches the UI: it
@@ -94,6 +104,22 @@ class MethodChannelWatchLiveLink implements WatchLiveLink {
       return false;
     }
   }
+
+  @override
+  Future<bool> sendState(String json) => _invoke('sendState', {'json': json});
+
+  @override
+  Future<bool> startWatchApp() => _invoke('startWatchApp');
+
+  Future<bool> _invoke(String method, [Object? arguments]) async {
+    try {
+      return await channel.invokeMethod<bool>(method, arguments) ?? false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
+    }
+  }
 }
 
 /// Android and tests: no watch to follow.
@@ -108,6 +134,12 @@ class NoopWatchLiveLink implements WatchLiveLink {
 
   @override
   Future<bool> sendCommand(String json) async => false;
+
+  @override
+  Future<bool> sendState(String json) async => false;
+
+  @override
+  Future<bool> startWatchApp() async => false;
 }
 
 final watchLiveLinkProvider = Provider<WatchLiveLink>(

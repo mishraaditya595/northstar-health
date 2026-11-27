@@ -18,6 +18,8 @@ import '../workouts/domain/live_workout_engine.dart';
 import '../workouts/domain/workout_models.dart';
 import '../programs/application/program_providers.dart';
 import '../progress/workout_history_state.dart';
+import '../watch/application/phone_live_session.dart';
+import '../watch/application/watch_status_provider.dart';
 import '../workouts/domain/workout_repository.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
 import '../sync/workout_upload_coordinator.dart';
@@ -235,6 +237,12 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
     );
   }
 
+  /// A paired Apple Watch with BeyondRep on it can follow this workout.
+  bool get _watchAppInstalled {
+    final d = ref.watch(watchLinkStateProvider.select((s) => s.device));
+    return d.supported && d.paired && d.installed;
+  }
+
   Widget _workoutBody(
     WorkoutSessionRecord session,
     WorkoutRecoveryCheckpoint checkpoint,
@@ -340,6 +348,15 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
             ),
           ],
         ),
+        if (_watchAppInstalled) ...[
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () =>
+                ref.read(phoneLiveSessionProvider.notifier).openOnWatch(),
+            icon: const Icon(Icons.watch_outlined),
+            label: const Text('Open on Apple Watch'),
+          ),
+        ],
         const SizedBox(height: 12),
         // Same slot either way, so set rows keep their unsaved drafts when the
         // timer starts floating.

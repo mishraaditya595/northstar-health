@@ -409,4 +409,105 @@ void main() {
     expect(importer.platformWorkoutUuidFor(workoutUuid), hkUuid.toLowerCase());
     expect(importer.platformWorkoutUuidFor('no-such-workout'), isNull);
   });
+
+  group('linkPhoneWorkout (stage 5b)', () {
+    const phoneWorkout = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    int outbox() => store.box<WorkoutSyncOutboxEntity>().count();
+
+    void putPhoneWorkout({
+      String status = 'completed',
+      int? deletedAtMs,
+      String origin = 'northstar_phone',
+    }) => store.box<WorkoutSessionEntity>().put(
+      WorkoutSessionEntity(
+        uuid: phoneWorkout,
+        name: 'Phone workout',
+        status: status,
+        origin: origin,
+        startedAtMs: 1,
+        completedAtMs: status == 'completed' ? 2 : null,
+        originalOffsetMinutes: 0,
+        updatedAtMs: 2,
+        deletedAtMs: deletedAtMs,
+      ),
+    );
+
+    WatchLinkResult link({
+      String messageId = message1,
+      String workoutUuid = phoneWorkout,
+      String hk = hkUuid,
+    }) => importer.linkPhoneWorkout(
+      messageId: messageId,
+      workoutUuid: workoutUuid,
+      platformWorkoutUuid: hk,
+    );
+
+    test('a completed phone workout gets one receipt and no outbox entry', () {
+      putPhoneWorkout();
+      expect(link(), WatchLinkResult.stored);
+      final receipt = store.box<WatchWorkoutReceiptEntity>().getAll().single;
+      expect(receipt.workoutUuid, phoneWorkout);
+      expect(receipt.messageId, message1);
+      expect(receipt.platformWorkoutUuid, hkUuid.toLowerCase());
+      expect(outbox(), 0);
+      expect(
+        importer.platformWorkoutUuidFor(phoneWorkout),
+        hkUuid.toLowerCase(),
+      );
+      expect(importer.platformWorkoutUuids(), {hkUuid.toLowerCase()});
+    });
+
+    test('the same link twice, or after a relaunch, is a duplicate', () {
+      putPhoneWorkout();
+      link();
+      expect(link(), WatchLinkResult.duplicate);
+      expect(link(messageId: message2), WatchLinkResult.duplicate);
+      expect(store.box<WatchWorkoutReceiptEntity>().count(), 1);
+    });
+
+    test('an unknown workout is unknown and stores nothing', () {
+      expect(link(), WatchLinkResult.unknown);
+      expect(store.box<WatchWorkoutReceiptEntity>().count(), 0);
+    });
+
+    test('a workout that is not completed is unknown', () {
+      putPhoneWorkout(status: 'inProgress');
+      expect(link(), WatchLinkResult.unknown);
+      expect(store.box<WatchWorkoutReceiptEntity>().count(), 0);
+    });
+
+    test('a deleted workout is invalid, so the watch stops resending', () {
+      putPhoneWorkout(deletedAtMs: 5);
+      expect(link(), WatchLinkResult.invalid);
+      expect(store.box<WatchWorkoutReceiptEntity>().count(), 0);
+    });
+
+    test('the same message id for another workout is invalid', () {
+      putPhoneWorkout();
+      link();
+      store.box<WorkoutSessionEntity>().put(
+        WorkoutSessionEntity(
+          uuid: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+          name: 'Other',
+          status: 'completed',
+          startedAtMs: 1,
+          completedAtMs: 2,
+          originalOffsetMinutes: 0,
+          updatedAtMs: 2,
+        ),
+      );
+      expect(
+        link(workoutUuid: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'),
+        WatchLinkResult.invalid,
+      );
+      expect(store.box<WatchWorkoutReceiptEntity>().count(), 1);
+    });
+
+    test('another signed-in account throws before any write', () {
+      putPhoneWorkout();
+      active = accountB;
+      expect(link, throwsA(isA<StateError>()));
+      expect(store.box<WatchWorkoutReceiptEntity>().count(), 0);
+    });
+  });
 }
