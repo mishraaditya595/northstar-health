@@ -13,6 +13,8 @@ const _types = {
   'session_command',
   'completed_workout',
   'ack',
+  'workout_link',
+  'join',
 };
 
 const _commands = {
@@ -453,6 +455,23 @@ sealed class WatchMessage {
               : null,
           programDay: programDay,
         );
+      case 'workout_link':
+        final b = body({'workout_id', 'healthkit_workout_uuid'});
+        return WorkoutLink(
+          messageId: id,
+          sentAtUtc: sent,
+          accountKey: key,
+          workoutId: b.uuid('workout_id'),
+          healthkitWorkoutUuid: b.uuid('healthkit_workout_uuid'),
+        );
+      case 'join':
+        final b = body({'session_id'});
+        return JoinMessage(
+          messageId: id,
+          sentAtUtc: sent,
+          accountKey: key,
+          sessionId: b.uuid('session_id'),
+        );
       default:
         final b = body({'acked_message_id', 'result'}, {'reason'});
         return Ack(
@@ -814,4 +833,48 @@ final class Ack extends WatchMessage {
     'result': result,
     'reason': ?reason,
   };
+}
+
+/// The watch's receipt for a workout the phone owns: the one `HKWorkout` it
+/// saved. No health values travel; the phone stores the id and acks it.
+final class WorkoutLink extends WatchMessage {
+  const WorkoutLink({
+    required super.messageId,
+    required super.sentAtUtc,
+    required super.accountKey,
+    required this.workoutId,
+    required this.healthkitWorkoutUuid,
+  });
+
+  /// The phone workout's session id.
+  final String workoutId;
+  final String healthkitWorkoutUuid;
+
+  @override
+  String get type => 'workout_link';
+
+  @override
+  Map<String, Object?> get bodyJson => {
+    'workout_id': workoutId,
+    'healthkit_workout_uuid': healthkitWorkoutUuid,
+  };
+}
+
+/// The watch tells the phone a follower is attached to [sessionId], so the
+/// phone sends its state at once.
+final class JoinMessage extends WatchMessage {
+  const JoinMessage({
+    required super.messageId,
+    required super.sentAtUtc,
+    required super.accountKey,
+    required this.sessionId,
+  });
+
+  final String sessionId;
+
+  @override
+  String get type => 'join';
+
+  @override
+  Map<String, Object?> get bodyJson => {'session_id': sessionId};
 }

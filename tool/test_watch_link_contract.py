@@ -257,6 +257,11 @@ class WatchLinkContractTest(unittest.TestCase):
             "health_snapshot_week_after_local_date",
             "health_snapshot_factor_status_too_long",
             "health_snapshot_usual_negative",
+            "workout_link_missing_uuid",
+            "workout_link_extra_field",
+            "workout_link_bad_uuid",
+            "join_missing_session",
+            "join_extra_field",
         ):
             self.assertIn(expected, names)
         for path in fixtures:
@@ -272,6 +277,16 @@ class WatchLinkContractTest(unittest.TestCase):
         data = load(LINK / "fixtures/valid/completed_workout.json")
         data["body"]["workout"]["exercises"][0]["sets"][0]["duration_seconds"] = 30
         self.assertTrue(list(self.validator.iter_errors(data)))
+
+    def test_stage_5b_messages_have_valid_fixtures(self):
+        types = {
+            load(p)["type"] for p in (LINK / "fixtures/valid").glob("*.json")
+        }
+        self.assertIn("workout_link", types)
+        self.assertIn("join", types)
+        phone = load(LINK / "fixtures/valid/session_state_phone.json")
+        self.assertEqual(phone["body"]["owner"], "phone")
+        self.assertEqual(list(self.validator.iter_errors(phone)), [])
 
     def test_health_values_only_in_health_snapshot(self):
         words = ("sleep", "hrv", "steps", "heart_rate", "resting_hr")

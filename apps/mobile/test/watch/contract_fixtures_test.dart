@@ -114,6 +114,18 @@ void main() {
       expect(add.exerciseId, isNotNull);
     });
 
+    test('workout_link, join and a phone-owned state decode', () {
+      WatchMessage read(String name) => WatchMessage.fromJson(
+        _read(File('../../contracts/watch_link/v1/fixtures/valid/$name.json')),
+      );
+      final link = read('workout_link') as WorkoutLink;
+      expect(link.workoutId, 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+      expect(link.healthkitWorkoutUuid, 'cccccccc-cccc-4ccc-8ccc-cccccccccccc');
+      final join = read('join') as JoinMessage;
+      expect(join.sessionId, 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+      expect((read('session_state_phone') as SessionState).owner, 'phone');
+    });
+
     test('completed_workout program_day round-trips', () {
       final json = _read(
         File(

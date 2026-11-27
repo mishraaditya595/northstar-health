@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "message_id": "77777777-3333-4333-8333-000000000024",
+  "type": "workout_link",
+  "sent_at_utc": "2026-10-23T11:00:00Z",
+  "account_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "body": {
+    "workout_id": "not-a-uuid",
+    "healthkit_workout_uuid": "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+  }
+}

@@ -49,12 +49,27 @@ final class ContractFixtureTests: XCTestCase {
 
     func testWatchLinkValidFixturesRoundTrip() throws {
         try roundTrips(
-            "contracts/watch_link/v1/fixtures/valid", minimum: 13,
+            "contracts/watch_link/v1/fixtures/valid", minimum: 20,
             decode: { try WatchMessage(json: $0) }, encode: { try $0.jsonData() })
     }
 
     func testWatchLinkInvalidFixturesAreRejected() throws {
-        try rejects("contracts/watch_link/v1/fixtures/invalid", minimum: 20) { _ = try WatchMessage(json: $0) }
+        try rejects("contracts/watch_link/v1/fixtures/invalid", minimum: 25) { _ = try WatchMessage(json: $0) }
+    }
+
+    func testWorkoutLinkAndJoinDecodeIntoTypedBodies() throws {
+        let link = try WatchMessage(
+            json: FixtureLoader.json("contracts/watch_link/v1/fixtures/valid/workout_link.json"))
+        guard case .workoutLink(let workoutId, let hkUuid) = link.body else { return XCTFail("not a workout_link") }
+        XCTAssertEqual(workoutId, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+        XCTAssertEqual(hkUuid, "cccccccc-cccc-4ccc-8ccc-cccccccccccc")
+        XCTAssertEqual(link.type, "workout_link")
+        let join = try WatchMessage(json: FixtureLoader.json("contracts/watch_link/v1/fixtures/valid/join.json"))
+        guard case .join(let sessionId) = join.body else { return XCTFail("not a join") }
+        XCTAssertEqual(sessionId, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+        let phone = try WatchMessage(
+            json: FixtureLoader.json("contracts/watch_link/v1/fixtures/valid/session_state_phone.json"))
+        guard case .sessionState = phone.body else { return XCTFail("not a session_state") }
     }
 
     func testCompletedWorkoutProgramDayIsChecked() throws {
