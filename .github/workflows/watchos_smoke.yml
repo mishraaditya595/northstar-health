@@ -129,6 +129,30 @@ jobs:
           if bad:
               sys.exit(f"watch Info.plist differs (actual, expected): {bad}")
           PY
+      - name: Build the iPhone device app (unsigned release)
+        # Same Xcode archive path as the Codemagic TestFlight job, minus signing.
+        working-directory: apps/mobile
+        run: |
+          set -o pipefail
+          flutter build ios --release --no-codesign -v > device-build.log 2>&1 || {
+            grep -n -B2 -A40 'CompileAssetCatalog.*BeyondRepWatch\|actool.*watch_os' device-build.log | head -200
+            tail -80 device-build.log
+            exit 1
+          }
+      - name: Assert the device watch app has its icon
+        working-directory: apps/mobile
+        run: |
+          watch=build/ios/iphoneos/Runner.app/Watch/BeyondRepWatch.app
+          test -f "$watch/Assets.car"
+          python3 - "$watch/Info.plist" <<'PY'
+          import plistlib, sys
+          watch = plistlib.load(open(sys.argv[1], "rb"))
+          print({k: watch.get(k) for k in ("DTPlatformName", "CFBundleIcons", "CFBundleIconName")})
+          if watch.get("DTPlatformName") != "watchos":
+              sys.exit("watch app was not built for watchOS")
+          if not (watch.get("CFBundleIconName") or watch.get("CFBundleIcons")):
+              sys.exit("watch app Info.plist names no app icon")
+          PY
 
 # Important: this does NOT validate signing, TestFlight packaging, watch
 # permissions, background workout or real-device pairing.

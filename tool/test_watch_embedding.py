@@ -41,6 +41,20 @@ class WatchEmbeddingTest(unittest.TestCase):
         self.assertIn("WATCHOS_DEPLOYMENT_TARGET = 10.0;", self.pbx)
         self.assertIn("SDKROOT = watchos;", self.pbx)
 
+    def test_every_watch_configuration_builds_for_watchos_only(self):
+        # The Flutter project sets SUPPORTED_PLATFORMS = iphoneos at project level
+        # for Release and Profile; without an override the watch target inherits
+        # it and Xcode builds it for iOS in device archives.
+        configs = re.findall(
+            r"isa = XCBuildConfiguration;.*?buildSettings = \{(.*?)\n\t\t\t\};",
+            self.pbx,
+            re.S,
+        )
+        watch = [c for c in configs if "in.beyondrep.app.watchkitapp" in c]
+        self.assertEqual(len(watch), 3)
+        for config in watch:
+            self.assertIn('SUPPORTED_PLATFORMS = "watchos watchsimulator";', config)
+
     def test_runner_embeds_the_watch_app(self):
         self.assertIn('name = "Embed Watch Content";', self.pbx)
         self.assertIn('dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";', self.pbx)
