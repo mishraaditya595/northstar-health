@@ -61,6 +61,24 @@ AccountCleared buildAccountCleared({
   wipeUnsent: wipeUnsent,
 );
 
+/// The phone's answer to a watch message. `account_key` is the signed-in
+/// account's key and `ackedMessageId` the message being answered.
+Ack buildAck({
+  required String accountKey,
+  required String ackedMessageId,
+  required String result,
+  String? reason,
+  required String messageId,
+  required DateTime nowUtc,
+}) => Ack(
+  messageId: messageId,
+  sentAtUtc: _utc(nowUtc),
+  accountKey: accountKey,
+  ackedMessageId: ackedMessageId,
+  result: result,
+  reason: reason,
+);
+
 /// `kg` or `lb`: the unit of the latest completed set, `kg` without history.
 /// There is no separate unit setting; each set keeps the unit it was logged in.
 String watchLoadUnit(List<WorkoutSessionRecord> sessions) {

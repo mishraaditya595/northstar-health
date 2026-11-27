@@ -19,6 +19,7 @@ import '../domain/watch_message.dart';
 import '../domain/watch_status.dart';
 import 'watch_snapshots.dart';
 import 'watch_status_provider.dart';
+import 'watch_workout_inbox.dart';
 
 /// Ids for outgoing watch messages; tests replace it.
 final watchMessageIdsProvider = Provider<UuidFactory>(
@@ -170,6 +171,16 @@ class WatchSyncController {
     try {
       message = WatchMessage.fromJson(jsonDecode(json) as Map<String, Object?>);
     } catch (_) {
+      return;
+    }
+    if (message is CompletedWorkout) {
+      // A failed import sends no ack, so the watch keeps the workout.
+      unawaited(
+        _ref
+            .read(watchWorkoutInboxProvider)
+            .handle(message)
+            .then<void>((_) {}, onError: (_) {}),
+      );
       return;
     }
     if (message is! Ack) return;
