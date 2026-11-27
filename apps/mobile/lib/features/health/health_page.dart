@@ -210,9 +210,9 @@ class _HealthPageState extends ConsumerState<HealthPage>
       refreshing: async.isLoading,
       onTap: overview == null
           ? null
-          : hasStaleReadiness(overview, ref.watch(localNowProvider))
+          : hasStaleEnergy(overview, ref.watch(localNowProvider))
           ? guardedOverview(busy, (c) => c.refresh())
-          : tapFor(overview.readiness, '/health/readiness'),
+          : tapFor(overview.energy, '/health/readiness'),
       onAllowMore: allowMore,
     );
 

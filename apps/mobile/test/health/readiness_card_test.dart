@@ -5,6 +5,7 @@ import 'package:beyondrep/core/design/hero_frame.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
+import 'package:beyondrep/features/health/domain/energy.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/features/health/domain/trend.dart';
 import 'package:beyondrep/features/health/health_page.dart';
@@ -97,6 +98,7 @@ Future<(FakeHealthOverviewController, FakeHealthSummaryController)> pump(
   double textScale = 1,
   Brightness brightness = Brightness.light,
   HealthPlatformKind platform = HealthPlatformKind.appleHealth,
+  DateTime? now,
 }) async {
   tester.view.physicalSize = Size(width, 2400);
   tester.view.devicePixelRatio = 1;
@@ -127,8 +129,8 @@ Future<(FakeHealthOverviewController, FakeHealthSummaryController)> pump(
       overrides: [
         fakeHealthSummary(summary),
         fakeHealthOverview(overview),
-        healthClockProvider.overrideWithValue(() => clock),
-        localNowProvider.overrideWithValue(clock),
+        healthClockProvider.overrideWithValue(() => now ?? clock),
+        localNowProvider.overrideWithValue(now ?? clock),
       ],
       child: MaterialApp.router(
         theme: BeyondRepTheme.build(brightness),
@@ -160,11 +162,12 @@ void main() {
     tester,
   ) async {
     await pump(tester, overview(readiness: ready()));
-    expect(find.text('READINESS'), findsOneWidget);
+    expect(find.text('ENERGY NOW'), findsOneWidget);
     expect(find.text('77'), findsOneWidget);
     expect(find.text('Good to train'), findsOneWidget);
     expect(
       find.text(
+        'Started today at 77 · no change since morning\n'
         'HRV (SDNN) above your normal · resting HR about your normal · '
         'slept 6h 12m',
       ),
@@ -183,10 +186,86 @@ void main() {
     expect(
       find.bySemanticsLabel(
         RegExp(
-          r'^Readiness 77 of 100, Good to train, HRV \(SDNN\) above your '
-          r'normal',
+          r'^Energy now 77 of 100, Good to train\. Started today at 77 · no '
+          r'change since morning\. HRV \(SDNN\) above your normal',
         ),
       ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('ready: energy 62, Fair, started at 78 and the learning note', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      overview(
+        energy: energySection(
+          ready(value: 78),
+          energy: const Energy(
+            value: 62,
+            band: ReadinessBand.fair,
+            start: 78,
+            items: [],
+          ),
+          learning: const EnergyLearning(workoutsNeeded: 12),
+        ),
+        readiness: ready(value: 78),
+      ),
+    );
+    expect(find.text('62'), findsOneWidget);
+    expect(find.text('ENERGY NOW'), findsOneWidget);
+    expect(find.text('Train as planned, watch effort'), findsOneWidget);
+    expect(
+      find.textContaining('Started today at 78 · down 16 since morning'),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'Still learning your patterns: 12 more workouts for a calibrated '
+        'score.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('78'), findsNothing);
+    expect(
+      find.bySemanticsLabel(
+        RegExp(
+          r'^Energy now 62 of 100, Train as planned, watch effort\. Started '
+          r'today at 78 · down 16 since morning\.',
+        ),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('no learning note when calibrated', (tester) async {
+    await pump(tester, overview(readiness: ready()));
+    expect(find.textContaining('Still learning'), findsNothing);
+  });
+
+  testWidgets("after midnight the waking day's energy still shows", (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      overview(readiness: ready(), readAt: DateTime(2026, 11, 24, 23, 50)),
+      now: DateTime(2026, 11, 25, 0, 40),
+    );
+    expect(find.text('77'), findsOneWidget);
+    expect(find.text('ENERGY NOW'), findsOneWidget);
+    expect(find.text("Couldn't read · Try again"), findsNothing);
+  });
+
+  testWidgets('building says Energy starts after 2 more days with data.', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      overview(readiness: notReady(daysUntilBaseline: 2, hasHrv: true)),
+    );
+    expect(
+      find.text('Energy starts after 2 more days with data.'),
       findsOneWidget,
     );
   });
@@ -209,7 +288,9 @@ void main() {
     await pump(tester, overview(readiness: ready(restingHr: false)));
     expect(
       find.text(
-        'HRV (SDNN) above your normal · slept 6h 12m\nBased on HRV and sleep',
+        'Started today at 77 · no change since morning\n'
+        'HRV (SDNN) above your normal · slept 6h 12m\n'
+        'Based on HRV and sleep',
       ),
       findsOneWidget,
     );
@@ -221,6 +302,7 @@ void main() {
     await pump(tester, overview(readiness: ready(hrv: false)));
     expect(
       find.text(
+        'Started today at 77 · no change since morning\n'
         'Resting HR about your normal · slept 6h 12m\n'
         'Based on sleep and resting HR',
       ),
@@ -263,14 +345,12 @@ void main() {
       overview(readiness: notReady(daysUntilBaseline: 5, hasHrv: true)),
     );
     expect(
-      find.text('Readiness starts after 5 more days with data.'),
+      find.text('Energy starts after 5 more days with data.'),
       findsOneWidget,
     );
     expect(find.text('Building your normal for HRV (SDNN).'), findsOneWidget);
     expect(find.text('Good to train'), findsNothing);
-    await tester.tap(
-      find.text('Readiness starts after 5 more days with data.'),
-    );
+    await tester.tap(find.text('Energy starts after 5 more days with data.'));
     await tester.pumpAndSettle();
     expect(find.text('detail readiness'), findsNothing);
   });
@@ -290,7 +370,7 @@ void main() {
     expect(find.text('HRV: none'), findsOneWidget);
     expect(find.text('Resting HR: none'), findsOneWidget);
     expect(
-      find.bySemanticsLabel(RegExp(r'^Readiness: Not enough data for a score')),
+      find.bySemanticsLabel(RegExp(r'^Energy: Not enough data for a score')),
       findsOneWidget,
     );
   });
@@ -322,7 +402,7 @@ void main() {
       overview(readiness: const SectionGap(MetricGap.notAllowed)),
     );
     expect(
-      find.bySemanticsLabel(RegExp('No Readiness data. Not allowed · Manage')),
+      find.bySemanticsLabel(RegExp('No Energy data. Not allowed · Manage')),
       findsOneWidget,
     );
     await tester.tap(find.text('Not allowed · Manage'));
@@ -362,14 +442,14 @@ void main() {
     );
     c.setLoading();
     await tester.pump();
-    expect(find.bySemanticsLabel(RegExp('Loading readiness')), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('Loading energy')), findsOneWidget);
     expect(find.text('77'), findsNothing);
     expect(find.text("Couldn't read · Try again"), findsNothing);
   });
 
-  testWidgets('loading shows a readiness spinner, no score', (tester) async {
+  testWidgets('loading shows an energy spinner, no score', (tester) async {
     await pump(tester, null, pending: true);
-    expect(find.bySemanticsLabel(RegExp('Loading readiness')), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('Loading energy')), findsOneWidget);
     expect(find.text('Good to train'), findsNothing);
   });
 
@@ -394,6 +474,26 @@ void main() {
         );
         expect(tester.takeException(), isNull);
       }
+      await pump(
+        tester,
+        overview(
+          readiness: ready(value: 78),
+          energy: energySection(
+            ready(value: 78),
+            energy: const Energy(
+              value: 62,
+              band: ReadinessBand.fair,
+              start: 78,
+              items: [],
+            ),
+            learning: const EnergyLearning(workoutsNeeded: 12, daysNeeded: 9),
+          ),
+        ),
+        width: 320,
+        textScale: 2,
+        brightness: brightness,
+      );
+      expect(tester.takeException(), isNull);
     });
   }
 
