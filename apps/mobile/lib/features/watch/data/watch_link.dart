@@ -45,6 +45,11 @@ class MethodChannelWatchLink implements WatchLink {
 
   final MethodChannel channel;
 
+  /// The one instance the app uses. Two instances would fight over the single
+  /// platform handler, and the wipe retrier must hear acks while the
+  /// signed-in controller listens too.
+  static final MethodChannelWatchLink shared = MethodChannelWatchLink();
+
   /// The instance whose stream is listened to; only it owns the platform
   /// callback, so a stale instance cannot remove a newer one's handler.
   static MethodChannelWatchLink? _handling;
@@ -178,6 +183,6 @@ class NoopWatchLink implements WatchLink {
 
 final watchLinkProvider = Provider<WatchLink>(
   (ref) => defaultTargetPlatform == TargetPlatform.iOS
-      ? MethodChannelWatchLink()
+      ? MethodChannelWatchLink.shared
       : const NoopWatchLink(),
 );

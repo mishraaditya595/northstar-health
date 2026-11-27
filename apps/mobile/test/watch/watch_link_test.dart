@@ -1,6 +1,8 @@
 import 'package:beyondrep/features/watch/data/watch_link.dart';
 import 'package:beyondrep/features/watch/domain/watch_status.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _channel = MethodChannel('beyondrep/watch_link');
@@ -20,6 +22,28 @@ void main() {
   }
 
   tearDown(() => messenger.setMockMethodCallHandler(_channel, null));
+
+  test('watchLinkProvider on iOS returns the shared instance', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    expect(
+      identical(
+        container.read(watchLinkProvider),
+        MethodChannelWatchLink.shared,
+      ),
+      isTrue,
+    );
+  });
+
+  test('watchLinkProvider elsewhere is the no-op link', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    expect(container.read(watchLinkProvider), isA<NoopWatchLink>());
+  });
 
   test('updateContext sends the map unchanged', () async {
     handle(null);

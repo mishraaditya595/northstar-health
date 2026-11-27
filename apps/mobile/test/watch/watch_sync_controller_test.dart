@@ -16,6 +16,7 @@ import 'package:beyondrep/features/watch/application/watch_status_provider.dart'
 import 'package:beyondrep/features/watch/data/objectbox_watch_workout_importer.dart';
 import 'package:beyondrep/features/watch/data/watch_link.dart';
 import 'package:beyondrep/features/watch/data/watch_status_store.dart';
+import 'package:beyondrep/features/watch/data/watch_wipe_queue.dart';
 import 'package:beyondrep/features/watch/domain/watch_account_key.dart';
 import 'package:beyondrep/features/watch/domain/watch_message.dart';
 import 'package:beyondrep/features/watch/domain/watch_status.dart';
@@ -367,6 +368,25 @@ void main() {
     ) as AccountCleared;
     expect(inContext.wipeUnsent, isTrue);
     expect(ctx.keys, ['account_cleared']);
+  });
+
+  testWidgets('a deletion with no watch in reach is persisted for retry', (
+    tester,
+  ) async {
+    final h = _Harness(tester, reachable: false);
+    await h.start();
+    await _elapse(tester, const Duration(seconds: 3));
+    await h.container
+        .read(watchSyncControllerProvider)
+        .accountDeleted(accountA);
+    expect(h.link.calls.where((c) => c.kind == 'transfer'), isEmpty);
+    final queue = await WatchWipeQueue.open();
+    final wipe = queue.pending().single;
+    final message = WatchMessage.fromJson(
+      jsonDecode(wipe.json) as Map<String, Object?>,
+    ) as AccountCleared;
+    expect(message.wipeUnsent, isTrue);
+    expect(message.accountKey, watchAccountKey(accountA));
   });
 
   testWidgets('a sign out while the context is being sent still clears', (

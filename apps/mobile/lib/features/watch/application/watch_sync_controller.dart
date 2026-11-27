@@ -14,11 +14,13 @@ import '../../programs/application/program_providers.dart';
 import '../../train/train_library_state.dart';
 import '../data/watch_link.dart';
 import '../data/watch_status_store.dart';
+import '../data/watch_wipe_queue.dart';
 import '../domain/watch_account_key.dart';
 import '../domain/watch_message.dart';
 import '../domain/watch_status.dart';
 import 'watch_snapshots.dart';
 import 'watch_status_provider.dart';
+import 'watch_wipe_retrier.dart';
 import 'watch_workout_inbox.dart';
 
 /// Ids for outgoing watch messages; tests replace it.
@@ -28,23 +30,32 @@ final watchMessageIdsProvider = Provider<UuidFactory>(
 
 /// Tells the watch an account was permanently deleted so it drops that
 /// account's unsent workouts too. Reads no provider, so the account
-/// controller can call it after the signed-in scope has gone. Sends nothing
+/// controller can call it after the signed-in scope has gone. The wipe is
+/// persisted first (outside the account store, which deletion removes) and
+/// resent by `WatchWipeRetrier` until the watch acks it. Sends nothing now
 /// when no watch with the app is paired.
 Future<void> announceWatchAccountDeleted({
   required WatchLink link,
   required String userId,
   required UuidFactory ids,
   required DateTime nowUtc,
+  required Future<WatchWipeQueue> queue,
 }) async {
-  if (!await link.isReachableForUpdates()) return;
+  final messageId = ids.newId();
   final json = jsonEncode(
     buildAccountCleared(
       accountKey: watchAccountKey(userId),
       wipeUnsent: true,
-      messageId: ids.newId(),
+      messageId: messageId,
       nowUtc: nowUtc,
     ).toJson(),
   );
+  try {
+    await (await queue).add(PendingWatchWipe(messageId: messageId, json: json));
+  } catch (_) {
+    // Never stops the immediate send.
+  }
+  if (!await link.isReachableForUpdates()) return;
   await link.transfer(json);
   // The context holds the clear too, so the old context a watch replays on
   // launch is gone and cannot bring the account back.
@@ -407,6 +418,7 @@ class WatchSyncController {
       userId: userId,
       ids: _ids,
       nowUtc: _clock().toUtc(),
+      queue: _ref.read(watchWipeQueueProvider),
     );
   }
 
