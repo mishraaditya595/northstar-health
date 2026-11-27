@@ -125,6 +125,7 @@ void main() {
   late Store store;
   late HealthConnectionRepository repo;
   late FakeHealthReader fake;
+  Set<String> ownWorkoutIds = const {};
   late DateTime now;
 
   setUp(() {
@@ -132,6 +133,7 @@ void main() {
     store = Store(getObjectBoxModel(), directory: '${root.path}/db');
     repo = ObjectBoxHealthConnectionRepository(store);
     fake = FakeHealthReader();
+    ownWorkoutIds = const {};
     now = DateTime(2026, 11, 24, 7, 42);
     repo.connect(_ownerA, DateTime(2026, 11, 1));
   });
@@ -151,6 +153,7 @@ void main() {
         healthConnectionRepositoryProvider.overrideWithValue(repo),
         healthOwnerIdProvider.overrideWith((ref) => ref.watch(_ownerProvider)),
         healthClockProvider.overrideWithValue(() => now),
+        ownPlatformWorkoutIdsProvider.overrideWithValue(ownWorkoutIds),
       ],
     );
     addTearDown(c.dispose);
@@ -977,6 +980,39 @@ void main() {
       expect(hasLoad(o), isFalse);
       expect(ready(o).readiness.loadRatio, isNull);
     });
+
+    test('a workout whose uuid is a stored receipt is not an outside workout '
+        'and adds no load', () async {
+      readinessWeek();
+      history = _FakeHistory(const []);
+      fake.workouts = SeriesData([_outside('a', 20), _outside('B-UPPER', 3)]);
+      final withLoad = (await container().read(healthOverviewProvider.future))!;
+      ownWorkoutIds = {'b-upper'};
+      final o = (await container().read(healthOverviewProvider.future))!;
+      final outside =
+          (o.workouts as SectionData<WorkoutsOverview>).value.outside;
+      expect(outside.map((w) => w.id), ['a']);
+      // The hidden workout no longer counts toward training load.
+      expect(
+        ready(o).readiness.loadRatio,
+        isNot(ready(withLoad).readiness.loadRatio),
+      );
+    });
+
+    test(
+      'without a receipt the same workouts are outside and add load',
+      () async {
+        readinessWeek();
+        history = _FakeHistory(const []);
+        fake.workouts = SeriesData([_outside('a', 20), _outside('B-UPPER', 3)]);
+        final o = (await container().read(healthOverviewProvider.future))!;
+        expect(
+          (o.workouts as SectionData<WorkoutsOverview>).value.outside,
+          hasLength(2),
+        );
+        expect(hasLoad(o), isTrue);
+      },
+    );
 
     test('a history read failure leaves readiness without load but still '
         'scored', () async {

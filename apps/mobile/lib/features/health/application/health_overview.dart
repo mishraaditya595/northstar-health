@@ -263,6 +263,7 @@ class HealthOverviewController extends AsyncNotifier<HealthOverview?> {
     final history = _completedSessions(ref);
     final overview = await _read(
       owner,
+      ref.read(ownPlatformWorkoutIdsProvider),
       reader,
       ref.read(healthClockProvider)(),
       repository.connectedAt(owner),
@@ -314,6 +315,11 @@ class HealthOverviewController extends AsyncNotifier<HealthOverview?> {
     if (ref.mounted) await refresh();
   }
 }
+
+/// Lowercase HKWorkout ids of workouts BeyondRep's own watch app saved and the
+/// phone imported (ADR-0012). Overridden by the signed-in scope; the health
+/// layer never reads storage itself.
+final ownPlatformWorkoutIdsProvider = Provider<Set<String>>((ref) => const {});
 
 final healthOverviewProvider =
     AsyncNotifierProvider<HealthOverviewController, HealthOverview?>(
@@ -496,6 +502,7 @@ Section<ReadinessOverview> _readiness(
 
 Future<HealthOverview> _read(
   String ownerId,
+  Set<String> ownWorkoutIds,
   HealthReader reader,
   DateTime now,
   DateTime? connectedAt,
@@ -681,7 +688,12 @@ Future<HealthOverview> _read(
     );
   });
 
-  final outside = _list(workoutsResult);
+  // Workouts BeyondRep's own watch saved to the platform are already in the
+  // history, so they are neither outside workouts nor extra training load.
+  final outside = [
+    for (final w in _list(workoutsResult))
+      if (!ownWorkoutIds.contains(w.id.toLowerCase())) w,
+  ];
   final workouts = switch (workoutsResult) {
     SeriesData() => SectionData(WorkoutsOverview(outside: outside)),
     _ => SectionGap<WorkoutsOverview>(

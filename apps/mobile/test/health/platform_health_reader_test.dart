@@ -892,6 +892,39 @@ void main() {
       expect(health.calls.last.types, [HealthDataType.WORKOUT]);
     });
 
+    test('a workout from in.beyondrep.app.watchkitapp is dropped', () async {
+      health.points = [
+        _workout(
+          HealthWorkoutActivityType.TRADITIONAL_STRENGTH_TRAINING,
+          sourceId: 'in.beyondrep.app.watchkitapp',
+          sourceName: 'Aditi Watch',
+        ),
+        _workout(
+          HealthWorkoutActivityType.RUNNING,
+          uuid: 'w2',
+          sourceId: 'com.apple.health.watch',
+          sourceName: 'in.beyondrep.app.watchkitapp',
+        ),
+        _workout(HealthWorkoutActivityType.RUNNING, uuid: 'w3'),
+      ];
+      final r = await ios().readWorkouts(from, now);
+      expect((r as SeriesData<List<OutsideWorkout>>).data.map((w) => w.id), [
+        'w3',
+      ]);
+    });
+
+    test('a source merely containing beyondrep elsewhere is kept', () async {
+      health.points = [
+        _workout(
+          HealthWorkoutActivityType.RUNNING,
+          sourceId: 'com.example.beyondrep',
+          sourceName: 'Example BeyondRep',
+        ),
+      ];
+      final r = await ios().readWorkouts(from, now);
+      expect((r as SeriesData<List<OutsideWorkout>>).data, hasLength(1));
+    });
+
     test('zero or negative kcal and distance are null, not 0', () async {
       for (final (kcal, meters) in [(0, 0), (-5, -1)]) {
         health.points = [

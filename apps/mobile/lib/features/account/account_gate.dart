@@ -14,10 +14,12 @@ import '../catalog/application/catalog_definition_sync.dart';
 import '../catalog/application/catalog_refresh_host.dart';
 import '../catalog/data/catalog_file_store.dart';
 import 'account_auth_controller.dart';
+import '../health/application/health_overview.dart';
 import '../health/data/health_reader.dart';
 import '../health/data/platform_health_reader.dart';
 import '../sync/workout_upload_coordinator.dart';
 import '../watch/application/watch_sync_controller.dart';
+import '../watch/data/objectbox_watch_workout_importer.dart';
 import '../sync/objectbox_workout_restore_importer.dart';
 import '../sync/workout_conflict_resolution.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
@@ -125,6 +127,17 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
             healthReaderProvider.overrideWith(
               (ref) => PlatformHealthReader.system(),
             ),
+            ownPlatformWorkoutIdsProvider.overrideWith((ref) {
+              final auth = ref.watch(accountAuthControllerProvider);
+              final owner = auth?.userId;
+              if (owner == null) return const {};
+              return ref
+                  .watch(watchWorkoutImporterProvider)(
+                    owner,
+                    () => auth?.userId,
+                  )
+                  .platformWorkoutUuids();
+            }),
             workoutUploadKickProvider.overrideWith(
               (ref) => ref.read(workoutUploadCoordinatorProvider).kick,
             ),

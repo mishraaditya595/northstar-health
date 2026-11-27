@@ -309,7 +309,8 @@ class PlatformHealthReader implements HealthReader {
     return SeriesData([
       for (final p in points)
         if (p.value case final WorkoutHealthValue w)
-          if (p.sourceId != _ownAppId && p.sourceName != _ownAppId)
+          if (!p.sourceId.startsWith(_ownAppId) &&
+              !p.sourceName.startsWith(_ownAppId))
             OutsideWorkout(
               id: p.uuid.isEmpty
                   ? '${p.sourceId}-${p.dateFrom.millisecondsSinceEpoch}'

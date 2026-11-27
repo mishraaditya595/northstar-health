@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/clock.dart';
 import '../../../core/ids/uuid_factory.dart';
 import '../../account/account_auth_provider.dart';
+import '../../health/application/health_overview.dart';
 import '../../programs/application/program_providers.dart';
 import '../../progress/workout_history_state.dart';
 import '../../sync/workout_restore_feed.dart';
@@ -110,6 +111,7 @@ final watchWorkoutInboxProvider = Provider<WatchWorkoutInbox>((ref) {
       ref.invalidate(programWeekProvider);
       ref.invalidate(blockedWorkoutCountProvider);
       ref.invalidate(workoutSyncFlagsProvider);
+      ref.invalidate(ownPlatformWorkoutIdsProvider);
       ref.read(workoutUploadKickProvider)?.call();
     },
   );
