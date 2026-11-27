@@ -1,5 +1,11 @@
 import Foundation
 
+/// What an applied `ack` did to a session.
+public enum AckEffect: Equatable {
+    case delivered(sessionId: String)
+    case rejected(sessionId: String)
+}
+
 public enum JournalError: Error, Equatable {
     case unknownSession
     case injectedFailure
@@ -54,7 +60,45 @@ public final class WatchJournal {
             try db.execute("CREATE TABLE IF NOT EXISTS cleared(account_key TEXT PRIMARY KEY, sent_at_ms INTEGER NOT NULL)")
             // Version 5 adds when the watch last stored phone data (the sync line).
             try db.execute("CREATE TABLE IF NOT EXISTS link_state(slot INTEGER PRIMARY KEY CHECK(slot = 1), last_received_ms INTEGER NOT NULL)")
-            try db.setUserVersion(5)
+            // Version 6 adds the message type and session to the outbox, and the
+            // delivery state and workout template to sessions.
+            try Self.addColumn(db, table: "outbox", column: "type", definition: "TEXT NOT NULL DEFAULT ''")
+            try Self.addColumn(db, table: "outbox", column: "session_id", definition: "TEXT NOT NULL DEFAULT ''")
+            try Self.addColumn(db, table: "sessions", column: "delivery", definition: "TEXT")
+            try Self.addColumn(db, table: "sessions", column: "template_json", definition: "TEXT")
+            try Self.backfillOutbox(db)
+            try db.setUserVersion(6)
+        }
+    }
+
+    private static func addColumn(_ db: SQLiteDatabase, table: String, column: String, definition: String) throws {
+        let names = try db.query("PRAGMA table_info(\(table))").compactMap { (row: [SQLValue]) -> String? in
+            guard row.count > 1, case .text(let name) = row[1] else { return nil }
+            return name
+        }
+        if !names.contains(column) {
+            try db.execute("ALTER TABLE \(table) ADD COLUMN \(column) \(definition)")
+        }
+    }
+
+    /// Rows written before version 6 have no type or session; fill them from
+    /// their JSON so the filtered outbox sees them.
+    private static func backfillOutbox(_ db: SQLiteDatabase) throws {
+        let rows = try db.query("SELECT message_id, json FROM outbox WHERE type = ''")
+        for row in rows {
+            guard case .text(let id) = row[0], case .text(let text) = row[1],
+                let object = (try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? [String: Any],
+                let type = object["type"] as? String
+            else { continue }
+            var sessionId = ""
+            if let body = object["body"] as? [String: Any], let event = body["event"] as? [String: Any],
+                let value = event["session_id"] as? String
+            {
+                sessionId = value
+            }
+            try db.execute(
+                "UPDATE outbox SET type = ?, session_id = ? WHERE message_id = ?",
+                [.text(type), .text(sessionId), .text(id)])
         }
     }
 
@@ -68,10 +112,13 @@ public final class WatchJournal {
 
     private func now() -> String { ISO8601DateFormatter().string(from: clock()) }
 
-    private func enqueue(_ message: WatchMessage) throws {
+    private func enqueue(_ message: WatchMessage, sessionId: String = "") throws {
+        var owner = sessionId
+        if owner.isEmpty, case .workoutEvent(let event) = message.body { owner = event.header.sessionId }
         try db.execute(
-            "INSERT OR IGNORE INTO outbox(message_id, account_key, json, created_at) VALUES(?,?,?,?)",
-            [.text(message.messageId.lowercased()), .text(message.accountKey), .text(try encode(message)), .text(now())])
+            "INSERT OR IGNORE INTO outbox(message_id, account_key, json, created_at, type, session_id) VALUES(?,?,?,?,?,?)",
+            [.text(message.messageId.lowercased()), .text(message.accountKey), .text(try encode(message)), .text(now()),
+             .text(message.type), .text(owner)])
     }
 
     /// Stores the events (one session, in order), queues each for the phone and
@@ -83,7 +130,7 @@ public final class WatchJournal {
     /// the same transaction.
     public func record(
         _ events: [WorkoutEventV2], sessionState: ReplayedWorkout, completed: WatchMessage? = nil,
-        commandId: String? = nil
+        commandId: String? = nil, template: String? = nil
     ) throws {
         guard let sessionId = events.first?.header.sessionId else { return }
         try db.transaction {
@@ -111,7 +158,7 @@ public final class WatchJournal {
             }
             if inserted == 0 { return }
             if let completed {
-                try enqueue(completed)
+                try enqueue(completed, sessionId: sessionId)
                 if failAt == .afterCompletedEnqueue { throw JournalError.injectedFailure }
             }
             let state = String(decoding: try JSONEncoder().encode(sessionState), as: UTF8.self)
@@ -119,6 +166,14 @@ public final class WatchJournal {
                 "INSERT INTO sessions(session_id, account_key, status, state_json) VALUES(?,?,?,?) "
                     + "ON CONFLICT(session_id) DO UPDATE SET status = excluded.status, state_json = excluded.state_json",
                 [.text(sessionId), .text(accountKey), .text(sessionState.status), .text(state)])
+            if let template {
+                try db.execute(
+                    "UPDATE sessions SET template_json = ? WHERE session_id = ?", [.text(template), .text(sessionId)])
+            }
+            // A discarded workout sends nothing: drop whatever was queued for it.
+            if sessionState.status == "abandoned" {
+                try db.execute("DELETE FROM outbox WHERE session_id = ?", [.text(sessionId)])
+            }
             if failAt == .afterSessionUpsert { throw JournalError.injectedFailure }
             if let commandId {
                 try db.execute(
@@ -130,9 +185,10 @@ public final class WatchJournal {
 
     public func record(
         _ event: WorkoutEventV2, sessionState: ReplayedWorkout, completed: WatchMessage? = nil,
-        commandId: String? = nil
+        commandId: String? = nil, template: String? = nil
     ) throws {
-        try record([event], sessionState: sessionState, completed: completed, commandId: commandId)
+        try record(
+            [event], sessionState: sessionState, completed: completed, commandId: commandId, template: template)
     }
 
     public func pendingOutbox(limit: Int) throws -> [WatchMessage] {
@@ -140,6 +196,125 @@ public final class WatchJournal {
             guard case .text(let text)? = row.first else { return nil }
             return try decode(text)
         }
+    }
+
+    /// Completed workouts waiting for the phone, oldest first. Event messages
+    /// in the outbox are not returned.
+    public func pendingCompleted(limit: Int) throws -> [WatchMessage] {
+        try db.query(
+            "SELECT json FROM outbox WHERE type = 'completed_workout' ORDER BY rowid LIMIT ?", [.int(Int64(limit))]
+        ).compactMap { (row: [SQLValue]) -> WatchMessage? in
+            guard case .text(let text)? = row.first else { return nil }
+            return try decode(text)
+        }
+    }
+
+    /// Queues the finished workout and marks the session `queued` in one
+    /// transaction. A second call for the same message changes nothing, and a
+    /// session already delivered or rejected stays that way.
+    public func queueCompleted(_ message: WatchMessage, sessionId: String) throws {
+        try db.transaction {
+            try enqueue(message, sessionId: sessionId)
+            try db.execute(
+                "UPDATE sessions SET delivery = 'queued' WHERE session_id = ? AND delivery IS NULL", [.text(sessionId)])
+        }
+    }
+
+    /// Applies the phone's `ack` for a completed workout: the message, the
+    /// session's other queued messages, its events and applied commands are
+    /// deleted and the session is marked `delivered` (`stored`, `duplicate`) or
+    /// `rejected`. An unknown or already applied id returns nil.
+    public func applyAck(ackedMessageId: String, result: String) throws -> AckEffect? {
+        try db.transaction { () throws -> AckEffect? in
+            let rows = try db.query(
+                "SELECT session_id FROM outbox WHERE message_id = ? AND type = 'completed_workout'",
+                [.text(ackedMessageId.lowercased())])
+            guard case .text(let sessionId)? = rows.first?.first else { return nil }
+            if sessionId.isEmpty {
+                try db.execute("DELETE FROM outbox WHERE message_id = ?", [.text(ackedMessageId.lowercased())])
+                return nil
+            }
+            let rejected = result == "rejected"
+            try db.execute("DELETE FROM outbox WHERE session_id = ?", [.text(sessionId)])
+            try db.execute("DELETE FROM events WHERE session_id = ?", [.text(sessionId)])
+            try db.execute("DELETE FROM applied_commands WHERE session_id = ?", [.text(sessionId)])
+            try db.execute(
+                "UPDATE sessions SET delivery = ? WHERE session_id = ?",
+                [.text(rejected ? "rejected" : "delivered"), .text(sessionId)])
+            if rejected { return AckEffect.rejected(sessionId: sessionId) }
+            return AckEffect.delivered(sessionId: sessionId)
+        }
+    }
+
+    /// `queued`, `delivered` or `rejected`; nil before the workout is queued.
+    public func delivery(sessionId: String) throws -> String? {
+        let rows = try db.query("SELECT delivery FROM sessions WHERE session_id = ?", [.text(sessionId)])
+        guard case .text(let text)? = rows.first?.first else { return nil }
+        return text
+    }
+
+    /// Every stored event of a session in sequence order, whatever its status.
+    public func events(sessionId: String) throws -> [WorkoutEventV2] {
+        try db.query("SELECT json FROM events WHERE session_id = ? ORDER BY sequence", [.text(sessionId)])
+            .compactMap { row -> WorkoutEventV2? in
+                guard case .text(let text) = row[0] else { return nil }
+                return try? WorkoutEventV2(json: Data(text.utf8))
+            }
+    }
+
+    /// The account key of a queued completed workout, nil when it is not queued.
+    public func queuedCompletedAccountKey(messageId: String) throws -> String? {
+        let rows = try db.query(
+            "SELECT account_key FROM outbox WHERE message_id = ? AND type = 'completed_workout'",
+            [.text(messageId.lowercased())])
+        guard case .text(let key)? = rows.first?.first else { return nil }
+        return key
+    }
+
+    /// Sessions of `accountKey` that were completed but whose workout was never
+    /// queued (the app stopped between the two steps of finishing).
+    public func sessionsAwaitingQueue(accountKey: String) throws -> [String] {
+        try db.query(
+            "SELECT session_id FROM sessions WHERE account_key = ? AND status = 'completed' AND delivery IS NULL "
+                + "ORDER BY rowid", [.text(accountKey)]
+        ).compactMap { row in
+            guard case .text(let id)? = row.first else { return nil }
+            return id
+        }
+    }
+
+    /// The same, for every account: `(sessionId, accountKey)` pairs. Queueing
+    /// needs no binding; only sending does.
+    public func allSessionsAwaitingQueue() throws -> [(sessionId: String, accountKey: String)] {
+        try db.query(
+            "SELECT session_id, account_key FROM sessions WHERE status = 'completed' AND delivery IS NULL "
+                + "ORDER BY rowid"
+        ).compactMap { row in
+            guard case .text(let id)? = row.first, case .text(let key)? = row.last else { return nil }
+            return (id, key)
+        }
+    }
+
+    /// Queued completed workouts, split by whether they belong to `boundKey`.
+    public func waitingCounts(boundKey: String?) throws -> (thisAccount: Int, otherAccounts: Int) {
+        var mine = 0
+        var other = 0
+        for row in try db.query("SELECT account_key FROM outbox WHERE type = 'completed_workout'") {
+            guard case .text(let key)? = row.first else { continue }
+            if let boundKey, key == boundKey { mine += 1 } else { other += 1 }
+        }
+        return (mine, other)
+    }
+
+    public func saveTemplate(sessionId: String, json: String) throws {
+        try db.execute(
+            "UPDATE sessions SET template_json = ? WHERE session_id = ?", [.text(json), .text(sessionId)])
+    }
+
+    public func template(sessionId: String) throws -> String? {
+        let rows = try db.query("SELECT template_json FROM sessions WHERE session_id = ?", [.text(sessionId)])
+        guard case .text(let text)? = rows.first?.first else { return nil }
+        return text
     }
 
     /// Removes the acknowledged message; acknowledging twice does nothing.
@@ -275,7 +450,7 @@ public final class WatchJournal {
     /// session is never returned.
     public func activeSession(
         accountKey: String
-    ) throws -> (events: [WorkoutEventV2], state: ReplayedWorkout, commandIds: Set<String>)? {
+    ) throws -> (sessionId: String, events: [WorkoutEventV2], state: ReplayedWorkout, commandIds: Set<String>)? {
         let rows = try db.query(
             "SELECT session_id FROM sessions WHERE account_key = ? AND status IN ('active','paused') "
                 + "ORDER BY rowid DESC LIMIT 1", [.text(accountKey)])
@@ -292,6 +467,6 @@ public final class WatchJournal {
             guard case .text(let text) = row[0] else { return nil }
             return text
         }
-        return (events, replay(events), Set(commands))
+        return (sessionId, events, replay(events), Set(commands))
     }
 }

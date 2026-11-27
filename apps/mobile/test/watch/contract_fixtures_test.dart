@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:beyondrep/features/sync/workout_restore_feed.dart';
 import 'package:beyondrep/features/watch/domain/watch_message.dart';
 import 'package:beyondrep/features/watch/domain/workout_event_v2.dart';
+import 'package:beyondrep/features/workouts/domain/workout_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 List<File> _files(String dir) =>
@@ -114,6 +116,29 @@ void main() {
       final message = WatchMessage.fromJson(json) as CompletedWorkout;
       expect(message.programDay, isNull);
       expect(message.toJson(), equals(json));
+    });
+
+    test('completed cases decode and pass parseWorkout', () {
+      final files = _files('watch_link/v1/cases/completed');
+      expect(files.length, greaterThanOrEqualTo(2));
+      for (final f in files) {
+        final c = _read(f);
+        for (final e in (c['events']! as List)) {
+          WorkoutEventV2.fromJson(e as Map<String, Object?>);
+        }
+        final expected = c['expected']! as Map<String, Object?>;
+        final message = WatchMessage.fromJson(expected);
+        expect(message, isA<CompletedWorkout>(), reason: _name(f));
+        final workout =
+            (expected['body']! as Map<String, Object?>)['workout']!
+                as Map<String, Object?>;
+        final snapshot = WorkoutRestorePage.parseWorkout(
+          workout,
+          workoutId: workout['workout_id']! as String,
+          origins: {WorkoutOrigin.watch},
+        );
+        expect(snapshot.uuid, workout['workout_id'], reason: _name(f));
+      }
     });
 
     test('replay case events all decode', () {

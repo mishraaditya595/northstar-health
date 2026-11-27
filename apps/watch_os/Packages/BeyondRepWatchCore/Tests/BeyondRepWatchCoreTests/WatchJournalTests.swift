@@ -258,7 +258,7 @@ final class WatchJournalTests: XCTestCase {
         XCTAssertNil(try journal.binding())
     }
 
-    func testJournalMigratesUserVersion2To5KeepingOutboxRows() throws {
+    func testJournalMigratesUserVersion2To6KeepingOutboxRows() throws {
         // A database written before the binding table existed.
         let old = try SQLiteDatabase(url: url)
         try old.execute("CREATE TABLE outbox(message_id TEXT PRIMARY KEY, account_key TEXT NOT NULL, json TEXT NOT NULL, created_at TEXT NOT NULL)")
@@ -275,7 +275,7 @@ final class WatchJournalTests: XCTestCase {
         try journal.saveBinding(TestMessages.binding())
         XCTAssertEqual(try journal.binding()?.accountKey, TestMessages.keyA)
         let check = try SQLiteDatabase(url: url)
-        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(5))
+        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(6))
     }
 
     func testJournalMigratesAVersion3BindingTableKeepingItsRow() throws {
@@ -318,7 +318,7 @@ final class WatchJournalTests: XCTestCase {
         try journal.recordReceived(atMs: 1_234)
         XCTAssertEqual(try journal.lastReceivedMs(), 1_234)
         let check = try SQLiteDatabase(url: url)
-        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(5))
+        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(6))
     }
 
     func testRecordedReceivedTimeKeepsTheLatestAndSurvivesReopen() throws {
@@ -338,5 +338,216 @@ final class WatchJournalTests: XCTestCase {
         XCTAssertEqual(try journal.lastReceivedMs(), 1_000)
         try journal.clearAccount(TestMessages.keyA, wipeUnsent: false)
         XCTAssertNil(try journal.lastReceivedMs())
+    }
+
+    // MARK: Version 6 (delivery state and a filtered outbox)
+
+    private func completedMessage(key: String? = nil, id: String = UUID().uuidString.lowercased()) throws -> WatchMessage {
+        let base = try fixture("completed_workout")
+        return WatchMessage(messageId: id, sentAtUtc: base.sentAtUtc, accountKey: key ?? self.key, body: base.body)
+    }
+
+    private func count(_ table: String, session: String? = nil) throws -> Int {
+        let check = try SQLiteDatabase(url: url)
+        let rows: [[SQLValue]]
+        if let session {
+            rows = try check.query("SELECT COUNT(*) FROM \(table) WHERE session_id = ?", [.text(session)])
+        } else {
+            rows = try check.query("SELECT COUNT(*) FROM \(table)")
+        }
+        guard case .int(let n)? = rows.first?.first else { return -1 }
+        return Int(n)
+    }
+
+    private func delivery(_ sessionId: String) throws -> String? {
+        let check = try SQLiteDatabase(url: url)
+        let rows = try check.query("SELECT delivery FROM sessions WHERE session_id = ?", [.text(sessionId)])
+        guard case .text(let text)? = rows.first?.first else { return nil }
+        return text
+    }
+
+    private func columns(_ table: String) throws -> [String] {
+        try SQLiteDatabase(url: url).query("PRAGMA table_info(\(table))").compactMap { row in
+            guard row.count > 1, case .text(let name) = row[1] else { return nil }
+            return name
+        }
+    }
+
+    /// A finished session (completed, not queued) with one logged set.
+    private func recordFinishedSession(_ journal: WatchJournal) throws {
+        var m = machine()
+        var events = try m.start(name: "Synthetic push day")
+        events.append(try m.log(set: set(1)))
+        events.append(try m.complete())
+        try journal.record(events, sessionState: replay(events))
+    }
+
+    func testVersion6AddsColumnsAndKeepsRows() throws {
+        let old = try SQLiteDatabase(url: url)
+        try old.execute("CREATE TABLE outbox(message_id TEXT PRIMARY KEY, account_key TEXT NOT NULL, json TEXT NOT NULL, created_at TEXT NOT NULL)")
+        try old.execute("CREATE TABLE sessions(session_id TEXT PRIMARY KEY, account_key TEXT NOT NULL, status TEXT NOT NULL, state_json TEXT NOT NULL)")
+        try old.execute("CREATE TABLE binding(slot INTEGER PRIMARY KEY CHECK(slot = 1), account_key TEXT NOT NULL, unit TEXT NOT NULL, message_id TEXT NOT NULL DEFAULT '', sent_at_ms INTEGER NOT NULL DEFAULT 0)")
+        try old.execute(
+            "INSERT INTO binding(slot, account_key, unit, message_id, sent_at_ms) VALUES(1,?,?,?,?)",
+            [.text(TestMessages.keyA), .text("kg"), .text("77777777-3333-4333-8333-000000000001"), .int(5)])
+        let message = try completedMessage()
+        try old.execute(
+            "INSERT INTO outbox(message_id, account_key, json, created_at) VALUES(?,?,?,?)",
+            [.text(message.messageId), .text(message.accountKey),
+             .text(String(decoding: try message.jsonData(), as: UTF8.self)), .text("2026-10-23T00:00:00Z")])
+        try old.setUserVersion(5)
+
+        let journal = try WatchJournal(url: url)
+        XCTAssertEqual(try journal.binding()?.accountKey, TestMessages.keyA)
+        XCTAssertEqual(try journal.pendingOutbox(limit: 10).count, 1)
+        // The old row's type is filled in, so it counts as a queued completed workout.
+        XCTAssertEqual(try journal.pendingCompleted(limit: 10).count, 1)
+        let check = try SQLiteDatabase(url: url)
+        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(6))
+        XCTAssertTrue(try columns("outbox").contains("type"))
+        XCTAssertTrue(try columns("outbox").contains("session_id"))
+        XCTAssertTrue(try columns("sessions").contains("delivery"))
+        XCTAssertTrue(try columns("sessions").contains("template_json"))
+    }
+
+    func testPendingCompletedSkipsEventMessages() throws {
+        let journal = try WatchJournal(url: url)
+        try recordSession(journal, sets: 1)
+        XCTAssertEqual(try journal.pendingOutbox(limit: 10).count, 2)
+        try journal.queueCompleted(try completedMessage(), sessionId: session)
+        XCTAssertEqual(try journal.pendingCompleted(limit: 10).map(\.type), ["completed_workout"])
+    }
+
+    func testStoredAckClearsSessionOutboxAndEvents() throws {
+        let journal = try WatchJournal(url: url)
+        try recordSession(journal, sets: 1)
+        let message = try completedMessage()
+        try journal.queueCompleted(message, sessionId: session)
+        let effect = try journal.applyAck(ackedMessageId: message.messageId.uppercased(), result: "stored")
+        XCTAssertEqual(effect, .delivered(sessionId: session))
+        XCTAssertTrue(try journal.pendingOutbox(limit: 50).isEmpty)
+        XCTAssertEqual(try count("events", session: session), 0)
+        XCTAssertEqual(try delivery(session), "delivered")
+    }
+
+    func testDuplicateAckCountsAsDelivered() throws {
+        let journal = try WatchJournal(url: url)
+        try recordSession(journal, sets: 1)
+        let message = try completedMessage()
+        try journal.queueCompleted(message, sessionId: session)
+        XCTAssertEqual(try journal.applyAck(ackedMessageId: message.messageId, result: "duplicate"), .delivered(sessionId: session))
+        XCTAssertEqual(try delivery(session), "delivered")
+    }
+
+    func testRejectedAckMarksRejected() throws {
+        let journal = try WatchJournal(url: url)
+        try recordSession(journal, sets: 1)
+        let message = try completedMessage()
+        try journal.queueCompleted(message, sessionId: session)
+        XCTAssertEqual(try journal.applyAck(ackedMessageId: message.messageId, result: "rejected"), .rejected(sessionId: session))
+        XCTAssertEqual(try delivery(session), "rejected")
+        XCTAssertTrue(try journal.pendingOutbox(limit: 50).isEmpty)
+        XCTAssertEqual(try count("events", session: session), 0)
+    }
+
+    func testAckForUnknownMessageIsIgnored() throws {
+        let journal = try WatchJournal(url: url)
+        try recordSession(journal, sets: 1)
+        let outboxBefore = try count("outbox")
+        let eventsBefore = try count("events")
+        XCTAssertNil(try journal.applyAck(ackedMessageId: "77777777-3333-4333-8333-0000000000ff", result: "stored"))
+        XCTAssertEqual(try count("outbox"), outboxBefore)
+        XCTAssertEqual(try count("events"), eventsBefore)
+    }
+
+    func testSecondAckChangesNothing() throws {
+        let journal = try WatchJournal(url: url)
+        try recordSession(journal, sets: 1)
+        let message = try completedMessage()
+        try journal.queueCompleted(message, sessionId: session)
+        XCTAssertNotNil(try journal.applyAck(ackedMessageId: message.messageId, result: "stored"))
+        XCTAssertNil(try journal.applyAck(ackedMessageId: message.messageId, result: "stored"))
+        XCTAssertEqual(try delivery(session), "delivered")
+    }
+
+    func testAbandonDropsQueuedEventMessages() throws {
+        let journal = try WatchJournal(url: url)
+        var m = machine()
+        var events = try m.start(name: "x")
+        try journal.record(events, sessionState: replay(events))
+        let log = try m.log(set: set(1))
+        events.append(log)
+        try journal.record(log, sessionState: replay(events))
+        XCTAssertGreaterThan(try count("outbox", session: session), 0)
+        let abandon = try m.abandon()
+        events.append(abandon)
+        try journal.record(abandon, sessionState: replay(events))
+        XCTAssertEqual(try count("outbox", session: session), 0)
+    }
+
+    func testQueueCompletedIsIdempotent() throws {
+        let journal = try WatchJournal(url: url)
+        try recordFinishedSession(journal)
+        let message = try completedMessage()
+        try journal.queueCompleted(message, sessionId: session)
+        try journal.queueCompleted(message, sessionId: session)
+        XCTAssertEqual(try journal.pendingCompleted(limit: 10).count, 1)
+        XCTAssertEqual(try delivery(session), "queued")
+    }
+
+    func testQueueCompletedAfterDeliveryDoesNotRequeueTheState() throws {
+        let journal = try WatchJournal(url: url)
+        try recordFinishedSession(journal)
+        let message = try completedMessage()
+        try journal.queueCompleted(message, sessionId: session)
+        _ = try journal.applyAck(ackedMessageId: message.messageId, result: "stored")
+        try journal.queueCompleted(message, sessionId: session)
+        XCTAssertEqual(try delivery(session), "delivered")
+    }
+
+    func testWaitingCountsSplitByAccount() throws {
+        let journal = try WatchJournal(url: url)
+        try journal.queueCompleted(try completedMessage(key: TestMessages.keyA), sessionId: session)
+        try journal.queueCompleted(try completedMessage(key: TestMessages.keyB), sessionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2")
+        let split = try journal.waitingCounts(boundKey: TestMessages.keyA)
+        XCTAssertEqual(split.thisAccount, 1)
+        XCTAssertEqual(split.otherAccounts, 1)
+        let none = try journal.waitingCounts(boundKey: nil)
+        XCTAssertEqual(none.thisAccount, 0)
+        XCTAssertEqual(none.otherAccounts, 2)
+    }
+
+    func testSessionsAwaitingQueue() throws {
+        let journal = try WatchJournal(url: url)
+        try recordFinishedSession(journal)
+        XCTAssertEqual(try journal.sessionsAwaitingQueue(accountKey: key), [session])
+        XCTAssertEqual(try journal.sessionsAwaitingQueue(accountKey: TestMessages.keyB), [])
+        try journal.queueCompleted(try completedMessage(), sessionId: session)
+        XCTAssertEqual(try journal.sessionsAwaitingQueue(accountKey: key), [])
+    }
+
+    func testTemplateIsWrittenWithTheStartEvents() throws {
+        let journal = try WatchJournal(url: url)
+        var m = machine()
+        let events = try m.start(name: "x")
+        try journal.record(events, sessionState: replay(events), template: "{\"name\":\"x\"}")
+        XCTAssertEqual(try journal.template(sessionId: session), "{\"name\":\"x\"}")
+        XCTAssertEqual(try journal.activeSession(accountKey: key)?.sessionId, session)
+
+        let otherDir = dir.appendingPathComponent("b")
+        try FileManager.default.createDirectory(at: otherDir, withIntermediateDirectories: true)
+        let failing = try WatchJournal(url: otherDir.appendingPathComponent("j.sqlite"))
+        failing.failAt = .afterSessionUpsert
+        XCTAssertThrowsError(try failing.record(events, sessionState: replay(events), template: "{}"))
+        XCTAssertNil(try failing.template(sessionId: session))
+    }
+
+    func testSaveTemplateReplacesTheStoredTemplate() throws {
+        let journal = try WatchJournal(url: url)
+        var m = machine()
+        let events = try m.start(name: "x")
+        try journal.record(events, sessionState: replay(events), template: "{\"a\":1}")
+        try journal.saveTemplate(sessionId: session, json: "{\"a\":2}")
+        XCTAssertEqual(try journal.template(sessionId: session), "{\"a\":2}")
     }
 }

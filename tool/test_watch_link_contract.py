@@ -181,6 +181,21 @@ class WatchLinkContractTest(unittest.TestCase):
                     self.v2.validate(event)
                 self.assertEqual(reference_replay(case["events"]), case["expected"])
 
+    def test_completed_cases_validate_against_schema(self):
+        cases = sorted((LINK / "cases/completed").glob("*.json"))
+        self.assertGreaterEqual(len(cases), 2)
+        for path in cases:
+            case = load(path)
+            with self.subTest(file=path.name):
+                for event in case["events"]:
+                    self.v2.validate(event)
+                self.validator.validate(case["expected"])
+                self.assertEqual(case["expected"]["type"], "completed_workout")
+                self.assertEqual(
+                    case["expected"]["body"]["last_sequence"],
+                    max(e["sequence"] for e in case["events"]),
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

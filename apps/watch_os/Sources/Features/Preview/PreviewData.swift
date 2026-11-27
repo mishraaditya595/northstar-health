@@ -74,3 +74,71 @@ enum PreviewData {
     }
 }
 #endif
+
+#if DEBUG
+extension PreviewData {
+    private static let accountKey = String(repeating: "0123456789abcdef", count: 4)
+
+    private static var plansRaw: [String: Any] {
+        [
+            "generated_at_utc": "2026-10-23T01:00:00Z",
+            "plans": [
+                [
+                    "plan_id": "plan-preview", "name": "Push day",
+                    "exercises": [
+                        [
+                            "exercise_id": "builtin.v1.preview-press", "name": "Bench press", "kind": "reps",
+                            "muscle": "chest",
+                            "sets": [
+                                ["position": 0, "kind": "working", "target_reps": 8, "target_load_grams": 60000],
+                                ["position": 1, "kind": "working", "target_reps": 8, "target_load_grams": 60000],
+                                ["position": 2, "kind": "working", "target_reps": 8, "target_load_grams": 60000],
+                            ],
+                        ],
+                        [
+                            "exercise_id": "builtin.v1.preview-plank", "name": "Plank", "kind": "duration",
+                            "sets": [["position": 0, "kind": "working", "target_seconds": 45]],
+                        ],
+                    ],
+                ]
+            ],
+            "recent_exercises": [] as [Any],
+        ]
+    }
+
+    /// A model with a running workout: `sets` logged, optionally still resting.
+    /// Uses a throwaway journal file; nothing here is real data.
+    @MainActor
+    static func workoutModel(sets: Int, resting: Bool, finished: Bool = false) -> (AppModel, WorkoutController) {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("preview-\(UUID().uuidString).sqlite")
+        let model = AppModel(journalURL: url)
+        // A second connection writes the binding and plans the model reads.
+        let journal = try! WatchJournal(url: url)
+        try! journal.saveBinding(
+            WatchMessage(
+                messageId: UUID().uuidString.lowercased(), sentAtUtc: "2026-10-23T01:00:00Z", accountKey: accountKey,
+                body: .accountBinding(unit: "kg")))
+        try! journal.savePlans(
+            WatchMessage(
+                messageId: UUID().uuidString.lowercased(), sentAtUtc: "2026-10-23T01:00:00Z", accountKey: accountKey,
+                body: .plansSnapshot(raw: plansRaw)))
+        let template = WorkoutTemplate.fromPlan(
+            plansSnapshot: plansRaw, planId: "plan-preview", makeId: { UUID().uuidString.lowercased() })!
+        let controller = try! WorkoutController.start(
+            template: template, journal: journal, accountKey: accountKey, unit: "kg",
+            deviceId: "watch-preview", clock: Date.init, timeZone: TimeZone.current.identifier,
+            makeId: { UUID().uuidString.lowercased() })
+        for _ in 0..<sets {
+            guard let position = controller.cursor.current else { break }
+            try! controller.log(controller.cursor.prefill(for: position, unit: "kg"))
+        }
+        if !resting { try? controller.skipRest() }
+        if finished { try? controller.markCompleted() }
+        model.attachPreview(workout: controller)
+        return (model, controller)
+    }
+
+    static let summary = WorkoutSummary(
+        name: "Push day", elapsed: 2_715, sets: 9, averageHeartRate: 112, sessionId: "preview-session")
+}
+#endif

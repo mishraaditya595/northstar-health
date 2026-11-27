@@ -3,10 +3,13 @@ import SwiftUI
 import BeyondRepWatchCore
 #endif
 
-/// Today's program workout first, then the plans. Read-only: there is no
-/// Start button until watch workouts exist (stage 4).
+/// Today's program workout first, then the plans. A tap opens the plan
+/// preview with Start. Without an account binding there is no Start button.
 struct TrainPage: View {
     let glance: GlanceState
+    var canStart = false
+    var isStarting = false
+    var onQuickWorkout: () -> Void = {}
 
     var body: some View {
         ScrollView {
@@ -17,7 +20,8 @@ struct TrainPage: View {
                     .foregroundStyle(Palette.secondary)
                     .padding()
             case .ready(let glance):
-                TrainContent(glance: glance)
+                TrainContent(
+                    glance: glance, canStart: canStart, isStarting: isStarting, onQuickWorkout: onQuickWorkout)
             }
         }
         .background(Palette.canvas)
@@ -26,6 +30,9 @@ struct TrainPage: View {
 
 private struct TrainContent: View {
     let glance: Glance
+    let canStart: Bool
+    let isStarting: Bool
+    let onQuickWorkout: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -33,6 +40,7 @@ private struct TrainContent: View {
                 .font(.footnote.weight(.heavy))
                 .foregroundStyle(Palette.secondary)
             if let today = glance.today {
+                NavigationLink(value: WatchRoute.today) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Today")
                         .font(.caption2.weight(.heavy))
@@ -53,6 +61,8 @@ private struct TrainContent: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Palette.performance, lineWidth: 1))
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Today, \(today.name)" + (today.subtitle.map { ", \($0)" } ?? ""))
+                }
+                .buttonStyle(.plain)
             }
             if glance.plans.isEmpty && glance.today == nil {
                 Text("No plans yet. Create one in BeyondRep on your iPhone.")
@@ -61,6 +71,7 @@ private struct TrainContent: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             ForEach(glance.plans, id: \.id) { plan in
+                NavigationLink(value: WatchRoute.plan(plan.id)) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(plan.name)
                         .font(.footnote.weight(.semibold))
@@ -76,6 +87,14 @@ private struct TrainContent: View {
                 .padding(10)
                 .background(Palette.surface, in: RoundedRectangle(cornerRadius: 12))
                 .accessibilityElement(children: .combine)
+                }
+                .buttonStyle(.plain)
+            }
+            if canStart {
+                Button("+ Quick workout", action: onQuickWorkout)
+                    .font(.footnote.weight(.semibold))
+                    .disabled(isStarting)
+                    .frame(maxWidth: .infinity, minHeight: 44)
             }
         }
         .padding(.horizontal, 8)
@@ -85,6 +104,10 @@ private struct TrainContent: View {
 #if DEBUG
 #Preview("Train") {
     TrainPage(glance: PreviewData.glance)
+}
+
+#Preview("Train, can start") {
+    NavigationStack { TrainPage(glance: PreviewData.glance, canStart: true) }
 }
 
 #Preview("Train, no plans") {

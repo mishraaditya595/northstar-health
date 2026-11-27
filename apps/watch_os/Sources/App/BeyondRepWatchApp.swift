@@ -16,7 +16,10 @@ struct BeyondRepWatchApp: App {
         WindowGroup {
             RootView(model: model)
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .active { model.refresh() }
+                    if phase == .active {
+                        model.refresh()
+                        model.sendQueued()
+                    }
                 }
         }
     }

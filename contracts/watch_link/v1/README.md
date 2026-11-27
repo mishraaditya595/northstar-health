@@ -34,6 +34,16 @@ JSON Schema cannot express the duplicate-factor and week-order rules, so the Pyt
 5. `history` lists the id of every event that touched the set, in sequence order. Sets are listed in the order they first appear.
 6. `completed_sets` counts completed **working** sets (with reps or seconds). `volume_grams` is the sum of `reps x load_grams` over completed **working** sets with reps and a load. Warm-up sets and timed sets add nothing. This follows `calculateWorkoutHistory` in `apps/mobile/lib/features/progress/domain/workout_history_models.dart`, which excludes warm-ups.
 
+## Completed cases
+
+`cases/completed/<name>.json` holds the golden input and output of the watch's completed-workout builder (`CompletedWorkoutBuilder.swift`):
+
+- `events`: workout_sync v2 envelopes of one finished session.
+- `context`: `template` (the session's exercises and planned sets in snake_case: `name`, `plan_id`, optional `program_day`, `exercises[]` with `exercise_id`, `name`, `kind`, `muscle`, `position`, `sets[]` with `set_id`, `position`, `kind`, `target_*`, `rest_seconds`), `unit` (`kg` or `lb`), `account_key`, optional `healthkit_workout_uuid`, `message_id` and `sent_at_utc`.
+- `expected`: the full `completed_workout` message.
+
+Rules: only exercises with at least one completed or skipped set appear, in template position order; sets are completed or skipped ones only, in position order. A completed set has `completed_at_utc` of its last event; `load_grams` is left out when 0 or absent; a skipped set has only `input_unit` from the binding unit. `primary_muscles` is added only when the template's muscle is one of the cloud payload's muscle names; `muscle` is always kept. `original_offset_minutes` is the offset of the event `time_zone` at the start instant. Swift builds the message from `events` and `context` and must equal `expected`; Python checks every `expected` against the schema and the events against workout_sync v2; Dart decodes `expected` and runs the phone's `parseWorkout`.
+
 ## Cross-language strictness
 
 All three implementations (Python `jsonschema`, Dart, Swift) must agree on every fixture. Rules they share: patterns match the whole string (a trailing newline is rejected; the Python tests use `re.fullmatch` for `pattern` because `re.search` lets `$` match before a final newline, see `tool/contract_validation.py`); `date-time` is checked as a real RFC 3339 date-time (`rfc3339-validator` in `tool/requirements-ci.txt`); `minLength`/`maxLength` count Unicode code points (Dart `runes.length`, Swift `unicodeScalars.count`).

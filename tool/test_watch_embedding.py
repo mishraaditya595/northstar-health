@@ -6,6 +6,7 @@ script changes nothing.
 """
 
 import os
+import plistlib
 import re
 import shutil
 import struct
@@ -112,6 +113,36 @@ class WatchEmbeddingTest(unittest.TestCase):
             "INFOPLIST_KEY_WKApplication: YES",
             (WATCH / "project.yml").read_text(encoding="utf-8"),
         )
+
+    def test_watch_has_healthkit_entitlement_and_workout_background_mode(self):
+        entitlements = WATCH / "BeyondRepWatch.entitlements"
+        info = WATCH / "Sources" / "Resources" / "Info.plist"
+        # Same two HealthKit keys as the phone's Runner.entitlements, nothing else.
+        self.assertEqual(
+            plistlib.loads(entitlements.read_bytes()),
+            {"com.apple.developer.healthkit": True, "com.apple.developer.healthkit.access": []},
+        )
+        self.assertEqual(plistlib.loads(info.read_bytes()), {"WKBackgroundModes": ["workout-processing"]})
+        share = "BeyondRep reads your heart rate and active energy during a workout on your watch."
+        update = "BeyondRep saves each strength workout you finish on your watch to Apple Health."
+        configs = re.findall(
+            r"isa = XCBuildConfiguration;.*?buildSettings = \{(.*?)\n\t\t\t\};", self.pbx, re.S
+        )
+        watch = [c for c in configs if "in.beyondrep.app.watchkitapp" in c]
+        self.assertEqual(len(watch), 3)
+        for config in watch:
+            self.assertIn("CODE_SIGN_ENTITLEMENTS = ../../watch_os/BeyondRepWatch.entitlements;", config)
+            self.assertIn("INFOPLIST_FILE = ../../watch_os/Sources/Resources/Info.plist;", config)
+            self.assertIn(f'INFOPLIST_KEY_NSHealthShareUsageDescription = "{share}";', config)
+            self.assertIn(f'INFOPLIST_KEY_NSHealthUpdateUsageDescription = "{update}";', config)
+        # A plist in Resources would make two commands produce Info.plist.
+        self.assertNotIn("/* Info.plist in Resources", self.pbx)
+        yml = (WATCH / "project.yml").read_text(encoding="utf-8")
+        self.assertIn("CODE_SIGN_ENTITLEMENTS: BeyondRepWatch.entitlements", yml)
+        self.assertIn("INFOPLIST_FILE: Sources/Resources/Info.plist", yml)
+        self.assertIn(f"INFOPLIST_KEY_NSHealthShareUsageDescription: {share}", yml)
+        self.assertIn(f"INFOPLIST_KEY_NSHealthUpdateUsageDescription: {update}", yml)
+        self.assertIn("Resources/Info.plist", yml.split("sources:")[1].split("dependencies:")[0])
 
     def _bundle_ready(self):
         ruby, bundle = shutil.which("ruby"), shutil.which("bundle")

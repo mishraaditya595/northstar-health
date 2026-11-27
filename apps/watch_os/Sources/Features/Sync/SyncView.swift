@@ -7,6 +7,7 @@ import BeyondRepWatchCore
 /// iPhone. The watch never claims more than that.
 struct SyncView: View {
     let line: SyncLine
+    var waiting = WaitingWorkouts(waiting: 0, waitingOtherAccount: 0)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -20,6 +21,9 @@ struct SyncView: View {
             case .notPaired:
                 heading("Open BeyondRep on your iPhone", color: Palette.secondary)
                 detail("Sign in there to see your data here.")
+            }
+            ForEach(waiting.lines, id: \.self) { text in
+                heading(text, color: Palette.caution)
             }
             Spacer(minLength: 0)
         }
@@ -54,6 +58,10 @@ struct SyncView: View {
 
 #Preview("Sync, phone away") {
     SyncView(line: .phoneAway("10:43"))
+}
+
+#Preview("Sync, workout waiting") {
+    SyncView(line: .phoneAway("10:43"), waiting: WaitingWorkouts(waiting: 1, waitingOtherAccount: 0))
 }
 
 #Preview("Sync, not set up") {
