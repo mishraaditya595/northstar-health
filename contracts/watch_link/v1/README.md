@@ -37,7 +37,7 @@ JSON Schema cannot express the duplicate-factor and week-order rules, so the Pyt
 
 A workout started on the phone is owned by the phone: `session_state.owner` is `phone`, built from the phone's ObjectBox workout, and the watch follows it. The watch sends `session_command` messages (same commands as 5a) and the phone echoes `applied_command_ids` and `rejected_commands`. Two watch-to-phone types are new, neither carries health values:
 
-- `join` (`session_id`): a follower is attached to that phone session; the phone sends its state at once.
+- `join` (optional `session_id`): a follower is attached; the phone sends its state at once (the watch just launched does not know the session yet and omits it). For a session that is no longer active the phone answers with an `ended` state built from the stored workout, so a watch that missed the end still finishes or discards. Fixtures: `valid/join.json`, `valid/join_any.json`.
 - `workout_link` (`workout_id`, `healthkit_workout_uuid`): the watch saved the one `HKWorkout` for that phone workout. The phone stores the receipt in one transaction and acks it; a link for an unknown or unfinished workout gets no ack, so the watch resends it. Fixtures: `valid/workout_link.json`, `valid/join.json`, `valid/session_state_phone.json`.
 
 ## Session state cases

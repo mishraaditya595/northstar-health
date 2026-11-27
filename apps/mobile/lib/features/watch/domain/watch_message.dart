@@ -465,12 +465,12 @@ sealed class WatchMessage {
           healthkitWorkoutUuid: b.uuid('healthkit_workout_uuid'),
         );
       case 'join':
-        final b = body({'session_id'});
+        final b = body(const {}, {'session_id'});
         return JoinMessage(
           messageId: id,
           sentAtUtc: sent,
           accountKey: key,
-          sessionId: b.uuid('session_id'),
+          sessionId: b.has('session_id') ? b.uuid('session_id') : null,
         );
       default:
         final b = body({'acked_message_id', 'result'}, {'reason'});
@@ -860,21 +860,24 @@ final class WorkoutLink extends WatchMessage {
   };
 }
 
-/// The watch tells the phone a follower is attached to [sessionId], so the
-/// phone sends its state at once.
+/// The watch tells the phone a follower is attached, so the phone sends its
+/// state at once. [sessionId] is null when the watch does not know the session
+/// yet (it was just launched): "whatever workout you are running".
 final class JoinMessage extends WatchMessage {
   const JoinMessage({
     required super.messageId,
     required super.sentAtUtc,
     required super.accountKey,
-    required this.sessionId,
+    this.sessionId,
   });
 
-  final String sessionId;
+  final String? sessionId;
 
   @override
   String get type => 'join';
 
   @override
-  Map<String, Object?> get bodyJson => {'session_id': sessionId};
+  Map<String, Object?> get bodyJson => {
+    if (sessionId != null) 'session_id': sessionId,
+  };
 }

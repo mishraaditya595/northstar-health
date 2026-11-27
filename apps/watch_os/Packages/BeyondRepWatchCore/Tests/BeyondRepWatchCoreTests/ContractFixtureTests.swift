@@ -67,6 +67,9 @@ final class ContractFixtureTests: XCTestCase {
         let join = try WatchMessage(json: FixtureLoader.json("contracts/watch_link/v1/fixtures/valid/join.json"))
         guard case .join(let sessionId) = join.body else { return XCTFail("not a join") }
         XCTAssertEqual(sessionId, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+        let any = try WatchMessage(json: FixtureLoader.json("contracts/watch_link/v1/fixtures/valid/join_any.json"))
+        guard case .join(let anySession) = any.body else { return XCTFail("not a join") }
+        XCTAssertNil(anySession)
         let phone = try WatchMessage(
             json: FixtureLoader.json("contracts/watch_link/v1/fixtures/valid/session_state_phone.json"))
         guard case .sessionState = phone.body else { return XCTFail("not a session_state") }

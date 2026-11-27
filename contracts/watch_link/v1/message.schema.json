@@ -1421,9 +1421,6 @@
     },
     "body_join": {
       "type": "object",
-      "required": [
-        "session_id"
-      ],
       "additionalProperties": false,
       "properties": {
         "session_id": {

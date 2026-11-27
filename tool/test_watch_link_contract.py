@@ -260,7 +260,6 @@ class WatchLinkContractTest(unittest.TestCase):
             "workout_link_missing_uuid",
             "workout_link_extra_field",
             "workout_link_bad_uuid",
-            "join_missing_session",
             "join_extra_field",
         ):
             self.assertIn(expected, names)

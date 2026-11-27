@@ -123,6 +123,9 @@ void main() {
       expect(link.healthkitWorkoutUuid, 'cccccccc-cccc-4ccc-8ccc-cccccccccccc');
       final join = read('join') as JoinMessage;
       expect(join.sessionId, 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+      final any = read('join_any') as JoinMessage;
+      expect(any.sessionId, isNull);
+      expect(any.bodyJson, isEmpty);
       expect((read('session_state_phone') as SessionState).owner, 'phone');
     });
 
