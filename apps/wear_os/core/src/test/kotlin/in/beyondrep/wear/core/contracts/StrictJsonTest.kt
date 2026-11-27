@@ -40,6 +40,14 @@ class StrictJsonTest {
     }
 
     @Test
+    fun nonJsonNumberTokensAreRejectedLikeSwift() {
+        // JSONSerialization rejects each of these as invalid JSON; toDoubleOrNull would accept most.
+        for (token in listOf("10f", "10d", "0x1p3", "+10", "010", "-", "1.", ".5")) {
+            assertRejected(token)
+        }
+    }
+
+    @Test
     fun rpeAcceptsWholeAndHalfStepsOnly() {
         val base = FixtureLoader.text("contracts/workout_sync/v2/fixtures/valid/set_logged.json")
         fun rpe(literal: String) = WorkoutEventV2.decode(base.replace("\"rpe\": 8.5", "\"rpe\": $literal"))

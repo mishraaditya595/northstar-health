@@ -143,8 +143,12 @@ internal class StrictObject(raw: JsonElement?, required: Set<String>, optional: 
             if (p == null || p.isString || p.content == "true" || p.content == "false" || p.content == "null") {
                 throw ContractException("invalid_value")
             }
+            if (!jsonNumber.matches(p.content)) throw ContractException("invalid_value")
             return p.content.toDoubleOrNull() ?: throw ContractException("invalid_value")
         }
+
+        // The JSON number grammar; toDoubleOrNull alone also accepts 10f, 0x1p3, +10 and 010.
+        private val jsonNumber = Regex("-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?")
 
         /** Parses `text` as a JSON object; anything else is `invalid_value`. */
         fun parse(text: String): JsonObject {
