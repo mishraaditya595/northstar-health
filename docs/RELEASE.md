@@ -117,6 +117,8 @@ Workouts from other apps and the training-load readiness input are implemented i
 
 Energy on the Health tab hero and the readiness detail Today view is implemented in source, **not released or device-verified**. Every row is not run.
 
+**Release gate:** energy stage 1 must not ship to users without stage 2. From this branch on, readiness is scored from 3 baseline days on Today, Train, the pre-workout note, "Better fit today" and the watch, and those surfaces carry no learning note (that comes in stage 2).
+
 | Check | iOS | Android |
 | --- | --- | --- |
 | A morning gym session: energy drops after it and the detail shows its "Workout at" row | not run | not run |
