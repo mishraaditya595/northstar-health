@@ -104,4 +104,23 @@ final class CompletedWorkoutBuilderTests: XCTestCase {
         XCTAssertEqual(exercise["muscle"] as? String, "Synthetic muscle")
         XCTAssertNil(exercise["primary_muscles"])
     }
+
+    func testSkippedWarmupIsSentAsWarmup() throws {
+        let template = try TemplateFixtures.template()
+        let press = template.exercises[0]
+        XCTAssertEqual(press.sets[0].kind, "warmup")
+        var m = machine()
+        var events = try m.start(name: template.name, exercises: template.exerciseAddedPayloads)
+        events.append(try m.skip(setId: press.sets[0].setId))
+        events.append(try m.log(set: SetValues(
+            setId: press.sets[1].setId, exerciseId: press.exerciseId, position: 1, reps: 8, loadGrams: 60000)))
+        events.append(try m.complete())
+        let body = try object(build(events, template: template).jsonData())["body"] as? [String: Any]
+        let workout = try XCTUnwrap(body?["workout"] as? [String: Any])
+        let exercise = try XCTUnwrap((workout["exercises"] as? [[String: Any]])?.first)
+        let sets = try XCTUnwrap(exercise["sets"] as? [[String: Any]])
+        XCTAssertEqual(sets[0]["status"] as? String, "skipped")
+        XCTAssertEqual(sets[0]["kind"] as? String, "warmup")
+        XCTAssertEqual(sets[1]["kind"] as? String, "working")
+    }
 }

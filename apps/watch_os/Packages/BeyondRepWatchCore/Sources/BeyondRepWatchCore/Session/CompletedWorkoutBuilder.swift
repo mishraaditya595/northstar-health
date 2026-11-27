@@ -62,7 +62,9 @@ public enum CompletedWorkoutBuilder {
             var sets: [[String: Any]] = []
             for set in exercise.sets.sorted(by: { $0.position < $1.position }) {
                 guard let done = replayed[set.setId] else { continue }
-                var item: [String: Any] = ["id": set.setId, "position": set.position, "kind": done.kind]
+                // A skipped set has no logged kind, so it takes the template's.
+                let kind = done.status == "skipped" ? set.kind : done.kind
+                var item: [String: Any] = ["id": set.setId, "position": set.position, "kind": kind]
                 if done.status == "skipped" {
                     item["status"] = "skipped"
                     item["input_unit"] = unit
