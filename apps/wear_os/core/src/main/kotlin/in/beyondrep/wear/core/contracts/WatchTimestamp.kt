@@ -2,7 +2,10 @@ package `in`.beyondrep.wear.core.contracts
 
 import java.time.Instant
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
+import java.time.temporal.ChronoUnit
 
 /**
  * Reads the date-times of watch_link messages as epoch milliseconds (port of WatchTimestamp.swift).
@@ -30,4 +33,9 @@ object WatchTimestamp {
     }
 
     fun instant(text: String): Instant? = milliseconds(text)?.let { Instant.ofEpochMilli(it) }
+
+    private val wholeSeconds = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(ZoneOffset.UTC)
+
+    /** UTC text with whole seconds and a `Z`, the shape of Swift's `ISO8601DateFormatter().string(from:)`. */
+    fun format(instant: Instant): String = wholeSeconds.format(instant.truncatedTo(ChronoUnit.SECONDS))
 }
