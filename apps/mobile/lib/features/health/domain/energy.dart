@@ -1,5 +1,6 @@
 import '../../workouts/domain/workout_models.dart';
 import 'energy_day.dart';
+import 'energy_tuning.dart';
 import 'health_types.dart';
 import 'readiness.dart';
 import 'training_load.dart';
@@ -53,12 +54,20 @@ class Energy {
     required this.band,
     required this.start,
     required this.items,
+    this.awakeWaived = false,
+    this.tuned = false,
   });
 
   final int value;
   final ReadinessBand band;
   final int start;
   final List<EnergyItem> items;
+
+  /// The awake dip would have applied but this is a usual training hour.
+  final bool awakeWaived;
+
+  /// The personal drain multiplier is calibrated and not 1.0.
+  final bool tuned;
 }
 
 /// Rounds [parts] to integers whose sum is the rounded sum of [parts]
@@ -99,7 +108,9 @@ Energy energyNow({
   required List<LoadSession> sessions,
   required List<HealthSample> hourlyActiveEnergy,
   required List<SleepSegment> sleepSegments,
+  EnergyTuning tuning = EnergyTuning.generic,
 }) {
+  final multiplier = tuning.drainMultiplier;
   final raws = <_Raw>[];
 
   final counted = [
@@ -111,7 +122,8 @@ Energy energyNow({
   for (final s in counted) {
     raws.add((
       kind: EnergyItemKind.workout,
-      points: -(s.minutes * s.intensity * energyWorkoutPointsPerLoad),
+      points:
+          -(s.minutes * s.intensity * energyWorkoutPointsPerLoad * multiplier),
       at: s.start,
       awakeHours: null,
       capped: false,
@@ -125,7 +137,7 @@ Energy energyNow({
     workouts: counted,
   );
   if (excess != null) {
-    final points = excess * energyActivePointsPerKcal;
+    final points = excess * energyActivePointsPerKcal * multiplier;
     raws.add((
       kind: EnergyItemKind.activeDay,
       points: -(points > energyActiveMaxPoints
@@ -138,9 +150,11 @@ Energy energyNow({
   }
 
   final awake = now.difference(day.wake);
+  final dip = awakeDipPoints(awake);
+  final waived = dip > 0 && tuning.usualHours.contains(now.hour);
   raws.add((
     kind: EnergyItemKind.awake,
-    points: -awakeDipPoints(awake),
+    points: waived ? 0 : -dip,
     at: null,
     awakeHours: awake.inHours,
     capped: false,
@@ -190,6 +204,8 @@ Energy energyNow({
     band: readinessBandOf(value),
     start: start.value,
     items: items,
+    awakeWaived: waived,
+    tuned: tuning.calibrated && multiplier != 1.0,
   );
 }
 

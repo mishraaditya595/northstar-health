@@ -1,4 +1,5 @@
 import 'package:beyondrep/features/health/domain/energy.dart';
+import 'package:beyondrep/features/health/domain/energy_tuning.dart';
 import 'package:beyondrep/features/health/domain/health_types.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/features/health/domain/training_load.dart';
@@ -46,6 +47,7 @@ Energy run({
   List<LoadSession> sessions = const [],
   List<HealthSample> active = const [],
   List<SleepSegment> sleep = const [],
+  EnergyTuning tuning = EnergyTuning.generic,
 }) => energyNow(
   start: start ?? startOf(78),
   day: wakingDay,
@@ -53,6 +55,7 @@ Energy run({
   sessions: sessions,
   hourlyActiveEnergy: active,
   sleepSegments: sleep,
+  tuning: tuning,
 );
 
 List<(EnergyItemKind, int)> kp(Energy e) => [
@@ -183,6 +186,84 @@ void main() {
         record(WorkoutStatus.inProgress, now.subtract(const Duration(days: 1))),
       ], now);
       expect(n, 1);
+    });
+  });
+
+  group('energyNow with a tuning', () {
+    const strong = EnergyTuning(
+      usualHours: {},
+      drainMultiplier: 1.4,
+      calibrated: true,
+    );
+
+    test('the multiplier scales a workout drain', () {
+      final plain = run(now: t(9), sessions: [session(t(7, 30), 60, 1.0)]);
+      final tuned = run(
+        now: t(9),
+        sessions: [session(t(7, 30), 60, 1.0)],
+        tuning: strong,
+      );
+      expect(kp(plain), [(EnergyItemKind.workout, -12)]);
+      expect(kp(tuned), [(EnergyItemKind.workout, -17)]);
+      expect(plain.tuned, isFalse);
+      expect(tuned.tuned, isTrue);
+    });
+
+    test('the active drain is capped after multiplying', () {
+      // 3 hours at 160 kcal above the usual: 480 kcal = 12 points, 16.8 tuned.
+      final active = [
+        for (var i = 1; i <= 10; i++)
+          for (var h = 0; h < 24; h++) bucket(t(h, 0, 27 - i), 20),
+        for (var h = 7; h <= 9; h++) bucket(t(h), 180),
+      ];
+      expect(kp(run(now: t(10), active: active)), [
+        (EnergyItemKind.activeDay, -12),
+      ]);
+      expect(kp(run(now: t(10), active: active, tuning: strong)), [
+        (EnergyItemKind.activeDay, -15),
+      ]);
+    });
+
+    test('a multiplier alone is not shown as tuned when not calibrated', () {
+      const open = EnergyTuning(
+        usualHours: {},
+        drainMultiplier: 1.4,
+        calibrated: false,
+      );
+      expect(run(now: t(9), tuning: open).tuned, isFalse);
+    });
+
+    test('no awake dip in a usual hour, the dip applies in another', () {
+      const night = EnergyTuning(
+        usualHours: {22, 23},
+        drainMultiplier: 1.0,
+        calibrated: false,
+      );
+      final wake = DateTime(2026, 11, 27, 7);
+      final late = energyNow(
+        start: startOf(78),
+        day: (day: DateTime(2026, 11, 27), wake: wake),
+        now: DateTime(2026, 11, 27, 23, 30),
+        sessions: const [],
+        hourlyActiveEnergy: const [],
+        sleepSegments: const [],
+        tuning: night,
+      );
+      expect(late.items, isEmpty);
+      expect(late.awakeWaived, isTrue);
+      final afternoon = run(now: t(23, 30), tuning: night);
+      expect(afternoon.awakeWaived, isTrue);
+      final other = energyNow(
+        start: startOf(78),
+        day: (day: DateTime(2026, 11, 27), wake: DateTime(2026, 11, 26, 23)),
+        now: t(15),
+        sessions: const [],
+        hourlyActiveEnergy: const [],
+        sleepSegments: const [],
+        tuning: night,
+      );
+      expect(kp(other), [(EnergyItemKind.awake, -4)]);
+      expect(other.awakeWaived, isFalse);
     });
   });
 }
