@@ -48,7 +48,11 @@ class JournalException(message: String) : Exception(message)
  * does. The schema is Swift's journal version 8 without the `links` table (Wear sends no
  * `workout_link`), created in one step as `user_version` 1.
  */
-class WatchJournal(private val db: SqlDatabase, private val clock: () -> Instant = Instant::now) {
+class WatchJournal(
+    private val db: SqlDatabase,
+    private val clock: () -> Instant = Instant::now,
+    private val makeId: () -> String = { java.util.UUID.randomUUID().toString().lowercase() },
+) {
     init {
         db.transaction {
             db.execute("CREATE TABLE IF NOT EXISTS events(event_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, sequence INTEGER NOT NULL, json TEXT NOT NULL)")
@@ -135,7 +139,7 @@ class WatchJournal(private val db: SqlDatabase, private val clock: () -> Instant
                     listOf(text(header.eventId), text(header.sessionId), int(header.sequence), text(event.encode())))
                 if (changed == 0) continue
                 inserted += 1
-                enqueue(WatchMessage(UUIDs.next(), now(), accountKey, WatchMessageBody.WorkoutEvent(event)))
+                enqueue(WatchMessage(makeId(), now(), accountKey, WatchMessageBody.WorkoutEvent(event)))
             }
             if (inserted == 0) return@transaction
             if (completed != null) enqueue(completed, sessionId)
@@ -471,9 +475,5 @@ class WatchJournal(private val db: SqlDatabase, private val clock: () -> Instant
         val commands = db.query("SELECT command_id FROM applied_commands WHERE session_id = ?", listOf(text(sessionId)))
             .mapNotNull { textAt(it, 0) }.toSet()
         return ActiveSession(sessionId, events, WorkoutReplay.replay(events), commands)
-    }
-
-    private object UUIDs {
-        fun next(): String = java.util.UUID.randomUUID().toString().lowercase()
     }
 }

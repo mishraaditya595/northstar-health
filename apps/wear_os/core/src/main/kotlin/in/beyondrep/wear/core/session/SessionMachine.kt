@@ -45,6 +45,21 @@ class SessionMachine(
     /** Equals `WorkoutReplay.replay(events)`. */
     val state: ReplayedWorkout get() = WorkoutReplay.replay(_events)
 
+    /**
+     * An independent copy with the same state. The controller builds events on a copy and keeps it
+     * only after the journal commit (Swift gets this from the machine being a struct).
+     */
+    fun copy(): SessionMachine {
+        val c = SessionMachine(sessionId, workoutId, owner, accountKey, deviceId, clock, timeZone, makeId)
+        c.phase = phase
+        c.nextSequence = nextSequence
+        c.lastEventForSet.putAll(lastEventForSet)
+        c.loggedSets.addAll(loggedSets)
+        c.appliedCommandIds.addAll(appliedCommandIds)
+        c._events.addAll(_events)
+        return c
+    }
+
     private fun timestamp(): String = WatchTimestamp.format(clock())
 
     private fun header(): EventHeader {
