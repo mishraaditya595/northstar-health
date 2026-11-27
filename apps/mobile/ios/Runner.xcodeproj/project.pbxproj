@@ -54,6 +54,7 @@
 		A1B2C3D40001000100000001 /* WatchLinkBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D40001000100000002 /* WatchLinkBridge.swift */; };
 		A1B2C3D40001000100000003 /* WorkoutMirrorBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D40001000100000004 /* WorkoutMirrorBridge.swift */; };
 		A28E2567361CCCDDDE796FA3 /* RpeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79446778943DDF0393142D5B /* RpeSheet.swift */; };
+		A3A63D7AB2F17FB05F989262 /* FollowerPreviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CB0961294DA25C3D5E7B333 /* FollowerPreviews.swift */; };
 		A645C629B904EA8BFFA5DF6E /* BeyondRepWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B8DB1F4B57901D7CB80BCE /* BeyondRepWatchApp.swift */; };
 		AB248F9FA5716D1020B7DC11 /* SetPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 969D0D71E0B45B2D9787BD98 /* SetPage.swift */; };
 		AE71FA975B8276592C888D31 /* SessionMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03E7005D26BF7444CE33E284 /* SessionMachine.swift */; };
@@ -64,6 +65,7 @@
 		BFE1972AECA9805E3AE86558 /* SyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE847FF357D91EE7164E4B8C /* SyncView.swift */; };
 		C3EA4DA9914DB946CF7A4C06 /* FollowerSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A477A8BAE90277841968D81 /* FollowerSession.swift */; };
 		C46F61C5DC5869259ED114D8 /* SyncLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC5926A135D54CCEDA2AB17 /* SyncLine.swift */; };
+		C57FB5C3ECB9BD1A92767579 /* FollowerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49801E148B545400A25BA852 /* FollowerView.swift */; };
 		C6234CEEC173ED0650154736 /* OrphanSessionPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C92BD3AD0AF390DB75DD6063 /* OrphanSessionPolicy.swift */; };
 		E46CAEA98318EE4CF30536D8 /* TrainHintView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8922D0083E9A278F8A0F90F /* TrainHintView.swift */; };
 		E74D5E2657BC14BB64DEF0C9 /* SummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16B5F07520DB50B08C1C6FA9 /* SummaryView.swift */; };
@@ -132,6 +134,7 @@
 		25F0DF83892AD4212BA3F512 /* GlanceState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GlanceState.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Glance/GlanceState.swift; sourceTree = "<group>"; };
 		2AC5926A135D54CCEDA2AB17 /* SyncLine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SyncLine.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Glance/SyncLine.swift; sourceTree = "<group>"; };
 		2B17C584CF67286B0EA2FA0A /* WorkoutRecorder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WorkoutRecorder.swift; path = Sources/HealthKit/WorkoutRecorder.swift; sourceTree = "<group>"; };
+		2CB0961294DA25C3D5E7B333 /* FollowerPreviews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FollowerPreviews.swift; path = Sources/Features/Follower/FollowerPreviews.swift; sourceTree = "<group>"; };
 		2D6D646B32BD3385D0E5EFAC /* WatchHealth.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WatchHealth.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Glance/WatchHealth.swift; sourceTree = "<group>"; };
 		2D8DF1C030752E6A34884798 /* WorkoutReplay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WorkoutReplay.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Session/WorkoutReplay.swift; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
@@ -140,6 +143,7 @@
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		3E1F976DFA0863688161BBFD /* BeyondRepWatchCore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BeyondRepWatchCore.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/BeyondRepWatchCore.swift; sourceTree = "<group>"; };
 		4958CB03F18EF358B6DFDDB7 /* TrainPage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrainPage.swift; path = Sources/Features/Train/TrainPage.swift; sourceTree = "<group>"; };
+		49801E148B545400A25BA852 /* FollowerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FollowerView.swift; path = Sources/Features/Follower/FollowerView.swift; sourceTree = "<group>"; };
 		4A477A8BAE90277841968D81 /* FollowerSession.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FollowerSession.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Link/FollowerSession.swift; sourceTree = "<group>"; };
 		59529592C68CBAB87AE138BD /* ExercisesSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExercisesSheet.swift; path = Sources/Features/Workout/ExercisesSheet.swift; sourceTree = "<group>"; };
 		5A92E162B0EA79951A9CFCEE /* WorkoutController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WorkoutController.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Session/WorkoutController.swift; sourceTree = "<group>"; };
@@ -344,6 +348,8 @@
 				F5E53FD59768B175247055D3 /* LiveLink.swift */,
 				C92BD3AD0AF390DB75DD6063 /* OrphanSessionPolicy.swift */,
 				4A477A8BAE90277841968D81 /* FollowerSession.swift */,
+				2CB0961294DA25C3D5E7B333 /* FollowerPreviews.swift */,
+				49801E148B545400A25BA852 /* FollowerView.swift */,
 			);
 			name = BeyondRepWatch;
 			path = ../../watch_os;
@@ -575,6 +581,8 @@
 				82210AFFBBC53876CD29F72C /* LiveLink.swift in Sources */,
 				C6234CEEC173ED0650154736 /* OrphanSessionPolicy.swift in Sources */,
 				C3EA4DA9914DB946CF7A4C06 /* FollowerSession.swift in Sources */,
+				A3A63D7AB2F17FB05F989262 /* FollowerPreviews.swift in Sources */,
+				C57FB5C3ECB9BD1A92767579 /* FollowerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

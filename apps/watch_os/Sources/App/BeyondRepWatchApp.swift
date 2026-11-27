@@ -1,7 +1,23 @@
+import HealthKit
 import SwiftUI
+import WatchKit
+
+/// Receives the launch the iPhone asks for (`startWatchApp(with:)`) when a
+/// workout starts on the phone. The model decides whether to join.
+final class WatchAppDelegate: NSObject, WKApplicationDelegate {
+    /// Set by `BeyondRepWatchApp` once the model exists.
+    @MainActor static weak var model: AppModel?
+
+    func handle(_ workoutConfiguration: HKWorkoutConfiguration) {
+        Task { @MainActor in
+            await Self.model?.joinPhoneWorkout(configuration: workoutConfiguration)
+        }
+    }
+}
 
 @main
 struct BeyondRepWatchApp: App {
+    @WKApplicationDelegateAdaptor(WatchAppDelegate.self) private var delegate
     @StateObject private var model: AppModel
     private let link: PhoneLink
     @Environment(\.scenePhase) private var scenePhase
@@ -9,6 +25,7 @@ struct BeyondRepWatchApp: App {
     init() {
         let model = AppModel()
         _model = StateObject(wrappedValue: model)
+        WatchAppDelegate.model = model
         link = PhoneLink(model: model)
     }
 
