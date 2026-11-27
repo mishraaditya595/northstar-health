@@ -90,6 +90,20 @@ Section<ReadinessOverview> notReady({
   ),
 );
 
+/// A scored start with no waking day: the night ended too long ago.
+HealthOverview resetsOverview() => overview(
+  readiness: ready(),
+  energy: SectionData(
+    EnergyOverview(
+      day: DateTime(2026, 11, 24),
+      wake: null,
+      start: (ready() as SectionData<ReadinessOverview>).value,
+      energy: null,
+      learning: const EnergyLearning(),
+    ),
+  ),
+);
+
 Future<(FakeHealthOverviewController, FakeHealthSummaryController)> pump(
   WidgetTester tester,
   HealthOverview? value, {
@@ -375,6 +389,31 @@ void main() {
     );
   });
 
+  testWidgets('a ready start with no waking day says energy resets', (
+    tester,
+  ) async {
+    await pump(tester, resetsOverview());
+    expect(find.text('Energy resets after your next sleep'), findsOneWidget);
+    expect(
+      find.text(
+        'Your day started more than 20 hours ago. '
+        'Energy starts again from your next main sleep.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('ENERGY'), findsOneWidget);
+    expect(find.text('Not enough data for a score'), findsNothing);
+    expect(find.textContaining('Energy needs last night'), findsNothing);
+    expect(find.byType(NsScoreRing), findsNothing);
+    expect(find.text('0'), findsNothing);
+    expect(
+      find.bySemanticsLabel(
+        RegExp(r'^Energy: Energy resets after your next sleep'),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('phone only on Health Connect: every input none, no zeros', (
     tester,
   ) async {
@@ -474,6 +513,14 @@ void main() {
         );
         expect(tester.takeException(), isNull);
       }
+      await pump(
+        tester,
+        resetsOverview(),
+        width: 320,
+        textScale: 2,
+        brightness: brightness,
+      );
+      expect(tester.takeException(), isNull);
       await pump(
         tester,
         overview(

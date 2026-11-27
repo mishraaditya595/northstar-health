@@ -164,6 +164,7 @@ class ReadinessCard extends StatelessWidget {
           value.start,
           daysUntilBaseline,
         ),
+        (null, ReadinessReady()) => _resets(context, overview),
         _ => _notEnough(context, overview, value.start),
       },
     };
@@ -348,6 +349,24 @@ class ReadinessCard extends StatelessWidget {
         HealthCaption(body),
         const SizedBox(height: 10),
         _Tags(tags),
+      ],
+    );
+  }
+
+  /// The start is scored but the waking day has ended: no energy to show
+  /// until the next main sleep.
+  Widget _resets(BuildContext context, HealthOverview overview) {
+    const title = 'Energy resets after your next sleep';
+    const body =
+        'Your day started more than 20 hours ago. '
+        'Energy starts again from your next main sleep.';
+    return _OutlinedCard(
+      info: _info(context, overview),
+      semanticsLabel: 'Energy: $title. $body',
+      children: const [
+        _OutlinedTitle(title),
+        SizedBox(height: 6),
+        HealthCaption(body),
       ],
     );
   }
