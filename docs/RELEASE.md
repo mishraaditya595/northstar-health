@@ -454,3 +454,8 @@ The phone owns the workout; the watch follows it and saves the one `HKWorkout`. 
 | `startWatchApp` needs no new permission prompt on the phone | not run |
 | Watch force-quit mid-workout, relaunch: it follows again; finishing on the phone still saves one HKWorkout and links it | not run |
 | Phone unreachable at finish: the link is resent until the phone acks it, never a second HKWorkout | not run |
+| Missed end: take the phone out of range, finish (or discard) on the phone, bring it back: within about 30 s the watch asks again (`join`), the phone answers `ended`, and the watch saves its one HKWorkout and links it (finish) or drops it (discard); the HealthKit session does not keep running for 6 h | not run |
+| Pause on the phone: the watch's HealthKit session pauses too (its elapsed clock and heart rate stop counting) and resumes with the phone | not run |
+| Pause time is kept in memory on the phone: after a phone relaunch during a pause, the watch clock counts the earlier pause as workout time (display only; the saved workout is unchanged) | not run |
+| Old watch app with the new phone: `startWatchApp` brings the old watch app to Home on every phone workout (it cannot join); nothing else changes | not run |
+| A relaunch while HealthKit cannot answer (device locked): the follower row is kept and retried at the next launch, not dropped | not run |

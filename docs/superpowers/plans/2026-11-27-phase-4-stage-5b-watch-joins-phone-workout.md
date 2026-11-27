@@ -81,7 +81,7 @@ The phone's ObjectBox engine stays the only authority for the workout.
 - The Dart codec `watch_message.dart` and the Swift codec `WatchMessage.swift`, with their tests.
 - `tool/test_protocol_contract.py` and `tool/test_watch_link_contract.py`, if they list types.
 
-- [ ] Failing tests first. Add the type `workout_link` with body `{workout_id: uuid, healthkit_workout_uuid: uuid}` (required, no extra keys), and the type `join` (watch → phone) with body `{session_id: uuid}`. `join` tells the phone that a follower is attached, so it broadcasts at once. Add valid and invalid fixtures. Confirm that `owner: "phone"` states pass the existing schema.
+- [ ] Failing tests first. Add the type `workout_link` with body `{workout_id: uuid, healthkit_workout_uuid: uuid}` (required, no extra keys), and the type `join` (watch → phone) with body `{session_id?: uuid}` (optional: a freshly launched watch does not know the session yet). `join` tells the phone that a follower is attached, so it broadcasts at once. Add valid and invalid fixtures. Confirm that `owner: "phone"` states pass the existing schema.
 - [ ] Implement both codecs and make the tests pass.
 - [ ] Commit.
 
