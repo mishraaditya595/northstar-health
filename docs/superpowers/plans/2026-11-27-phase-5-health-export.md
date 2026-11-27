@@ -88,11 +88,11 @@ Rules (in this order per workout):
 9. Otherwise ⇒ `WriteWorkout(resumeUncertain: receipt?.state == writing)`.
 Writes are sorted by `completedAt` ascending and cut at `maxWrites`; deletes and supersedes are not capped and come first.
 
-- [ ] **Step 1: Write failing tests**, one per rule above plus: `orders writes oldest first and caps at 50 (60 eligible → 50, the 50 oldest)`; `deletes and supersedes come before writes and are not capped`; `version bump on a confirmed workout rewrites`; `watch-origin workout is never written even with no receipts`; `Android deleted workout without receipt plans nothing`; `failedRetryable with attempts 3 waits 4 minutes, attempts 10 waits 60`.
-- [ ] **Step 2: Run** `flutter test test/health/domain/workout_health_export_test.dart` — expected FAIL.
-- [ ] **Step 3: Implement** `planHealthExport` and the value types.
-- [ ] **Step 4: Run** — expected PASS.
-- [ ] **Step 5: Commit** `feat(health): plan which workouts to save to the health store`.
+- [x] **Step 1: Write failing tests**, one per rule above plus: `orders writes oldest first and caps at 50 (60 eligible → 50, the 50 oldest)`; `deletes and supersedes come before writes and are not capped`; `version bump on a confirmed workout rewrites`; `watch-origin workout is never written even with no receipts`; `Android deleted workout without receipt plans nothing`; `failedRetryable with attempts 3 waits 4 minutes, attempts 10 waits 60`.
+- [x] **Step 2: Run** `flutter test test/health/domain/workout_health_export_test.dart` — expected FAIL.
+- [x] **Step 3: Implement** `planHealthExport` and the value types.
+- [x] **Step 4: Run** — expected PASS.
+- [x] **Step 5: Commit** `feat(health): plan which workouts to save to the health store`.
 
 ### Task 3: Platform workout writer and native declarations
 
