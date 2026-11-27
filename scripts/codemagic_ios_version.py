@@ -28,7 +28,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from codemagic_release_version import (  # noqa: E402
     AUTO,
     ResolveError,
-    VERSION_NAME,
     app_store_app_id,
     asc,
     current_version,
@@ -39,7 +38,6 @@ from codemagic_release_version import (  # noqa: E402
 # Positive integer, no leading zero. Also a valid Android versionCode.
 BUILD_NUMBER = re.compile(r"[1-9][0-9]{0,9}\Z")
 MAX_BUILD_NUMBER = 2_100_000_000
-PUBSPEC_VERSION = re.compile(r"^version:\s*([^\s+#]+)", re.MULTILINE)
 
 
 def latest_testflight_build() -> int:
@@ -55,21 +53,6 @@ def latest_testflight_build() -> int:
             f"App Store Connect returned an unexpected build number: {latest!r}"
         )
     return int(latest)
-
-
-def resolve_version(raw: str, pubspec: Path) -> str:
-    value = raw.strip()
-    if value == AUTO:
-        match = PUBSPEC_VERSION.search(pubspec.read_text(encoding="utf-8"))
-        if not match:
-            raise ResolveError(f"No version: line found in pubspec {pubspec}.")
-        value = match.group(1)
-    if not VERSION_NAME.match(value):
-        raise ResolveError(
-            f"Invalid version name {value!r}: use one to three numbers "
-            "separated by dots, such as 1.2.0, or AUTO."
-        )
-    return value
 
 
 def resolve_build(raw: str) -> str:

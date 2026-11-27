@@ -196,6 +196,18 @@ class IosVersionResolverTest(unittest.TestCase):
                 self.assertIn("not reading versions from Google Play", result.stdout)
                 self.assertEqual(self.exported()["BEYONDREP_VERSION_NAME"], "0.6.2")
 
+    def test_play_lookup_failure_with_credentials_stops_ios(self):
+        temp = Path(self.tmp.name)
+        play = temp / "google-play"
+        play.write_text(
+            "#!/usr/bin/env python3\nimport sys\nsys.exit(2)\n", encoding="utf-8"
+        )
+        play.chmod(0o755)
+        result = self.run_resolver(GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS="{}")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Google Play lookup failed", result.stderr)
+        self.assertEqual(self.cm_env.read_text(encoding="utf-8"), "")
+
     def test_no_pubspec_argument_is_accepted(self):
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "pubspec.yaml"],

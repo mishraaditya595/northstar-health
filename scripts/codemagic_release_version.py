@@ -217,7 +217,7 @@ def next_version(
         if current is None:
             raise ResolveError(
                 f"Release type {SAME!r} needs an existing version, but there is "
-                "no version in the store or the pubspec yet."
+                "no version in a store yet."
             )
         return current
     exact = parse_version(name)
