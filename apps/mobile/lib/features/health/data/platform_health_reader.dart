@@ -5,6 +5,7 @@ import 'package:health/health.dart' hide HealthValue;
 
 import '../domain/health_types.dart';
 import '../domain/outside_workouts.dart';
+import '../domain/own_workout_health.dart';
 import '../domain/sleep_nights.dart';
 import 'health_reader.dart';
 
@@ -331,6 +332,61 @@ class PlatformHealthReader implements HealthReader {
               source: _sleepSourceName(p),
             ),
     ]);
+  });
+
+  @override
+  Future<SeriesResult<OwnWorkoutHealth?>> readOwnWorkout(
+    String platformWorkoutId,
+    DateTime from,
+    DateTime to,
+  ) => _guard(() async {
+    if (_isAndroid) return const SeriesUnsupported();
+    if (!await _allowed(HealthDataType.WORKOUT)) {
+      return const SeriesNotAllowed();
+    }
+    const margin = Duration(minutes: 5);
+    final points = await _health.getHealthDataFromTypes(
+      types: [HealthDataType.WORKOUT],
+      startTime: from.subtract(margin),
+      endTime: to.add(margin),
+    );
+    final wanted = platformWorkoutId.toLowerCase();
+    HealthDataPoint? match;
+    for (final p in points) {
+      if (p.uuid.toLowerCase() == wanted && p.value is WorkoutHealthValue) {
+        match = p;
+        break;
+      }
+    }
+    if (match == null) return const SeriesData(null);
+    final workout = match.value as WorkoutHealthValue;
+    int? average;
+    int? max;
+    if (await _allowed(HealthDataType.HEART_RATE)) {
+      final beats = [
+        for (final p in await _health.getHealthDataFromTypes(
+          types: [HealthDataType.HEART_RATE],
+          startTime: match.dateFrom,
+          endTime: match.dateTo,
+        ))
+          if (p.value case NumericHealthValue(:final numericValue))
+            numericValue.toDouble(),
+      ];
+      if (beats.isNotEmpty) {
+        average = (beats.reduce((a, b) => a + b) / beats.length).round();
+        max = beats.reduce((a, b) => a > b ? a : b).round();
+      }
+    }
+    return SeriesData(
+      OwnWorkoutHealth(
+        averageBpm: average,
+        maxBpm: max,
+        activeKcal: _kcalOf(
+          workout.totalEnergyBurned,
+          workout.totalEnergyBurnedUnit,
+        ),
+      ),
+    );
   });
 
   @override

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/health_types.dart';
 import '../domain/outside_workouts.dart';
+import '../domain/own_workout_health.dart';
 
 export '../domain/health_types.dart' show HealthPlatformKind;
 
@@ -87,6 +88,16 @@ abstract interface class HealthReader {
 
   /// Workouts other apps saved to the platform, own-app writes dropped.
   Future<SeriesResult<List<OutsideWorkout>>> readWorkouts(
+    DateTime from,
+    DateTime to,
+  );
+
+  /// Average and maximum heart rate and active energy of the workout whose
+  /// platform record id is [platformWorkoutId] (compared ignoring case), read
+  /// fresh for [from]..[to]. Data holds null when the record is not found.
+  /// iOS only: Android gives [SeriesUnsupported].
+  Future<SeriesResult<OwnWorkoutHealth?>> readOwnWorkout(
+    String platformWorkoutId,
     DateTime from,
     DateTime to,
   );

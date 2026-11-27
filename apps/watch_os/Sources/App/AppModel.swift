@@ -51,6 +51,7 @@ final class AppModel: ObservableObject {
         let journal = url.flatMap { try? WatchJournal(url: $0) }
         self.journal = journal
         self.inbox = journal.map { PhoneInbox(journal: $0) }
+        pruneStale()
         refresh()
         scheduleMidnightRefresh()
     }
@@ -88,6 +89,13 @@ final class AppModel: ObservableObject {
 
     func detail(for metric: Metric) -> DetailModel? {
         details[metric]
+    }
+
+    /// Drops a binding the phone has not refreshed for 90 days (never during or while
+    /// starting a workout, never unsent workouts). Errors are ignored; the next call retries.
+    func pruneStale() {
+        guard !isStarting, workout == nil else { return }
+        _ = try? journal?.pruneStale(nowMs: Int64(Date().timeIntervalSince1970 * 1000))
     }
 
     /// Recomputes the glance, the detail screens and the sync line; also

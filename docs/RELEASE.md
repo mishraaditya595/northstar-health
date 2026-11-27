@@ -383,3 +383,13 @@ The watch starts a plan, today's program workout or a quick workout, logs sets, 
 | Discard: nothing appears on the phone | not run |
 | Sign in as another account with an unsent workout: it waits ("from another account waiting"), is not sent as the new account's and is not deleted | not run |
 | Dynamic Type on 41 mm: weight, reps and the rest timer are not truncated | not run |
+
+## Phase 4 stage 4c: Apple Watch workout heart rate on the phone (device checks, none run)
+
+The phone's history detail for an Apple Watch workout shows average and max heart rate and active energy read fresh from Apple Health through the stored receipt. Implemented in source, **not released or device-verified**. Every row is not run.
+
+| Check | Result |
+|---|---|
+| Apple Watch workout detail on iPhone shows average/max heart rate and kcal from Apple Health | not run |
+| Delete that workout in the Health app: the section disappears | not run |
+| Disconnect Health in BeyondRep: the section disappears | not run |

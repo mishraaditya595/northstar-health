@@ -157,6 +157,17 @@ class ObjectBoxWatchWorkoutImporter {
     for (final receipt in _receipts.getAll())
       if (receipt.platformWorkoutUuid != null) receipt.platformWorkoutUuid!,
   };
+
+  /// Lowercase HKWorkout UUID the receipt of [workoutUuid] holds; null without
+  /// a receipt or when the watch sent none. A plain read.
+  String? platformWorkoutUuidFor(String workoutUuid) {
+    final receipt = _one(
+      _receipts,
+      WatchWorkoutReceiptEntity_.workoutUuid,
+      workoutUuid,
+    );
+    return receipt?.platformWorkoutUuid;
+  }
 }
 
 /// Owner-bound importer factory, built from the account's Store.

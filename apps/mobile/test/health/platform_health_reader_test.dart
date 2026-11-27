@@ -4,6 +4,7 @@ import 'package:beyondrep/features/health/data/health_reader.dart';
 import 'package:beyondrep/features/health/data/platform_health_reader.dart';
 import 'package:beyondrep/features/health/domain/health_types.dart';
 import 'package:beyondrep/features/health/domain/outside_workouts.dart';
+import 'package:beyondrep/features/health/domain/own_workout_health.dart';
 import 'package:beyondrep/features/health/domain/sleep_nights.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -1072,6 +1073,99 @@ void main() {
       expect(
         await ios().readWorkouts(from, now),
         isA<SeriesFailed<List<OutsideWorkout>>>(),
+      );
+    });
+  });
+  group('readOwnWorkout', () {
+    final start = DateTime.utc(2026, 11, 20, 9);
+    final end = DateTime.utc(2026, 11, 20, 9, 40);
+    final workoutStart = start.add(const Duration(minutes: 2));
+    final workoutEnd = end.subtract(const Duration(minutes: 3));
+
+    HealthDataPoint hr(num value, int minute, {String uuid = 'h'}) =>
+        HealthDataPoint(
+          uuid: uuid,
+          value: NumericHealthValue(numericValue: value),
+          type: HealthDataType.HEART_RATE,
+          unit: HealthDataUnit.BEATS_PER_MINUTE,
+          dateFrom: start.add(Duration(minutes: minute)),
+          dateTo: start.add(Duration(minutes: minute)),
+          sourcePlatform: HealthPlatformType.appleHealth,
+          sourceDeviceId: 'd',
+          sourceId: 'com.apple.health.watch',
+          sourceName: 'Synthetic Watch',
+        );
+
+    test('matches the uuid ignoring case and reads kcal, average and max '
+        'heart rate', () async {
+      health.points = [
+        _workout(
+          HealthWorkoutActivityType.TRADITIONAL_STRENGTH_TRAINING,
+          uuid: 'AB12-CD',
+          kcal: 212,
+          from: workoutStart,
+          to: workoutEnd,
+          sourceId: 'in.beyondrep.app.watchkitapp',
+        ),
+        hr(100, 5),
+        hr(130, 10),
+        hr(160, 20),
+      ];
+      final r = await ios().readOwnWorkout('ab12-cd', start, end);
+      final data = (r as SeriesData<OwnWorkoutHealth?>).data!;
+      expect(data.activeKcal, 212);
+      expect(data.averageBpm, 130);
+      expect(data.maxBpm, 160);
+      final workoutCall = health.calls.firstWhere(
+        (c) => c.types.contains(HealthDataType.WORKOUT),
+      );
+      expect(workoutCall.start, start.subtract(const Duration(minutes: 5)));
+      expect(workoutCall.end, end.add(const Duration(minutes: 5)));
+      final hrCall = health.calls.firstWhere(
+        (c) => c.types.contains(HealthDataType.HEART_RATE),
+      );
+      // The requested bounds differ from the workout's own, so this proves
+      // heart rate is read over the matched workout's bounds.
+      expect(hrCall.start, workoutStart);
+      expect(hrCall.end, workoutEnd);
+    });
+
+    test('ignores workouts with another uuid', () async {
+      health.points = [
+        _workout(HealthWorkoutActivityType.RUNNING, uuid: 'other', kcal: 300),
+        hr(120, 5),
+      ];
+      final r = await ios().readOwnWorkout('mine', start, end);
+      expect((r as SeriesData<OwnWorkoutHealth?>).data, isNull);
+    });
+
+    test('missing heart rate and energy leave null values, never 0', () async {
+      health.points = [
+        _workout(
+          HealthWorkoutActivityType.RUNNING,
+          uuid: 'mine',
+          kcal: 0,
+          from: start,
+          to: end,
+        ),
+      ];
+      final r = await ios().readOwnWorkout('mine', start, end);
+      final data = (r as SeriesData<OwnWorkoutHealth?>).data!;
+      expect(data.isEmpty, isTrue);
+    });
+
+    test('Android is unsupported', () async {
+      expect(
+        await android().readOwnWorkout('mine', start, end),
+        isA<SeriesUnsupported<OwnWorkoutHealth?>>(),
+      );
+    });
+
+    test('a platform failure never throws', () async {
+      health.dataError = StateError('private detail');
+      expect(
+        await ios().readOwnWorkout('mine', start, end),
+        isA<SeriesFailed<OwnWorkoutHealth?>>(),
       );
     });
   });
