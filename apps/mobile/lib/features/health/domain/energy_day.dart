@@ -50,7 +50,9 @@ WakingDay? wakingDayOf(List<SleepNight> nights, DateTime now) {
 /// that start at least [energyNapAfterWake] after waking and end by [now]
 /// are joined when closer than [energyNapJoinGap]; a nap's minutes are its
 /// merged asleep minutes, kept from [energyNapMinMinutes] to
-/// [energyNapMaxMinutes].
+/// [energyNapMaxMinutes]. A stretch that chains (gaps up to
+/// [energyNapJoinGap]) from asleep time starting before that is the night
+/// running on, as another source logs it, and is no nap.
 List<Nap> napsIn(
   List<SleepSegment> segments, {
   required DateTime wake,
@@ -60,7 +62,6 @@ List<Nap> napsIn(
   final asleep = [
     for (final s in segments)
       if (_asleepStages.contains(s.stage) &&
-          !s.from.isBefore(earliest) &&
           !s.to.isAfter(now) &&
           s.to.isAfter(s.from))
         s,
@@ -81,7 +82,8 @@ List<Nap> napsIn(
   return [
     for (final g in groups)
       if (_nap(g) case final nap?
-          when nap.minutes >= energyNapMinMinutes &&
+          when !g.first.from.isBefore(earliest) &&
+              nap.minutes >= energyNapMinMinutes &&
               nap.minutes <= energyNapMaxMinutes)
         nap,
   ];

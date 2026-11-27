@@ -119,6 +119,25 @@ void main() {
         isEmpty,
       );
     });
+    // Watch night ends at the 07:00 wake; the ring logs the same night in
+    // 10-minute light segments with a short gap, running on past 08:00 (more than an hour after waking).
+    List<SleepSegment> runOnSegments() => [
+      for (var m = 60; m <= 540; m += 10)
+        seg(
+          t(0).add(Duration(minutes: m)),
+          t(0).add(Duration(minutes: m + 8)),
+          source: 'ring',
+        ),
+    ];
+    test('a night another source logs past waking is no nap', () {
+      expect(naps(runOnSegments()), isEmpty);
+    });
+    test('a run-on night plus a real afternoon nap gives only that nap', () {
+      final n = naps([...runOnSegments(), seg(t(14), t(14, 40))]);
+      expect(n, hasLength(1));
+      expect(n.single.start, t(14));
+      expect(n.single.minutes, 40);
+    });
     test('a segment ending after now is ignored', () {
       expect(naps([seg(t(16, 30), t(17, 30))]), isEmpty);
     });
