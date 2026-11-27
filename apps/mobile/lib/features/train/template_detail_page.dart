@@ -14,6 +14,7 @@ import '../catalog/domain/catalog_models.dart';
 import '../catalog/domain/catalog_templates.dart';
 import '../health/widgets/readiness_note.dart';
 import '../workouts/data/objectbox_workout_library_repository.dart';
+import '../watch/widgets/live_watch_auto_open.dart';
 import 'active_workout_state.dart';
 import 'train_library_state.dart';
 import 'workout_templates_page.dart';
@@ -102,6 +103,7 @@ class _TemplateDetailPageState extends ConsumerState<TemplateDetailPage> {
     CatalogSnapshot snapshot,
   ) async {
     if (_busy) return;
+    if (openLiveWatchWorkoutInstead(context, ref)) return;
     _busy = true;
     setState(() {});
     try {

@@ -6,13 +6,14 @@ import Foundation
 /// events on a copy of the machine and replaces the machine only after the
 /// commit, so memory never runs ahead of disk.
 public final class WorkoutController {
-    private let journal: WatchJournal
-    private let accountKey: String
-    private let unit: String
-    private let clock: () -> Date
-    private let makeId: () -> String
-    private var machine: SessionMachine
+    let journal: WatchJournal
+    let accountKey: String
+    let unit: String
+    let clock: () -> Date
+    let makeId: () -> String
+    var machine: SessionMachine
     private var focusExerciseId: String?
+    private var confirmedDuplicateIds: [String] = []
     public private(set) var template: WorkoutTemplate
 
     private init(
@@ -28,7 +29,7 @@ public final class WorkoutController {
         self.template = template
     }
 
-    private static func encode(_ template: WorkoutTemplate) throws -> String {
+    static func encode(_ template: WorkoutTemplate) throws -> String {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         return String(decoding: try encoder.encode(template), as: UTF8.self)
@@ -98,19 +99,27 @@ public final class WorkoutController {
         return clock()
     }
 
-    private func commit(_ build: (inout SessionMachine) throws -> [WorkoutEventV2]) throws {
+    /// `commandId` is the phone command these events answer; it is stored in
+    /// the same transaction (see `CommandApplier`).
+    func commit(commandId: String? = nil, _ build: (inout SessionMachine) throws -> [WorkoutEventV2]) throws {
         var copy = machine
         let events = try build(&copy)
-        try journal.record(events, sessionState: copy.state)
+        try journal.record(events, sessionState: copy.state, commandId: commandId)
         machine = copy
+    }
+
+    /// The rest after a set: its plan seconds, else 90.
+    func restSeconds(forSet setId: String) -> Int {
+        let seconds = template.exercises.flatMap(\.sets).first { $0.setId == setId }?.restSeconds ?? 90
+        return min(3600, max(1, seconds))
     }
 
     /// Logs a set and starts its rest in one commit (two events).
     public func log(_ values: SetValues) throws {
-        let seconds = template.exercises.flatMap(\.sets).first { $0.setId == values.setId }?.restSeconds ?? 90
+        let seconds = restSeconds(forSet: values.setId)
         try commit { m in
             let logged = try m.log(set: values)
-            return [logged, try m.startRest(seconds: min(3600, max(1, seconds)))]
+            return [logged, try m.startRest(seconds: seconds)]
         }
     }
 
@@ -156,9 +165,13 @@ public final class WorkoutController {
     /// Adds a set that copies the last set's targets. It is stored with the
     /// template; the set becomes part of the workout when it is logged.
     public func addSet(exerciseId: String) throws -> String {
+        try addSet(exerciseId: exerciseId, commandId: nil)
+    }
+
+    func addSet(exerciseId: String, commandId: String?) throws -> String {
         var next = template
         let setId = next.addSet(exerciseId: exerciseId, makeId: makeId)
-        try journal.saveTemplate(sessionId: sessionId, json: try Self.encode(next))
+        try journal.saveTemplate(sessionId: sessionId, json: try Self.encode(next), commandId: commandId)
         template = next
         return setId
     }
@@ -195,6 +208,40 @@ public final class WorkoutController {
         try Self.queuePendingFinish(
             sessionId: sessionId, journal: journal, unit: unit, accountKey: accountKey,
             healthkitWorkoutUuid: healthkitWorkoutUuid, makeId: makeId, clock: clock)
+    }
+
+    /// Applies a phone `session_command` at most once per command id (see
+    /// `CommandApplier`).
+    public func apply(_ message: WatchMessage) throws -> CommandOutcome {
+        let outcome = try CommandApplier.apply(message, to: self)
+        // A duplicate of an applied command means the phone did not see it
+        // confirmed yet (the 20-id window moved on): list it in the next
+        // states. Memory only; the journal row already exists.
+        if outcome == .duplicate, case .sessionCommand(let command) = message.body {
+            let id = command.commandId.lowercased()
+            if try journal.commandResult(sessionId: sessionId, commandId: id)?.result == "applied" {
+                confirmedDuplicateIds.removeAll { $0 == id }
+                confirmedDuplicateIds.append(id)
+                confirmedDuplicateIds = Array(confirmedDuplicateIds.suffix(20))
+            }
+        }
+        return outcome
+    }
+
+    /// The `session_state` to broadcast now. `extraRejections` are refusals
+    /// that have no row in the journal (a command for another session).
+    public func sessionState(
+        messageId: String, sentAtUtc: String, extraRejections: [SessionStateBuilder.Rejection] = []
+    ) throws -> WatchMessage {
+        let log = try journal.commandLog(sessionId: sessionId)
+        return try SessionStateBuilder.message(
+            events: machine.events, template: template, unit: unit, accountKey: accountKey, messageId: messageId,
+            sentAtUtc: sentAtUtc, focusExerciseId: focusExerciseId,
+            appliedCommandIds: log.filter { $0.result == "applied" }.map { $0.commandId },
+            confirmedCommandIds: confirmedDuplicateIds,
+            rejectedCommands: log.filter { $0.result == "rejected" }.map {
+                SessionStateBuilder.Rejection(commandId: $0.commandId, reason: $0.reason ?? "not_allowed")
+            } + extraRejections)
     }
 
     /// Discards the workout (`workout_abandoned`); nothing from it is sent.

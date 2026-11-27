@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "message_id": "77777777-3333-4333-8333-000000000024",
+  "type": "session_command",
+  "sent_at_utc": "2026-10-23T11:00:00Z",
+  "account_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "body": {
+    "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "command_id": "88888888-4444-4444-8444-000000000002",
+    "command": "skip_set"
+  }
+}

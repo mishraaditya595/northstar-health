@@ -49,6 +49,23 @@ final class PhoneLink: NSObject, WCSessionDelegate {
         onMain { $0.setPhoneReachable(reachable) }
     }
 
+    /// A live message from the iPhone's open app (`["json": String]`), the
+    /// fallback when the workout session is not mirrored. No reply is used.
+    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        guard let json = message["json"] as? String else { return }
+        onMain { $0.receive(liveMessage: Data(json.utf8)) }
+    }
+
+    /// Sends one live message while the iPhone app is reachable. False when it
+    /// is not: a live state is latest-wins and is never queued.
+    func sendLive(json: String) -> Bool {
+        guard WCSession.isSupported() else { return false }
+        let session = WCSession.default
+        guard session.activationState == .activated, session.isReachable else { return false }
+        session.sendMessage(["json": json], replyHandler: nil, errorHandler: nil)
+        return true
+    }
+
     /// Queued by the system, so an ack survives the phone being away.
     func send(acks: [String]) {
         guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }

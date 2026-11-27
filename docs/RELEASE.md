@@ -394,6 +394,35 @@ The phone's history detail for an Apple Watch workout shows average and max hear
 | Delete that workout in the Health app: the section disappears | not run |
 | Disconnect Health in BeyondRep: the section disappears | not run |
 
+## Phase 4 stage 5a: live watch workout on the phone (device checks, none run)
+
+A workout started on the Apple Watch is followed and controlled from the iPhone over HealthKit workout mirroring (iOS 17 and watchOS 10), with `WCSession.sendMessage` as the fallback. Implemented in source, **not released or device-verified**; the Swift builds and passes its tests on CI only. Every row is not run.
+
+Open decisions to verify first:
+
+- **`workout-processing` background mode (Info.plist):** not added. Apple's documentation for `HKHealthStore.workoutSessionMirroringStartHandler` says the system launches the iPhone app in the background to call the handler and names no background mode. If the phone is not woken when the watch starts mirroring (phone locked, app not running), add `UIBackgroundModes` `workout-processing` to `apps/mobile/ios/Runner/Info.plist` and re-test.
+- **No new phone HealthKit permission:** the phone only receives a session the watch starts. Confirm no new prompt appears on the phone and the existing Health permissions are unchanged.
+- **Does the background launch run Dart at all?** The iOS app uses the implicit-engine UIScene setup. When HealthKit launches the phone app in the background to call `workoutSessionMirroringStartHandler`, check that the Flutter engine starts and the Dart live controller receives the first state, and that the bridge buffers messages until Dart says `ready` (`WorkoutMirrorBridge`). If no Dart runs, the mirror still works only after the person opens the app.
+- **Does receiving a mirrored session need phone HealthKit authorization?** Test on a phone where BeyondRep has never asked for Health access (and again with access denied): the handler must still fire and deliver the watch's states.
+
+| Check | Result |
+|---|---|
+| Start a workout on the watch, open the phone: the same set is current on both | not run |
+| Log a set on the phone: "Saving..." clears and the watch shows it | not run |
+| Phone locked for 10 minutes mid-workout, then unlocked: still live and current | not run |
+| Walk out of Bluetooth range: "Apple Watch out of reach" and controls off; back in range, it resumes | not run |
+| Health denied on the watch: the mirror works only with the app open (fallback path) | not run |
+| Finish from the phone: one workout in BeyondRep history and one HKWorkout in Apple Health | not run |
+| Discard from the phone: nothing in history, none in Apple Health | not run |
+| Phone force-quit during the workout, relaunch: the mirror comes back or shows out of reach, never a second workout | not run |
+| Starting a workout on the phone while the watch workout is live opens the mirror instead | not run |
+| Background launch: phone locked and BeyondRep not running, start a workout on the watch: Dart runs and the card shows the workout on unlock | not run |
+| Phone never granted Health access: the mirrored session is still received | not run |
+| Mirroring reconnects after the phone goes out of range and comes back (the watch retries on its 30 s heartbeat; the phone card returns to live without reopening the app) | not run |
+| A mirrored send that fails falls back to the WatchConnectivity message (turn the mirror off mid-workout, the state still reaches the open phone app) | not run |
+| Force-quit the watch app right after a discard (before HealthKit ends), relaunch: no HealthKit workout keeps running on the watch | not run |
+| The "already mirroring" error text on a second `startMirroringToCompanionDevice` matches the watch's check (`WorkoutRecorder.isAlreadyMirroring`) | not run |
+
 ## Phase 4: Apple Watch reads its own sleep, steps, HRV and resting heart rate (device checks, none run)
 
 The watch Home tiles show values read from the watch's own HealthKit store, in memory only, before a phone sync (ADR-0012 decision 4 amendment 2026-11-27). Implemented in source, **not released or device-verified**. Every row is not run.

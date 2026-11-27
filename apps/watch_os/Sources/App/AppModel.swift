@@ -42,6 +42,16 @@ final class AppModel: ObservableObject {
     /// Sends the acks for what the inbox stored; set by `PhoneLink`.
     weak var link: PhoneLink?
 
+    /// The live link to the iPhone (stage 5a): the mirrored workout session,
+    /// else WatchConnectivity messages. Memory only, nothing is stored.
+    private lazy var liveLink = LiveLink(recorder: recorder, phone: { [weak self] in self?.link })
+    private var liveHeartbeat: Task<Void, Never>?
+    /// Refusals that have no journal row (a command for another session),
+    /// listed in the next states, newest last.
+    private var extraRejections: [SessionStateBuilder.Rejection] = []
+    /// A discard that is still telling the iPhone before it ends HealthKit.
+    private var endingTask: Task<Void, Never>?
+
     private let journal: WatchJournal?
     private let inbox: PhoneInbox?
     private var midnightTask: Task<Void, Never>?
@@ -66,9 +76,11 @@ final class AppModel: ObservableObject {
         pruneStale()
         refresh()
         scheduleMidnightRefresh()
+        recorder.onRemoteMessage = { [weak self] data in self?.receive(liveMessage: data) }
     }
 
     deinit {
+        liveHeartbeat?.cancel()
         midnightTask?.cancel()
         restHapticTask?.cancel()
         periodicHealthTask?.cancel()
@@ -99,7 +111,78 @@ final class AppModel: ObservableObject {
     func setPhoneReachable(_ reachable: Bool) {
         isPhoneReachable = reachable
         refresh()
-        if reachable { sendQueued() }
+        if reachable {
+            sendQueued()
+            // The iPhone app just opened: show it the workout at once.
+            broadcastLiveState()
+        }
+    }
+
+    // MARK: Live link (the iPhone follows and controls a workout the watch owns)
+
+    private static let liveTimestamp: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    /// The current `session_state` of `controller`. The send time has
+    /// milliseconds: the iPhone keeps the newest state by it.
+    private func liveStateMessage(for controller: WorkoutController) -> WatchMessage? {
+        try? controller.sessionState(
+            messageId: UUID().uuidString.lowercased(), sentAtUtc: Self.liveTimestamp.string(from: Date()),
+            extraRejections: extraRejections)
+    }
+
+    /// Sends the state of the running workout on the live link, if there is one.
+    func broadcastLiveState() {
+        guard let workout, let message = liveStateMessage(for: workout) else { return }
+        liveLink.send(message)
+    }
+
+    /// A state after every journal change (`didAct`) and one every 30 s while
+    /// a workout is active or paused, so the iPhone can tell a quiet link from
+    /// a lost one.
+    private func updateLiveHeartbeat() {
+        let live = workout.map { $0.status == "active" || $0.status == "paused" } ?? false
+        if live, liveHeartbeat == nil {
+            liveHeartbeat = Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: 30 * 1_000_000_000)
+                    if Task.isCancelled { return }
+                    await self?.recorder.retryMirroringIfNeeded()
+                    self?.broadcastLiveState()
+                }
+            }
+        } else if !live {
+            liveHeartbeat?.cancel()
+            liveHeartbeat = nil
+        }
+    }
+
+    /// A message from the iPhone on the live link (mirrored session or
+    /// WatchConnectivity; both can deliver the same command, and a command id
+    /// is applied once). Only `session_command` is read; everything is checked
+    /// against this account and session by `WorkoutController.apply`.
+    func receive(liveMessage data: Data) {
+        guard let message = try? WatchMessage(json: data), case .sessionCommand(let command) = message.body,
+            let controller = workout, let outcome = try? controller.apply(message)
+        else { return }
+        switch outcome {
+        case .needsFinish:
+            Task { await completeFinish(controller) }
+        case .applied:
+            if controller.status == "abandoned" { wrapUpDiscard(controller) }
+        case .rejected(.unknownSession):
+            let id = command.commandId.lowercased()
+            if !extraRejections.contains(where: { $0.commandId == id }) {
+                extraRejections.append(SessionStateBuilder.Rejection(commandId: id, reason: "unknown_session"))
+                extraRejections = Array(extraRejections.suffix(20))
+            }
+        case .rejected, .duplicate, .ignored:
+            break
+        }
+        didAct()
     }
 
     func detail(for metric: Metric) -> DetailModel? {
@@ -246,6 +329,8 @@ final class AppModel: ObservableObject {
         guard let journal, let account = boundAccount, workout == nil, !isStarting else { return }
         isStarting = true
         defer { isStarting = false }
+        // A discard in progress still holds the previous HealthKit session.
+        await endingTask?.value
         _ = await recorder.requestAuthorization()
         guard
             let controller = try? WorkoutController.start(
@@ -255,6 +340,7 @@ final class AppModel: ObservableObject {
         else { return }
         workout = controller
         summary = nil
+        extraRejections = []
         // HealthKit failures are ignored: the workout still records, without
         // heart rate and without a saved HKWorkout.
         try? await recorder.begin(workoutId: controller.workoutId, at: controller.startedAt)
@@ -287,6 +373,15 @@ final class AppModel: ObservableObject {
     func finishWorkout() async {
         guard let controller = workout, controller.canSave else { return }
         do { try controller.markCompleted() } catch { return }
+        await completeFinish(controller)
+    }
+
+    /// After `workout_completed` is committed (by a tap or by the iPhone's
+    /// `finish`): tell the iPhone the workout ended while the mirrored session
+    /// still exists, then save the one HKWorkout, queue the completed workout
+    /// and show the summary.
+    private func completeFinish(_ controller: WorkoutController) async {
+        if let ended = liveStateMessage(for: controller) { await liveLink.sendEnded(ended) }
         let uuid = await recorder.finish(at: Date())
         try? controller.queueCompleted(healthkitWorkoutUuid: uuid)
         let elapsed = Date().timeIntervalSince(controller.startedAt)
@@ -299,10 +394,23 @@ final class AppModel: ObservableObject {
 
     /// Commit first: if the journal write fails the workout and HealthKit stay as they were.
     func discardWorkout() {
-        guard act({ try $0.discard() }) else { return }
-        recorder.discard()
-        workout = nil
+        guard let controller = workout, act({ try $0.discard() }) else { return }
+        wrapUpDiscard(controller)
         didAct()
+    }
+
+    /// After `workout_abandoned` is committed (by a tap or by the iPhone's
+    /// `discard`): the iPhone gets the ended state while the mirrored session
+    /// still exists, then HealthKit drops what it collected.
+    private func wrapUpDiscard(_ controller: WorkoutController) {
+        let ended = liveStateMessage(for: controller)
+        workout = nil
+        let previous = endingTask
+        endingTask = Task { [weak self] in
+            await previous?.value
+            if let ended { await self?.liveLink.sendEnded(ended) }
+            self?.recorder.discard()
+        }
     }
 
     func dismissSummary() {
@@ -334,6 +442,7 @@ final class AppModel: ObservableObject {
             workout = restored
             _ = await recorder.recover(workoutId: restored.workoutId)
         }
+        var unresolvedPendingFinish = boundAccount == nil
         for pending in (try? WorkoutController.pendingFinishAllAccounts(journal: journal)) ?? [] {
             var uuid: String?
             if let workoutId = try? journal.events(sessionId: pending.sessionId).first?.header.workoutId {
@@ -343,11 +452,13 @@ final class AppModel: ObservableObject {
                     uuid = found
                 case .failed:
                     // Do not queue without a UUID: the next launch retries.
+                    unresolvedPendingFinish = true
                     continue
                 case .notFound:
                     // Another running session owns the recovered HealthKit session.
                     if workout != nil { continue }
-                    if await recorder.recover(workoutId: workoutId) {
+                    // Only finished here, so the iPhone has nothing to follow.
+                    if await recorder.recover(workoutId: workoutId, mirror: false) {
                         let end = try? WorkoutController.completedAt(sessionId: pending.sessionId, journal: journal)
                         uuid = await recorder.finish(at: end ?? Date())
                     }
@@ -356,6 +467,13 @@ final class AppModel: ObservableObject {
             try? WorkoutController.queuePendingFinish(
                 sessionId: pending.sessionId, journal: journal, accountKey: pending.accountKey,
                 healthkitWorkoutUuid: uuid, makeId: { UUID().uuidString.lowercased() }, clock: Date.init)
+        }
+        // A HealthKit session no journal session explains (the app died after a
+        // discard committed) would run for hours: end it.
+        if OrphanSessionPolicy.shouldDiscard(
+            restoredSession: workout != nil, unresolvedPendingFinish: unresolvedPendingFinish)
+        {
+            _ = await recorder.discardOrphanedSession()
         }
         sendQueued()
         didAct()
@@ -375,6 +493,8 @@ final class AppModel: ObservableObject {
 
     private func didAct() {
         revision += 1
+        broadcastLiveState()
+        updateLiveHeartbeat()
         let deadline = workout?.restDeadline
         if deadline != observedDeadline {
             observedDeadline = deadline

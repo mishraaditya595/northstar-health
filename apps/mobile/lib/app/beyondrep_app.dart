@@ -26,6 +26,9 @@ import '../features/train/workout_templates_page.dart';
 import '../features/train/exercise_detail_page.dart';
 import '../features/train/plan_editor_page.dart';
 import '../features/train/active_workout_page.dart';
+import '../features/watch/widgets/live_watch_auto_open.dart';
+import '../features/watch/widgets/live_watch_workout_card.dart';
+import '../features/watch/widgets/watch_workout_mirror_page.dart';
 import 'floating_nav_bar.dart';
 import 'theme_controller.dart';
 
@@ -62,8 +65,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/today',
     routes: [
       ShellRoute(
-        builder: (context, state, child) =>
-            AdaptiveShell(location: state.uri.path, child: child),
+        builder: (context, state, child) => LiveWatchAutoOpen(
+          location: state.uri.path,
+          child: AdaptiveShell(location: state.uri.path, child: child),
+        ),
         routes: [
           GoRoute(
             path: '/today',
@@ -84,6 +89,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/train/workout',
             builder: (_, _) => const ActiveWorkoutPage(),
+          ),
+          GoRoute(
+            path: liveWatchWorkoutRoute,
+            builder: (_, _) => const WatchWorkoutMirrorPage(),
           ),
           GoRoute(
             path: '/train/workouts',
@@ -213,7 +222,8 @@ class AdaptiveShell extends ConsumerWidget {
                 : _routes.indexOf(location))
             .clamp(0, 3);
     // The live workout is a focus screen: no tab bar or rail.
-    final focus = location == '/train/workout';
+    final focus =
+        location == '/train/workout' || location == liveWatchWorkoutRoute;
     return LayoutBuilder(
       builder: (context, constraints) {
         final expanded = constraints.maxWidth >= 600;

@@ -49,12 +49,12 @@ final class ContractFixtureTests: XCTestCase {
 
     func testWatchLinkValidFixturesRoundTrip() throws {
         try roundTrips(
-            "contracts/watch_link/v1/fixtures/valid", minimum: 10,
+            "contracts/watch_link/v1/fixtures/valid", minimum: 13,
             decode: { try WatchMessage(json: $0) }, encode: { try $0.jsonData() })
     }
 
     func testWatchLinkInvalidFixturesAreRejected() throws {
-        try rejects("contracts/watch_link/v1/fixtures/invalid", minimum: 14) { _ = try WatchMessage(json: $0) }
+        try rejects("contracts/watch_link/v1/fixtures/invalid", minimum: 20) { _ = try WatchMessage(json: $0) }
     }
 
     func testCompletedWorkoutProgramDayIsChecked() throws {

@@ -653,7 +653,8 @@
         "status": {
           "enum": [
             "active",
-            "paused"
+            "paused",
+            "ended"
           ]
         },
         "name": {
@@ -676,6 +677,54 @@
         "rest_deadline_utc": {
           "type": "string",
           "format": "date-time"
+        },
+        "end_reason": {
+          "enum": [
+            "completed",
+            "discarded"
+          ]
+        },
+        "paused_at_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "paused_seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "applied_command_ids": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "rejected_commands": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "required": [
+              "command_id",
+              "reason"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "command_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "reason": {
+                "enum": [
+                  "unknown_session",
+                  "unknown_set",
+                  "invalid_values",
+                  "not_allowed"
+                ]
+              }
+            }
+          }
         },
         "exercises": {
           "type": "array",
@@ -763,6 +812,11 @@
                       "minimum": 1,
                       "maximum": 10,
                       "multipleOf": 0.5
+                    },
+                    "rest_seconds": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 3600
                     }
                   }
                 }
@@ -770,7 +824,52 @@
             }
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "ended"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "end_reason"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "end_reason"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "paused"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "paused_at_utc"
+              ]
+            }
+          }
+        }
+      ]
     },
     "body_session_command": {
       "type": "object",
@@ -794,6 +893,7 @@
             "log_set",
             "correct_set",
             "skip_set",
+            "add_set",
             "start_rest",
             "clear_rest",
             "pause",
@@ -862,8 +962,60 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 3600
+        },
+        "exercise_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "command": {
+                "enum": [
+                  "log_set",
+                  "correct_set",
+                  "skip_set"
+                ]
+              }
+            },
+            "required": [
+              "command"
+            ]
+          },
+          "then": {
+            "required": [
+              "set"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "command": {
+                "const": "add_set"
+              }
+            },
+            "required": [
+              "command"
+            ]
+          },
+          "then": {
+            "required": [
+              "exercise_id"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "exercise_id"
+              ]
+            }
+          }
+        }
+      ]
     },
     "body_completed_workout": {
       "type": "object",

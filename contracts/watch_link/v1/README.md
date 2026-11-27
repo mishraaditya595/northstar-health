@@ -23,6 +23,27 @@ JSON Schema cannot express the duplicate-factor and week-order rules, so the Pyt
 
 **Old watch builds:** the watch decoder rejects unknown keys, so a watch still on a build from before these fields rejects the new snapshot and shows "—" until it updates. The phone and the watch ship in the same TestFlight build, which is acceptable for an internal build.
 
+## Live session (stage 5a)
+
+`session_state` and `session_command` carry a workout that runs on the watch to the phone and back. The watch owns the workout; the phone only sends commands. Neither message carries health values.
+
+- `session_state.status` is `active`, `paused` or `ended`. `end_reason` (`completed` or `discarded`) is required with `ended` and not allowed otherwise. `paused_at_utc` is allowed only while paused and `paused_seconds` is the total of earlier pauses, so a phone can show elapsed time as now minus `started_at_utc` minus `paused_seconds` (minus the running pause).
+- `applied_command_ids` (at most 20, newest last) lists commands the watch applied; a phone keeps a command pending until its id is there. `rejected_commands` (at most 20) gives a reason: `unknown_session`, `unknown_set`, `invalid_values` or `not_allowed`.
+- `session_command.command` adds `add_set` (needs `exercise_id`, allowed for no other command). `log_set`, `correct_set` and `skip_set` require `set`. The watch applies a `command_id` at most once; resending it is not an error.
+- Planned sets in `session_state` carry the template's targets (`reps`, `duration_seconds`, `load_grams`, `input_unit`) so a phone can prefill them, and the planned `rest_seconds` (1 to 3600) when the template has one; `status` says whether a set is logged.
+- Golden cases for the watch's state builder are in `cases/session_state/`: `events` and `context` (`template`, `unit`, `account_key`, `message_id`, `sent_at_utc`, `applied_command_ids`, `rejected_commands`) in, the full `session_state` message as `expected`.
+
+## Session state cases
+
+`cases/session_state/<name>.json` holds the golden input and output of the watch's state builder (`SessionStateBuilder.swift`): `description`, `events` (workout_sync v2 envelopes), `context` and `expected` (the full `session_state` message). Swift builds the message from `events` and `context` and must equal `expected`; `tool/test_watch_link_contract.py` has an independent reference builder that must produce the same, and Dart decodes `expected`. Rules:
+
+- Replay `events` with the replay rules above. `status` is `active` or `paused`, or `ended` for a completed (`end_reason` `completed`) or abandoned (`discarded`) session. `owner`, `name` and `started_at_utc` come from `workout_started`; `last_sequence` is the highest sequence.
+- A pause lasts until the next `workout_resumed`, `workout_completed` or `workout_abandoned`. `paused_seconds` is the whole seconds of the finished pauses and is left out when 0; `paused_at_utc` is the start of the running pause, only while `paused`.
+- `rest_deadline_utc` is the deadline of the last `rest_started`, unless a later `rest_cleared`, `set_logged`, `workout_paused`, `workout_completed` or `workout_abandoned` ended it. The state may name a deadline that has passed; the phone compares it to its own clock.
+- `exercises` follow the template in position order, sets in position order. A set the replay did not touch is `planned` with `input_unit` (the binding unit) and its targets as `reps`, `duration_seconds` and `load_grams` (a target of 0 or none is left out) and, when the template has one from 1 to 3600, `rest_seconds`. A completed set has its last values, its last `input_unit` and `kind` (`load_grams` left out when 0); a skipped set has `kind` and no values.
+- `current_set_id` is the first planned set in that order, left out for an ended session or when none is left.
+- `applied_command_ids` and `rejected_commands` come from the context (oldest first); the newest 20 are kept.
+
 ## Replay cases
 
 `cases/replay/<name>.json` holds `events` (workout_sync v2 envelopes) and the `expected` result of replaying them. Swift (`WorkoutReplay.swift`) and an independent reference in `tool/test_watch_link_contract.py` must produce exactly that result; there is no Dart replay. Rules:

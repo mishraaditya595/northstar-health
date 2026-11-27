@@ -1,0 +1,270 @@
+{
+  "description": "Paused a second time: 40 s of earlier pause are counted, the running pause is paused_at_utc, and the rest countdown is gone.",
+  "events": [
+    {
+      "schema_version": 2,
+      "event_id": "99999999-2222-4222-8222-000000000580",
+      "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "origin_device_id": "watch-installation-a",
+      "sequence": 0,
+      "type": "workout_started",
+      "occurred_at_utc": "2026-10-23T11:00:00Z",
+      "recorded_at_utc": "2026-10-23T11:00:00Z",
+      "time_zone": "Asia/Kolkata",
+      "payload": {
+        "activity_type": "traditional_strength_training",
+        "name": "Synthetic push day",
+        "owner": "watch",
+        "account_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      }
+    },
+    {
+      "schema_version": 2,
+      "event_id": "99999999-2222-4222-8222-000000000581",
+      "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "origin_device_id": "watch-installation-a",
+      "sequence": 1,
+      "type": "exercise_added",
+      "occurred_at_utc": "2026-10-23T11:00:00Z",
+      "recorded_at_utc": "2026-10-23T11:00:00Z",
+      "time_zone": "Asia/Kolkata",
+      "payload": {
+        "exercise_id": "eeeeeeee-eeee-4eee-8eee-0000000000a1",
+        "name": "Synthetic press",
+        "kind": "reps",
+        "position": 0
+      }
+    },
+    {
+      "schema_version": 2,
+      "event_id": "99999999-2222-4222-8222-000000000582",
+      "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "origin_device_id": "watch-installation-a",
+      "sequence": 2,
+      "type": "exercise_added",
+      "occurred_at_utc": "2026-10-23T11:00:00Z",
+      "recorded_at_utc": "2026-10-23T11:00:00Z",
+      "time_zone": "Asia/Kolkata",
+      "payload": {
+        "exercise_id": "eeeeeeee-eeee-4eee-8eee-0000000000a2",
+        "name": "Synthetic plank",
+        "kind": "duration",
+        "position": 1
+      }
+    },
+    {
+      "schema_version": 2,
+      "event_id": "99999999-2222-4222-8222-000000000583",
+      "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "origin_device_id": "watch-installation-a",
+      "sequence": 3,
+      "type": "set_logged",
+      "occurred_at_utc": "2026-10-23T11:01:00Z",
+      "recorded_at_utc": "2026-10-23T11:01:00Z",
+      "time_zone": "Asia/Kolkata",
+      "payload": {
+        "set_id": "dddddddd-dddd-4ddd-8ddd-000000000001",
+        "exercise_id": "eeeeeeee-eeee-4eee-8eee-0000000000a1",
+        "position": 0,
+        "kind": "warmup",
+        "input_unit": "kg",
+        "reps": 10
+      }
+    },
+    {
+      "schema_version": 2,
+      "event_id": "99999999-2222-4222-8222-000000000584",
+      "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "origin_device_id": "watch-installation-a",
+      "sequence": 4,
+      "type": "rest_started",
+      "occurred_at_utc": "2026-10-23T11:01:00Z",
+      "recorded_at_utc": "2026-10-23T11:01:00Z",
+      "time_zone": "Asia/Kolkata",
+      "payload": {
+        "seconds": 90,
+        "deadline_utc": "2026-10-23T11:02:30Z"
+      }
+    },
+    {
+      "schema_version": 2,
+      "event_id": "99999999-2222-4222-8222-000000000585",
+      "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "origin_device_id": "watch-installation-a",
+      "sequence": 5,
+      "type": "workout_paused",
+      "occurred_at_utc": "2026-10-23T11:01:40Z",
+      "recorded_at_utc": "2026-10-23T11:01:40Z",
+      "time_zone": "Asia/Kolkata",
+      "payload": {}
+    },
+    {
+      "schema_version": 2,
+      "event_id": "99999999-2222-4222-8222-000000000586",
+      "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "origin_device_id": "watch-installation-a",
+      "sequence": 6,
+      "type": "workout_resumed",
+      "occurred_at_utc": "2026-10-23T11:02:20Z",
+      "recorded_at_utc": "2026-10-23T11:02:20Z",
+      "time_zone": "Asia/Kolkata",
+      "payload": {}
+    },
+    {
+      "schema_version": 2,
+      "event_id": "99999999-2222-4222-8222-000000000587",
+      "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "origin_device_id": "watch-installation-a",
+      "sequence": 7,
+      "type": "workout_paused",
+      "occurred_at_utc": "2026-10-23T11:03:20Z",
+      "recorded_at_utc": "2026-10-23T11:03:20Z",
+      "time_zone": "Asia/Kolkata",
+      "payload": {}
+    }
+  ],
+  "context": {
+    "template": {
+      "name": "Synthetic push day",
+      "exercises": [
+        {
+          "exercise_id": "eeeeeeee-eeee-4eee-8eee-0000000000a1",
+          "name": "Synthetic press",
+          "kind": "reps",
+          "muscle": "chest",
+          "position": 0,
+          "sets": [
+            {
+              "set_id": "dddddddd-dddd-4ddd-8ddd-000000000001",
+              "position": 0,
+              "kind": "warmup",
+              "target_reps": 10
+            },
+            {
+              "set_id": "dddddddd-dddd-4ddd-8ddd-000000000002",
+              "position": 1,
+              "kind": "working",
+              "target_reps": 8,
+              "target_load_grams": 60000,
+              "rest_seconds": 90
+            },
+            {
+              "set_id": "dddddddd-dddd-4ddd-8ddd-000000000003",
+              "position": 2,
+              "kind": "working",
+              "target_reps": 8,
+              "target_load_grams": 60000,
+              "rest_seconds": 90
+            }
+          ]
+        },
+        {
+          "exercise_id": "eeeeeeee-eeee-4eee-8eee-0000000000a2",
+          "name": "Synthetic plank",
+          "kind": "duration",
+          "position": 1,
+          "sets": [
+            {
+              "set_id": "dddddddd-dddd-4ddd-8ddd-000000000004",
+              "position": 0,
+              "kind": "working",
+              "target_seconds": 45
+            }
+          ]
+        }
+      ]
+    },
+    "unit": "kg",
+    "account_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "message_id": "77777777-3333-4333-8333-0000000000c2",
+    "sent_at_utc": "2026-10-23T11:06:40Z",
+    "applied_command_ids": [
+      "88888888-4444-4444-8444-000000000101",
+      "88888888-4444-4444-8444-000000000102",
+      "88888888-4444-4444-8444-000000000103"
+    ]
+  },
+  "expected": {
+    "schema_version": 1,
+    "message_id": "77777777-3333-4333-8333-0000000000c2",
+    "type": "session_state",
+    "sent_at_utc": "2026-10-23T11:06:40Z",
+    "account_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "body": {
+      "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "owner": "watch",
+      "status": "paused",
+      "name": "Synthetic push day",
+      "started_at_utc": "2026-10-23T11:00:00Z",
+      "last_sequence": 7,
+      "paused_at_utc": "2026-10-23T11:03:20Z",
+      "paused_seconds": 40,
+      "current_set_id": "dddddddd-dddd-4ddd-8ddd-000000000002",
+      "exercises": [
+        {
+          "exercise_id": "eeeeeeee-eeee-4eee-8eee-0000000000a1",
+          "name": "Synthetic press",
+          "kind": "reps",
+          "sets": [
+            {
+              "set_id": "dddddddd-dddd-4ddd-8ddd-000000000001",
+              "position": 0,
+              "kind": "warmup",
+              "status": "completed",
+              "input_unit": "kg",
+              "reps": 10
+            },
+            {
+              "set_id": "dddddddd-dddd-4ddd-8ddd-000000000002",
+              "position": 1,
+              "kind": "working",
+              "status": "planned",
+              "input_unit": "kg",
+              "reps": 8,
+              "load_grams": 60000,
+              "rest_seconds": 90
+            },
+            {
+              "set_id": "dddddddd-dddd-4ddd-8ddd-000000000003",
+              "position": 2,
+              "kind": "working",
+              "status": "planned",
+              "input_unit": "kg",
+              "reps": 8,
+              "load_grams": 60000,
+              "rest_seconds": 90
+            }
+          ]
+        },
+        {
+          "exercise_id": "eeeeeeee-eeee-4eee-8eee-0000000000a2",
+          "name": "Synthetic plank",
+          "kind": "duration",
+          "sets": [
+            {
+              "set_id": "dddddddd-dddd-4ddd-8ddd-000000000004",
+              "position": 0,
+              "kind": "working",
+              "status": "planned",
+              "input_unit": "kg",
+              "duration_seconds": 45
+            }
+          ]
+        }
+      ],
+      "applied_command_ids": [
+        "88888888-4444-4444-8444-000000000101",
+        "88888888-4444-4444-8444-000000000102",
+        "88888888-4444-4444-8444-000000000103"
+      ]
+    }
+  }
+}

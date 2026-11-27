@@ -23,6 +23,8 @@ import '../sync/workout_conflict_resolution.dart';
 import '../train/active_workout_state.dart';
 import '../train/train_library_state.dart';
 import '../watch/widgets/watch_status_banner.dart';
+import '../watch/widgets/live_watch_auto_open.dart';
+import '../watch/widgets/live_watch_workout_card.dart';
 import '../watch/widgets/watch_status_footer.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
 import 'backup_status_notice.dart';
@@ -53,6 +55,7 @@ class _TodayPageState extends ConsumerState<TodayPage> {
   }
 
   Future<void> _startPlan(String uuid) async {
+    if (openLiveWatchWorkoutInstead(context, ref)) return;
     if (!await confirmReadinessBeforeStart(context, ref) || !mounted) return;
     try {
       ref.read(workoutActionsProvider).startPlan(uuid);
@@ -87,6 +90,7 @@ class _TodayPageState extends ConsumerState<TodayPage> {
     String planUuid,
     DateTime? missedDate,
   ) async {
+    if (openLiveWatchWorkoutInstead(context, ref)) return;
     if (!await confirmReadinessBeforeStart(context, ref) || !mounted) return;
     try {
       ref
@@ -246,6 +250,7 @@ class _TodayPageState extends ConsumerState<TodayPage> {
           const SizedBox(height: 24),
           const WatchStatusBanner(),
           backup,
+          const LiveWatchWorkoutCard(),
           NsSplitColumns(
             mainFlex: 1,
             sideFlex: 1,
@@ -269,6 +274,7 @@ class _TodayPageState extends ConsumerState<TodayPage> {
         const SizedBox(height: 24),
         const WatchStatusBanner(),
         backup,
+        const LiveWatchWorkoutCard(),
         hero,
         ?missed,
         const SizedBox(height: 27),

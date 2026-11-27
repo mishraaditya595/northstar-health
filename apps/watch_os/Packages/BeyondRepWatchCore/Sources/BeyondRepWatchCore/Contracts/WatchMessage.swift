@@ -7,11 +7,14 @@ public struct SessionCommand: Equatable {
     public var command: String
     public var set: SetValues?
     public var restSeconds: Int?
+    /// Only for `add_set`.
+    public var exerciseId: String?
 
     public init(
         sessionId: String, commandId: String, command: String, set: SetValues? = nil,
-        restSeconds: Int? = nil
+        restSeconds: Int? = nil, exerciseId: String? = nil
     ) {
+        self.exerciseId = exerciseId
         self.sessionId = sessionId
         self.commandId = commandId
         self.command = command
@@ -181,10 +184,32 @@ public struct WatchMessage {
         case "session_state":
             let b = try body(
                 ["session_id", "owner", "status", "name", "started_at_utc", "last_sequence", "exercises"],
-                ["current_set_id", "rest_deadline_utc"])
+                [
+                    "current_set_id", "rest_deadline_utc", "end_reason", "paused_at_utc", "paused_seconds",
+                    "applied_command_ids", "rejected_commands",
+                ])
             let sessionId = try b.uuid("session_id")
             _ = try b.oneOf("owner", ["watch", "phone"])
-            _ = try b.oneOf("status", ["active", "paused"])
+            let status = try b.oneOf("status", ["active", "paused", "ended"])
+            // `end_reason` goes with `ended` and `paused_at_utc` with `paused`.
+            if b.has("end_reason") != (status == "ended") || (b.has("paused_at_utc") && status != "paused") {
+                throw ContractError("invalid_value")
+            }
+            if b.has("end_reason") { _ = try b.oneOf("end_reason", ["completed", "discarded"]) }
+            if b.has("paused_at_utc") { _ = try b.dateTime("paused_at_utc") }
+            _ = try b.optionalInt("paused_seconds")
+            if b.has("applied_command_ids") {
+                for item in try b.array("applied_command_ids", max: 20) {
+                    _ = try StrictObject(["id": item], required: ["id"]).uuid("id")
+                }
+            }
+            if b.has("rejected_commands") {
+                for item in try b.array("rejected_commands", max: 20) {
+                    let r = try StrictObject(item, required: ["command_id", "reason"])
+                    _ = try r.uuid("command_id")
+                    _ = try r.oneOf("reason", ["unknown_session", "unknown_set", "invalid_values", "not_allowed"])
+                }
+            }
             _ = try b.string("name", max: 120)
             _ = try b.dateTime("started_at_utc")
             _ = try b.int("last_sequence")
@@ -198,12 +223,13 @@ public struct WatchMessage {
                 for entry in try x.array("sets", max: 300) {
                     let s = try StrictObject(
                         entry, required: ["set_id", "position", "kind", "status"],
-                        optional: Set(["input_unit"]).union(SetValues.optionalKeys))
+                        optional: Set(["input_unit", "rest_seconds"]).union(SetValues.optionalKeys))
                     _ = try s.uuid("set_id")
                     _ = try s.int("position")
                     _ = try s.oneOf("kind", ["working", "warmup"])
                     _ = try s.oneOf("status", ["planned", "completed", "skipped"])
                     if s.has("input_unit") { _ = try s.oneOf("input_unit", ["kg", "lb"]) }
+                    _ = try s.optionalInt("rest_seconds", min: 1, max: 3600)
                     _ = try s.optionalInt("reps")
                     _ = try s.optionalInt("duration_seconds", min: 1)
                     _ = try s.optionalInt("load_grams")
@@ -212,7 +238,21 @@ public struct WatchMessage {
             }
             self.body = .sessionState(sessionId: sessionId, raw: b.dict)
         case "session_command":
-            let b = try body(["session_id", "command_id", "command"], ["set", "rest_seconds"])
+            let b = try body(["session_id", "command_id", "command"], ["set", "rest_seconds", "exercise_id"])
+            let command = try b.oneOf(
+                "command",
+                [
+                    "log_set", "correct_set", "skip_set", "add_set", "start_rest", "clear_rest", "pause", "resume",
+                    "finish", "discard",
+                ])
+            // The schema requires `set` for these and `exercise_id` for add_set only.
+            if ["log_set", "correct_set", "skip_set"].contains(command) && !b.has("set") {
+                throw ContractError("missing_field")
+            }
+            if b.has("exercise_id") != (command == "add_set") {
+                throw ContractError(command == "add_set" ? "missing_field" : "unknown_key")
+            }
+            let exerciseId = try b.optionalString("exercise_id", max: 128)
             var set: SetValues?
             if b.has("set") {
                 let s = try b.object("set", required: SetValues.requiredKeys, optional: SetValues.optionalKeys)
@@ -221,10 +261,8 @@ public struct WatchMessage {
             self.body = .sessionCommand(
                 SessionCommand(
                     sessionId: try b.uuid("session_id"), commandId: try b.uuid("command_id"),
-                    command: try b.oneOf(
-                        "command",
-                        ["log_set", "correct_set", "skip_set", "start_rest", "clear_rest", "pause", "resume", "finish", "discard"]),
-                    set: set, restSeconds: try b.optionalInt("rest_seconds", min: 1, max: 3600)))
+                    command: command, set: set,
+                    restSeconds: try b.optionalInt("rest_seconds", min: 1, max: 3600), exerciseId: exerciseId))
         case "completed_workout":
             let b = try body(["workout", "last_sequence"], ["healthkit_workout_uuid", "program_day"])
             guard let workout = b.dict["workout"] as? [String: Any],
@@ -286,6 +324,7 @@ public struct WatchMessage {
             var out: [String: Any] = ["session_id": c.sessionId, "command_id": c.commandId, "command": c.command]
             if let set = c.set { out["set"] = set.jsonObject }
             if let seconds = c.restSeconds { out["rest_seconds"] = seconds }
+            if let exerciseId = c.exerciseId { out["exercise_id"] = exerciseId }
             return out
         case .ack(let id, let result, let reason):
             var out: [String: Any] = ["acked_message_id": id, "result": result]

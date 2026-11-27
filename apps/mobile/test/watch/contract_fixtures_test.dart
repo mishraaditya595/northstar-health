@@ -80,7 +80,7 @@ void main() {
 
     test('invalid fixtures are rejected', () {
       final files = _files('watch_link/v1/fixtures/invalid');
-      expect(files.length, greaterThanOrEqualTo(14));
+      expect(files.length, greaterThanOrEqualTo(20));
       for (final f in files) {
         expect(
           () => WatchMessage.fromJson(_read(f)),
@@ -88,6 +88,30 @@ void main() {
           reason: _name(f),
         );
       }
+    });
+
+    test('session_state live fields decode into typed values', () {
+      SessionState read(String name) => WatchMessage.fromJson(
+        _read(File('../../contracts/watch_link/v1/fixtures/valid/$name.json')),
+      ) as SessionState;
+      final paused = read('session_state_paused');
+      expect(paused.status, 'paused');
+      expect(paused.pausedAtUtc, isNotNull);
+      expect(paused.pausedSeconds, 45);
+      expect(read('session_state_ended').endReason, 'completed');
+      final applied = read('session_state_applied_rejected');
+      expect(applied.appliedCommandIds, hasLength(2));
+      expect(applied.rejectedCommands.first.reason, 'unknown_set');
+      final add = WatchMessage.fromJson(
+        _read(
+          File(
+            '../../contracts/watch_link/v1/fixtures/valid/'
+            'session_command_add_set.json',
+          ),
+        ),
+      ) as SessionCommand;
+      expect(add.command, 'add_set');
+      expect(add.exerciseId, isNotNull);
     });
 
     test('completed_workout program_day round-trips', () {
@@ -138,6 +162,23 @@ void main() {
           origins: {WorkoutOrigin.watch},
         );
         expect(snapshot.uuid, workout['workout_id'], reason: _name(f));
+      }
+    });
+
+    test('session_state cases decode and round-trip', () {
+      final files = _files('watch_link/v1/cases/session_state');
+      expect(files.length, greaterThanOrEqualTo(4));
+      for (final f in files) {
+        final c = _read(f);
+        for (final e in (c['events']! as List)) {
+          WorkoutEventV2.fromJson(e as Map<String, Object?>);
+        }
+        final expected = c['expected']! as Map<String, Object?>;
+        expect(
+          WatchMessage.fromJson(expected).toJson(),
+          equals(expected),
+          reason: _name(f),
+        );
       }
     });
 

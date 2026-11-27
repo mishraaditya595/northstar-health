@@ -6,6 +6,7 @@ import UIKit
   private var exportResult: FlutterResult?
   private var exportDirectory: URL?
   private var watchLink: WatchLinkBridge?
+  private var workoutMirror: WorkoutMirrorBridge?
 
   private func purgeAbandonedExports() {
     let temporary = FileManager.default.temporaryDirectory
@@ -127,6 +128,11 @@ import UIKit
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // The mirroring start handler must be set as soon as the app launches (the
+    // system starts the app in the background for it), before anything else.
+    let mirror = WorkoutMirrorBridge()
+    mirror.installMirroringHandler()
+    workoutMirror = mirror
     // ObjectBox's default Flutter directory is Documents/objectbox.
     // Create/protect and exclude it BEFORE Flutter opens the Store.
     // Never delete or relocate existing user data on error.
@@ -153,6 +159,8 @@ import UIKit
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     watchLink = WatchLinkBridge.register(messenger: engineBridge.applicationRegistrar.messenger())
+    workoutMirror?.register(messenger: engineBridge.applicationRegistrar.messenger())
+    watchLink?.live = workoutMirror
     let channel = FlutterMethodChannel(
       name: "northstar/workout_export",
       binaryMessenger: engineBridge.applicationRegistrar.messenger()

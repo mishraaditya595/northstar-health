@@ -16,6 +16,7 @@ import '../data/objectbox_watch_workout_importer.dart';
 import '../data/watch_link.dart';
 import '../domain/watch_account_key.dart';
 import '../domain/watch_message.dart';
+import 'live_watch_workout.dart';
 import 'watch_snapshots.dart';
 import 'watch_sync_controller.dart';
 
@@ -32,6 +33,7 @@ class WatchWorkoutInbox {
     required this.ids,
     required this.clock,
     required this.onStored,
+    this.onImported,
   });
 
   final WatchLink link;
@@ -40,6 +42,10 @@ class WatchWorkoutInbox {
   final UuidFactory ids;
   final DateTime Function() clock;
   final void Function() onStored;
+
+  /// Called with the start time of a workout the phone now holds (stored or
+  /// already stored), so a live card of the same workout can go.
+  final void Function(DateTime startedAt)? onImported;
 
   /// Null when the message was ignored (signed out, another account, or the
   /// account changed while importing): nothing was acknowledged.
@@ -72,6 +78,12 @@ class WatchWorkoutInbox {
       rethrow;
     }
     if (result == WatchImportResult.stored) onStored();
+    if (result != WatchImportResult.invalid) {
+      final started = DateTime.tryParse(
+        message.workout['started_at_utc'] as String? ?? '',
+      );
+      if (started != null) onImported?.call(started.toUtc());
+    }
     return _ack(message, key, result);
   }
 
@@ -114,5 +126,8 @@ final watchWorkoutInboxProvider = Provider<WatchWorkoutInbox>((ref) {
       ref.invalidate(ownPlatformWorkoutIdsProvider);
       ref.read(workoutUploadKickProvider)?.call();
     },
+    onImported: (startedAt) => ref
+        .read(liveWatchWorkoutProvider.notifier)
+        .dropImported(startedAt: startedAt),
   );
 });

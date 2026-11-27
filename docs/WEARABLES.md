@@ -20,6 +20,8 @@ Trial **Flutter UI** only with **Kotlin Health Services `ExerciseClient`** ownin
 
 Stock Flutter does not officially target watchOS. `flutter_watchos` package is *not* an engine; `flutter-watchos` at flutterwatch.dev is a separate experimental engine/toolchain (research cites SDK pinned to Flutter 3.47.5, different from mobile's 3.47.7). Test its supported devices, account artifacts, plugin FFI, signing/TestFlight and distribution before relying on it. **Native SwiftUI fallback is production-default until spike passes.** A Swift HealthKit `HKWorkoutSession` + `HKLiveWorkoutBuilder` service owns workout lifecycle and sensors under appropriate permissions/background capabilities. FlutterWatch UI, if used, must not be responsible for workout continuity. Native Apple Watch companion can integrate with Flutter iOS through WatchConnectivity.
 
+**Live workout on the phone (stage 5a, source only):** the watch owns a workout it starts and mirrors it to the phone (HealthKit workout mirroring, with `WCSession.sendMessage` as fallback); the phone shows the sets live and sends idempotent commands (log, skip, add a set, rest, pause, finish, discard). The phone stores nothing for it. Not released or device-verified; see `docs/RELEASE.md`.
+
 **Do not assume ObjectBox Flutter library can run on watchOS**, particularly the custom engine; use platform-supported native on-watch persistence. iOS app holds its *own* ObjectBox cache.
 
 ## Data ownership and backend handoff

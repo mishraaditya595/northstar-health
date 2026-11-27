@@ -67,7 +67,12 @@ public final class WatchJournal {
             try Self.addColumn(db, table: "sessions", column: "delivery", definition: "TEXT")
             try Self.addColumn(db, table: "sessions", column: "template_json", definition: "TEXT")
             try Self.backfillOutbox(db)
-            try db.setUserVersion(6)
+            // Version 7 adds the result of each phone command (`applied` or
+            // `rejected` with a reason) and when it was handled.
+            try Self.addColumn(db, table: "applied_commands", column: "result", definition: "TEXT NOT NULL DEFAULT 'applied'")
+            try Self.addColumn(db, table: "applied_commands", column: "reason", definition: "TEXT")
+            try Self.addColumn(db, table: "applied_commands", column: "applied_at_ms", definition: "INTEGER NOT NULL DEFAULT 0")
+            try db.setUserVersion(7)
         }
     }
 
@@ -176,10 +181,50 @@ public final class WatchJournal {
             }
             if failAt == .afterSessionUpsert { throw JournalError.injectedFailure }
             if let commandId {
-                try db.execute(
-                    "INSERT OR IGNORE INTO applied_commands(session_id, command_id) VALUES(?,?)",
-                    [.text(sessionId), .text(commandId.lowercased())])
+                try insertCommand(sessionId: sessionId, commandId: commandId, result: "applied", reason: nil)
             }
+            // A discarded session leaves nothing to resend against; a completed
+            // one keeps its rows until the phone's ack, so a resent `finish`
+            // stays a duplicate.
+            if sessionState.status == "abandoned" {
+                try db.execute("DELETE FROM applied_commands WHERE session_id = ?", [.text(sessionId)])
+            }
+        }
+    }
+
+    private func insertCommand(sessionId: String, commandId: String, result: String, reason: String?) throws {
+        try db.execute(
+            "INSERT OR IGNORE INTO applied_commands(session_id, command_id, result, reason, applied_at_ms) VALUES(?,?,?,?,?)",
+            [.text(sessionId), .text(commandId.lowercased()), .text(result),
+             reason.map { SQLValue.text($0) } ?? .null,
+             .int(Int64((clock().timeIntervalSince1970 * 1000).rounded(.down)))])
+    }
+
+    /// Remembers a phone command that changed no event: a rejected one, or one
+    /// that had nothing to do. The first result for an id stands.
+    public func recordCommand(sessionId: String, commandId: String, result: String, reason: String?) throws {
+        try insertCommand(sessionId: sessionId, commandId: commandId, result: result, reason: reason)
+    }
+
+    /// What the watch did with a phone command, nil when it never saw the id.
+    public func commandResult(sessionId: String, commandId: String) throws -> (result: String, reason: String?)? {
+        let rows = try db.query(
+            "SELECT result, reason FROM applied_commands WHERE session_id = ? AND command_id = ?",
+            [.text(sessionId), .text(commandId.lowercased())])
+        guard let row = rows.first, case .text(let result) = row[0] else { return nil }
+        if case .text(let reason) = row[1] { return (result, reason) }
+        return (result, nil)
+    }
+
+    /// Every command the session handled, oldest first.
+    public func commandLog(sessionId: String) throws -> [(commandId: String, result: String, reason: String?)] {
+        try db.query(
+            "SELECT command_id, result, reason FROM applied_commands WHERE session_id = ? ORDER BY rowid",
+            [.text(sessionId)]
+        ).compactMap { row in
+            guard case .text(let id) = row[0], case .text(let result) = row[1] else { return nil }
+            if case .text(let reason) = row[2] { return (id, result, reason) }
+            return (id, result, nil)
         }
     }
 
@@ -306,9 +351,16 @@ public final class WatchJournal {
         return (mine, other)
     }
 
-    public func saveTemplate(sessionId: String, json: String) throws {
-        try db.execute(
-            "UPDATE sessions SET template_json = ? WHERE session_id = ?", [.text(json), .text(sessionId)])
+    /// Saves the template. With `commandId` the phone command that asked for
+    /// it is recorded in the same transaction.
+    public func saveTemplate(sessionId: String, json: String, commandId: String? = nil) throws {
+        try db.transaction {
+            try db.execute(
+                "UPDATE sessions SET template_json = ? WHERE session_id = ?", [.text(json), .text(sessionId)])
+            if let commandId {
+                try insertCommand(sessionId: sessionId, commandId: commandId, result: "applied", reason: nil)
+            }
+        }
     }
 
     public func template(sessionId: String) throws -> String? {

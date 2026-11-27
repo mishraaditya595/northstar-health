@@ -17,6 +17,8 @@ import '../programs/domain/program_status.dart';
 import '../programs/presentation/start_program_day.dart';
 import '../progress/domain/progress_overview.dart';
 import '../workouts/domain/workout_library_models.dart';
+import '../watch/widgets/live_watch_auto_open.dart';
+import '../watch/widgets/live_watch_workout_card.dart';
 import 'active_workout_state.dart';
 import 'plan_fit.dart';
 import 'train_library_state.dart';
@@ -30,6 +32,7 @@ class TrainPage extends ConsumerWidget {
   }
 
   Future<void> _startQuick(BuildContext context, WidgetRef ref) async {
+    if (openLiveWatchWorkoutInstead(context, ref)) return;
     var proposed = 'Quick workout';
     final chosen = await showNsDialog<String>(
       context: context,
@@ -83,6 +86,7 @@ class TrainPage extends ConsumerWidget {
     WidgetRef ref,
     void Function() action,
   ) async {
+    if (openLiveWatchWorkoutInstead(context, ref)) return;
     // The start would fail while a workout is unfinished or unrecoverable:
     // say so before the readiness note, which only shows once a day.
     final active = ref.read(activeWorkoutProvider);
@@ -210,6 +214,7 @@ class TrainPage extends ConsumerWidget {
               eyebrow: 'PLAN AND PERFORM TRAINING',
             ),
             const SizedBox(height: 24),
+            const LiveWatchWorkoutCard(),
             Wrap(
               alignment: WrapAlignment.spaceBetween,
               crossAxisAlignment: WrapCrossAlignment.end,
