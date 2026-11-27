@@ -72,6 +72,7 @@ void main() {
   late int stored;
   late List<DateTime> imported;
   late List<String> order;
+  late int linked;
   late WatchWorkoutInbox inbox;
 
   WatchWorkoutInbox build({
@@ -93,6 +94,7 @@ void main() {
       order.add('onStored');
     },
     onImported: imported.add,
+    onLinked: () => linked++,
   );
 
   setUp(() {
@@ -103,6 +105,7 @@ void main() {
     stored = 0;
     imported = [];
     order = [];
+    linked = 0;
     inbox = build();
   });
 
@@ -254,7 +257,98 @@ void main() {
       );
     },
   );
+
+  group('workout_link', () {
+    test('a completed phone workout gets a receipt, then an ack', () async {
+      _putPhoneWorkout(store);
+      final message = _link(accountKey: watchAccountKey(accountA));
+      expect(await inbox.handleLink(message), WatchLinkResult.stored);
+      expect(store.box<WatchWorkoutReceiptEntity>().count(), 1);
+      final ack = link.ackAt(0);
+      expect(ack.result, 'stored');
+      expect(ack.ackedMessageId, message.messageId);
+      expect(ack.accountKey, watchAccountKey(accountA));
+      expect(linked, 1);
+    });
+
+    test('a duplicate link keeps one receipt and is acked again', () async {
+      _putPhoneWorkout(store);
+      final message = _link(accountKey: watchAccountKey(accountA));
+      await inbox.handleLink(message);
+      expect(await inbox.handleLink(message), WatchLinkResult.duplicate);
+      expect(store.box<WatchWorkoutReceiptEntity>().count(), 1);
+      expect(link.ackAt(1).result, 'duplicate');
+      expect(linked, 1, reason: 'only a new receipt refreshes the hidden ids');
+    });
+
+    test('an unknown or unfinished workout gets no ack', () async {
+      final message = _link(accountKey: watchAccountKey(accountA));
+      expect(await inbox.handleLink(message), WatchLinkResult.unknown);
+      _putPhoneWorkout(store, status: 'inProgress');
+      expect(await inbox.handleLink(message), WatchLinkResult.unknown);
+      expect(link.sent, isEmpty);
+      expect(store.box<WatchWorkoutReceiptEntity>().count(), 0);
+    });
+
+    test('another account or signed out is ignored without an ack', () async {
+      _putPhoneWorkout(store);
+      expect(
+        await inbox.handleLink(_link(accountKey: watchAccountKey(accountB))),
+        isNull,
+      );
+      user = null;
+      expect(
+        await inbox.handleLink(_link(accountKey: watchAccountKey(accountA))),
+        isNull,
+      );
+      expect(link.sent, isEmpty);
+      expect(store.box<WatchWorkoutReceiptEntity>().count(), 0);
+    });
+
+    test('a deleted workout is acked rejected', () async {
+      store.box<WorkoutSessionEntity>().put(
+        WorkoutSessionEntity(
+          uuid: _phoneWorkout,
+          name: 'Gone',
+          status: 'completed',
+          startedAtMs: 1,
+          completedAtMs: 2,
+          originalOffsetMinutes: 0,
+          updatedAtMs: 2,
+          deletedAtMs: 3,
+        ),
+      );
+      final message = _link(accountKey: watchAccountKey(accountA));
+      expect(await inbox.handleLink(message), WatchLinkResult.invalid);
+      expect(link.ackAt(0).result, 'rejected');
+      expect(link.ackAt(0).reason, 'invalid');
+    });
+  });
 }
+
+const _phoneWorkout = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+
+WorkoutLink _link({String? accountKey}) {
+  final json = jsonDecode(
+    File('../../contracts/watch_link/v1/fixtures/valid/workout_link.json')
+        .readAsStringSync(),
+  ) as Map<String, Object?>;
+  if (accountKey != null) json['account_key'] = accountKey;
+  return WatchMessage.fromJson(json) as WorkoutLink;
+}
+
+void _putPhoneWorkout(Store store, {String status = 'completed'}) =>
+    store.box<WorkoutSessionEntity>().put(
+      WorkoutSessionEntity(
+        uuid: _phoneWorkout,
+        name: 'Phone workout',
+        status: status,
+        startedAtMs: 1,
+        completedAtMs: status == 'completed' ? 2 : null,
+        originalOffsetMinutes: 0,
+        updatedAtMs: 2,
+      ),
+    );
 
 class _OrderedImporter extends ObjectBoxWatchWorkoutImporter {
   _OrderedImporter(

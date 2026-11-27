@@ -63,6 +63,7 @@ void main() {
     WorkoutOrigin origin = WorkoutOrigin.watch,
     double width = 800,
     double textScale = 1,
+    bool receipt = true,
   }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = Size(width, 2400);
@@ -78,7 +79,9 @@ void main() {
           healthReaderProvider.overrideWithValue(fake),
           healthConnectionRepositoryProvider.overrideWithValue(_Connected()),
           healthOwnerIdProvider.overrideWithValue('owner-a'),
-          watchWorkoutPlatformIdProvider.overrideWith((ref, uuid) => 'hk-1'),
+          watchWorkoutPlatformIdProvider.overrideWith(
+            (ref, uuid) => receipt ? 'hk-1' : null,
+          ),
         ],
         child: MaterialApp(
           theme: BeyondRepTheme.build(Brightness.light),
@@ -120,9 +123,20 @@ void main() {
     expect(find.textContaining(' 0 '), findsNothing);
   });
 
-  testWidgets('shows no section for a phone workout', (tester) async {
+  testWidgets('shows the section for a phone workout that has a receipt', (
+    tester,
+  ) async {
     fake.ownWorkout = const SeriesData(OwnWorkoutHealth(averageBpm: 128));
     await show(tester, origin: WorkoutOrigin.phone);
+    expect(find.text('From Apple Health'), findsOneWidget);
+    expect(find.text('128 bpm'), findsOneWidget);
+  });
+
+  testWidgets('shows no section for a phone workout without a receipt', (
+    tester,
+  ) async {
+    fake.ownWorkout = const SeriesData(OwnWorkoutHealth(averageBpm: 128));
+    await show(tester, origin: WorkoutOrigin.phone, receipt: false);
     expect(find.text('From Apple Health'), findsNothing);
     expect(fake.ownWorkoutCalls, isEmpty);
   });

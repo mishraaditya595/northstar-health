@@ -75,10 +75,15 @@ final class WorkoutRecorder: NSObject, ObservableObject {
         await HealthAccess.request(store: store)
     }
 
-    func begin(workoutId: String, at date: Date) async throws {
-        let configuration = HKWorkoutConfiguration()
-        configuration.activityType = .traditionalStrengthTraining
-        configuration.locationType = .indoor
+    /// Starts the session. `workoutId` is nil when the iPhone owns the workout
+    /// (`adopt(workoutId:)` sets it once the first state names the session);
+    /// `configuration` is the one the iPhone launched the watch app with.
+    func begin(workoutId: String?, at date: Date, configuration given: HKWorkoutConfiguration? = nil) async throws {
+        let configuration = given ?? HKWorkoutConfiguration()
+        if given == nil {
+            configuration.activityType = .traditionalStrengthTraining
+            configuration.locationType = .indoor
+        }
         let session = try HKWorkoutSession(healthStore: store, configuration: configuration)
         let builder = session.associatedWorkoutBuilder()
         builder.dataSource = HKLiveWorkoutDataSource(healthStore: store, workoutConfiguration: configuration)
@@ -93,6 +98,12 @@ final class WorkoutRecorder: NSObject, ObservableObject {
         session.startActivity(with: date)
         try await builder.beginCollection(at: date)
         await startMirroring()
+    }
+
+    /// Names the BeyondRep workout the running session belongs to, so the one
+    /// saved `HKWorkout` carries its id. Only for a session started without one.
+    func adopt(workoutId: String) {
+        if self.workoutId == nil { self.workoutId = workoutId }
     }
 
     /// Mirrors the session to the iPhone. A failure (no iPhone in reach, an

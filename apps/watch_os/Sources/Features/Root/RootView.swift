@@ -47,6 +47,9 @@ struct RootView: View {
                 SummaryView(model: model, summary: summary)
             } else if isRecording {
                 WorkoutView(model: model)
+            } else if model.follower != nil {
+                // A workout the iPhone owns (stage 5b).
+                FollowerView(model: model)
             } else {
                 browser
             }

@@ -101,6 +101,15 @@ class WatchEmbeddingTest(unittest.TestCase):
         self.assertIn("WorkoutMirrorBridge.swift in Sources", self.pbx)
         self.assertTrue((IOS / "Runner" / "WorkoutMirrorBridge.swift").is_file())
 
+    def test_workout_mirror_bridge_launches_the_watch_and_sends_state(self):
+        text = (IOS / "Runner" / "WorkoutMirrorBridge.swift").read_text()
+        self.assertIn('case "startWatchApp"', text)
+        self.assertIn('"sendCommand", "sendState"', text)
+        self.assertIn("startWatchApp(with: configuration)", text)
+        self.assertIn(".traditionalStrengthTraining", text)
+        # Launching the watch app asks for no health permission.
+        self.assertNotIn("requestAuthorization", text)
+
     def test_watch_has_an_opaque_1024_app_icon_in_its_resources(self):
         self.assertIn("ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;", self.pbx)
         self.assertIn("Sources/Resources/Assets.xcassets", self.pbx)

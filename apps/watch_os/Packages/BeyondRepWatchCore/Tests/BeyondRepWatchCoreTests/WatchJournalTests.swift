@@ -258,7 +258,7 @@ final class WatchJournalTests: XCTestCase {
         XCTAssertNil(try journal.binding())
     }
 
-    func testJournalMigratesUserVersion2To7KeepingOutboxRows() throws {
+    func testJournalMigratesUserVersion2To8KeepingOutboxRows() throws {
         // A database written before the binding table existed.
         let old = try SQLiteDatabase(url: url)
         try old.execute("CREATE TABLE outbox(message_id TEXT PRIMARY KEY, account_key TEXT NOT NULL, json TEXT NOT NULL, created_at TEXT NOT NULL)")
@@ -275,7 +275,7 @@ final class WatchJournalTests: XCTestCase {
         try journal.saveBinding(TestMessages.binding())
         XCTAssertEqual(try journal.binding()?.accountKey, TestMessages.keyA)
         let check = try SQLiteDatabase(url: url)
-        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(7))
+        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(8))
     }
 
     func testJournalMigratesAVersion3BindingTableKeepingItsRow() throws {
@@ -318,7 +318,7 @@ final class WatchJournalTests: XCTestCase {
         try journal.recordReceived(atMs: 1_234)
         XCTAssertEqual(try journal.lastReceivedMs(), 1_234)
         let check = try SQLiteDatabase(url: url)
-        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(7))
+        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(8))
     }
 
     func testRecordedReceivedTimeKeepsTheLatestAndSurvivesReopen() throws {
@@ -522,7 +522,7 @@ final class WatchJournalTests: XCTestCase {
         // The old row's type is filled in, so it counts as a queued completed workout.
         XCTAssertEqual(try journal.pendingCompleted(limit: 10).count, 1)
         let check = try SQLiteDatabase(url: url)
-        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(7))
+        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(8))
         XCTAssertTrue(try columns("outbox").contains("type"))
         XCTAssertTrue(try columns("outbox").contains("session_id"))
         XCTAssertTrue(try columns("sessions").contains("delivery"))
@@ -539,7 +539,7 @@ final class WatchJournalTests: XCTestCase {
 
         let journal = try WatchJournal(url: url)
         let check = try SQLiteDatabase(url: url)
-        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(7))
+        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(8))
         for column in ["result", "reason", "applied_at_ms"] {
             XCTAssertTrue(try columns("applied_commands").contains(column), column)
         }
@@ -738,5 +738,141 @@ final class WatchJournalTests: XCTestCase {
         try journal.record(events, sessionState: replay(events), template: "{\"a\":1}")
         try journal.saveTemplate(sessionId: session, json: "{\"a\":2}")
         XCTAssertEqual(try journal.template(sessionId: session), "{\"a\":2}")
+    }
+
+    // MARK: Stage 5b: follower row and workout_link outbox
+
+    private let phoneWorkout = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    private let hkWorkout = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+
+    private func linkMessage(
+        workoutId: String? = nil, key: String? = nil, id: String = UUID().uuidString.lowercased()
+    ) -> WatchMessage {
+        WatchMessage(
+            messageId: id, sentAtUtc: "2026-10-23T11:00:00Z", accountKey: key ?? self.key,
+            body: .workoutLink(workoutId: workoutId ?? phoneWorkout, healthkitWorkoutUuid: hkWorkout))
+    }
+
+    func testVersion8AddsFollowerAndLinkTablesAndKeepsRows() throws {
+        // A version 7 database with a queued completed workout and a command row.
+        let old = try SQLiteDatabase(url: url)
+        try old.execute("CREATE TABLE outbox(message_id TEXT PRIMARY KEY, account_key TEXT NOT NULL, json TEXT NOT NULL, created_at TEXT NOT NULL, type TEXT NOT NULL DEFAULT '', session_id TEXT NOT NULL DEFAULT '')")
+        try old.execute("CREATE TABLE applied_commands(session_id TEXT NOT NULL, command_id TEXT NOT NULL, result TEXT NOT NULL DEFAULT 'applied', reason TEXT, applied_at_ms INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(session_id, command_id))")
+        let message = try completedMessage()
+        try old.execute(
+            "INSERT INTO outbox(message_id, account_key, json, created_at, type, session_id) VALUES(?,?,?,?,?,?)",
+            [.text(message.messageId), .text(message.accountKey),
+             .text(String(decoding: try message.jsonData(), as: UTF8.self)), .text("2026-10-23T00:00:00Z"),
+             .text("completed_workout"), .text(session)])
+        let commandId = "88888888-4444-4444-8444-000000000001"
+        try old.execute("INSERT INTO applied_commands(session_id, command_id) VALUES(?,?)", [.text(session), .text(commandId)])
+        try old.setUserVersion(7)
+
+        let journal = try WatchJournal(url: url)
+        let check = try SQLiteDatabase(url: url)
+        XCTAssertEqual(try check.query("PRAGMA user_version").first?.first, .int(8))
+        XCTAssertEqual(try journal.pendingCompleted(limit: 10).count, 1)
+        XCTAssertNotNil(try journal.commandResult(sessionId: session, commandId: commandId))
+        XCTAssertNil(try journal.follower())
+        XCTAssertTrue(try journal.pendingLinks(limit: 10).isEmpty)
+        XCTAssertTrue(try columns("follower").contains("joined_at_ms"))
+    }
+
+    func testFollowerRowSurvivesReopenAndIsReplacedByTheNext() throws {
+        var journal: WatchJournal? = try WatchJournal(url: url)
+        try journal!.saveFollower(sessionId: phoneWorkout, accountKey: key, joinedAtMs: 1_000, phase: "following")
+        journal = nil
+        let reopened = try WatchJournal(url: url)
+        let row = try XCTUnwrap(try reopened.follower())
+        XCTAssertEqual(row.sessionId, phoneWorkout)
+        XCTAssertEqual(row.accountKey, key)
+        XCTAssertEqual(row.joinedAtMs, 1_000)
+        XCTAssertEqual(row.phase, "following")
+        try reopened.saveFollower(sessionId: session, accountKey: key, joinedAtMs: 2_000, phase: "finishing")
+        XCTAssertEqual(try reopened.follower()?.sessionId, session)
+        XCTAssertEqual(try reopened.follower()?.phase, "finishing")
+        try reopened.clearFollower()
+        XCTAssertNil(try reopened.follower())
+    }
+
+    func testWorkoutLinkIsQueuedOncePerWorkoutIdAndSurvivesReopen() throws {
+        var journal: WatchJournal? = try WatchJournal(url: url)
+        try journal!.saveFollower(sessionId: phoneWorkout, accountKey: key, joinedAtMs: 1, phase: "finishing")
+        XCTAssertTrue(try journal!.queueWorkoutLink(linkMessage()))
+        // The follower row goes in the same transaction.
+        XCTAssertNil(try journal!.follower())
+        // A second message for the same workout is not queued.
+        XCTAssertFalse(try journal!.queueWorkoutLink(linkMessage()))
+        journal = nil
+        let reopened = try WatchJournal(url: url)
+        let pending = try reopened.pendingLinks(limit: 10)
+        XCTAssertEqual(pending.count, 1)
+        guard case .workoutLink(let workoutId, let hk) = pending[0].body else { return XCTFail("not a link") }
+        XCTAssertEqual(workoutId, phoneWorkout)
+        XCTAssertEqual(hk, hkWorkout)
+        XCTAssertFalse(try reopened.queueWorkoutLink(linkMessage()))
+        XCTAssertEqual(try reopened.pendingLinks(limit: 10).count, 1)
+    }
+
+    func testLinkAckRemovesItAndItIsNotQueuedAgain() throws {
+        let journal = try WatchJournal(url: url)
+        let message = linkMessage()
+        XCTAssertTrue(try journal.queueWorkoutLink(message))
+        XCTAssertEqual(try journal.queuedLinkAccountKey(messageId: message.messageId.uppercased()), key)
+        let effect = try journal.applyAck(ackedMessageId: message.messageId.uppercased(), result: "stored")
+        XCTAssertEqual(effect, .linked(workoutId: phoneWorkout))
+        XCTAssertTrue(try journal.pendingLinks(limit: 10).isEmpty)
+        XCTAssertNil(try journal.queuedLinkAccountKey(messageId: message.messageId))
+        XCTAssertFalse(try journal.queueWorkoutLink(linkMessage()), "an acked link is not queued again")
+        XCTAssertNil(try journal.applyAck(ackedMessageId: message.messageId, result: "stored"))
+    }
+
+    func testRejectedAndDuplicateLinkAcksAlsoSettleIt() throws {
+        let journal = try WatchJournal(url: url)
+        let a = linkMessage()
+        let otherWorkout = "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
+        let b = linkMessage(workoutId: otherWorkout)
+        XCTAssertTrue(try journal.queueWorkoutLink(a))
+        XCTAssertTrue(try journal.queueWorkoutLink(b))
+        XCTAssertEqual(try journal.applyAck(ackedMessageId: a.messageId, result: "duplicate"), .linked(workoutId: phoneWorkout))
+        XCTAssertEqual(try journal.applyAck(ackedMessageId: b.messageId, result: "rejected"), .linked(workoutId: otherWorkout))
+        XCTAssertTrue(try journal.pendingLinks(limit: 10).isEmpty)
+    }
+
+    func testPendingCompletedAndPendingOutboxKeepLinksApart() throws {
+        let journal = try WatchJournal(url: url)
+        try journal.queueCompleted(try completedMessage(), sessionId: session)
+        XCTAssertTrue(try journal.queueWorkoutLink(linkMessage()))
+        XCTAssertEqual(try journal.pendingCompleted(limit: 10).map(\.type), ["completed_workout"])
+        XCTAssertEqual(try journal.pendingLinks(limit: 10).map(\.type), ["workout_link"])
+    }
+
+    func testClearAccountWithWipeRemovesItsFollowerAndLinks() throws {
+        let journal = try WatchJournal(url: url)
+        try journal.saveFollower(sessionId: phoneWorkout, accountKey: key, joinedAtMs: 1, phase: "following")
+        XCTAssertTrue(try journal.queueWorkoutLink(linkMessage()))
+        try journal.saveFollower(sessionId: phoneWorkout, accountKey: key, joinedAtMs: 1, phase: "following")
+        try journal.clearAccount(key, wipeUnsent: false)
+        XCTAssertNotNil(try journal.follower(), "an unwiped clear keeps unsent work")
+        XCTAssertEqual(try journal.pendingLinks(limit: 10).count, 1)
+        try journal.clearAccount(key, wipeUnsent: true)
+        XCTAssertNil(try journal.follower())
+        XCTAssertTrue(try journal.pendingLinks(limit: 10).isEmpty)
+    }
+
+    func testAnotherAccountsFollowerRowSurvivesAWipe() throws {
+        let journal = try WatchJournal(url: url)
+        try journal.saveFollower(sessionId: phoneWorkout, accountKey: TestMessages.keyB, joinedAtMs: 1, phase: "following")
+        try journal.clearAccount(TestMessages.keyA, wipeUnsent: true)
+        XCTAssertNotNil(try journal.follower())
+    }
+
+    func testNoPruneWhileFollowing() throws {
+        let journal = try WatchJournal(url: url)
+        try journal.saveBinding(TestMessages.binding())
+        try journal.recordReceived(atMs: 1_000)
+        try journal.saveFollower(sessionId: phoneWorkout, accountKey: TestMessages.keyA, joinedAtMs: 1, phase: "following")
+        XCTAssertFalse(try journal.pruneStale(nowMs: 1_000 + 91 * 86_400_000))
+        XCTAssertNotNil(try journal.binding())
     }
 }

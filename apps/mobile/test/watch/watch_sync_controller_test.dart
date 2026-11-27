@@ -15,6 +15,7 @@ import 'package:beyondrep/features/watch/application/watch_sync_controller.dart'
 import 'package:beyondrep/features/watch/application/watch_status_provider.dart';
 import 'package:beyondrep/features/watch/data/objectbox_watch_workout_importer.dart';
 import 'package:beyondrep/features/watch/data/watch_link.dart';
+import 'package:beyondrep/features/watch/data/watch_workout_receipt_entity.dart';
 import 'package:beyondrep/features/watch/data/watch_status_store.dart';
 import 'package:beyondrep/features/watch/data/watch_wipe_queue.dart';
 import 'package:beyondrep/features/watch/domain/watch_account_key.dart';
@@ -920,6 +921,39 @@ void main() {
       await _elapse(tester, const Duration(milliseconds: 50));
       expect(store.box<WorkoutSessionEntity>().count(), 0);
       expect(h.link.calls.where((c) => c.kind == 'transfer'), isEmpty);
+    });
+
+    testWidgets('a workout_link from the watch stores a receipt and is acked', (
+      tester,
+    ) async {
+      store.box<WorkoutSessionEntity>().put(
+        WorkoutSessionEntity(
+          uuid: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+          name: 'Phone workout',
+          status: 'completed',
+          startedAtMs: 1,
+          completedAtMs: 2,
+          originalOffsetMinutes: 0,
+          updatedAtMs: 2,
+        ),
+      );
+      final h = _Harness(tester, store: store);
+      await h.start();
+      await _elapse(tester, const Duration(seconds: 3));
+      h.link.stateChanges.add(null);
+      await _elapse(tester, const Duration(seconds: 3));
+      final before = h.link.calls.where((c) => c.kind == 'transfer').length;
+      final json = jsonDecode(
+        File('../../contracts/watch_link/v1/fixtures/valid/workout_link.json')
+            .readAsStringSync(),
+      ) as Map<String, Object?>;
+      json['account_key'] = watchAccountKey(accountA);
+      h.link.incoming.add(jsonEncode(json));
+      await _elapse(tester, const Duration(milliseconds: 50));
+      expect(store.box<WatchWorkoutReceiptEntity>().count(), 1);
+      final ack = h.link.transferred(before) as Ack;
+      expect(ack.result, 'stored');
+      expect(ack.ackedMessageId, '77777777-3333-4333-8333-000000000020');
     });
 
     testWidgets('an ack message is still handled as before', (tester) async {

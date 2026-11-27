@@ -27,6 +27,7 @@ import '../features/train/exercise_detail_page.dart';
 import '../features/train/plan_editor_page.dart';
 import '../features/train/active_workout_page.dart';
 import '../features/watch/widgets/live_watch_auto_open.dart';
+import '../features/watch/widgets/phone_discard_confirm_host.dart';
 import '../features/watch/widgets/live_watch_workout_card.dart';
 import '../features/watch/widgets/watch_workout_mirror_page.dart';
 import 'floating_nav_bar.dart';
@@ -65,9 +66,11 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/today',
     routes: [
       ShellRoute(
-        builder: (context, state, child) => LiveWatchAutoOpen(
-          location: state.uri.path,
-          child: AdaptiveShell(location: state.uri.path, child: child),
+        builder: (context, state, child) => PhoneDiscardConfirmHost(
+          child: LiveWatchAutoOpen(
+            location: state.uri.path,
+            child: AdaptiveShell(location: state.uri.path, child: child),
+          ),
         ),
         routes: [
           GoRoute(

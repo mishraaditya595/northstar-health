@@ -4,8 +4,11 @@ import WatchConnectivity
 
 /// The live link to an Apple Watch workout (`lib/features/watch/data/watch_live_link.dart`).
 /// It only moves strings: JSON `session_state` messages from the watch go to
-/// Dart, and JSON `session_command` messages from Dart go to the watch. The
-/// phone does not read or write any health data here. All decisions (account
+/// Dart, and JSON `session_command` messages from Dart go to the watch. For a
+/// workout the phone owns (stage 5b) the directions swap: Dart's `session_state`
+/// goes to the watch through `sendState`, the watch's `session_command` and
+/// `join` messages arrive here and go to Dart, and `startWatchApp` asks the
+/// system to launch the watch app. The phone does not read or write any health data here. All decisions (account
 /// check, freshness, commands) stay in Dart.
 ///
 /// Two paths, the same JSON on both:
@@ -89,7 +92,9 @@ final class WorkoutMirrorBridge: NSObject {
         channel?.invokeMethod("liveMessage", arguments: pending)
       }
       result(nil)
-    case "sendCommand":
+    case "startWatchApp":
+      startWatchApp { launched in DispatchQueue.main.async { result(launched) } }
+    case "sendCommand", "sendState":
       guard let args = call.arguments as? [String: String], let json = args["json"] else {
         result(FlutterError(code: "bad_arguments", message: nil, details: nil))
         return
@@ -98,6 +103,21 @@ final class WorkoutMirrorBridge: NSObject {
     default:
       result(FlutterMethodNotImplemented)
     }
+  }
+
+  /// Launches the paired watch's app for a strength workout; the watch app
+  /// then receives `handle(_ workoutConfiguration:)`. It needs no health
+  /// authorization and shares no data. False when the system refuses (no
+  /// paired watch, the app is not installed): the workout goes on as before.
+  private func startWatchApp(completion: @escaping (Bool) -> Void) {
+    guard HKHealthStore.isHealthDataAvailable() else {
+      completion(false)
+      return
+    }
+    let configuration = HKWorkoutConfiguration()
+    configuration.activityType = .traditionalStrengthTraining
+    configuration.locationType = .indoor
+    HKHealthStore().startWatchApp(with: configuration) { success, _ in completion(success) }
   }
 
   /// Mirrored session first, then `sendMessage`; false when neither is available.

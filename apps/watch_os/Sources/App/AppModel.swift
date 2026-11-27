@@ -1,4 +1,5 @@
 import Foundation
+import HealthKit
 import SwiftUI
 import WatchKit
 #if canImport(BeyondRepWatchCore)
@@ -24,6 +25,9 @@ final class AppModel: ObservableObject {
     @Published private(set) var waiting = WaitingWorkouts(waiting: 0, waitingOtherAccount: 0)
     /// Length of the rest in progress, for the ring.
     @Published private(set) var restTotalSeconds: Double = 90
+    /// The workout the iPhone owns and this watch follows (stage 5b). Not
+    /// observable: every change bumps `revision`. Nil when there is none.
+    private(set) var follower: FollowerSession?
     let recorder = WorkoutRecorder()
     private var details: [Metric: DetailModel] = [:]
 
@@ -51,6 +55,19 @@ final class AppModel: ObservableObject {
     private var extraRejections: [SessionStateBuilder.Rejection] = []
     /// A discard that is still telling the iPhone before it ends HealthKit.
     private var endingTask: Task<Void, Never>?
+
+    /// Ticks every 5 s while following: resends, staleness, the 6 h rule and
+    /// the 60 s wait for the first state.
+    private var followerTicker: Task<Void, Never>?
+    private var followerJoinedAt = Date()
+    private var followerPersisted = false
+    private var followerLastJoinAt = Date.distantPast
+    /// A restore that is running, so a launch by the iPhone waits for it
+    /// before it decides whether the watch has its own session.
+    private var restoreTask: Task<Void, Never>?
+    /// The first state must arrive within this time of the launch.
+    private static let followerConnectLimit: TimeInterval = 60
+    private static let followerJoinEvery: TimeInterval = 30
 
     private let journal: WatchJournal?
     private let inbox: PhoneInbox?
@@ -82,6 +99,7 @@ final class AppModel: ObservableObject {
     deinit {
         liveHeartbeat?.cancel()
         midnightTask?.cancel()
+        followerTicker?.cancel()
         restHapticTask?.cancel()
         periodicHealthTask?.cancel()
     }
@@ -165,6 +183,10 @@ final class AppModel: ObservableObject {
     /// is applied once). Only `session_command` is read; everything is checked
     /// against this account and session by `WorkoutController.apply`.
     func receive(liveMessage data: Data) {
+        if let phoneState = try? WatchMessage(json: data), case .sessionState = phoneState.body {
+            receiveFollowerState(phoneState)
+            return
+        }
         guard let message = try? WatchMessage(json: data), case .sessionCommand(let command) = message.body,
             let controller = workout, let outcome = try? controller.apply(message)
         else { return }
@@ -192,7 +214,7 @@ final class AppModel: ObservableObject {
     /// Drops a binding the phone has not refreshed for 90 days (never during or while
     /// starting a workout, never unsent workouts). Errors are ignored; the next call retries.
     func pruneStale() {
-        guard !isStarting, workout == nil else { return }
+        guard !isStarting, workout == nil, follower == nil else { return }
         _ = try? journal?.pruneStale(nowMs: Int64(Date().timeIntervalSince1970 * 1000))
     }
 
@@ -200,6 +222,8 @@ final class AppModel: ObservableObject {
     /// called when the app becomes active.
     func refresh() {
         guard let journal else { return }
+        // The phone signed in as someone else: a followed workout is dropped.
+        if let follower, boundAccount?.accountKey != follower.accountKey { endFollower(.discard(sessionId: follower.sessionId ?? "")) }
         let now = Date()
         // The held values are only ever for the account that is bound now.
         let watch = held?.ifCurrent(boundKey: boundAccount?.accountKey)
@@ -279,6 +303,232 @@ final class AppModel: ObservableObject {
         periodicHealthTask = nil
     }
 
+
+    // MARK: Following a workout the iPhone owns (stage 5b)
+
+    /// The iPhone started a workout and launched the watch app. Joins only
+    /// when the watch has an account binding and no session of its own;
+    /// otherwise nothing starts. The HealthKit session starts at once (it
+    /// collects heart rate and is the one `HKWorkout` this watch saves); the
+    /// first `session_state` names the phone workout.
+    func joinPhoneWorkout(configuration: HKWorkoutConfiguration) async {
+        // A relaunch is still restoring a session of its own: wait for it.
+        await restoreTask?.value
+        guard let account = boundAccount, workout == nil, follower == nil, !isStarting, summary == nil else { return }
+        // Set before the first await so a second launch cannot join twice.
+        let created = FollowerSession(accountKey: account.accountKey, makeId: { UUID().uuidString.lowercased() })
+        follower = created
+        followerJoinedAt = Date()
+        followerLastJoinAt = .distantPast
+        followerPersisted = false
+        revision += 1
+        await endingTask?.value
+        _ = await recorder.requestAuthorization()
+        do {
+            try await recorder.begin(workoutId: nil, at: Date(), configuration: configuration)
+        } catch {
+            // Without a HealthKit session there is no heart rate and no
+            // HKWorkout: the watch does not follow.
+            recorder.discard()
+            if follower === created {
+                follower = nil
+                revision += 1
+            }
+            return
+        }
+        // The follower ended or was replaced while HealthKit started: this
+        // session would run for nothing.
+        guard follower === created else {
+            recorder.discard()
+            return
+        }
+        startFollowerTicker()
+        // The watch does not know the phone's session yet: ask for its state.
+        sendFollowerJoin(sessionId: nil)
+    }
+
+    /// Picks a follower up after a relaunch: its row names the session and
+    /// HealthKit kept the session alive. When HealthKit lost it, the one
+    /// HKWorkout may still have been saved before the app died, and then only
+    /// the link is missing.
+    private func restoreFollower() async {
+        guard let journal, let row = try? journal.follower() else { return }
+        guard row.accountKey == boundAccount?.accountKey else {
+            // Another account: never followed. The orphan policy ends the session.
+            try? journal.clearFollower()
+            return
+        }
+        if await recorder.recover(workoutId: row.sessionId) {
+            follower = FollowerSession(
+                accountKey: row.accountKey, makeId: { UUID().uuidString.lowercased() }, recovering: row.sessionId,
+                now: Date())
+            followerJoinedAt = Date()
+            followerPersisted = true
+            startFollowerTicker()
+            sendFollowerJoin(sessionId: row.sessionId)
+        } else {
+            switch await recorder.savedWorkout(workoutId: row.sessionId) {
+            case .found(let uuid):
+                queueLink(sessionId: row.sessionId, accountKey: row.accountKey, healthkitWorkoutUuid: uuid)
+            case .notFound:
+                try? journal.clearFollower()
+            case .failed:
+                // HealthKit could not answer (locked store, query error): keep the row, try again next launch.
+                break
+            }
+        }
+    }
+
+    private func sendFollowerJoin(sessionId: String?) {
+        guard let follower else { return }
+        followerLastJoinAt = Date()
+        let message = WatchMessage(
+            messageId: UUID().uuidString.lowercased(), sentAtUtc: Self.liveTimestamp.string(from: Date()),
+            accountKey: follower.accountKey, body: .join(sessionId: sessionId))
+        liveLink.send(message)
+    }
+
+    private func receiveFollowerState(_ message: WatchMessage) {
+        guard let follower else { return }
+        if follower.state == nil, let incoming = PhoneWorkoutState(message: message), !incoming.isEnded,
+            !FollowerSession.shouldJoin(
+                boundAccountKey: boundAccount?.accountKey, state: incoming, hasOwnSession: workout != nil)
+        {
+            // Another account's workout: this watch is not part of it.
+            endFollower(.discard(sessionId: incoming.sessionId))
+            return
+        }
+        switch follower.receive(message, now: Date()) {
+        case .accepted:
+            if !followerPersisted, let sessionId = follower.sessionId, let journal {
+                followerPersisted = true
+                try? journal.saveFollower(
+                    sessionId: sessionId, accountKey: follower.accountKey,
+                    joinedAtMs: Int64(followerJoinedAt.timeIntervalSince1970 * 1000), phase: "following")
+                recorder.adopt(workoutId: sessionId)
+                // The phone sends its state again at once; later states keep it fresh.
+                sendFollowerJoin(sessionId: sessionId)
+            }
+            // The HealthKit session follows the phone's pause so heart rate and
+            // active energy are not counted while the workout is paused.
+            switch follower.pauseTransition {
+            case .pause: recorder.pause()
+            case .resume: recorder.resume()
+            case nil: break
+            }
+        case .ended(let end):
+            if let sessionId = follower.sessionId { recorder.adopt(workoutId: sessionId) }
+            endFollower(end)
+        case .wrongAccount:
+            endFollower(.discard(sessionId: follower.sessionId ?? ""))
+        case .ignored:
+            break
+        }
+        revision += 1
+    }
+
+    /// Ends following. `finish` saves the one HKWorkout and queues the link;
+    /// `discard` drops what HealthKit collected. Either way the iPhone has
+    /// the workout, and the watch returns to Home.
+    private func endFollower(_ end: FollowerEnd) {
+        guard let current = follower else { return }
+        follower = nil
+        followerTicker?.cancel()
+        followerTicker = nil
+        revision += 1
+        switch end {
+        case .finish(let sessionId):
+            let previous = endingTask
+            endingTask = Task { [weak self] in
+                await previous?.value
+                guard let self else { return }
+                self.recorder.adopt(workoutId: sessionId)
+                let uuid = await self.recorder.finish(at: Date())
+                if let uuid {
+                    self.queueLink(sessionId: sessionId, accountKey: current.accountKey, healthkitWorkoutUuid: uuid)
+                } else {
+                    // HealthKit denied or failed: no workout was saved, so nothing to link.
+                    try? self.journal?.clearFollower()
+                }
+            }
+        case .discard:
+            try? journal?.clearFollower()
+            recorder.discard()
+        }
+    }
+
+    /// Commits the `workout_link` (and drops the follower row) in the
+    /// journal, then sends it. It is resent until the phone acks it.
+    private func queueLink(sessionId: String, accountKey: String, healthkitWorkoutUuid: String) {
+        let message = WatchMessage(
+            messageId: UUID().uuidString.lowercased(), sentAtUtc: Self.liveTimestamp.string(from: Date()),
+            accountKey: accountKey, body: .workoutLink(workoutId: sessionId, healthkitWorkoutUuid: healthkitWorkoutUuid))
+        _ = try? journal?.queueWorkoutLink(message)
+        sendQueued()
+        revision += 1
+    }
+
+    private func startFollowerTicker() {
+        followerTicker?.cancel()
+        followerTicker = Task { [weak self] in
+            var beats = 0
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 5 * 1_000_000_000)
+                if Task.isCancelled { return }
+                guard let self else { return }
+                beats += 1
+                if beats % 6 == 0 { await self.recorder.retryMirroringIfNeeded() }
+                self.followerTick()
+            }
+        }
+    }
+
+    private func followerTick() {
+        guard let follower else { return }
+        let now = Date()
+        if follower.sessionId == nil, now.timeIntervalSince(followerJoinedAt) >= Self.followerConnectLimit {
+            // The iPhone never sent a state: leave, so no session runs for nothing.
+            endFollower(.discard(sessionId: ""))
+            return
+        }
+        if let end = follower.silenceEnd(now: now) {
+            endFollower(end)
+            return
+        }
+        // No state, or a stale one: the phone's end may have been missed. Ask
+        // again every 30 s; the phone answers with its state or, when the
+        // workout is over, an `ended` state.
+        if (follower.state == nil || follower.isStale(now: now)),
+            now.timeIntervalSince(followerLastJoinAt) >= Self.followerJoinEvery
+        {
+            sendFollowerJoin(sessionId: follower.sessionId)
+        }
+        for json in follower.dueResends(now: now) { liveLink.send(json: json) }
+        revision += 1
+    }
+
+    /// Builds one command with the follower and sends it. Shown as saved only
+    /// when the phone lists it as applied. False when there is nothing to send
+    /// (no follower, a stale view or an unknown set).
+    @discardableResult
+    func follow(_ make: (FollowerSession, Date) -> FollowerCommand?) -> Bool {
+        guard let follower, let command = make(follower, Date()) else { return false }
+        liveLink.send(json: command.json)
+        revision += 1
+        return true
+    }
+
+    func followerRetry(commandId: String) {
+        guard let follower, let json = follower.retry(commandId: commandId, now: Date()) else { return }
+        liveLink.send(json: json)
+        revision += 1
+    }
+
+    func followerDismiss(commandId: String) {
+        follower?.dismiss(commandId: commandId)
+        revision += 1
+    }
+
     // MARK: Workouts
 
     private var boundAccount: (accountKey: String, unit: String)? {
@@ -289,7 +539,7 @@ final class AppModel: ObservableObject {
     var inputUnit: String { boundAccount?.unit ?? "kg" }
 
     /// Starting needs an account binding (the phone signed in) and no workout running.
-    var canStart: Bool { boundAccount != nil && workout == nil }
+    var canStart: Bool { boundAccount != nil && workout == nil && follower == nil }
 
     /// A stable id for this watch install, written into every event.
     private var deviceId: String {
@@ -326,7 +576,7 @@ final class AppModel: ObservableObject {
     }
 
     func startWorkout(_ template: WorkoutTemplate) async {
-        guard let journal, let account = boundAccount, workout == nil, !isStarting else { return }
+        guard let journal, let account = boundAccount, workout == nil, follower == nil, !isStarting else { return }
         isStarting = true
         defer { isStarting = false }
         // A discard in progress still holds the previous HealthKit session.
@@ -433,6 +683,13 @@ final class AppModel: ObservableObject {
     /// queues every finished-but-unqueued workout of any account, then sends
     /// what waits. Restoring an active session of another account is not done.
     func restoreWorkout() async {
+        let task = restoreTask ?? Task { await self.performRestore() }
+        restoreTask = task
+        await task.value
+        restoreTask = nil
+    }
+
+    private func performRestore() async {
         guard let journal else { return }
         if let account = boundAccount, workout == nil,
             let restored = try? WorkoutController.restore(
@@ -442,6 +699,7 @@ final class AppModel: ObservableObject {
             workout = restored
             _ = await recorder.recover(workoutId: restored.workoutId)
         }
+        if workout == nil { await restoreFollower() }
         var unresolvedPendingFinish = boundAccount == nil
         for pending in (try? WorkoutController.pendingFinishAllAccounts(journal: journal)) ?? [] {
             var uuid: String?
@@ -456,7 +714,7 @@ final class AppModel: ObservableObject {
                     continue
                 case .notFound:
                     // Another running session owns the recovered HealthKit session.
-                    if workout != nil { continue }
+                    if workout != nil || follower != nil { continue }
                     // Only finished here, so the iPhone has nothing to follow.
                     if await recorder.recover(workoutId: workoutId, mirror: false) {
                         let end = try? WorkoutController.completedAt(sessionId: pending.sessionId, journal: journal)
@@ -471,7 +729,7 @@ final class AppModel: ObservableObject {
         // A HealthKit session no journal session explains (the app died after a
         // discard committed) would run for hours: end it.
         if OrphanSessionPolicy.shouldDiscard(
-            restoredSession: workout != nil, unresolvedPendingFinish: unresolvedPendingFinish)
+            restoredSession: workout != nil || follower != nil, unresolvedPendingFinish: unresolvedPendingFinish)
         {
             _ = await recorder.discardOrphanedSession()
         }
@@ -486,6 +744,11 @@ final class AppModel: ObservableObject {
         guard let journal, let account = boundAccount else { return }
         let outstanding = link?.outstandingIds() ?? []
         for message in (try? journal.pendingCompleted(limit: 20)) ?? []
+        where message.accountKey == account.accountKey && !outstanding.contains(message.messageId.lowercased()) {
+            link?.send(completed: message)
+        }
+        // A link is resent until the phone acks it (the ack removes it).
+        for message in (try? journal.pendingLinks(limit: 20)) ?? []
         where message.accountKey == account.accountKey && !outstanding.contains(message.messageId.lowercased()) {
             link?.send(completed: message)
         }

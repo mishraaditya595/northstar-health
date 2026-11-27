@@ -35,6 +35,11 @@ public enum WatchMessageBody {
     case sessionCommand(SessionCommand)
     case completedWorkout(workoutId: String, lastSequence: Int, healthkitWorkoutUuid: String?, raw: [String: Any])
     case ack(ackedMessageId: String, result: String, reason: String?)
+    /// The watch's receipt for the one `HKWorkout` it saved for a phone workout.
+    case workoutLink(workoutId: String, healthkitWorkoutUuid: String)
+    /// A follower is attached; `sessionId` is nil while the watch does not know
+    /// the phone's session yet.
+    case join(sessionId: String?)
 }
 
 /// One `watch_link/v1` message.
@@ -62,12 +67,15 @@ public struct WatchMessage {
         case .sessionCommand: return "session_command"
         case .completedWorkout: return "completed_workout"
         case .ack: return "ack"
+        case .workoutLink: return "workout_link"
+        case .join: return "join"
         }
     }
 
     private static let types: Set<String> = [
         "account_binding", "account_cleared", "plans_snapshot", "health_snapshot",
         "workout_event", "session_state", "session_command", "completed_workout", "ack",
+        "workout_link", "join",
     ]
 
     public init(json data: Data) throws {
@@ -279,6 +287,13 @@ public struct WatchMessage {
             }
             self.body = .completedWorkout(
                 workoutId: workoutId, lastSequence: lastSequence, healthkitWorkoutUuid: healthkitUuid, raw: b.dict)
+        case "workout_link":
+            let b = try body(["workout_id", "healthkit_workout_uuid"])
+            self.body = .workoutLink(
+                workoutId: try b.uuid("workout_id"), healthkitWorkoutUuid: try b.uuid("healthkit_workout_uuid"))
+        case "join":
+            let b = try body([], ["session_id"])
+            self.body = .join(sessionId: try b.has("session_id") ? b.uuid("session_id") : nil)
         default:
             let b = try body(["acked_message_id", "result"], ["reason"])
             let acked = try b.uuid("acked_message_id")
@@ -326,6 +341,9 @@ public struct WatchMessage {
             if let seconds = c.restSeconds { out["rest_seconds"] = seconds }
             if let exerciseId = c.exerciseId { out["exercise_id"] = exerciseId }
             return out
+        case .workoutLink(let workoutId, let hkUuid):
+            return ["workout_id": workoutId, "healthkit_workout_uuid": hkUuid]
+        case .join(let sessionId): return sessionId.map { ["session_id": $0] } ?? [:]
         case .ack(let id, let result, let reason):
             var out: [String: Any] = ["acked_message_id": id, "result": result]
             if let reason { out["reason"] = reason }

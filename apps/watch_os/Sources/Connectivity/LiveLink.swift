@@ -25,6 +25,16 @@ final class LiveLink {
     /// the mirrored send failed. A state nobody could take is dropped.
     func send(_ message: WatchMessage) {
         guard let data = try? message.jsonData() else { return }
+        send(data: data)
+    }
+
+    /// Sends a message already encoded (a follower command that is resent
+    /// byte for byte, so its command id never changes).
+    func send(json: String) {
+        send(data: Data(json.utf8))
+    }
+
+    private func send(data: Data) {
         let json = String(decoding: data, as: UTF8.self)
         guard recorder.isMirroring else {
             _ = phone()?.sendLive(json: json)

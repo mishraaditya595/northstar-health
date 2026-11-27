@@ -180,19 +180,20 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
             ),
           ],
         ),
-        if (session.origin == WorkoutOrigin.watch)
-          ..._appleHealthSection(
-            theme,
-            ref
-                .watch(
-                  ownWorkoutHealthProvider((
-                    workoutUuid: session.uuid,
-                    start: session.startedAtUtc,
-                    end: finished,
-                  )),
-                )
-                .value,
-          ),
+        // Any workout with a receipt holds an HKWorkout the watch saved: its
+        // own, or the one it saved while following this phone workout.
+        ..._appleHealthSection(
+          theme,
+          ref
+              .watch(
+                ownWorkoutHealthProvider((
+                  workoutUuid: session.uuid,
+                  start: session.startedAtUtc,
+                  end: finished,
+                )),
+              )
+              .value,
+        ),
         const SizedBox(height: 24),
         SectionHeading(
           '${session.exercises.length} '

@@ -31,7 +31,9 @@
         "session_state",
         "session_command",
         "completed_workout",
-        "ack"
+        "ack",
+        "workout_link",
+        "join"
       ]
     },
     "sent_at_utc": {
@@ -214,6 +216,44 @@
         "properties": {
           "body": {
             "$ref": "#/$defs/body_ack"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "workout_link"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "$ref": "#/$defs/body_workout_link"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "join"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "$ref": "#/$defs/body_join"
           }
         }
       }
@@ -1360,6 +1400,34 @@
           }
         }
       ]
+    },
+    "body_workout_link": {
+      "type": "object",
+      "required": [
+        "workout_id",
+        "healthkit_workout_uuid"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "workout_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "healthkit_workout_uuid": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "body_join": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
     }
   }
 }
