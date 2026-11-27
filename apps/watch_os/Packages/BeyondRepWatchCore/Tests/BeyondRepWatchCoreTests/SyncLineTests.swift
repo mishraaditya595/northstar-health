@@ -74,4 +74,32 @@ final class SyncLineTests: XCTestCase {
         try journal.clearAccount(M.keyA, wipeUnsent: false)
         XCTAssertEqual(try line(reachable: true), .notPaired)
     }
+
+    // MARK: Waiting workouts
+
+    private func queue(key: String, session: String) throws {
+        let base = try WatchMessage(
+            json: FixtureLoader.json("contracts/watch_link/v1/fixtures/valid/completed_workout.json"))
+        let message = WatchMessage(messageId: M.id(), sentAtUtc: base.sentAtUtc, accountKey: key, body: base.body)
+        try journal.queueCompleted(message, sessionId: session)
+    }
+
+    func testSyncLineCountsWaitingWorkouts() throws {
+        try journal.saveBinding(M.binding(M.keyA))
+        XCTAssertEqual(try WaitingWorkouts.make(journal: journal), WaitingWorkouts(waiting: 0, waitingOtherAccount: 0))
+        XCTAssertTrue(try WaitingWorkouts.make(journal: journal).lines.isEmpty)
+        try queue(key: M.keyA, session: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1")
+        XCTAssertEqual(try WaitingWorkouts.make(journal: journal).lines, ["1 workout waiting for iPhone"])
+        try queue(key: M.keyA, session: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2")
+        XCTAssertEqual(try WaitingWorkouts.make(journal: journal).lines, ["2 workouts waiting for iPhone"])
+    }
+
+    func testSyncLineShowsOtherAccountWaiting() throws {
+        try journal.saveBinding(M.binding(M.keyA))
+        try queue(key: M.keyB, session: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb3")
+        let waiting = try WaitingWorkouts.make(journal: journal)
+        XCTAssertEqual(waiting.waiting, 0)
+        XCTAssertEqual(waiting.waitingOtherAccount, 1)
+        XCTAssertEqual(waiting.lines, ["1 from another account waiting"])
+    }
 }

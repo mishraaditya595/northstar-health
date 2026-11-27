@@ -246,6 +246,15 @@ public final class WatchJournal {
         }
     }
 
+    /// The account key of a queued completed workout, nil when it is not queued.
+    public func queuedCompletedAccountKey(messageId: String) throws -> String? {
+        let rows = try db.query(
+            "SELECT account_key FROM outbox WHERE message_id = ? AND type = 'completed_workout'",
+            [.text(messageId.lowercased())])
+        guard case .text(let key)? = rows.first?.first else { return nil }
+        return key
+    }
+
     /// Sessions of `accountKey` that were completed but whose workout was never
     /// queued (the app stopped between the two steps of finishing).
     public func sessionsAwaitingQueue(accountKey: String) throws -> [String] {

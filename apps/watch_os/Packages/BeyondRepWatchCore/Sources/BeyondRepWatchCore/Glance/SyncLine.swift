@@ -42,3 +42,28 @@ public enum SyncLine: Equatable {
         return formatter.string(from: date)
     }
 }
+
+/// Completed workouts still on the watch because the phone has not
+/// acknowledged them, counted separately for the bound account and others.
+public struct WaitingWorkouts: Equatable {
+    public let waiting: Int
+    public let waitingOtherAccount: Int
+
+    public init(waiting: Int, waitingOtherAccount: Int) {
+        self.waiting = waiting
+        self.waitingOtherAccount = waitingOtherAccount
+    }
+
+    public static func make(journal: WatchJournal) throws -> WaitingWorkouts {
+        let counts = try journal.waitingCounts(boundKey: try journal.binding()?.accountKey)
+        return WaitingWorkouts(waiting: counts.thisAccount, waitingOtherAccount: counts.otherAccounts)
+    }
+
+    /// Status lines for the sync screen; empty when nothing waits.
+    public var lines: [String] {
+        var out: [String] = []
+        if waiting > 0 { out.append(waiting == 1 ? "1 workout waiting for iPhone" : "\(waiting) workouts waiting for iPhone") }
+        if waitingOtherAccount > 0 { out.append("\(waitingOtherAccount) from another account waiting") }
+        return out
+    }
+}

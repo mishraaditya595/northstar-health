@@ -256,4 +256,62 @@ final class PhoneInboxTests: XCTestCase {
         XCTAssertEqual(outcomes.map(\.result), ["duplicate", "duplicate", "duplicate"])
         XCTAssertEqual(try journal.lastReceivedMs(), 1_792_731_600_000)
     }
+
+    // MARK: Acks for completed workouts
+
+    private let ackSession = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+
+    private func queuedCompleted(key: String = M.keyA) throws -> WatchMessage {
+        let base = try WatchMessage(
+            json: FixtureLoader.json("contracts/watch_link/v1/fixtures/valid/completed_workout.json"))
+        let message = WatchMessage(messageId: M.id(), sentAtUtc: base.sentAtUtc, accountKey: key, body: base.body)
+        try journal.queueCompleted(message, sessionId: ackSession)
+        return message
+    }
+
+    private func ack(_ message: WatchMessage, result: String, key: String? = nil) throws -> [String: Any] {
+        let reason: String? = result == "rejected" ? "invalid" : nil
+        let ack = WatchMessage(
+            messageId: M.id(), sentAtUtc: "2026-10-23T11:41:00Z", accountKey: key ?? message.accountKey,
+            body: .ack(ackedMessageId: message.messageId, result: result, reason: reason))
+        return ["json": try M.json(ack)]
+    }
+
+    func testStoredAckMarksDelivered() throws {
+        let queued = try queuedCompleted()
+        try inbox.receive(userInfo: ack(queued, result: "stored"))
+        XCTAssertTrue(try journal.pendingCompleted(limit: 10).isEmpty)
+        XCTAssertEqual(inbox.lastAckEffects, [.delivered(sessionId: ackSession)])
+    }
+
+    func testRejectedAckMarksRejected() throws {
+        let queued = try queuedCompleted()
+        try inbox.receive(userInfo: ack(queued, result: "rejected"))
+        XCTAssertTrue(try journal.pendingCompleted(limit: 10).isEmpty)
+        XCTAssertEqual(inbox.lastAckEffects, [.rejected(sessionId: ackSession)])
+    }
+
+    func testAckWithOtherAccountKeyIsIgnored() throws {
+        let queued = try queuedCompleted()
+        try inbox.receive(userInfo: ack(queued, result: "stored", key: M.keyB))
+        XCTAssertEqual(try journal.pendingCompleted(limit: 10).count, 1)
+        XCTAssertTrue(inbox.lastAckEffects.isEmpty)
+        XCTAssertEqual(inbox.ignoredCount, 1)
+    }
+
+    func testAckProducesNoOutcome() throws {
+        let queued = try queuedCompleted()
+        let outcomes = try inbox.receive(userInfo: ack(queued, result: "stored"))
+        XCTAssertTrue(outcomes.isEmpty)
+        XCTAssertEqual(inbox.rejectedCount, 0)
+    }
+
+    func testAckForUnknownMessageChangesNothingAndThrowsNothing() throws {
+        let unknown = WatchMessage(
+            messageId: M.id(), sentAtUtc: "2026-10-23T11:41:00Z", accountKey: M.keyA,
+            body: .completedWorkout(workoutId: "x", lastSequence: 0, healthkitWorkoutUuid: nil, raw: [:]))
+        let outcomes = try inbox.receive(userInfo: ack(unknown, result: "stored"))
+        XCTAssertTrue(outcomes.isEmpty)
+        XCTAssertTrue(inbox.lastAckEffects.isEmpty)
+    }
 }

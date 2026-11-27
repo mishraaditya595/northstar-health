@@ -11,6 +11,8 @@ public final class PhoneInbox {
     /// Well-formed entries that were not applied because a newer binding or a
     /// later clear for the account is already stored (for tests).
     public private(set) var ignoredCount = 0
+    /// One entry per applied `ack` for a completed workout, so the app can refresh.
+    public private(set) var lastAckEffects: [AckEffect] = []
 
     public init(journal: WatchJournal) {
         self.journal = journal
@@ -130,6 +132,20 @@ public final class PhoneInbox {
             try journal.saveHealth(message)
             try received()
             return outcome("stored")
+        case .ack(let ackedMessageId, let result, _):
+            // An ack is never acked. It counts only when its account is the
+            // one the queued workout was recorded under.
+            guard let queuedKey = try journal.queuedCompletedAccountKey(messageId: ackedMessageId) else {
+                return nil  // already applied, or never queued: nothing changes
+            }
+            guard queuedKey == message.accountKey else {
+                ignoredCount += 1
+                return nil
+            }
+            if let effect = try journal.applyAck(ackedMessageId: ackedMessageId, result: result) {
+                lastAckEffects.append(effect)
+            }
+            return nil
         default:
             rejectedCount += 1  // watch-bound types are not phone-to-watch glance data yet
             return nil
