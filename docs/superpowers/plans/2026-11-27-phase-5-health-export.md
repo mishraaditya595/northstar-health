@@ -53,14 +53,14 @@
   - `class ObjectBoxHealthExportRepository implements HealthExportRepository` taking `Store`.
   - `final healthExportRepositoryProvider = Provider<HealthExportRepository>((ref) => ObjectBoxHealthExportRepository(ref.watch(objectBoxStoreProvider)));`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `enable then isEnabled is true; disable removes the row; enable twice keeps one row`.
   - `putReceipt upserts by workoutUuid (second put with same uuid replaces, one row)`; `removeReceipt deletes`; `receipt returns null for unknown`; workout uuid stored lowercase (`putReceipt` with `'AB…'` → `receipt('ab…')` finds it).
   - Migration: open a store with `legacy.getObjectBoxModel()` from the new fixture, put one `WorkoutSessionEntity`, close; open with `getObjectBoxModel()`; the session is there, both new boxes are empty and accept a row.
-- [ ] **Step 2: Run** `flutter test test/health/health_export_repository_test.dart test/health/objectbox_health_export_migration_test.dart` — expected FAIL (missing files).
-- [ ] **Step 3: Create the fixture first** (copy `lib/objectbox.g.dart` to the fixture path, rename as the existing pre-* fixtures do), then add the entities and the repository, then run `dart run build_runner build --delete-conflicting-outputs`.
-- [ ] **Step 4: Run the two test files** — expected PASS. Also run `flutter test test/watch/objectbox_watch_receipt_migration_test.dart` (older migrations still open).
-- [ ] **Step 5: Commit** `feat(health): add health export setting and receipt entities`.
+- [x] **Step 2: Run** `flutter test test/health/health_export_repository_test.dart test/health/objectbox_health_export_migration_test.dart` — expected FAIL (missing files).
+- [x] **Step 3: Create the fixture first** (copy `lib/objectbox.g.dart` to the fixture path, rename as the existing pre-* fixtures do), then add the entities and the repository, then run `dart run build_runner build --delete-conflicting-outputs`.
+- [x] **Step 4: Run the two test files** — expected PASS. Also run `flutter test test/watch/objectbox_watch_receipt_migration_test.dart` (older migrations still open).
+- [x] **Step 5: Commit** `feat(health): add health export setting and receipt entities`.
 
 ### Task 2: Pure export planner
 
