@@ -90,8 +90,9 @@ const _ownAppId = 'in.beyondrep.app';
 bool _isOwnSource(String source) =>
     source == _ownAppId || source.startsWith('$_ownAppId.');
 
-/// [HealthWorkoutWriter] over the `health` plugin. Never logs record ids,
-/// times or exception text.
+/// [HealthWorkoutWriter] over the `health` plugin. BeyondRep's own code logs
+/// no record ids, times or exception text; the plugin itself prints record
+/// ids (no health values) to the device log.
 class PlatformHealthWorkoutWriter implements HealthWorkoutWriter {
   PlatformHealthWorkoutWriter(this._health, {bool? isIos})
     : isIos = isIos ?? defaultTargetPlatform == TargetPlatform.iOS;
@@ -192,11 +193,11 @@ class PlatformHealthWorkoutWriter implements HealthWorkoutWriter {
         endZoneOffset: isIos ? null : offset,
       );
       final returned = (id == null || id == 'null') ? '' : id;
-      if (returned.isNotEmpty) return HealthWriteOk(returned);
-      // Health Connect upserts by client record id: no error means written.
-      return isIos
-          ? const HealthWriteFailed()
-          : HealthWriteOk(record.workoutUuid);
+      // The plugin turns every native failure into an empty result (Android
+      // catches all exceptions), so only a non-empty record id is a success.
+      return returned.isNotEmpty
+          ? HealthWriteOk(returned)
+          : const HealthWriteFailed();
     } catch (e) {
       return _failure(e);
     }
@@ -209,22 +210,26 @@ class PlatformHealthWorkoutWriter implements HealthWorkoutWriter {
   ) async {
     try {
       await _configure();
+      final bool deleted;
       if (isIos) {
         if (platformRecordId == null || platformRecordId.isEmpty) {
           return const HealthWriteOk('');
         }
-        await _health.deleteByUUID(
+        deleted = await _health.deleteByUUID(
           uuid: platformRecordId,
           type: HealthDataType.WORKOUT,
         );
       } else {
-        await _health.deleteByClientRecordId(
+        deleted = await _health.deleteByClientRecordId(
           dataTypeKey: HealthDataType.WORKOUT,
           clientRecordId: workoutUuid,
         );
       }
-      // A false result means the record was already gone; errors throw.
-      return HealthWriteOk(platformRecordId ?? '');
+      // false is a failed delete (Android) or a failed or not-found delete
+      // (iOS); the caller checks the store before treating it as gone.
+      return deleted
+          ? HealthWriteOk(platformRecordId ?? '')
+          : const HealthWriteFailed();
     } catch (e) {
       return _failure(e);
     }

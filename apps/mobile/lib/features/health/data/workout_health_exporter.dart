@@ -83,6 +83,10 @@ class WorkoutHealthExporter {
     return result;
   }
 
+  /// True while this pass may still call the platform: the account is still
+  /// signed in and the switch is still on.
+  bool _go() => stillCurrent() && repository.isEnabled(accountId);
+
   /// Counts from the stored workouts and receipts; no platform call.
   ExportPassResult summary() => _summary(_candidates(), _watchLinked());
 
@@ -152,15 +156,24 @@ class WorkoutHealthExporter {
       }
     }
 
+    final byUuid = {for (final c in candidates) c.uuid: c};
     for (final action in actions) {
-      if (!stillCurrent()) break;
+      if (!_go()) break;
       switch (action) {
         case WriteWorkout():
           await _write(action, receipts[action.candidate.uuid]);
         case DeleteOwnCopy():
-          await _delete(action, receipts[action.workoutUuid]);
+          await _delete(
+            action,
+            receipts[action.workoutUuid],
+            byUuid[action.workoutUuid],
+          );
         case SupersedeByWatch():
-          await _supersede(action, receipts[action.workoutUuid]);
+          await _supersede(
+            action,
+            receipts[action.workoutUuid],
+            byUuid[action.workoutUuid],
+          );
         case LookupDeletedCopy():
           await _lookupDeleted(action.candidate);
       }
@@ -246,6 +259,7 @@ class WorkoutHealthExporter {
     // First write of this workout on iOS: look for the watch's entry and for
     // our own copy from an earlier crash or another iPhone on the Apple ID.
     if (writer.isIos && (prior?.exportedVersion ?? 0) == 0) {
+      if (!_go()) return;
       final found = await writer.beyondRepWorkoutsIn(
         c.startedAt.subtract(const Duration(minutes: 1)),
         end.add(const Duration(minutes: 1)),
@@ -292,7 +306,7 @@ class WorkoutHealthExporter {
         attempted: true,
       ),
     );
-    if (!stillCurrent()) return;
+    if (!_go()) return;
     final result = await writer.write(
       HealthWorkoutRecord(
         workoutUuid: c.uuid,
@@ -330,55 +344,112 @@ class WorkoutHealthExporter {
   bool _sameSecond(DateTime a, DateTime b) =>
       a.millisecondsSinceEpoch ~/ 1000 == b.millisecondsSinceEpoch ~/ 1000;
 
+  /// Own copies of [c] in the store (exact start and end, own source, not the
+  /// watch's); null when the read failed.
+  Future<List<OwnStoredWorkout>?> _ownCopies(ExportCandidate c) async {
+    if (!_go()) return null;
+    final end = c.completedAt!;
+    final found = await writer.beyondRepWorkoutsIn(
+      c.startedAt.subtract(const Duration(minutes: 1)),
+      end.add(const Duration(minutes: 1)),
+    );
+    if (found == null) return null;
+    return [
+      for (final w in found)
+        if (w.sourceId == _ownAppId &&
+            _sameSecond(w.start, c.startedAt) &&
+            _sameSecond(w.end, end))
+          w,
+    ];
+  }
+
+  /// Removes our copy of [c]. Without a record id on iOS it looks the copy up
+  /// first. The plugin returns false for a failed delete and, on iOS, for a
+  /// record that is not there: after a false the store is read again and a
+  /// missing copy counts as gone. A failed read is a failure.
+  Future<HealthWriteResult> _removeCopy(
+    ExportCandidate c,
+    String? recordId,
+  ) async {
+    if (writer.isIos && (recordId == null || recordId.isEmpty)) {
+      final own = await _ownCopies(c);
+      if (own == null) return const HealthWriteFailed();
+      for (final w in own) {
+        final r = await _deleteOne(c, w.platformRecordId);
+        if (r is! HealthWriteOk) return r;
+      }
+      return const HealthWriteOk('');
+    }
+    return _deleteOne(c, recordId);
+  }
+
+  Future<HealthWriteResult> _deleteOne(
+    ExportCandidate c,
+    String? recordId,
+  ) async {
+    if (!_go()) return const HealthWriteFailed();
+    final result = await writer.delete(c.uuid, recordId);
+    if (result is! HealthWriteFailed || !writer.isIos) return result;
+    final own = await _ownCopies(c);
+    if (own == null) return result;
+    return own.any((w) => w.platformRecordId == recordId)
+        ? result
+        : const HealthWriteOk('');
+  }
+
   Future<void> _delete(
     DeleteOwnCopy action,
     HealthExportReceiptEntity? prior,
+    ExportCandidate? c,
   ) async {
-    if (prior == null) return;
-    repository.putReceipt(
-      _receipt(action.workoutUuid, HealthExportState.deleting, prior: prior),
-    );
-    if (!stillCurrent()) return;
-    final result = await writer.delete(
+    if (prior == null || c == null) return;
+    final retrying = prior.state == HealthExportState.deleting.wire;
+    final deleting = _receipt(
       action.workoutUuid,
-      action.platformRecordId,
+      HealthExportState.deleting,
+      prior: prior,
+      attempts: retrying ? prior.attempts : 0,
     );
+    repository.putReceipt(deleting);
+    final result = await _removeCopy(c, action.platformRecordId);
     if (!stillCurrent()) return;
-    switch (result) {
-      case HealthWriteOk():
-        repository.removeReceipt(action.workoutUuid);
-      case HealthWriteDenied():
-        repository.putReceipt(
-          _receipt(
-            action.workoutUuid,
-            HealthExportState.blocked,
-            prior: repository.receipt(action.workoutUuid),
-          ),
-        );
-      case HealthWriteFailed() || HealthWriteUnavailable():
-        break;
-    }
+    repository.putReceipt(switch (result) {
+      HealthWriteOk() => _receipt(
+        action.workoutUuid,
+        HealthExportState.deleted,
+        prior: deleting,
+      ),
+      HealthWriteDenied() => _receipt(
+        action.workoutUuid,
+        HealthExportState.blocked,
+        prior: deleting,
+      ),
+      // Stays deleting; the planner retries it with the write backoff.
+      HealthWriteFailed() || HealthWriteUnavailable() => _receipt(
+        action.workoutUuid,
+        HealthExportState.deleting,
+        prior: deleting,
+        attempts: deleting.attempts + 1,
+        attempted: true,
+      ),
+    });
   }
 
   Future<void> _supersede(
     SupersedeByWatch action,
     HealthExportReceiptEntity? prior,
+    ExportCandidate? c,
   ) async {
-    if (prior == null) return;
-    if (action.platformRecordId != null || !writer.isIos) {
-      final result = await writer.delete(
-        action.workoutUuid,
-        action.platformRecordId,
+    if (prior == null || c == null) return;
+    final result = await _removeCopy(c, action.platformRecordId);
+    if (!stillCurrent()) return;
+    if (result is HealthWriteDenied) {
+      repository.putReceipt(
+        _receipt(action.workoutUuid, HealthExportState.blocked, prior: prior),
       );
-      if (!stillCurrent()) return;
-      if (result is HealthWriteDenied) {
-        repository.putReceipt(
-          _receipt(action.workoutUuid, HealthExportState.blocked, prior: prior),
-        );
-        return;
-      }
-      if (result is! HealthWriteOk) return;
+      return;
     }
+    if (result is! HealthWriteOk) return;
     repository.putReceipt(
       _receipt(
         action.workoutUuid,
@@ -389,20 +460,9 @@ class WorkoutHealthExporter {
   }
 
   Future<void> _lookupDeleted(ExportCandidate c) async {
-    final end = c.completedAt!;
-    final found = await writer.beyondRepWorkoutsIn(
-      c.startedAt.subtract(const Duration(minutes: 1)),
-      end.add(const Duration(minutes: 1)),
-    );
-    if (!stillCurrent() || found == null) return;
-    for (final w in found) {
-      if (w.sourceId == _ownAppId &&
-          _sameSecond(w.start, c.startedAt) &&
-          _sameSecond(w.end, end)) {
-        await writer.delete(c.uuid, w.platformRecordId);
-        return;
-      }
-    }
+    final result = await _removeCopy(c, null);
+    if (!stillCurrent() || result is! HealthWriteOk) return;
+    repository.putReceipt(_receipt(c.uuid, HealthExportState.deleted));
   }
 }
 

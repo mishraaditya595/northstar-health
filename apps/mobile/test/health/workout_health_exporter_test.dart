@@ -265,7 +265,7 @@ void main() {
     expect(writer.deletes, hasLength(1));
   });
 
-  test('deleting a confirmed workout deletes the platform copy and removes the receipt', () async {
+  test('deleting a confirmed workout deletes the platform copy and keeps a deleted receipt', () async {
     final s = session(1);
     await exporter().runPass();
     store.box<WorkoutSessionEntity>().put(
@@ -273,7 +273,7 @@ void main() {
     );
     await exporter().runPass();
     expect(writer.deletes.single.platformRecordId, 'hk-0');
-    expect(receipt(1), isNull);
+    expect(receipt(1)!.state, 'deleted');
     expect(writer.store, isEmpty);
   });
 
@@ -289,10 +289,76 @@ void main() {
     expect(result.blocked, isTrue);
     writer.deleteResult = const HealthWriteOk('');
     await exporter().runPass();
-    expect(receipt(1), isNull);
+    expect(receipt(1)!.state, 'deleted');
   });
 
-  test('a delete that fails otherwise stays deleting and is retried', () async {
+  test(
+    'a delete that fails stays deleting, backs off and is retried',
+    () async {
+      final s = session(1);
+      await exporter().runPass();
+      store.box<WorkoutSessionEntity>().put(
+        s..deletedAtMs = _now.millisecondsSinceEpoch,
+      );
+      writer.deleteResult = const HealthWriteFailed();
+      await exporter().runPass();
+      expect(receipt(1)!.state, 'deleting');
+      expect(receipt(1)!.attempts, 1);
+      expect(writer.deletes, hasLength(1));
+      now = _now.add(const Duration(seconds: 30));
+      await exporter().runPass();
+      expect(writer.deletes, hasLength(1), reason: 'inside the backoff');
+      writer.deleteResult = const HealthWriteOk('');
+      now = _now.add(const Duration(minutes: 2));
+      await exporter().runPass();
+      expect(writer.deletes, hasLength(2));
+      expect(receipt(1)!.state, 'deleted');
+    },
+  );
+
+  test(
+    'iOS: a failed delete of a copy that is no longer there counts as gone',
+    () async {
+      final s = session(1);
+      await exporter().runPass();
+      writer.store.clear();
+      store.box<WorkoutSessionEntity>().put(
+        s..deletedAtMs = _now.millisecondsSinceEpoch,
+      );
+      writer.deleteResult = const HealthWriteFailed();
+      await exporter().runPass();
+      expect(receipt(1)!.state, 'deleted');
+    },
+  );
+
+  test(
+    'iOS: a failed delete with the copy still there stays deleting',
+    () async {
+      final s = session(1);
+      await exporter().runPass();
+      store.box<WorkoutSessionEntity>().put(
+        s..deletedAtMs = _now.millisecondsSinceEpoch,
+      );
+      writer.deleteResult = const HealthWriteFailed();
+      await exporter().runPass();
+      expect(receipt(1)!.state, 'deleting');
+    },
+  );
+
+  test('iOS: a failed delete whose lookup read fails stays deleting', () async {
+    final s = session(1);
+    await exporter().runPass();
+    store.box<WorkoutSessionEntity>().put(
+      s..deletedAtMs = _now.millisecondsSinceEpoch,
+    );
+    writer.deleteResult = const HealthWriteFailed();
+    writer.readFails = true;
+    await exporter().runPass();
+    expect(receipt(1)!.state, 'deleting');
+  });
+
+  test('Android: a failed delete stays deleting', () async {
+    writer = FakeHealthWorkoutWriter(isIos: false);
     final s = session(1);
     await exporter().runPass();
     store.box<WorkoutSessionEntity>().put(
@@ -301,9 +367,69 @@ void main() {
     writer.deleteResult = const HealthWriteFailed();
     await exporter().runPass();
     expect(receipt(1)!.state, 'deleting');
-    writer.deleteResult = const HealthWriteOk('');
+    expect(writer.lookups, isEmpty);
+  });
+
+  test(
+    'supersede with no platform id on iOS deletes our exact copy first',
+    () async {
+      final s = session(1);
+      putReceipt(1, HealthExportState.writing, attempts: 1);
+      writer.store.add(
+        OwnStoredWorkout(
+          platformRecordId: 'hk-orphan',
+          sourceId: 'in.beyondrep.app',
+          start: DateTime.fromMillisecondsSinceEpoch(
+            s.startedAtMs,
+            isUtc: true,
+          ),
+          end: DateTime.fromMillisecondsSinceEpoch(
+            s.completedAtMs!,
+            isUtc: true,
+          ),
+        ),
+      );
+      store.box<WatchWorkoutReceiptEntity>().put(
+        WatchWorkoutReceiptEntity(
+          workoutUuid: _uuid(1),
+          messageId: 'm1',
+          platformWorkoutUuid: 'watch-hk',
+          receivedAtMs: 1,
+        ),
+      );
+      await exporter().runPass();
+      expect(writer.deletes.single.platformRecordId, 'hk-orphan');
+      expect(receipt(1)!.state, 'supersededByWatch');
+    },
+  );
+
+  test('supersede with no platform id and no copy marks superseded; a failed lookup retries', () async {
+    session(1);
+    putReceipt(1, HealthExportState.writing, attempts: 1);
+    store.box<WatchWorkoutReceiptEntity>().put(
+      WatchWorkoutReceiptEntity(
+        workoutUuid: _uuid(1),
+        messageId: 'm1',
+        platformWorkoutUuid: 'watch-hk',
+        receivedAtMs: 1,
+      ),
+    );
+    writer.readFails = true;
     await exporter().runPass();
-    expect(receipt(1), isNull);
+    expect(receipt(1)!.state, 'writing');
+    writer.readFails = false;
+    await exporter().runPass();
+    expect(writer.deletes, isEmpty);
+    expect(receipt(1)!.state, 'supersededByWatch');
+  });
+
+  test('turning the switch off stops a running backfill', () async {
+    session(1, finishedAgo: const Duration(days: 2));
+    session(2, finishedAgo: const Duration(days: 1));
+    writer.onWrite = () => repo.disable(_account);
+    await exporter().runPass();
+    expect(writer.writes, hasLength(1));
+    expect(receipt(2), isNull);
   });
 
   test('iOS restored tombstone with an own copy deletes it', () async {
@@ -318,8 +444,30 @@ void main() {
     );
     await exporter().runPass();
     expect(writer.deletes.single.platformRecordId, 'hk-other-phone');
-    expect(repo.allReceipts(), isEmpty);
+    expect(receipt(1)!.state, 'deleted');
     expect(writer.writes, isEmpty);
+    final lookups = writer.lookups.length;
+    await exporter().runPass();
+    expect(writer.lookups, hasLength(lookups));
+  });
+
+  test('iOS tombstone with no copy is looked up once, then a deleted receipt stands', () async {
+    session(1, deleted: true);
+    await exporter().runPass();
+    expect(writer.lookups, hasLength(1));
+    expect(receipt(1)!.state, 'deleted');
+    await exporter().runPass();
+    expect(writer.lookups, hasLength(1));
+  });
+
+  test('iOS tombstone whose lookup read fails is retried next pass', () async {
+    session(1, deleted: true);
+    writer.readFails = true;
+    await exporter().runPass();
+    expect(receipt(1), isNull);
+    writer.readFails = false;
+    await exporter().runPass();
+    expect(receipt(1)!.state, 'deleted');
   });
 
   test('failure marks failedRetryable and the next pass within the backoff writes nothing', () async {

@@ -214,15 +214,25 @@ void main() {
     }
   });
 
-  test(
-    'an empty result is a failure on iOS and the client id on Android',
-    () async {
-      health.writeResult = '';
+  test('an empty or null result is a failure on both platforms', () async {
+    for (final empty in ['', null, 'null']) {
+      health.writeResult = empty;
       expect(await ios().write(_record()), isA<HealthWriteFailed>());
-      final ok = await android().write(_record());
+      expect(await android().write(_record()), isA<HealthWriteFailed>());
+    }
+  });
+
+  test(
+    'a non-empty result is the platform record id on both platforms',
+    () async {
+      health.writeResult = 'record-1';
       expect(
-        (ok as HealthWriteOk).platformRecordId,
-        'abcdef00-0000-4000-8000-000000000001',
+        ((await ios().write(_record())) as HealthWriteOk).platformRecordId,
+        'record-1',
+      );
+      expect(
+        ((await android().write(_record())) as HealthWriteOk).platformRecordId,
+        'record-1',
       );
     },
   );
@@ -256,9 +266,10 @@ void main() {
     ));
   });
 
-  test('a record that is already gone counts as deleted; errors map', () async {
+  test('a delete that returns false is a failure; errors map', () async {
     health.deleteResult = false;
-    expect(await ios().delete('wk', 'hk-1'), isA<HealthWriteOk>());
+    expect(await ios().delete('wk', 'hk-1'), isA<HealthWriteFailed>());
+    expect(await android().delete('wk', 'wk'), isA<HealthWriteFailed>());
     health.deleteError = HealthException(
       HealthDataType.WORKOUT,
       'x',

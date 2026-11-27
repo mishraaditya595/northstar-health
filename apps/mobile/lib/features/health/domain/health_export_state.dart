@@ -7,7 +7,11 @@ enum HealthExportState {
   blocked,
   skippedWatch,
   supersededByWatch,
-  deleting;
+  deleting,
+
+  /// The copy is gone (deleted, or none was ever there) for a deleted or
+  /// watch-linked workout; a final row so no later pass looks again.
+  deleted;
 
   String get wire => name;
 

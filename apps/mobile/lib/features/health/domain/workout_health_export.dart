@@ -113,12 +113,13 @@ List<ExportAction> planHealthExport({
     }
     final receipt = receipts[w.uuid];
     final state = receipt?.state;
-    // Any receipt other than the two final skip states may stand for a copy
-    // in the health store (a failed or blocked rewrite keeps the earlier one).
+    // Any receipt other than the final states may stand for a copy in the
+    // health store (a failed or blocked rewrite keeps the earlier one).
     final mayHaveCopy =
         receipt != null &&
         state != HealthExportState.skippedWatch &&
-        state != HealthExportState.supersededByWatch;
+        state != HealthExportState.supersededByWatch &&
+        state != HealthExportState.deleted;
 
     if (watchLinkedWorkoutUuids.contains(w.uuid)) {
       if (mayHaveCopy) {
@@ -128,6 +129,12 @@ List<ExportAction> planHealthExport({
     }
     if (w.deleted) {
       if (mayHaveCopy) {
+        if (state == HealthExportState.deleting &&
+            receipt.attempts > 0 &&
+            now.difference(receipt.lastAttemptAt) <
+                _backoff(receipt.attempts)) {
+          continue;
+        }
         removals.add(DeleteOwnCopy(w.uuid, receipt.platformRecordId));
       } else if (receipt == null && isIos) {
         removals.add(LookupDeletedCopy(w));

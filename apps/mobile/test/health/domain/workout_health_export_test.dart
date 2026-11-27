@@ -158,6 +158,41 @@ void main() {
     );
   });
 
+  test('a deleted receipt is final for a deleted or watch-linked workout', () {
+    expect(
+      plan(
+        [cand('a', deleted: true)],
+        receipts: [rec('a', HealthExportState.deleted)],
+      ),
+      isEmpty,
+    );
+    expect(
+      plan(
+        [cand('a')],
+        receipts: [rec('a', HealthExportState.deleted)],
+        linked: {'a'},
+      ),
+      isEmpty,
+    );
+  });
+
+  test('a failed delete waits for the retry backoff', () {
+    List<ExportAction> deleting(Duration since) => plan(
+      [cand('a', deleted: true)],
+      receipts: [
+        rec(
+          'a',
+          HealthExportState.deleting,
+          id: 'hk1',
+          attempts: 1,
+          lastAttemptAt: _now.subtract(since),
+        ),
+      ],
+    );
+    expect(deleting(const Duration(seconds: 30)), isEmpty);
+    expect(deleting(const Duration(minutes: 2)).single, isA<DeleteOwnCopy>());
+  });
+
   test('skippedWatch and supersededByWatch are final', () {
     expect(
       plan(
