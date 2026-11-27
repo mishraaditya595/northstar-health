@@ -8,11 +8,46 @@ enum SavedWorkoutLookup: Equatable {
     case failed
 }
 
+/// The one HealthKit permission request of the watch app: share
+/// `workoutType()`; read heart rate and active energy (during a workout) and
+/// steps, sleep, HRV and resting heart rate (the Home tiles, see
+/// `HealthGlanceReader`). One request covers all of them, so the person sees
+/// one prompt, and asking again once decided does nothing.
+enum HealthAccess {
+    static let share: Set<HKSampleType> = [HKObjectType.workoutType()]
+    static let read: Set<HKObjectType> = [
+        HKQuantityType(.heartRate), HKQuantityType(.activeEnergyBurned),
+        HKQuantityType(.stepCount), HKCategoryType(.sleepAnalysis),
+        HKQuantityType(.heartRateVariabilitySDNN), HKQuantityType(.restingHeartRate),
+    ]
+
+    /// True only while HealthKit has never asked for exactly these types.
+    /// HealthKit hides read denials, so "decided" is all it can tell.
+    static func shouldRequest(store: HKHealthStore) async -> Bool {
+        guard HKHealthStore.isHealthDataAvailable() else { return false }
+        return await withCheckedContinuation { continuation in
+            store.getRequestStatusForAuthorization(toShare: share, read: read) { status, error in
+                continuation.resume(returning: error == nil && status == .shouldRequest)
+            }
+        }
+    }
+
+    /// Asks; true when the person allowed saving workouts.
+    static func request(store: HKHealthStore) async -> Bool {
+        guard HKHealthStore.isHealthDataAvailable() else { return false }
+        do {
+            try await store.requestAuthorization(toShare: share, read: read)
+        } catch {
+            return false
+        }
+        return store.authorizationStatus(for: HKObjectType.workoutType()) == .sharingAuthorized
+    }
+}
+
 /// The thin HealthKit wrapper that owns the live workout session. It holds no
-/// workout rules (those are in `WorkoutController`). Permissions are the
-/// minimum: share `workoutType()`; read heart rate and active energy. Heart
-/// rate and energy stay on the watch: the completed workout carries only the
-/// saved `HKWorkout` UUID.
+/// workout rules (those are in `WorkoutController`). Heart rate and energy
+/// stay on the watch: the completed workout carries only the saved
+/// `HKWorkout` UUID.
 @MainActor
 final class WorkoutRecorder: NSObject, ObservableObject {
     @Published private(set) var heartRate: Int?
@@ -25,20 +60,10 @@ final class WorkoutRecorder: NSObject, ObservableObject {
     private var builder: HKLiveWorkoutBuilder?
     private var workoutId: String?
 
-    private static let readTypes: Set<HKObjectType> = [
-        HKQuantityType(.heartRate), HKQuantityType(.activeEnergyBurned),
-    ]
-
     /// Asks once; true when the person allowed saving workouts. Denied or
     /// unavailable HealthKit is not an error: the workout still records.
     func requestAuthorization() async -> Bool {
-        guard HKHealthStore.isHealthDataAvailable() else { return false }
-        do {
-            try await store.requestAuthorization(toShare: [HKObjectType.workoutType()], read: Self.readTypes)
-        } catch {
-            return false
-        }
-        return store.authorizationStatus(for: HKObjectType.workoutType()) == .sharingAuthorized
+        await HealthAccess.request(store: store)
     }
 
     func begin(workoutId: String, at date: Date) async throws {
