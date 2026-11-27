@@ -18,6 +18,7 @@ const wipe2 = '77777777-3333-4333-8333-000000000002';
 
 class _Link implements WatchLink {
   bool reachable = true;
+  bool failTransfer = false;
   WatchDeviceStatus device = const WatchDeviceStatus(
     supported: true,
     paired: true,
@@ -35,7 +36,11 @@ class _Link implements WatchLink {
   Future<void> updateContext(Map<String, String> latestByType) async =>
       contexts.add(latestByType);
   @override
-  Future<void> transfer(String json) async => transfers.add(json);
+  Future<void> transfer(String json) async {
+    if (failTransfer) throw StateError('transfer failed');
+    transfers.add(json);
+  }
+
   @override
   Stream<void> get watchStateChanges => state.stream;
   @override
@@ -292,6 +297,19 @@ void main() {
       await _settle();
       expect(link.transfers, isEmpty);
       expect(queue.pending(), hasLength(1));
+    });
+
+    test('a failed transfer is retried on the next trigger', () async {
+      final queue = await openWith([wipe1]);
+      final link = _Link()..failTransfer = true;
+      final retrier = WatchWipeRetrier(link: link, queue: Future.value(queue))
+        ..start();
+      addTearDown(retrier.dispose);
+      await _settle();
+      expect(link.transfers, isEmpty);
+      link.failTransfer = false;
+      await retrier.retry();
+      expect(link.transfers, hasLength(1));
     });
 
     test('a pending wipe is sent once until the watch state changes', () async {

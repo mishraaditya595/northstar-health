@@ -45,7 +45,10 @@ class WatchWipeRetrier {
       if (_disposed || pending.isEmpty) return;
       if (!await link.isReachableForUpdates() || _disposed) return;
       for (final wipe in pending) {
-        if (_sent.add(wipe.messageId)) await link.transfer(wipe.json);
+        if (_sent.contains(wipe.messageId)) continue;
+        await link.transfer(wipe.json);
+        // Only after the transfer succeeded, so a failure is retried.
+        _sent.add(wipe.messageId);
       }
     } catch (_) {
       // The wipe stays queued and is tried again on the next trigger.
