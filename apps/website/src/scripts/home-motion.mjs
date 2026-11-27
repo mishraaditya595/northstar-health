@@ -38,9 +38,28 @@ export function cinematicFrame(progress, width, height, fixedSize) {
 }
 
 // Share of the remaining distance covered in one frame, scaled so a 120 Hz
-// screen settles in the same time as a 60 Hz one.
-export function settleFactor(dtMs, base = .16) {
+// screen settles in the same time as a 60 Hz one. The base is high so the
+// scene follows the scroll closely (over 90% of the way within 100 ms).
+export function settleFactor(dtMs, base = .34) {
   return 1 - Math.pow(1 - base, clamp(dtMs, 0, 1000) / (1000 / 60));
+}
+
+// Writes a style value only when it differs from the last one written for
+// that element and key, so an unchanged frame costs no style invalidation.
+export function setIfChanged(cache, el, key, value, write) {
+  let seen = cache.get(el);
+  if (!seen) cache.set(el, seen = {});
+  if (seen[key] === value) return false;
+  seen[key] = value;
+  write(value);
+  return true;
+}
+
+// Stacking rank 1..n of each rig: 1 + the rigs below it (equal order: the
+// lower index sits lower, as equal z-index does with DOM order). Written as
+// z-index instead of the raw order, which changes nearly every frame.
+export function stackRank(rigs) {
+  return rigs.map((r, i) => 1 + rigs.filter((o, j) => o.order < r.order || (o.order === r.order && j < i)).length);
 }
 
 // The pinned intro needs every chapter's copy to fit without overlapping the
@@ -136,6 +155,8 @@ export function mountCinematic(root, win) {
   // Layout is measured in reset() only, so scrolling never forces a reflow.
   let trackTop = 0, travel = 1, width = win.innerWidth, height = win.innerHeight;
   let focusAfterSettle = -1;
+  // Last inline style written per element; code writing these outside draw() must clear it.
+  const written = new Map();
   // Phone stack size fitted between the copy and the label; undefined = default.
   let stackSize;
   // Chapter in view while the static layout shows, read before a resize
@@ -154,17 +175,19 @@ export function mountCinematic(root, win) {
   }
   function draw(p) {
     const frame = cinematicFrame(p, width, height, stackSize);
-    progressEls.forEach(el => el.style.setProperty('--p', p.toFixed(4)));
+    const put = (el, key, value) => setIfChanged(written, el, key, value, v => { el.style[key] = v; });
+    const rank = stackRank(frame.rigs);
+    progressEls.forEach(el => setIfChanged(written, el, '--p', p.toFixed(4), v => el.style.setProperty('--p', v)));
     rigs.forEach((el, i) => {
       const v = frame.rigs[i];
-      el.style.transform = `translate(-50%,-50%) translate3d(${v.x}px,${v.y}px,${v.z}px) rotateX(${v.rx}deg) rotateY(${v.ry}deg) rotateZ(${v.ry * .22}deg) scale(${v.scale})`;
-      el.style.opacity = String(v.opacity);
-      el.style.zIndex = String(v.order);
+      put(el, 'transform', `translate(-50%,-50%) translate3d(${v.x}px,${v.y}px,${v.z}px) rotateX(${v.rx}deg) rotateY(${v.ry}deg) rotateZ(${v.ry * .22}deg) scale(${v.scale})`);
+      put(el, 'opacity', String(v.opacity));
+      put(el, 'zIndex', String(rank[i]));
     });
     scenes.forEach((el, i) => {
       const v = frame.scenes[i];
-      el.style.opacity = String(v.opacity);
-      el.style.transform = frame.mobile ? `translateY(${v.drift}px)` : `translateY(calc(-50% + ${v.drift}px))`;
+      put(el, 'opacity', String(v.opacity));
+      if (v.opacity > 0) put(el, 'transform', frame.mobile ? `translateY(${v.drift}px)` : `translateY(calc(-50% + ${v.drift}px))`);
     });
     setActive(frame.active);
   }
@@ -197,6 +220,7 @@ export function mountCinematic(root, win) {
   }
   function clearStyles() {
     stackSize = undefined;
+    written.clear();
     stage.style.removeProperty('--cine-stack-y');
     scenes.forEach(el => {
       el.style.removeProperty('opacity');
