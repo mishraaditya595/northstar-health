@@ -223,12 +223,13 @@ public struct WatchMessage {
                 for entry in try x.array("sets", max: 300) {
                     let s = try StrictObject(
                         entry, required: ["set_id", "position", "kind", "status"],
-                        optional: Set(["input_unit"]).union(SetValues.optionalKeys))
+                        optional: Set(["input_unit", "rest_seconds"]).union(SetValues.optionalKeys))
                     _ = try s.uuid("set_id")
                     _ = try s.int("position")
                     _ = try s.oneOf("kind", ["working", "warmup"])
                     _ = try s.oneOf("status", ["planned", "completed", "skipped"])
                     if s.has("input_unit") { _ = try s.oneOf("input_unit", ["kg", "lb"]) }
+                    _ = try s.optionalInt("rest_seconds", min: 1, max: 3600)
                     _ = try s.optionalInt("reps")
                     _ = try s.optionalInt("duration_seconds", min: 1)
                     _ = try s.optionalInt("load_grams")

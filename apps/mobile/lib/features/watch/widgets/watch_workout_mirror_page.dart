@@ -59,7 +59,13 @@ class _WatchWorkoutMirrorPageState
           ? 'Saved on your Apple Watch'
           : 'Workout discarded on your Apple Watch',
     );
-    context.go('/train');
+    // Back to where the person came from; a page opened without a stack
+    // (a restored route) goes to Train.
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/train');
+    }
   }
 
   Future<void> _confirmFinish() async {
@@ -155,7 +161,7 @@ class _WatchWorkoutMirrorPageState
         workout: workout,
         now: _now,
         live: state.isLive,
-        onStart: () => _live.startRest(90),
+        onStart: () => _live.startRest(workout.restSecondsToStart),
         onSkip: _live.clearRest,
       ),
       _CommandNotes(
@@ -375,7 +381,7 @@ class _Rest extends StatelessWidget {
               else
                 TextButton(
                   onPressed: live && !workout.isPaused ? onStart : null,
-                  child: const Text('Start 90 s rest'),
+                  child: Text('Start ${workout.restSecondsToStart} s rest'),
                 ),
             ],
           ),

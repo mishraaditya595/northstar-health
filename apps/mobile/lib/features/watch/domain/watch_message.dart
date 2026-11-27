@@ -331,13 +331,14 @@ sealed class WatchMessage {
             final set = StrictObject(
               s,
               required: {'set_id', 'position', 'kind', 'status'},
-              optional: {'input_unit', ..._setValueKeys},
+              optional: {'input_unit', 'rest_seconds', ..._setValueKeys},
             );
             set.uuid('set_id');
             set.integer('position');
             set.oneOf('kind', {'working', 'warmup'});
             set.oneOf('status', {'planned', 'completed', 'skipped'});
             if (set.has('input_unit')) set.oneOf('input_unit', {'kg', 'lb'});
+            set.optionalInteger('rest_seconds', min: 1, max: 3600);
             _setValues(set);
           }
         }

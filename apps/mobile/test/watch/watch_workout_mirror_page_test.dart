@@ -41,6 +41,7 @@ String _state({
   String session = _session,
   List<String> applied = const [],
   String? endReason,
+  int? restSeconds,
 }) {
   final json = jsonDecode(
     File('../../contracts/watch_link/v1/fixtures/valid/session_state.json')
@@ -60,6 +61,13 @@ String _state({
     body['end_reason'] = endReason ?? 'completed';
   }
   if (applied.isNotEmpty) body['applied_command_ids'] = applied;
+  if (restSeconds != null) {
+    for (final e in body['exercises']! as List) {
+      for (final set in (e! as Map)['sets']! as List) {
+        if ((set! as Map)['set_id'] == _set2) set['rest_seconds'] = restSeconds;
+      }
+    }
+  }
   return jsonEncode(json);
 }
 
@@ -127,6 +135,22 @@ class _Harness {
                     const Text('Train home'),
                     const LiveWatchWorkoutCard(),
                     home ?? const SizedBox(),
+                  ],
+                ),
+              ),
+            ),
+            GoRoute(
+              path: '/today',
+              builder: (_, _) => Scaffold(
+                body: Column(
+                  children: [
+                    const Text('Today home'),
+                    Builder(
+                      builder: (context) => TextButton(
+                        onPressed: () => context.push(liveWatchWorkoutRoute),
+                        child: const Text('Open watch workout'),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -272,6 +296,40 @@ void main() {
     await h.receive(_state(at: 3, status: 'ended'));
     await tester.pumpAndSettle();
     expect(find.text('Train home'), findsOneWidget);
+    expect(find.text('Saved on your Apple Watch'), findsOneWidget);
+    await h.close();
+  });
+
+  testWidgets('the rest button uses the planned rest of the set, else 90 s', (
+    tester,
+  ) async {
+    final h = _Harness(tester);
+    await h.pump();
+    await h.receive(_state());
+    expect(find.text('Start 90 s rest'), findsOneWidget);
+    await tester.tap(find.text('Start 90 s rest'));
+    await tester.pump();
+    expect(h.commands.last.command, 'start_rest');
+    expect(h.commands.last.restSeconds, 90);
+    await h.receive(_state(at: 2, restSeconds: 120));
+    expect(find.text('Start 120 s rest'), findsOneWidget);
+    await tester.tap(find.text('Start 120 s rest'));
+    await tester.pump();
+    expect(h.commands.last.restSeconds, 120);
+    await h.close();
+  });
+
+  testWidgets('ended returns to the page the person came from', (tester) async {
+    final h = _Harness(tester);
+    await h.pump(initial: '/today');
+    await tester.tap(find.text('Open watch workout'));
+    await tester.pumpAndSettle();
+    await h.receive(_state());
+    expect(find.text('Apple Watch workout'), findsOneWidget);
+    await h.receive(_state(at: 3, status: 'ended'));
+    await tester.pumpAndSettle();
+    expect(find.text('Today home'), findsOneWidget);
+    expect(find.text('Train home'), findsNothing);
     expect(find.text('Saved on your Apple Watch'), findsOneWidget);
     await h.close();
   });

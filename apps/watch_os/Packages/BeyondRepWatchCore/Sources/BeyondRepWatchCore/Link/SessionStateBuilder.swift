@@ -100,6 +100,7 @@ public enum SessionStateBuilder {
                     if let reps = set.targetReps, reps > 0 { item["reps"] = reps }
                     if let seconds = set.targetSeconds, seconds > 0 { item["duration_seconds"] = seconds }
                     if let load = set.targetLoadGrams, load > 0 { item["load_grams"] = load }
+                    if let rest = set.restSeconds, (1...3600).contains(rest) { item["rest_seconds"] = rest }
                 }
                 sets.append(item)
             }

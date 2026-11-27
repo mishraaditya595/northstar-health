@@ -15,6 +15,7 @@ class LiveSet {
     this.durationSeconds,
     this.loadGrams,
     this.rpe,
+    this.restSeconds,
   });
 
   final String setId;
@@ -31,6 +32,9 @@ class LiveSet {
   final int? durationSeconds;
   final int? loadGrams;
   final num? rpe;
+
+  /// The rest planned for this set (a planned set only), when the watch says.
+  final int? restSeconds;
 
   bool get isCompleted => status == 'completed';
   bool get isSkipped => status == 'skipped';
@@ -126,6 +130,7 @@ class LiveWatchWorkout {
     durationSeconds: (s['duration_seconds'] as num?)?.toInt(),
     loadGrams: (s['load_grams'] as num?)?.toInt(),
     rpe: s['rpe'] as num?,
+    restSeconds: (s['rest_seconds'] as num?)?.toInt(),
   );
 
   final String sessionId;
@@ -171,6 +176,14 @@ class LiveWatchWorkout {
     if (deadline == null || isPaused) return null;
     final left = deadline.difference(now);
     return left > Duration.zero ? left : null;
+  }
+
+  /// The rest the "Start rest" button offers: the planned rest of the current
+  /// set when the watch sent one, else 90 s.
+  int get restSecondsToStart {
+    final id = currentSetId;
+    final planned = id == null ? null : setById(id)?.restSeconds;
+    return planned ?? 90;
   }
 
   LiveSet? setById(String setId) {
