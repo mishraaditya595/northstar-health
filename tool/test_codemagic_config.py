@@ -141,8 +141,13 @@ class CodemagicTemplateTest(unittest.TestCase):
         self.assertEqual(
             env["ios_signing"],
             {
-                "distribution_type": "app_store",
-                "bundle_identifier": "in.beyondrep.app",
+                # Manual profiles: automatic signing fetched no profile for the
+                # embedded watch app on the first run (2026-11-27).
+                "provisioning_profiles": [
+                    "beyondrep_app_store",
+                    "beyondrep_watch_app_store",
+                ],
+                "certificates": ["apple_distribution"],
             },
         )
         self.assertEqual(env["groups"], ["ns_mobile_supabase_public"])

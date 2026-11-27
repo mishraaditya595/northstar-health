@@ -224,12 +224,15 @@ workflows:
       flutter: "3.47.7"
       xcode: latest
       ios_signing:
-        distribution_type: app_store
-        bundle_identifier: in.beyondrep.app
-        # The embedded Apple Watch app (in.beyondrep.app.watchkitapp) is signed
-        # by the same automatic signing; unverified until the first run. If that
-        # run fails on watch signing, use the fallback in
-        # docs/IOS_TESTFLIGHT_CODEMAGIC.md (uploaded watch profile) instead.
+        # Uploaded App Store profiles, referenced by name only. Automatic
+        # signing fetched no profile for the embedded Apple Watch app
+        # (in.beyondrep.app.watchkitapp) on the first run, 2026-11-27. See
+        # docs/IOS_TESTFLIGHT_CODEMAGIC.md "Apple Watch app".
+        provisioning_profiles:
+          - beyondrep_app_store
+          - beyondrep_watch_app_store
+        certificates:
+          - apple_distribution
       groups:
         - ns_mobile_supabase_public
       vars:

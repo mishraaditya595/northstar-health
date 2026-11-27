@@ -9,7 +9,7 @@
 1. Checks that `SUPABASE_URL` is an `https://<ref>.supabase.co` URL and `SUPABASE_PUBLISHABLE_KEY` is a publishable key (`sb_publishable_…`). It never accepts a service-role or secret key.
 2. Resolves the version name and build number (see [Version name and build number](#version-name-and-build-number)).
 3. Runs `flutter pub get --enforce-lockfile`.
-4. Applies App Store distribution signing for `in.beyondrep.app` (`xcode-project use-profiles`).
+4. Applies the uploaded App Store profiles for `in.beyondrep.app` and the embedded watch app `in.beyondrep.app.watchkitapp` (`xcode-project use-profiles`), then checks the watch app has one.
 5. Builds a release IPA with `--build-name` and `--build-number` from step 2 and the two public Supabase values passed through a temporary `--dart-define-from-file` that is deleted after the build.
 6. Uploads the IPA to App Store Connect with `submit_to_testflight: false` and `submit_to_app_store: false`. The build is therefore only available to **internal** testers on your App Store Connect team. It is never sent to Beta App Review, external testers or App Store review.
 
@@ -30,8 +30,8 @@
 1. Add `mishraaditya595/northstar-health` as a Codemagic app using **codemagic.yaml** configuration.
 2. **Team settings → Integrations → Developer Portal → Manage keys:** add the API key with the exact name `Codemagic Signing`, which must match `integrations.app_store_connect` in the YAML.
 3. **Team settings → codemagic.yaml settings → Code signing identities:**
-   - **iOS certificates:** generate or upload an *Apple Distribution* certificate using the key above.
-   - **iOS provisioning profiles:** fetch or create an *App Store* profile for `in.beyondrep.app`. After enabling HealthKit on the App ID, regenerate this App Store provisioning profile before the next run; a profile without the capability cannot sign the build.
+   - **iOS certificates:** generate or upload an *Apple Distribution* certificate using the key above, with the reference name `apple_distribution`.
+   - **iOS provisioning profiles:** two *App Store* profiles, both made with that certificate: `in.beyondrep.app` with the reference name `beyondrep_app_store`, and `in.beyondrep.app.watchkitapp` with the reference name `beyondrep_watch_app_store`. After enabling HealthKit on an App ID, regenerate its profile before the next run; a profile without the capability cannot sign the build.
 4. **App → Environment variables:** create the group `ns_mobile_supabase_public` with:
 
    | Variable | Value |
@@ -73,8 +73,8 @@ The `+N` part of the pubspec version is not used for TestFlight builds. To chang
 The watch target is added to `Runner.xcodeproj` by `tool/embed_watch_target.rb` (see `apps/watch_os/README.md`); the sources stay in `apps/watch_os`. Owner steps:
 
 1. In Apple Developer, create the App ID `in.beyondrep.app.watchkitapp` (you may tick HealthKit now; the watch does not use it until stage 4).
-2. Run `mobile-ios-testflight` as above. Codemagic's automatic signing is expected to cover the watch App ID that extends the app's ID. **This is unverified until the first run.** The step "Check the watch app has a signing profile" fails the build early, before the archive, if the export options have no profile for `in.beyondrep.app.watchkitapp`.
-3. **If that step or the archive fails on watch signing**, upload **both** App Store profiles to Codemagic code signing identities: the iPhone profile and a new one for `in.beyondrep.app.watchkitapp` (as `beyondrep_watch_app_store`). Then change the job's `environment` to `ios_signing: provisioning_profiles: [beyondrep_app_store, beyondrep_watch_app_store]` with `certificates: [apple_distribution]` (the iPhone profile keeps its existing identity name). Reference profiles by name only; never commit them.
+2. In Apple Developer, create an **App Store** provisioning profile for `in.beyondrep.app.watchkitapp` with the Apple Distribution certificate, download it, and upload it in Codemagic code signing identities as `beyondrep_watch_app_store` (see setup step 3). Automatic signing with only `bundle_identifier: in.beyondrep.app` fetched no watch profile on the first run (2026-11-27), so the job lists both uploaded profiles by name. Never commit profiles.
+3. Run `mobile-ios-testflight` as above. The step "Check the watch app has a signing profile" fails the build early, before the archive, if the export options have no profile for `in.beyondrep.app.watchkitapp`.
 4. On the iPhone, install from TestFlight, open the Watch app, find BeyondRep and tap Install.
 
 The watch target has an App Icon asset catalog (`apps/watch_os/Sources/Resources/Assets.xcassets`, the iPhone 1024 px icon, opaque), so a missing-icon rejection is not expected; whether App Store Connect accepts it is unverified until the first upload.
