@@ -52,6 +52,7 @@
 		9C46E684C672AEA792FF8D57 /* AckBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A904C7275EC8796789BA230A /* AckBuilder.swift */; };
 		A17C0C41CD6AC855B6DF09AE /* ExercisesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59529592C68CBAB87AE138BD /* ExercisesSheet.swift */; };
 		A1B2C3D40001000100000001 /* WatchLinkBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D40001000100000002 /* WatchLinkBridge.swift */; };
+		A1B2C3D40001000100000003 /* WorkoutMirrorBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D40001000100000004 /* WorkoutMirrorBridge.swift */; };
 		A28E2567361CCCDDDE796FA3 /* RpeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79446778943DDF0393142D5B /* RpeSheet.swift */; };
 		A645C629B904EA8BFFA5DF6E /* BeyondRepWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B8DB1F4B57901D7CB80BCE /* BeyondRepWatchApp.swift */; };
 		AB248F9FA5716D1020B7DC11 /* SetPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 969D0D71E0B45B2D9787BD98 /* SetPage.swift */; };
@@ -161,6 +162,7 @@
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A1B2C3D40001000100000002 /* WatchLinkBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLinkBridge.swift; sourceTree = "<group>"; };
+		A1B2C3D40001000100000004 /* WorkoutMirrorBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutMirrorBridge.swift; sourceTree = "<group>"; };
 		A1B2C3D41F2E3D4C5B6A7981 /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
 		A1B8DB1F4B57901D7CB80BCE /* BeyondRepWatchApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BeyondRepWatchApp.swift; path = Sources/App/BeyondRepWatchApp.swift; sourceTree = "<group>"; };
 		A486A12E0DB473247D4FDEA5 /* WatchMessage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WatchMessage.swift; path = Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore/Contracts/WatchMessage.swift; sourceTree = "<group>"; };
@@ -275,6 +277,7 @@
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				A1B2C3D40001000100000002 /* WatchLinkBridge.swift */,
+				A1B2C3D40001000100000004 /* WorkoutMirrorBridge.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
@@ -583,6 +586,7 @@
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 				A1B2C3D40001000100000001 /* WatchLinkBridge.swift in Sources */,
+				A1B2C3D40001000100000003 /* WorkoutMirrorBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

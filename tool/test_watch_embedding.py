@@ -27,6 +27,7 @@ ALLOWED_IOS_SWIFT = {
     "AppDelegate.swift",
     "SceneDelegate.swift",
     "WatchLinkBridge.swift",
+    "WorkoutMirrorBridge.swift",
     "RunnerTests.swift",
 }
 
@@ -95,6 +96,10 @@ class WatchEmbeddingTest(unittest.TestCase):
 
     def test_runner_keeps_its_watch_link_bridge(self):
         self.assertIn("WatchLinkBridge.swift in Sources", self.pbx)
+
+    def test_runner_compiles_the_workout_mirror_bridge(self):
+        self.assertIn("WorkoutMirrorBridge.swift in Sources", self.pbx)
+        self.assertTrue((IOS / "Runner" / "WorkoutMirrorBridge.swift").is_file())
 
     def test_watch_has_an_opaque_1024_app_icon_in_its_resources(self):
         self.assertIn("ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;", self.pbx)
@@ -177,6 +182,7 @@ class WatchEmbeddingTest(unittest.TestCase):
             added = run()
             self.assertIn("Sources/App/Extra.swift", added)
             self.assertIn("WatchLinkBridge.swift in Sources", added)
+            self.assertIn("WorkoutMirrorBridge.swift in Sources", added)
             self.assertEqual(run(), added, "a second run changes nothing")
 
             (watch / "Sources" / "App" / "Extra.swift").unlink()

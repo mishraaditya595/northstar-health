@@ -9,6 +9,10 @@ final class WatchLinkBridge: NSObject, WCSessionDelegate {
 
   private var channel: FlutterMethodChannel?
 
+  /// Receives live messages (`["json": String]` sent with `sendMessage`) while
+  /// the app is in the foreground and the watch is reachable.
+  weak var live: WorkoutMirrorBridge?
+
   /// Activates the session at launch, so the first send after launch does not
   /// find an inactive session and get dropped.
   static func register(messenger: FlutterBinaryMessenger) -> WatchLinkBridge {
@@ -109,6 +113,14 @@ final class WatchLinkBridge: NSObject, WCSessionDelegate {
     guard let json = userInfo["json"] as? String else { return }
     DispatchQueue.main.async { [weak self] in
       self?.channel?.invokeMethod("watchMessage", arguments: json)
+    }
+  }
+
+  /// A live message from the watch (no reply is used). Dart decides what it means.
+  func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+    guard let json = message["json"] as? String else { return }
+    DispatchQueue.main.async { [weak self] in
+      self?.live?.deliver(json: json)
     }
   }
 
