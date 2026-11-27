@@ -30,6 +30,15 @@ class _Owner extends Notifier<String?> {
 
 final _ownerProvider = NotifierProvider<_Owner, String?>(_Owner.new);
 
+class _OwnIds extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => const {};
+
+  void set(Set<String> ids) => state = ids;
+}
+
+final _ownIdsProvider = NotifierProvider<_OwnIds, Set<String>>(_OwnIds.new);
+
 class _FakeHistory implements WorkoutHistoryRepository {
   _FakeHistory(this.sessions, {this.fail = false});
   final List<WorkoutSessionRecord> sessions;
@@ -153,7 +162,10 @@ void main() {
         healthConnectionRepositoryProvider.overrideWithValue(repo),
         healthOwnerIdProvider.overrideWith((ref) => ref.watch(_ownerProvider)),
         healthClockProvider.overrideWithValue(() => now),
-        ownPlatformWorkoutIdsProvider.overrideWithValue(ownWorkoutIds),
+        ownPlatformWorkoutIdsProvider.overrideWith((ref) {
+          final live = ref.watch(_ownIdsProvider);
+          return {...ownWorkoutIds, ...live};
+        }),
       ],
     );
     addTearDown(c.dispose);
@@ -996,6 +1008,27 @@ void main() {
       expect(
         ready(o).readiness.loadRatio,
         isNot(ready(withLoad).readiness.loadRatio),
+      );
+    });
+
+    test('a receipt stored after the read hides the workout without a '
+        'refresh', () async {
+      readinessWeek();
+      history = _FakeHistory(const []);
+      fake.workouts = SeriesData([_outside('a', 20), _outside('B-UPPER', 3)]);
+      final c = container();
+      final before = (await c.read(healthOverviewProvider.future))!;
+      expect(
+        (before.workouts as SectionData<WorkoutsOverview>).value.outside,
+        hasLength(2),
+      );
+      c.read(_ownIdsProvider.notifier).set({'b-upper'});
+      final after = (await c.read(healthOverviewProvider.future))!;
+      expect(
+        (after.workouts as SectionData<WorkoutsOverview>).value.outside.map(
+          (w) => w.id,
+        ),
+        ['a'],
       );
     });
 

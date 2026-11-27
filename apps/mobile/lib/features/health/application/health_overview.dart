@@ -263,7 +263,7 @@ class HealthOverviewController extends AsyncNotifier<HealthOverview?> {
     final history = _completedSessions(ref);
     final overview = await _read(
       owner,
-      ref.read(ownPlatformWorkoutIdsProvider),
+      ref.watch(ownPlatformWorkoutIdsProvider),
       reader,
       ref.read(healthClockProvider)(),
       repository.connectedAt(owner),
