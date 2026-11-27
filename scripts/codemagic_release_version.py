@@ -11,8 +11,8 @@ already published:
 Versions are MAJOR.FEATURE.FIX. Inputs of one or two parts are padded with
 zeros and the output always has three parts. With no current version the
 base is 0.0.0. This module holds the shared primitives (ResolveError, AUTO,
-VERSION_NAME, the App Store Connect (TestFlight) and Google Play lookups) and imports no
-other script. Authentication comes from the integrations' environment; no
+VERSION_NAME, and the App Store Connect TestFlight and Google Play lookups)
+and imports no other script. Authentication comes from the integrations' environment; no
 credential value is read or printed here.
 """
 import json

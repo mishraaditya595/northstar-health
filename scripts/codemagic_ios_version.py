@@ -11,8 +11,8 @@ The current version is the highest TestFlight version in App Store Connect
 (iOS; every App Store build is first a TestFlight build) and, when
 GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS is set and works, Google Play. Google
 Play is optional here: missing credentials or a failed lookup print a note and
-the job goes on with App Store Connect alone. The release type decides the next version from it; see
-codemagic_release_version.py.
+the job goes on with App Store Connect alone. The release type decides the
+next version from it; see codemagic_release_version.py.
 AUTO build number is the highest build of in.beyondrep.app in App Store
 Connect (all versions) plus one. A manual build number must be higher than
 that, so a run fails here instead of after a long build and upload.
