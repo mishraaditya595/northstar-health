@@ -108,8 +108,9 @@ completed set needs `completed_at_utc` and either `reps` or `duration_seconds`.
 - Deploy order: the migration `20261127090000_workout_origin_beyondrep_watch.sql`
   must be deployed before any app build that uploads `beyondrep_watch`. Older
   app builds reject the unknown origin when restoring
-  (`invalid_workout_origin`, the whole page is refused), so update every
-  install.
+  (`invalid_workout_origin`, the whole page is refused). Older builds also
+  fail the whole account JSON export and conflict review once any watch
+  workout exists in the cloud, so update every install.
 
 ## Watch link v1
 

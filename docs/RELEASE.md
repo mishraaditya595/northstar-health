@@ -140,7 +140,7 @@ The phone imports a completed workout from the watch, backs it up with origin `b
 | Check | Result |
 | --- | --- |
 | Deploy order: the `supabase-database` job has applied `20261127090000_workout_origin_beyondrep_watch.sql` to the project under test before any build that uploads watch workouts | not run |
-| Every install on every phone of the test account is updated before the first watch workout is uploaded (older builds refuse the origin when restoring) | not run |
+| Every install on every phone of the test account is updated before the first watch workout is uploaded (older builds refuse the origin when restoring and also fail the whole account JSON export and conflict review once any watch workout exists in the cloud) | not run |
 | `Supabase SQL and RLS` (`workout_watch_origin` and the existing pgTAP files) passes on the PR | not run |
 | A watch workout restored on a second phone shows the Apple Watch tag in history and its detail | not run |
 | A watch workout appears once in Account > export with origin `beyondrep_watch` | not run |
