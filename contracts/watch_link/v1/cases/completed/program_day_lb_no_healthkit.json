@@ -1,0 +1,198 @@
+{
+  "events": [
+    {
+      "schema_version": 2,
+      "event_id": "99999999-2222-4222-8222-000000000001",
+      "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "origin_device_id": "watch-installation-a",
+      "sequence": 0,
+      "type": "workout_started",
+      "occurred_at_utc": "2026-10-23T04:30:00Z",
+      "recorded_at_utc": "2026-10-23T04:30:00Z",
+      "time_zone": "Asia/Kolkata",
+      "payload": {
+        "activity_type": "traditional_strength_training",
+        "name": "Synthetic leg day",
+        "owner": "watch",
+        "account_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "plan_id": "plan-synthetic-1",
+        "program_day": {
+          "program_id": "program-synthetic-1",
+          "local_date": "2026-10-23"
+        }
+      }
+    },
+    {
+      "schema_version": 2,
+      "event_id": "99999999-2222-4222-8222-000000000002",
+      "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "origin_device_id": "watch-installation-a",
+      "sequence": 1,
+      "type": "exercise_added",
+      "occurred_at_utc": "2026-10-23T04:30:00Z",
+      "recorded_at_utc": "2026-10-23T04:30:00Z",
+      "time_zone": "Asia/Kolkata",
+      "payload": {
+        "exercise_id": "eeeeeeee-eeee-4eee-8eee-0000000000b1",
+        "name": "Synthetic squat",
+        "kind": "reps",
+        "position": 0
+      }
+    },
+    {
+      "schema_version": 2,
+      "event_id": "99999999-2222-4222-8222-000000000003",
+      "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "origin_device_id": "watch-installation-a",
+      "sequence": 2,
+      "type": "set_logged",
+      "occurred_at_utc": "2026-10-23T04:35:00Z",
+      "recorded_at_utc": "2026-10-23T04:35:00Z",
+      "time_zone": "Asia/Kolkata",
+      "payload": {
+        "set_id": "dddddddd-dddd-4ddd-8ddd-0000000000d1",
+        "exercise_id": "eeeeeeee-eeee-4eee-8eee-0000000000b1",
+        "position": 0,
+        "kind": "working",
+        "input_unit": "lb",
+        "reps": 5,
+        "load_grams": 0
+      }
+    },
+    {
+      "schema_version": 2,
+      "event_id": "99999999-2222-4222-8222-000000000004",
+      "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "origin_device_id": "watch-installation-a",
+      "sequence": 3,
+      "type": "set_logged",
+      "occurred_at_utc": "2026-10-23T04:40:00Z",
+      "recorded_at_utc": "2026-10-23T04:40:00Z",
+      "time_zone": "Asia/Kolkata",
+      "payload": {
+        "set_id": "dddddddd-dddd-4ddd-8ddd-0000000000d2",
+        "exercise_id": "eeeeeeee-eeee-4eee-8eee-0000000000b1",
+        "position": 1,
+        "kind": "working",
+        "input_unit": "lb",
+        "reps": 5,
+        "load_grams": 61235,
+        "rpe": 9.0
+      }
+    },
+    {
+      "schema_version": 2,
+      "event_id": "99999999-2222-4222-8222-000000000005",
+      "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "session_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "origin_device_id": "watch-installation-a",
+      "sequence": 4,
+      "type": "workout_completed",
+      "occurred_at_utc": "2026-10-23T04:50:00Z",
+      "recorded_at_utc": "2026-10-23T04:50:00Z",
+      "time_zone": "Asia/Kolkata",
+      "payload": {}
+    }
+  ],
+  "context": {
+    "template": {
+      "name": "Synthetic leg day",
+      "plan_id": "plan-synthetic-1",
+      "program_day": {
+        "plan_id": "plan-synthetic-1",
+        "program_id": "program-synthetic-1",
+        "local_date": "2026-10-23"
+      },
+      "exercises": [
+        {
+          "exercise_id": "eeeeeeee-eeee-4eee-8eee-0000000000b1",
+          "name": "Synthetic squat",
+          "kind": "reps",
+          "muscle": "quads",
+          "position": 0,
+          "sets": [
+            {
+              "set_id": "dddddddd-dddd-4ddd-8ddd-0000000000d1",
+              "position": 0,
+              "kind": "working",
+              "target_reps": 5
+            },
+            {
+              "set_id": "dddddddd-dddd-4ddd-8ddd-0000000000d2",
+              "position": 1,
+              "kind": "working",
+              "target_reps": 5,
+              "target_load_grams": 61235
+            }
+          ]
+        }
+      ]
+    },
+    "unit": "lb",
+    "account_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "message_id": "77777777-3333-4333-8333-0000000000a2",
+    "sent_at_utc": "2026-10-23T04:50:05Z"
+  },
+  "expected": {
+    "schema_version": 1,
+    "message_id": "77777777-3333-4333-8333-0000000000a2",
+    "type": "completed_workout",
+    "sent_at_utc": "2026-10-23T04:50:05Z",
+    "account_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "body": {
+      "last_sequence": 4,
+      "program_day": {
+        "plan_id": "plan-synthetic-1",
+        "program_id": "program-synthetic-1",
+        "local_date": "2026-10-23"
+      },
+      "workout": {
+        "schema_version": 1,
+        "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "origin": "beyondrep_watch",
+        "status": "completed",
+        "name": "Synthetic leg day",
+        "started_at_utc": "2026-10-23T04:30:00Z",
+        "completed_at_utc": "2026-10-23T04:50:00Z",
+        "original_offset_minutes": 330,
+        "exercises": [
+          {
+            "id": "eeeeeeee-eeee-4eee-8eee-0000000000b1",
+            "name": "Synthetic squat",
+            "position": 0,
+            "muscle": "quads",
+            "primary_muscles": [
+              "quads"
+            ],
+            "sets": [
+              {
+                "id": "dddddddd-dddd-4ddd-8ddd-0000000000d1",
+                "position": 0,
+                "kind": "working",
+                "status": "completed",
+                "input_unit": "lb",
+                "reps": 5,
+                "completed_at_utc": "2026-10-23T04:35:00Z"
+              },
+              {
+                "id": "dddddddd-dddd-4ddd-8ddd-0000000000d2",
+                "position": 1,
+                "kind": "working",
+                "status": "completed",
+                "input_unit": "lb",
+                "reps": 5,
+                "load_grams": 61235,
+                "rpe": 9.0,
+                "completed_at_utc": "2026-10-23T04:40:00Z"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

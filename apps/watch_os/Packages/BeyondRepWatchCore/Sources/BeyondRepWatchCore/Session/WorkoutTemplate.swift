@@ -9,6 +9,11 @@ public struct TemplateSet: Codable, Equatable {
     public var targetLoadGrams: Int?
     public var restSeconds: Int?
 
+    enum CodingKeys: String, CodingKey {
+        case setId = "set_id", position, kind, targetReps = "target_reps", targetSeconds = "target_seconds"
+        case targetLoadGrams = "target_load_grams", restSeconds = "rest_seconds"
+    }
+
     public init(
         setId: String, position: Int, kind: String = "working", targetReps: Int? = nil,
         targetSeconds: Int? = nil, targetLoadGrams: Int? = nil, restSeconds: Int? = nil
@@ -32,6 +37,10 @@ public struct TemplateExercise: Codable, Equatable {
     public var position: Int
     public var sets: [TemplateSet]
 
+    enum CodingKeys: String, CodingKey {
+        case exerciseId = "exercise_id", name, kind, muscle, position, sets
+    }
+
     public init(exerciseId: String, name: String, kind: String, muscle: String?, position: Int, sets: [TemplateSet]) {
         self.exerciseId = exerciseId
         self.name = name
@@ -47,6 +56,10 @@ public struct ProgramDay: Codable, Equatable {
     public var programId: String
     public var localDate: String
 
+    enum CodingKeys: String, CodingKey {
+        case planId = "plan_id", programId = "program_id", localDate = "local_date"
+    }
+
     public init(planId: String, programId: String, localDate: String) {
         self.planId = planId
         self.programId = programId
@@ -54,7 +67,9 @@ public struct ProgramDay: Codable, Equatable {
     }
 }
 
-/// The exercises and planned sets of one watch session. Every exercise and set
+/// The exercises and planned sets of one watch session. Its JSON uses snake_case
+/// keys, the same as the shared golden cases.
+/// Every exercise and set
 /// id is made fresh when the workout starts (never copied from a plan or the
 /// catalogue), so two workouts from one plan never share an id on the phone.
 public struct WorkoutTemplate: Codable, Equatable {
@@ -62,6 +77,10 @@ public struct WorkoutTemplate: Codable, Equatable {
     public var planId: String?
     public var programDay: ProgramDay?
     public var exercises: [TemplateExercise]
+
+    enum CodingKeys: String, CodingKey {
+        case name, planId = "plan_id", programDay = "program_day", exercises
+    }
 
     public init(name: String, planId: String? = nil, programDay: ProgramDay? = nil, exercises: [TemplateExercise] = []) {
         self.name = name
