@@ -197,16 +197,36 @@ public final class WorkoutController {
         try journal.sessionsAwaitingQueue(accountKey: accountKey)
     }
 
+    /// Finished sessions of every account whose workout was never queued, with
+    /// the account each belongs to.
+    public static func pendingFinishAllAccounts(journal: WatchJournal) throws -> [(sessionId: String, accountKey: String)] {
+        try journal.allSessionsAwaitingQueue()
+    }
+
+    /// When the session's `workout_completed` happened, so a recovery after a
+    /// relaunch ends the HealthKit workout at that time and not at launch time.
+    public static func completedAt(sessionId: String, journal: WatchJournal) throws -> Date? {
+        for case .workoutCompleted(let header) in try journal.events(sessionId: sessionId) {
+            return WatchTimestamp.date(header.occurredAtUtc)
+        }
+        return nil
+    }
+
     public static func queuePendingFinish(
-        sessionId: String, journal: WatchJournal, unit: String, accountKey: String,
+        sessionId: String, journal: WatchJournal, unit: String? = nil, accountKey: String,
         healthkitWorkoutUuid: String?, makeId: () -> String, clock: () -> Date
     ) throws {
         if try journal.delivery(sessionId: sessionId) != nil { return }
         guard let json = try journal.template(sessionId: sessionId),
             let template = try? JSONDecoder().decode(WorkoutTemplate.self, from: Data(json.utf8))
         else { throw JournalError.unknownSession }
+        let events = try journal.events(sessionId: sessionId)
+        // Without a unit, use the one the session logged its sets in: a
+        // recovery for another account must not borrow the bound account's.
+        var logged: String?
+        for case .setLogged(_, let values) in events { logged = logged ?? values.inputUnit }
         let message = try CompletedWorkoutBuilder.message(
-            events: try journal.events(sessionId: sessionId), template: template, unit: unit,
+            events: events, template: template, unit: unit ?? logged ?? "kg",
             accountKey: accountKey, healthkitWorkoutUuid: healthkitWorkoutUuid, messageId: makeId(),
             sentAtUtc: ISO8601DateFormatter().string(from: clock()))
         try journal.queueCompleted(message, sessionId: sessionId)

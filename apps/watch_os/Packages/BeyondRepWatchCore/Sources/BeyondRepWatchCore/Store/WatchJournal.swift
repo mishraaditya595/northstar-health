@@ -283,6 +283,18 @@ public final class WatchJournal {
         }
     }
 
+    /// The same, for every account: `(sessionId, accountKey)` pairs. Queueing
+    /// needs no binding; only sending does.
+    public func allSessionsAwaitingQueue() throws -> [(sessionId: String, accountKey: String)] {
+        try db.query(
+            "SELECT session_id, account_key FROM sessions WHERE status = 'completed' AND delivery IS NULL "
+                + "ORDER BY rowid"
+        ).compactMap { row in
+            guard case .text(let id)? = row.first, case .text(let key)? = row.last else { return nil }
+            return (id, key)
+        }
+    }
+
     /// Queued completed workouts, split by whether they belong to `boundKey`.
     public func waitingCounts(boundKey: String?) throws -> (thisAccount: Int, otherAccounts: Int) {
         var mine = 0

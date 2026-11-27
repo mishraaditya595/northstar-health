@@ -178,6 +178,35 @@ final class WorkoutControllerTests: XCTestCase {
         XCTAssertEqual(try reopened.delivery(sessionId: sessionId), "queued")
     }
 
+    func testFinishUnderAccountAIsQueuedForAWhileBoundToB() throws {
+        let controller = try start(try TemplateFixtures.template())
+        _ = try logCurrent(controller)  // the warm-up
+        _ = try logCurrent(controller)  // the first working set
+        now = base.addingTimeInterval(600)
+        try controller.markCompleted()
+        try journal.saveBinding(TestMessages.binding(otherKey))
+
+        XCTAssertTrue(try WorkoutController.pendingFinish(journal: journal, accountKey: otherKey).isEmpty)
+        let pending = try WorkoutController.pendingFinishAllAccounts(journal: journal)
+        XCTAssertEqual(pending.map(\.sessionId), [controller.sessionId])
+        XCTAssertEqual(pending.map(\.accountKey), [key])
+        XCTAssertEqual(
+            try WorkoutController.completedAt(sessionId: controller.sessionId, journal: journal),
+            base.addingTimeInterval(600))
+
+        try WorkoutController.queuePendingFinish(
+            sessionId: pending[0].sessionId, journal: journal, accountKey: pending[0].accountKey,
+            healthkitWorkoutUuid: nil, makeId: ids, clock: { self.now })
+        let queued = try journal.pendingCompleted(limit: 10)
+        XCTAssertEqual(queued.map(\.accountKey), [key])
+        // The bound account is B, so nothing is sendable: the workout waits.
+        XCTAssertEqual(try journal.binding()?.accountKey, otherKey)
+        let counts = try journal.waitingCounts(boundKey: otherKey)
+        XCTAssertEqual(counts.thisAccount, 0)
+        XCTAssertEqual(counts.otherAccounts, 1)
+        XCTAssertTrue(try WorkoutController.pendingFinishAllAccounts(journal: journal).isEmpty)
+    }
+
     func testDiscardQueuesNothing() throws {
         let controller = try start(try TemplateFixtures.template())
         _ = try logCurrent(controller)
