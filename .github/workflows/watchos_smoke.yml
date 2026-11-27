@@ -132,7 +132,13 @@ jobs:
       - name: Build the iPhone device app (unsigned release)
         # Same Xcode archive path as the Codemagic TestFlight job, minus signing.
         working-directory: apps/mobile
-        run: flutter build ios --release --no-codesign
+        run: |
+          set -o pipefail
+          flutter build ios --release --no-codesign -v > device-build.log 2>&1 || {
+            grep -n -B2 -A40 'CompileAssetCatalog.*BeyondRepWatch\|actool.*watch_os' device-build.log | head -200
+            tail -80 device-build.log
+            exit 1
+          }
       - name: Assert the device watch app has its icon
         working-directory: apps/mobile
         run: |
