@@ -136,7 +136,7 @@ The `ack` message already exists in the contract (`acked_message_id`,
   message being acked. The watch never sends health values back.
 - **Watch journal:** it records the time it last stored a phone context
   (`last_received_ms`, in a small `link_state` row). Clearing the account
-  deletes the row. This drives the watch's "Synced 10:43".
+  deletes the row. This drives the watch's "Synced Today 10:43".
 - **Phone bridge:** `WatchLinkBridge` implements
   `session(_:didReceiveUserInfo:)` and forwards the JSON string to Dart as
   `watchMessage`. It adds a `watchStatus` method that returns `supported`,
@@ -184,7 +184,7 @@ unconfirmed context was sent, and now:
   the hero pushes a detail screen. The Train button is in the bottom-trailing
   toolbar slot of Home (`.toolbar { ToolbarItem(placement: .bottomBar) }`,
   watchOS 10) and sets the tab selection.
-- **Top line on Home:** the sync status ("● Synced 10:43", "● Phone not nearby",
+- **Top line on Home:** the sync status ("● Synced Today 10:43", "● Phone not nearby",
   or nothing when not paired) plus the system clock. Tapping it opens the
   **Sync** screen, which shows the three states in the mockup: all good, phone
   away (data stays and is dated), and not set up ("Open BeyondRep on your

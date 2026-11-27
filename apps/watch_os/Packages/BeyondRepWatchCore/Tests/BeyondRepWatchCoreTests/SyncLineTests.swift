@@ -40,6 +40,29 @@ final class SyncLineTests: XCTestCase {
         XCTAssertTrue(away.contains("10:43"), away)
     }
 
+    private func timeText(daysAgo: Int64) throws -> String {
+        try journal.saveBinding(M.binding())
+        try journal.recordReceived(atMs: receivedMs - daysAgo * 86_400_000)
+        guard case .synced(let text) = try line(reachable: true) else { throw XCTSkip("not synced") }
+        return text
+    }
+
+    func testTheDayComesBeforeTheTime() throws {
+        // now is Friday 2026-10-23 11:30 in Asia/Kolkata.
+        let today = try timeText(daysAgo: 0)
+        XCTAssertTrue(today.hasPrefix("Today "), today)
+        XCTAssertTrue(today.contains("10:43"), today)
+    }
+
+    func testYesterdayWeekdayAndDate() throws {
+        XCTAssertTrue(try timeText(daysAgo: 1).hasPrefix("Yesterday "))
+        XCTAssertTrue(try timeText(daysAgo: 3).hasPrefix("Tue "))  // 2026-10-20
+        XCTAssertTrue(try timeText(daysAgo: 6).hasPrefix("Sat "))  // 2026-10-17
+        let old = try timeText(daysAgo: 13)  // 2026-10-10
+        XCTAssertTrue(old.hasPrefix("10 Oct "), old)
+        XCTAssertTrue(old.contains("10:43"), old)
+    }
+
     func testBoundButNothingReceivedYetIsNotPaired() throws {
         try journal.saveBinding(M.binding())
         XCTAssertEqual(try line(reachable: true), .notPaired)

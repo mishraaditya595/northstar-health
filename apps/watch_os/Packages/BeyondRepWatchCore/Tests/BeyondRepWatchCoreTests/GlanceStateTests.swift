@@ -41,7 +41,7 @@ final class GlanceStateTests: XCTestCase {
         XCTAssertEqual(g.tiles.map { $0.label }, ["Sleep", "Resting HR", "HRV", "Steps"])
         XCTAssertEqual(
             g.tiles[0],
-            GlanceTile(label: "Sleep", value: "7h 12m", unit: nil, status: "Score 81", tone: .good, metric: .sleep))
+            GlanceTile(label: "Sleep", value: "7h 12m", unit: nil, status: "Score 81", tone: .neutral, metric: .sleep))
         XCTAssertEqual(
             g.tiles[1],
             GlanceTile(label: "Resting HR", value: "54", unit: "bpm", status: nil, tone: .neutral, metric: .restingHr))

@@ -24,14 +24,21 @@ struct HomePage: View {
         }
         .background(Palette.canvas)
         .toolbar {
-            ToolbarItem(placement: .bottomBar) {
-                Button {
-                    page = .train
-                } label: {
-                    Image(systemName: "dumbbell.fill")
+            // Nothing to train from before the phone has paired.
+            ToolbarItemGroup(placement: .bottomBar) {
+                if case .ready = glance {
+                    Spacer()
+                    Button {
+                        page = .train
+                    } label: {
+                        Image(systemName: "dumbbell.fill")
+                            .foregroundStyle(.black)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Palette.performance)
+                    .clipShape(Circle())
+                    .accessibilityLabel("Train")
                 }
-                .tint(Palette.performance)
-                .accessibilityLabel("Train")
             }
         }
     }
@@ -178,6 +185,7 @@ private struct TileView: View {
                 .font(.caption2)
                 .foregroundStyle(Palette.accent(tile.metric))
                 .lineLimit(1)
+                .minimumScaleFactor(0.7)
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(tile.value)
                     .font(.system(.title3, design: .rounded).weight(.bold))
@@ -189,6 +197,8 @@ private struct TileView: View {
                     Text(unit)
                         .font(.caption2)
                         .foregroundStyle(Palette.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
             }
             Text(tile.status ?? " ")

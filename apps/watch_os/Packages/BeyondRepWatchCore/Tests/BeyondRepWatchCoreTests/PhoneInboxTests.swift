@@ -243,4 +243,17 @@ final class PhoneInboxTests: XCTestCase {
         _ = try inbox.receive(userInfo: ["json": try M.json(M.cleared(M.keyA))], now: later)
         XCTAssertNil(try journal.lastReceivedMs())
     }
+
+    func testReplayedDuplicatesDoNotMoveTheReceivedTime() throws {
+        let first = M.date("2026-10-23T05:00:00Z")
+        let ctx = context(M.binding(M.keyA), M.plans(M.keyA), M.health(M.keyA))
+        _ = try inbox.receive(applicationContext: ctx, now: first)
+        XCTAssertEqual(try journal.lastReceivedMs(), 1_792_731_600_000)
+
+        // The same context again at launch, days later: all duplicates.
+        let later = M.date("2026-10-26T09:00:00Z")
+        let outcomes = try inbox.receive(applicationContext: ctx, now: later)
+        XCTAssertEqual(outcomes.map(\.result), ["duplicate", "duplicate", "duplicate"])
+        XCTAssertEqual(try journal.lastReceivedMs(), 1_792_731_600_000)
+    }
 }

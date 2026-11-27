@@ -149,10 +149,13 @@ The two-page watch app, its detail screens and the watch status on the iPhone ar
 | Open the watch app before signing in on the phone: the Sync screen says "Open BeyondRep on your iPhone" | not run |
 | The iPhone shows "Apple Watch · synced" at the bottom of Today only after the watch has confirmed; Account & sync shows Connected, Installed, Last synced and what was sent | not run |
 | Delete the watch app: the iPhone shows "BeyondRep isn't on your watch yet" at the top of Today; "Show me how" opens the three steps; "Not now" hides the banner for good while Account & sync still says Not installed | not run |
-| Leave the watch out of use for two days with the phone app opened: the iPhone banner says the watch has not synced since the last time | not run |
+| Leave the watch out of use for two days while the iPhone app keeps sending: the iPhone banner says the watch has not synced since the last confirmation | not run |
 | An iPhone with no paired Apple Watch, an iPad and an Android phone show no banner, no footer and no Apple Watch section | not run |
 | After local midnight the watch shows no detail screen from the day before | not run |
 | An old watch build next to the new phone build shows dashes, no crash (the new snapshot is rejected until the watch updates) | not run |
+| After updating from the previous build, the watch sync line appears once the phone sends (it reads "Not paired" style until then) | not run |
+| Relaunch the watch app several times: the "Synced" day and time on Home does not move until the iPhone sends something new | not run |
+| Open the iPhone app after three days away: Today shows the old synced time, not the "hasn't synced" banner; the banner appears only when a send has gone unconfirmed for 48 hours | not run |
 
 ## Phase 4 stage 1: tablet layouts (owner actions, none done)
 

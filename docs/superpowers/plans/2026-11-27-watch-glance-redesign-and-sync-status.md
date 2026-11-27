@@ -48,7 +48,7 @@
   - "Apple Watch · synced {time}"
   - "Turn the crown for your workouts", "Got it"
   - "Phone not nearby"
-  - "Synced {time}"
+  - "Synced {day} {time}" (Today, Yesterday, a weekday for 6 days, then "10 Oct"; the iPhone says "Today 10:43", "Tue 10:43" and a date after 6 days)
   - "Open BeyondRep on your iPhone"
 - **Phone UI** uses `apps/mobile/lib/core/design/` only. `test/design_kit_guard_test.dart` must pass, and features must not call raw `showModalBottomSheet`, `SnackBar` and the like.
 - **No new dependencies.** Swift Charts ships with watchOS 10.

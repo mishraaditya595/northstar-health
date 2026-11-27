@@ -13,7 +13,7 @@ struct SyncView: View {
             switch line {
             case .synced(let time):
                 heading("Synced \(time)", color: Palette.performance)
-                detail("Your iPhone sent today's data.")
+                detail("Your iPhone sent data.")
             case .phoneAway(let time):
                 heading("Phone not nearby", color: Palette.caution)
                 detail("Showing data from \(time). It updates when your iPhone is nearby.")

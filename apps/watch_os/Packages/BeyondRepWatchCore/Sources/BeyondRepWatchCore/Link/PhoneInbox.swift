@@ -55,6 +55,9 @@ public final class PhoneInbox {
                 messageId: message.messageId.lowercased(), accountKey: message.accountKey, result: result,
                 reason: reason)
         }
+        // Only data that was newly stored counts as received: the launch
+        // replay of the last context is all duplicates and says nothing about
+        // when the phone last sent.
         func received() throws {
             try journal.recordReceived(atMs: Int64((now.timeIntervalSince1970 * 1000).rounded(.down)))
         }
@@ -73,7 +76,6 @@ public final class PhoneInbox {
             }
             if let current = try journal.bindingState() {
                 if current.messageId == message.messageId.lowercased() {  // already applied
-                    try received()
                     return outcome("duplicate")
                 }
                 if sentAt < current.sentAtMs {
@@ -112,7 +114,6 @@ public final class PhoneInbox {
             if try journal.plans(accountKey: bound.accountKey)?.messageId.lowercased()
                 == message.messageId.lowercased()
             {
-                try received()
                 return outcome("duplicate")
             }
             try journal.savePlans(message)
@@ -124,7 +125,6 @@ public final class PhoneInbox {
             if try journal.health(accountKey: bound.accountKey, forLocalDate: localDate)?.messageId.lowercased()
                 == message.messageId.lowercased()
             {
-                try received()
                 return outcome("duplicate")
             }
             try journal.saveHealth(message)

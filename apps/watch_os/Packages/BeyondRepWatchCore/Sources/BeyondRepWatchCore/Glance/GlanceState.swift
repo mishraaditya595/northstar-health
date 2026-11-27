@@ -218,7 +218,7 @@ public enum GlanceState: Equatable {
         return [
             GlanceTile(
                 label: "Sleep", value: sleepValue, unit: nil, status: sleepStatus,
-                tone: sleepStatus == nil ? .neutral : .good, metric: .sleep),
+                tone: .neutral, metric: .sleep),
             GlanceTile(
                 label: "Resting HR", value: rhr.map(String.init) ?? missing, unit: rhr == nil ? nil : "bpm",
                 status: rhrLine.0, tone: rhrLine.1, metric: .restingHr),
