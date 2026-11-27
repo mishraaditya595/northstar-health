@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
+import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
+import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/features/health/health_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -358,6 +360,75 @@ void main() {
     await tester.tap(find.text('Try again'));
     await tester.pumpAndSettle();
     expect(o.refreshCalls, 1);
+  });
+
+  testWidgets('tapping the energy hero opens /health/readiness', (
+    tester,
+  ) async {
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => const Scaffold(body: HealthPage()),
+        ),
+        GoRoute(
+          path: '/health/readiness',
+          builder: (_, _) => const Scaffold(body: Text('detail readiness')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    tester.view.physicalSize = const Size(390, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final scored = SectionData(
+      ReadinessOverview(
+        result: ReadinessReady(
+          Readiness(
+            value: 77,
+            band: ReadinessBand.good,
+            parts: const [
+              ReadinessPart(
+                input: ReadinessInput.sleep,
+                score: 70,
+                weight: 0.25,
+              ),
+            ],
+          ),
+        ),
+        hasHrv: false,
+        hasRestingHr: false,
+        hasSleep: true,
+        hrvVsNormal: null,
+        restingHrVsNormal: null,
+        hrvBaseline: null,
+        restingHrBaseline: null,
+        hrvIsSdnn: true,
+      ),
+    );
+    final localNow = DateTime(2026, 11, 24, 8, 0);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          fakeHealthSummary(FakeHealthSummaryController(connected())),
+          fakeHealthOverview(
+            FakeHealthOverviewController(overview(readiness: scored)),
+          ),
+          healthClockProvider.overrideWithValue(() => localNow),
+          localNowProvider.overrideWithValue(localNow),
+        ],
+        child: MaterialApp.router(
+          theme: BeyondRepTheme.build(Brightness.light),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('ENERGY NOW'), findsOneWidget);
+    await tester.tap(find.text('Good to train'));
+    await tester.pumpAndSettle();
+    expect(find.text('detail readiness'), findsOneWidget);
   });
 
   testWidgets('Health terms action navigates to /health/terms', (tester) async {

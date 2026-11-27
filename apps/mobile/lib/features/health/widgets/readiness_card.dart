@@ -6,15 +6,18 @@ import '../../../core/design/charts/trend_label.dart';
 import '../../../core/design/hero_frame.dart';
 import '../../../core/design/page_header.dart';
 import '../application/health_overview.dart';
+import '../domain/energy.dart';
 import '../domain/metric_explanations.dart';
 import '../domain/readiness.dart';
 import '../domain/trend.dart';
 import '../health_format.dart';
+import 'energy_text.dart';
 import 'health_card_frame.dart';
 import 'metric_info_sheet.dart';
 import 'metric_unavailable.dart';
 
-const _eyebrow = 'READINESS';
+const _eyebrow = 'ENERGY';
+const _scoreEyebrow = 'ENERGY NOW';
 
 /// Ring, score and bar colour for [band]: primary when good, amber when
 /// fair, red when low.
@@ -164,9 +167,10 @@ List<ReadinessFactor> readinessFactors(
   ];
 }
 
-/// Readiness hero on the Health tab: the score with its reasons, or what is
-/// missing for one. [overview] is null while loading. [onTap] opens the
-/// detail for a score and handles Manage / Try again for a gap.
+/// Energy hero on the Health tab: the score with its change since morning and
+/// reasons, or what is missing for one. [overview] is null while loading.
+/// [onTap] opens the detail for a score and handles Manage / Try again for a
+/// gap.
 class ReadinessCard extends StatelessWidget {
   const ReadinessCard({
     required this.overview,
@@ -179,7 +183,7 @@ class ReadinessCard extends StatelessWidget {
 
   final HealthOverview? overview;
 
-  /// The device's local time: a score read on an earlier day is not shown.
+  /// The device's local time: energy outlives its waking day only briefly.
   final DateTime now;
 
   /// A re-read is in flight; shown instead of a score from an earlier day.
@@ -193,54 +197,53 @@ class ReadinessCard extends StatelessWidget {
     if (overview == null) {
       return const NsHeroFrame(
         eyebrow: _eyebrow,
-        loadingLabel: 'Loading readiness',
+        loadingLabel: 'Loading energy',
       );
     }
     final platform = overview.platform;
-    if (hasStaleReadiness(overview, now)) {
+    if (hasStaleEnergy(overview, now)) {
       return refreshing
-          ? const NsHeroFrame(
-              eyebrow: _eyebrow,
-              loadingLabel: 'Loading readiness',
-            )
+          ? const NsHeroFrame(eyebrow: _eyebrow, loadingLabel: 'Loading energy')
           : _OutlinedCard(
               onTap: onTap,
               children: [
                 MetricUnavailable(
                   gap: MetricGap.failed,
-                  metricName: 'Readiness',
+                  metricName: 'Energy',
                   platform: platform,
                 ),
               ],
             );
     }
-    return switch (overview.readiness) {
+    return switch (overview.energy) {
       SectionGap(gap: MetricGap.noData) => _notEnough(context, overview, null),
       SectionGap(:final gap) => _OutlinedCard(
         onTap: onTap,
         children: [
           MetricUnavailable(
             gap: gap,
-            metricName: 'Readiness',
+            metricName: 'Energy',
             platform: platform,
             onAction: onAllowMore,
           ),
         ],
       ),
-      SectionData(:final value) => switch (value.result) {
-        ReadinessReady(:final readiness) => _ready(
+      SectionData(:final value) => switch ((value.energy, value.start.result)) {
+        (final energy?, ReadinessReady(:final readiness)) => _ready(
           context,
           overview,
           value,
+          energy,
           readiness,
         ),
-        ReadinessNotReady(:final daysUntilBaseline?) => _building(
+        (_, ReadinessNotReady(:final daysUntilBaseline?)) => _building(
           context,
           overview,
-          value,
+          value.start,
           daysUntilBaseline,
         ),
-        ReadinessNotReady() => _notEnough(context, overview, value),
+        (null, ReadinessReady()) => _resets(context, overview),
+        _ => _notEnough(context, overview, value.start),
       },
     };
   }
@@ -248,9 +251,11 @@ class ReadinessCard extends StatelessWidget {
   Widget _ready(
     BuildContext context,
     HealthOverview overview,
-    ReadinessOverview value,
+    EnergyOverview energyOverview,
+    Energy energy,
     Readiness readiness,
   ) {
+    final value = energyOverview.start;
     final heart = _heart(overview);
     final sleep = _sleep(overview);
     final inputs = {for (final p in readiness.parts) p.input};
@@ -260,7 +265,9 @@ class ReadinessCard extends StatelessWidget {
         : !inputs.contains(ReadinessInput.hrv)
         ? 'Based on sleep and resting HR'
         : null;
-    final words = readinessBandWords(readiness.band);
+    final words = readinessBandWords(energy.band);
+    final change = energyChangeText(energy);
+    final learning = energyLearningText(energyOverview.learning);
 
     final hrv = value.hasHrv ? heart?.hrv?.value.round() : null;
     final rhr = value.hasRestingHr ? heart?.restingHr?.value.round() : null;
@@ -283,14 +290,17 @@ class ReadinessCard extends StatelessWidget {
       ),
     ];
     final label = [
-      'Readiness ${readiness.value} of 100, $words, $sentence.',
+      'Energy now ${energy.value} of 100, $words.',
+      '$change.',
+      if (sentence.isNotEmpty) '$sentence.',
       if (basedOn != null) '$basedOn.',
+      ?learning,
       for (final c in chips) '${c.spoken}.',
     ].join(' ');
 
     // The hero is dark green in both themes, so its slots use dark colours.
     final heroTheme = BeyondRepTheme.build(Brightness.dark);
-    final ringColor = readinessBandColor(heroTheme, readiness.band);
+    final ringColor = readinessBandColor(heroTheme, energy.band);
     // The label node stays outermost; ExcludeSemantics (not excludeSemantics)
     // hides the hero's content so the info button keeps its own node.
     return Semantics(
@@ -304,26 +314,49 @@ class ReadinessCard extends StatelessWidget {
             child: GestureDetector(
               onTap: onTap,
               child: NsHeroFrame(
-                eyebrow: _eyebrow,
+                eyebrow: _scoreEyebrow,
                 title: words,
-                subtitle: [sentence, ?basedOn].join('\n'),
+                subtitle: [
+                  change,
+                  if (sentence.isNotEmpty) sentence,
+                  ?basedOn,
+                ].join('\n'),
                 leading: Theme(
                   data: heroTheme,
                   child: NsScoreRing(
-                    value: readiness.value,
+                    value: energy.value,
                     size: 76,
                     color: ringColor,
-                    caption: 'Readiness',
+                    caption: 'Energy',
                   ),
                 ),
                 child: Theme(
                   data: heroTheme,
-                  child: Row(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (final (i, chip) in chips.indexed) ...[
-                        if (i > 0) const SizedBox(width: 8),
-                        Expanded(child: chip),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (final (i, chip) in chips.indexed) ...[
+                            if (i > 0) const SizedBox(width: 8),
+                            Expanded(child: chip),
+                          ],
+                        ],
+                      ),
+                      if (learning != null) ...[
+                        const SizedBox(height: 10),
+                        Builder(
+                          builder: (context) {
+                            final theme = Theme.of(context);
+                            return Text(
+                              learning,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.mutedColor,
+                              ),
+                            );
+                          },
+                        ),
                       ],
                     ],
                   ),
@@ -347,7 +380,7 @@ class ReadinessCard extends StatelessWidget {
     ReadinessOverview value,
     int days,
   ) {
-    final title = readinessBuildingText(days);
+    final title = energyBuildingText(days);
     final measures = [
       if (value.hasHrv) readinessHrvName(value.hrvIsSdnn),
       if (value.hasRestingHr) 'resting HR',
@@ -359,7 +392,7 @@ class ReadinessCard extends StatelessWidget {
     return _OutlinedCard(
       info: _info(context, overview),
       semanticsLabel: [
-        'Readiness: $title',
+        'Energy: $title',
         ?body,
         '${tags.join(', ')}.',
       ].join(' '),
@@ -381,19 +414,37 @@ class ReadinessCard extends StatelessWidget {
   ) {
     const title = 'Not enough data for a score';
     final body =
-        "Readiness needs last night's sleep plus HRV or resting heart rate. "
+        "Energy needs last night's sleep plus HRV or resting heart rate. "
         'A watch or ring that syncs to '
         '${healthPlatformName(overview.platform)} provides these.';
     final tags = _inputTags(overview, value);
     return _OutlinedCard(
       info: _info(context, overview),
-      semanticsLabel: 'Readiness: $title. $body ${tags.join(', ')}.',
+      semanticsLabel: 'Energy: $title. $body ${tags.join(', ')}.',
       children: [
         const _OutlinedTitle(title),
         const SizedBox(height: 6),
         HealthCaption(body),
         const SizedBox(height: 10),
         _Tags(tags),
+      ],
+    );
+  }
+
+  /// The start is scored but the waking day has ended: no energy to show
+  /// until the next main sleep.
+  Widget _resets(BuildContext context, HealthOverview overview) {
+    const title = 'Energy resets after your next sleep';
+    const body =
+        'Your day started more than 20 hours ago. '
+        'Energy starts again from your next main sleep.';
+    return _OutlinedCard(
+      info: _info(context, overview),
+      semanticsLabel: 'Energy: $title. $body',
+      children: const [
+        _OutlinedTitle(title),
+        SizedBox(height: 6),
+        HealthCaption(body),
       ],
     );
   }

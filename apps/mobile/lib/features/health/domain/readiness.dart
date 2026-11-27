@@ -9,6 +9,9 @@ import 'training_load.dart';
 const _baselineWindowDays = 30;
 const _baselineMinDays = 14;
 
+/// Days of history the readiness score needs before it uses a baseline.
+const readinessBaselineMinDays = 3;
+
 class Baseline {
   const Baseline({required this.mean, required this.sd, required this.days});
 
@@ -38,14 +41,15 @@ List<double> _baselineValues(List<DayValue> daily, DateTime today) {
 }
 
 /// Mean and population sd of the values on the 30 local days before [today]
-/// (today excluded); null with fewer than 14 such days.
+/// (today excluded); null with fewer than [minDays] such days.
 Baseline? baselineOf(
   List<DayValue> daily,
   DateTime today, {
   required double Function(double mean) sdFloor,
+  int minDays = _baselineMinDays,
 }) {
   final values = _baselineValues(daily, today);
-  if (values.length < _baselineMinDays) return null;
+  if (values.length < minDays) return null;
   final mean = values.fold(0.0, (a, b) => a + b) / values.length;
   final variance =
       values.fold(0.0, (a, v) => a + (v - mean) * (v - mean)) / values.length;
@@ -90,6 +94,7 @@ class Readiness {
     required this.band,
     required this.parts,
     this.loadRatio,
+    this.baselineDays,
   });
 
   final int value;
@@ -98,6 +103,10 @@ class Readiness {
 
   /// 7-day against 28-day training load; set with the training load part.
   final double? loadRatio;
+
+  /// The larger day count of the HRV and resting HR baselines in the score;
+  /// null when neither part is present.
+  final int? baselineDays;
 }
 
 sealed class ReadinessResult {
@@ -123,7 +132,7 @@ final class ReadinessNotReady extends ReadinessResult {
   /// Neither measure has a value today.
   final bool noHrvOrRhrToday;
 
-  /// Set when a measure has a value today but none has a 14-day baseline.
+  /// Set when a measure has a value today but none has a baseline yet.
   final int? daysUntilBaseline;
 }
 
@@ -164,10 +173,20 @@ ReadinessResult scoreReadiness({
   final rhrToday = _todayValue(restingHrDaily, day);
   final hrvBase = hrvToday == null
       ? null
-      : baselineOf(hrvDaily, day, sdFloor: hrvSdFloor);
+      : baselineOf(
+          hrvDaily,
+          day,
+          sdFloor: hrvSdFloor,
+          minDays: readinessBaselineMinDays,
+        );
   final rhrBase = rhrToday == null
       ? null
-      : baselineOf(restingHrDaily, day, sdFloor: rhrSdFloor);
+      : baselineOf(
+          restingHrDaily,
+          day,
+          sdFloor: rhrSdFloor,
+          minDays: readinessBaselineMinDays,
+        );
   final noMeasureToday = hrvToday == null && rhrToday == null;
   final noBaseline = !noMeasureToday && hrvBase == null && rhrBase == null;
   if (night == null || noMeasureToday || noBaseline) {
@@ -181,7 +200,7 @@ ReadinessResult scoreReadiness({
     return ReadinessNotReady(
       noSleep: night == null,
       noHrvOrRhrToday: noMeasureToday,
-      daysUntilBaseline: noBaseline ? _baselineMinDays - most : null,
+      daysUntilBaseline: noBaseline ? readinessBaselineMinDays - most : null,
     );
   }
 
@@ -239,6 +258,10 @@ ReadinessResult scoreReadiness({
       band: readinessBandOf(value),
       parts: parts,
       loadRatio: load?.ratio,
+      baselineDays: [
+        ?hrvBase?.days,
+        ?rhrBase?.days,
+      ].fold<int?>(null, (a, b) => a == null ? b : max(a, b)),
     ),
   );
 }

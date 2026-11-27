@@ -113,6 +113,20 @@ Workouts from other apps and the training-load readiness input are implemented i
 | Account switch: sign in as another account, no workout or load from the first account appears | not run | not run |
 | No outside workout, kcal, heart rate or load appears in Account > export, Supabase, logs or an iCloud/Android backup | not run | not run |
 
+## Energy score stage 1 device QA (ADR-0013, owner actions, none done)
+
+Energy on the Health tab hero and the readiness detail Today view is implemented in source, **not released or device-verified**. Every row is not run.
+
+**Release gate:** energy stage 1 must not ship to users without stage 2. From this branch on, readiness is scored from 3 baseline days on Today, Train, the pre-workout note, "Better fit today" and the watch, and those surfaces carry no learning note (that comes in stage 2).
+
+| Check | iOS | Android |
+| --- | --- | --- |
+| A morning gym session: energy drops after it and the detail shows its "Workout at" row | not run | not run |
+| A late session finishing after midnight: energy still shows for the waking day that began at the morning wake, the session drains it, and calendar readiness for the new date stays not ready | not run | not run |
+| A nap tracked by Apple Watch (iOS) or a Health Connect source (Android): a "Nap at" row adds recharge and never lifts energy above the morning start | not run | not run |
+| The next morning before last night's sleep syncs: no stale energy from yesterday shows, the hero shows the not-enough-data state | not run | not run |
+| Android without the active-energy permission: no "Active day so far" row and no zero, energy is still computed from the other parts | n/a | not run |
+
 ## Phase 4 stage 3: watch link, glance and TestFlight embedding (owner actions, none done)
 
 The iPhone app sends the signed-in account's plans and today's numbers to the BeyondRep Apple Watch app, which shows them read-only; the watch app is embedded in the iPhone build. All implemented in source, **not released or device-verified**. Compared values are the phone's own, never recomputed on the watch. Every row is not run.

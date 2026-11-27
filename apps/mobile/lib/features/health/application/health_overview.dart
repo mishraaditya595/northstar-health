@@ -5,6 +5,8 @@ import '../../workouts/domain/workout_models.dart';
 import '../data/health_connection_repository.dart';
 import '../data/health_reader.dart';
 import '../domain/daily_series.dart';
+import '../domain/energy.dart';
+import '../domain/energy_day.dart';
 import '../domain/health_types.dart';
 import '../domain/outside_workouts.dart';
 import '../domain/readiness.dart';
@@ -188,6 +190,31 @@ class ReadinessOverview {
   final List<LoadSession> loadSessions;
 }
 
+/// "Energy now", derived from the readiness for the waking day plus what the
+/// day has used since; held in memory only.
+class EnergyOverview {
+  const EnergyOverview({
+    required this.day,
+    required this.wake,
+    required this.start,
+    required this.energy,
+    required this.learning,
+  });
+
+  /// The waking day's date; the calendar day when no waking day exists.
+  final DateTime day;
+
+  /// When the waking day started; null without a recent main sleep.
+  final DateTime? wake;
+
+  /// The readiness for [day], the energy's starting value.
+  final ReadinessOverview start;
+
+  /// Null unless [start] is scored and a waking day exists.
+  final Energy? energy;
+  final EnergyLearning learning;
+}
+
 /// Read fresh and held in memory only; never written anywhere.
 class HealthOverview {
   const HealthOverview({
@@ -202,6 +229,7 @@ class HealthOverview {
     required this.body,
     required this.readiness,
     this.workouts = const SectionGap(MetricGap.noData),
+    this.energy = const SectionGap(MetricGap.noData),
   });
 
   /// The account this was read for; never shown under another account.
@@ -221,6 +249,9 @@ class HealthOverview {
   /// Workouts from other apps, last 90 days. Joined with BeyondRep history in
   /// memory by [workoutMergeProvider]; never stored.
   final Section<WorkoutsOverview> workouts;
+
+  /// Energy now for the waking day; a gap when its start is a gap.
+  final Section<EnergyOverview> energy;
 }
 
 /// Readiness only means something on the day it was read: the same-owner
@@ -238,6 +269,27 @@ ReadinessOverview? todaysReadiness(HealthOverview o, DateTime now) {
 /// must not be shown as today's.
 bool hasStaleReadiness(HealthOverview o, DateTime now) =>
     todaysReadiness(o, now) == null && o.readiness is SectionData;
+
+/// Energy means something only while its waking day lasts: [energyMaxWakingDay]
+/// after the wake time, or the calendar day of the read without one. Null for
+/// an older overview or a gap.
+EnergyOverview? currentEnergy(HealthOverview o, DateTime now) {
+  final value = switch (o.energy) {
+    SectionData(:final value) => value,
+    SectionGap() => null,
+  };
+  if (value == null) return null;
+  final wake = value.wake;
+  final current = wake != null
+      ? now.difference(wake) <= energyMaxWakingDay
+      : dayOf(o.readAt) == dayOf(now);
+  return current ? value : null;
+}
+
+/// True when [o] still holds energy that has outlived its waking day, which
+/// must not be shown as current.
+bool hasStaleEnergy(HealthOverview o, DateTime now) =>
+    currentEnergy(o, now) == null && o.energy is SectionData;
 
 const _staleAfter = Duration(minutes: 5);
 
@@ -461,8 +513,18 @@ Section<ReadinessOverview> _readiness(
   };
   final hrvToday = _valueOn(hrvDaily, today);
   final rhrToday = _valueOn(rhrDaily, today);
-  final hrvBaseline = baselineOf(hrvDaily, today, sdFloor: hrvSdFloor);
-  final rhrBaseline = baselineOf(rhrDaily, today, sdFloor: rhrSdFloor);
+  final hrvBaseline = baselineOf(
+    hrvDaily,
+    today,
+    sdFloor: hrvSdFloor,
+    minDays: readinessBaselineMinDays,
+  );
+  final rhrBaseline = baselineOf(
+    rhrDaily,
+    today,
+    sdFloor: rhrSdFloor,
+    minDays: readinessBaselineMinDays,
+  );
   final night = sleep?.lastNight;
   return SectionData(
     ReadinessOverview(
@@ -689,6 +751,13 @@ Future<HealthOverview> _read(
     ),
   };
 
+  final inputFailed =
+      metricGapOf(sleepResult) == MetricGap.failed ||
+      (metricGapOf(rhrResult) == MetricGap.failed &&
+          metricGapOf(hrvResult) == MetricGap.failed);
+  final load = sessions == null
+      ? const <LoadSession>[]
+      : loadSessions(sessions, mergeWorkouts(sessions, outside));
   final readiness = _readiness(
     sleep,
     heart,
@@ -696,14 +765,59 @@ Future<HealthOverview> _read(
     rhrAll,
     today,
     platform,
-    inputFailed:
-        metricGapOf(sleepResult) == MetricGap.failed ||
-        (metricGapOf(rhrResult) == MetricGap.failed &&
-            metricGapOf(hrvResult) == MetricGap.failed),
-    load: sessions == null
-        ? const []
-        : loadSessions(sessions, mergeWorkouts(sessions, outside)),
+    inputFailed: inputFailed,
+    load: load,
   );
+
+  // Energy starts from the readiness of the waking day, which is the day
+  // before today until the new night is in.
+  final waking = wakingDayOf(nights, now);
+  final energyDay = waking?.day ?? today;
+  final startSection = energyDay == today
+      ? readiness
+      : _readiness(
+          sleep,
+          heart,
+          since(
+            DateTime(energyDay.year, energyDay.month, energyDay.day - 30),
+            hrvAll,
+          ),
+          rhrAll,
+          energyDay,
+          platform,
+          inputFailed: inputFailed,
+          load: load,
+        );
+  final energy = switch (startSection) {
+    SectionGap(:final gap) => SectionGap<EnergyOverview>(gap),
+    SectionData(value: final start) => () {
+      final result = start.result;
+      final ready = result is ReadinessReady ? result.readiness : null;
+      return SectionData(
+        EnergyOverview(
+          day: energyDay,
+          wake: waking?.wake,
+          start: start,
+          energy: ready == null || waking == null
+              ? null
+              : energyNow(
+                  start: ready,
+                  day: waking,
+                  now: now,
+                  sessions: load,
+                  hourlyActiveEnergy: _list(energyResult),
+                  sleepSegments: _list(sleepResult),
+                ),
+          learning: energyLearningOf(
+            completedSessions: sessions == null
+                ? null
+                : completedSessionsWithin(sessions, now),
+            baselineDays: ready?.baselineDays,
+          ),
+        ),
+      );
+    }(),
+  };
 
   return HealthOverview(
     ownerId: ownerId,
@@ -719,6 +833,7 @@ Future<HealthOverview> _read(
     body: body,
     readiness: readiness,
     workouts: workouts,
+    energy: energy,
   );
 }
 
