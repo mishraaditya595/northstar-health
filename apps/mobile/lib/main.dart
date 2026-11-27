@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -9,8 +11,10 @@ import 'features/account/account_auth_controller.dart';
 import 'features/account/account_gate.dart';
 import 'features/account/account_local_cleanup.dart';
 import 'features/watch/application/watch_sync_controller.dart';
+import 'features/watch/application/watch_wipe_retrier.dart';
 import 'features/watch/data/watch_link.dart';
 import 'features/watch/data/watch_status_store.dart';
+import 'features/watch/data/watch_wipe_queue.dart';
 
 /// Only public client settings are provided at build time. Never accept or
 /// embed service_role / secret keys, database passwords or personal tokens.
@@ -33,6 +37,7 @@ class _AuthBootstrap extends StatefulWidget {
 
 class _AuthBootstrapState extends State<_AuthBootstrap> {
   AccountAuthController? _controller;
+  WatchWipeRetrier? _wipeRetrier;
   late Future<AccountAuthController> _opening = _initialize();
 
   Future<AccountAuthController> _initialize() async {
@@ -67,10 +72,11 @@ class _AuthBootstrapState extends State<_AuthBootstrap> {
       onAccountDeleted: (owner) {
         unawaited(
           announceWatchAccountDeleted(
-            link: MethodChannelWatchLink(),
+            link: MethodChannelWatchLink.shared,
             userId: owner,
             ids: SecureUuidFactory(),
             nowUtc: DateTime.now().toUtc(),
+            queue: WatchWipeQueue.open(),
           ),
         );
         unawaited(WatchStatusStore.clearStored());
@@ -78,11 +84,20 @@ class _AuthBootstrapState extends State<_AuthBootstrap> {
     );
     await controller.restore();
     _controller = controller;
+    if (defaultTargetPlatform == TargetPlatform.iOS && _wipeRetrier == null) {
+      // One per process: a deletion wipe the watch has not confirmed yet is
+      // resent until it acks, whichever account is signed in.
+      _wipeRetrier = WatchWipeRetrier(
+        link: MethodChannelWatchLink.shared,
+        queue: WatchWipeQueue.open(),
+      )..start();
+    }
     return controller;
   }
 
   @override
   void dispose() {
+    _wipeRetrier?.dispose();
     _controller?.dispose();
     super.dispose();
   }

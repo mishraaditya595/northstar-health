@@ -6,6 +6,7 @@ import '../../../core/ids/uuid_factory.dart';
 import '../../../core/storage/objectbox_store_provider.dart';
 import '../../../objectbox.g.dart';
 import '../domain/muscles.dart';
+import '../domain/workout_models.dart' show WorkoutOrigin;
 import 'workout_entities.dart';
 
 final workoutOutboxProvider = Provider<ObjectBoxWorkoutOutbox>(
@@ -68,6 +69,16 @@ class ReservedWorkoutUpload {
 
   final WorkoutSyncOperation operation;
   final int expectedServerRevision;
+}
+
+class InvalidCloudSnapshot implements Exception {
+  const InvalidCloudSnapshot(this.code);
+
+  /// `invalid_snapshot` or `payload_too_large`.
+  final String code;
+
+  @override
+  String toString() => 'InvalidCloudSnapshot($code)';
 }
 
 /// Whether a completed workout was only removed locally, or also needs a
@@ -137,15 +148,21 @@ class ObjectBoxWorkoutOutbox {
   /// MUST be called in the same ObjectBox write transaction which changes
   /// the session to completed. A failing snapshot rolls back the finish.
   /// No network and no health-platform data are accessed by this function.
-  void enqueueCompletedInTransaction(String workoutUuid) {
+  ///
+  /// With [requireValid], a snapshot that would be stored `blocked` throws
+  /// [InvalidCloudSnapshot] instead, so the caller's transaction rolls back.
+  void enqueueCompletedInTransaction(
+    String workoutUuid, {
+    bool requireValid = false,
+  }) {
     final sessions = _find(_sessions, WorkoutSessionEntity_.uuid, workoutUuid);
     if (sessions.length != 1) throw StateError('Workout missing');
     final workout = sessions.single;
     if (workout.status != 'completed' ||
         workout.completedAtMs == null ||
         workout.deletedAtMs != null ||
-        workout.origin != 'northstar_phone') {
-      throw StateError('Only finished BeyondRep phone workouts may be queued');
+        WorkoutOrigin.fromWire(workout.origin) == null) {
+      throw StateError('Only finished BeyondRep workouts may be queued');
     }
     // IDs may be from older offline sessions; never block a local finish
     // merely because the completed snapshot cannot be uploaded.
@@ -170,6 +187,7 @@ class ObjectBoxWorkoutOutbox {
           error.message == 'Workout exceeds the cloud DTO size limit'
           ? 'payload_too_large'
           : 'invalid_snapshot';
+      if (requireValid) throw InvalidCloudSnapshot(validationError);
     }
     _operations.put(
       WorkoutSyncOutboxEntity(
@@ -220,8 +238,8 @@ class ObjectBoxWorkoutOutbox {
       }
       if (session.status != 'completed' ||
           session.completedAtMs == null ||
-          session.origin != 'northstar_phone') {
-        throw StateError('only_completed_phone_workouts_can_be_deleted');
+          WorkoutOrigin.fromWire(session.origin) == null) {
+        throw StateError('only_completed_workouts_can_be_deleted');
       }
       final remote = _find(
         _remote,
@@ -418,7 +436,7 @@ class ObjectBoxWorkoutOutbox {
     final payload = jsonEncode({
       'schema_version': 1,
       'workout_id': normalizedWorkoutUuid,
-      'origin': 'northstar_phone',
+      'origin': workout.origin,
       'status': 'completed',
       'name': workout.name,
       'started_at_utc': DateTime.fromMillisecondsSinceEpoch(
@@ -573,7 +591,7 @@ class ObjectBoxWorkoutOutbox {
       for (final session in query.find()) {
         if (session.deletedAtMs != null ||
             session.completedAtMs == null ||
-            session.origin != 'northstar_phone') {
+            WorkoutOrigin.fromWire(session.origin) == null) {
           continue;
         }
         try {

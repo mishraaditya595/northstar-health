@@ -847,10 +847,48 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "15:5448564801117840993",
+      "lastPropertyId": "5:11174468375951725",
+      "name": "WatchWorkoutReceiptEntity",
+      "properties": [
+        {
+          "id": "1:5909427177861759185",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:1718115503878110265",
+          "name": "workoutUuid",
+          "indexId": "23:2848549624512229985",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:826523671492770393",
+          "name": "messageId",
+          "indexId": "24:6056147980862212468",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "4:1729971269259454684",
+          "name": "platformWorkoutUuid",
+          "type": 9
+        },
+        {
+          "id": "5:11174468375951725",
+          "name": "receivedAtMs",
+          "type": 6
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "14:594895591915760983",
-  "lastIndexId": "22:7929442221991526730",
+  "lastEntityId": "15:5448564801117840993",
+  "lastIndexId": "24:6056147980862212468",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

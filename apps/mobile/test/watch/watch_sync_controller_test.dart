@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/core/ids/uuid_factory.dart';
@@ -12,12 +13,16 @@ import 'package:beyondrep/features/programs/application/program_providers.dart';
 import 'package:beyondrep/features/train/train_library_state.dart';
 import 'package:beyondrep/features/watch/application/watch_sync_controller.dart';
 import 'package:beyondrep/features/watch/application/watch_status_provider.dart';
+import 'package:beyondrep/features/watch/data/objectbox_watch_workout_importer.dart';
 import 'package:beyondrep/features/watch/data/watch_link.dart';
 import 'package:beyondrep/features/watch/data/watch_status_store.dart';
+import 'package:beyondrep/features/watch/data/watch_wipe_queue.dart';
 import 'package:beyondrep/features/watch/domain/watch_account_key.dart';
 import 'package:beyondrep/features/watch/domain/watch_message.dart';
 import 'package:beyondrep/features/watch/domain/watch_status.dart';
+import 'package:beyondrep/features/workouts/data/workout_entities.dart';
 import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
+import 'package:beyondrep/objectbox.g.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -124,7 +129,12 @@ final _library = WorkoutLibrarySnapshot(
 );
 
 class _Harness {
-  _Harness(WidgetTester tester, {bool reachable = true, bool signedIn = true}) {
+  _Harness(
+    WidgetTester tester, {
+    bool reachable = true,
+    bool signedIn = true,
+    Store? store,
+  }) {
     link = _FakeLink(reachable: reachable);
     api = FakeAuthApi()..sessionId = signedIn ? accountA : null;
     bound = FakeBoundAccountStore()..saved = signedIn ? accountA : null;
@@ -145,6 +155,14 @@ class _Harness {
           (ref) async => const WorkoutHistorySnapshot(sessions: []),
         ),
         fakeHealthOverview(health),
+        if (store != null)
+          watchWorkoutImporterProvider.overrideWithValue(
+            (id, active) => ObjectBoxWatchWorkoutImporter(
+              store,
+              accountId: id,
+              activeAccountId: active,
+            ),
+          ),
       ],
     );
     addTearDown(() async {
@@ -350,6 +368,31 @@ void main() {
     ) as AccountCleared;
     expect(inContext.wipeUnsent, isTrue);
     expect(ctx.keys, ['account_cleared']);
+  });
+
+  testWidgets('a deletion with no watch in reach is persisted for retry', (
+    tester,
+  ) async {
+    final h = _Harness(tester, reachable: false);
+    h.link.deviceOverride = const WatchDeviceStatus(
+      supported: true,
+      paired: true,
+      installed: true,
+      reachable: false,
+    );
+    await h.start();
+    await _elapse(tester, const Duration(seconds: 3));
+    await h.container
+        .read(watchSyncControllerProvider)
+        .accountDeleted(accountA);
+    expect(h.link.calls.where((c) => c.kind == 'transfer'), isEmpty);
+    final queue = await WatchWipeQueue.open();
+    final wipe = queue.pending().single;
+    final message = WatchMessage.fromJson(
+      jsonDecode(wipe.json) as Map<String, Object?>,
+    ) as AccountCleared;
+    expect(message.wipeUnsent, isTrue);
+    expect(message.accountKey, watchAccountKey(accountA));
   });
 
   testWidgets('a sign out while the context is being sent still clears', (
@@ -818,6 +861,80 @@ void main() {
       h.link.stateChanges.add(null);
       await _elapse(tester, const Duration(seconds: 3));
       expect(h.link.messageListens, 1);
+    });
+  });
+
+  group('completed workouts from the watch', () {
+    late Directory dir;
+    late Store store;
+
+    setUp(() {
+      dir = Directory.systemTemp.createTempSync('beyondrep-controller-');
+      store = Store(getObjectBoxModel(), directory: dir.path);
+    });
+    tearDown(() {
+      store.close();
+      dir.deleteSync(recursive: true);
+    });
+
+    String completedJson({String? key}) {
+      final json = jsonDecode(
+        File(
+          '../../contracts/watch_link/v1/fixtures/valid/'
+          'completed_workout.json',
+        ).readAsStringSync(),
+      ) as Map<String, Object?>;
+      json['account_key'] = key ?? watchAccountKey(accountA);
+      return jsonEncode(json);
+    }
+
+    testWidgets('a completed_workout from the watch is imported and acked', (
+      tester,
+    ) async {
+      final h = _Harness(tester, store: store);
+      await h.start();
+      await _elapse(tester, const Duration(seconds: 3));
+      h.link.stateChanges.add(null);
+      await _elapse(tester, const Duration(seconds: 3));
+      final before = h.link.calls.where((c) => c.kind == 'transfer').length;
+      h.link.incoming.add(completedJson());
+      await _elapse(tester, const Duration(milliseconds: 50));
+      expect(store.box<WorkoutSessionEntity>().count(), 1);
+      final transfers = h.link.calls.where((c) => c.kind == 'transfer');
+      expect(transfers.length, before + 1);
+      final ack = h.link.transferred(before) as Ack;
+      expect(ack.result, 'stored');
+      expect(ack.accountKey, watchAccountKey(accountA));
+      expect(ack.ackedMessageId, '77777777-3333-4333-8333-000000000009');
+    });
+
+    testWidgets("another account's completed_workout gets no ack", (
+      tester,
+    ) async {
+      final h = _Harness(tester, store: store);
+      await h.start();
+      await _elapse(tester, const Duration(seconds: 3));
+      h.link.stateChanges.add(null);
+      await _elapse(tester, const Duration(seconds: 3));
+      h.link.incoming.add(completedJson(key: watchAccountKey(accountB)));
+      await _elapse(tester, const Duration(milliseconds: 50));
+      expect(store.box<WorkoutSessionEntity>().count(), 0);
+      expect(h.link.calls.where((c) => c.kind == 'transfer'), isEmpty);
+    });
+
+    testWidgets('an ack message is still handled as before', (tester) async {
+      final h = _Harness(tester, store: store);
+      await h.start();
+      await _elapse(tester, const Duration(seconds: 3));
+      h.link.stateChanges.add(null);
+      await _elapse(tester, const Duration(seconds: 3));
+      h.link.incoming.add(_ack(_idOf(h.link.contexts.last, 'health_snapshot')));
+      await _elapse(tester, const Duration(milliseconds: 10));
+      expect(
+        h.container.read(watchStatusProvider),
+        WatchSynced(DateTime(2026, 11, 24, 8)),
+      );
+      expect(store.box<WorkoutSessionEntity>().count(), 0);
     });
   });
 }

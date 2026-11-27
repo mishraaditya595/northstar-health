@@ -1,6 +1,25 @@
+/// Immutable domain values: never expose ObjectBox IDs to presentation.
+library;
+
 import '../../../core/units/load_units.dart';
 
-/// Immutable domain values: never expose ObjectBox IDs to presentation.
+/// Where a completed workout was logged. `wire` is the cloud payload value.
+enum WorkoutOrigin {
+  phone('northstar_phone'),
+  watch('beyondrep_watch');
+
+  const WorkoutOrigin(this.wire);
+  final String wire;
+
+  /// Null for anything that is not exactly one of the two wire values.
+  static WorkoutOrigin? fromWire(Object? value) {
+    for (final origin in values) {
+      if (origin.wire == value) return origin;
+    }
+    return null;
+  }
+}
+
 enum WorkoutStatus { inProgress, paused, completed, discarded, unknown }
 
 enum WorkoutSetKind { warmup, working, unknown }
@@ -121,6 +140,7 @@ class WorkoutSessionRecord {
     this.sets = const [],
     this.programUuid,
     this.programDayLocalDate,
+    this.origin = WorkoutOrigin.phone,
   });
   final String uuid;
   final String name;
@@ -136,4 +156,7 @@ class WorkoutSessionRecord {
   /// Program day this session was started for (`yyyy-MM-dd`). Local only.
   final String? programUuid;
   final String? programDayLocalDate;
+
+  /// Which device logged the workout.
+  final WorkoutOrigin origin;
 }

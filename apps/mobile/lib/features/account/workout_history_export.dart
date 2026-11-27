@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/storage/account_store.dart';
 import '../sync/cloud_session_guard.dart';
+import '../workouts/domain/workout_models.dart' show WorkoutOrigin;
 import 'account_auth_provider.dart';
 
 /// Never send an unverified file to the OS share/save bridge.
@@ -175,7 +176,7 @@ class CompletedWorkoutHistoryExporter {
         if (payload is! Map<String, dynamic> ||
             payload['schema_version'] != 1 ||
             payload['status'] != 'completed' ||
-            payload['origin'] != 'northstar_phone' ||
+            WorkoutOrigin.fromWire(payload['origin']) == null ||
             payload['workout_id'] != id ||
             payload['exercises'] is! List) {
           throw const WorkoutExportException('invalid_payload');

@@ -212,10 +212,12 @@ class RemoteWorkoutSnapshot {
     required this.originalOffsetMinutes,
     required this.exercises,
     required this.sets,
+    required this.origin,
   });
 
   final String uuid;
   final String name;
+  final WorkoutOrigin origin;
   final DateTime startedAtUtc;
   final DateTime completedAtUtc;
   final int originalOffsetMinutes;
@@ -346,7 +348,7 @@ class WorkoutRestorePage {
       if (deleted && payload != null || !deleted && payload == null) {
         _invalid('invalid_change_payload');
       }
-      final workout = deleted ? null : _workout(payload, id);
+      final workout = deleted ? null : parseWorkout(payload, workoutId: id);
       changes.add(
         RemoteWorkoutChange(
           workoutId: id,
@@ -369,7 +371,16 @@ class WorkoutRestorePage {
     );
   }
 
-  static RemoteWorkoutSnapshot _workout(Object? raw, String workoutId) {
+  /// Validates one cloud workout payload. `workoutId` must already be the
+  /// lowercase canonical id. Pure: mutates nothing.
+  static RemoteWorkoutSnapshot parseWorkout(
+    Object? raw, {
+    required String workoutId,
+    Set<WorkoutOrigin> origins = const {
+      WorkoutOrigin.phone,
+      WorkoutOrigin.watch,
+    },
+  }) {
     // Bound the bytes before traversing a potentially large nested response.
     try {
       if (utf8.encode(jsonEncode(raw)).length > 65536) {
@@ -383,7 +394,8 @@ class WorkoutRestorePage {
     final data = _map(raw, _workoutFields);
     if (data['schema_version'] != 1) _invalid('invalid_workout_schema');
     if (_id(data['workout_id']) != workoutId) _invalid('workout_id_mismatch');
-    if (data['origin'] != 'northstar_phone') {
+    final origin = WorkoutOrigin.fromWire(data['origin']);
+    if (origin == null || !origins.contains(origin)) {
       _invalid('invalid_workout_origin');
     }
     if (data['status'] != 'completed') _invalid('invalid_workout_status');
@@ -508,6 +520,7 @@ class WorkoutRestorePage {
     }
     return RemoteWorkoutSnapshot(
       uuid: workoutId,
+      origin: origin,
       name: name,
       startedAtUtc: start,
       completedAtUtc: finish,

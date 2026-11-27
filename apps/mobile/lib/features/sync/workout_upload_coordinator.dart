@@ -10,6 +10,7 @@ import '../account/account_auth_controller.dart';
 import '../account/account_auth_provider.dart';
 import '../progress/workout_history_state.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
+import '../workouts/domain/workout_models.dart' show WorkoutOrigin;
 import 'cloud_session_guard.dart';
 import 'objectbox_workout_restore_importer.dart';
 import 'workout_restore_feed.dart';
@@ -473,7 +474,7 @@ class WorkoutUploadCoordinator with WidgetsBindingObserver {
       return decoded is Map<String, dynamic> &&
           decoded['schema_version'] == 1 &&
           decoded['status'] == 'completed' &&
-          decoded['origin'] == 'northstar_phone' &&
+          WorkoutOrigin.fromWire(decoded['origin']) != null &&
           decoded['workout_id'] == op.sessionUuid;
     } catch (_) {
       return false;

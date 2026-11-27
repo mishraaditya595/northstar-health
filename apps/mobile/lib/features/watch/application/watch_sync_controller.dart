@@ -14,11 +14,14 @@ import '../../programs/application/program_providers.dart';
 import '../../train/train_library_state.dart';
 import '../data/watch_link.dart';
 import '../data/watch_status_store.dart';
+import '../data/watch_wipe_queue.dart';
 import '../domain/watch_account_key.dart';
 import '../domain/watch_message.dart';
 import '../domain/watch_status.dart';
 import 'watch_snapshots.dart';
 import 'watch_status_provider.dart';
+import 'watch_wipe_retrier.dart';
+import 'watch_workout_inbox.dart';
 
 /// Ids for outgoing watch messages; tests replace it.
 final watchMessageIdsProvider = Provider<UuidFactory>(
@@ -27,23 +30,40 @@ final watchMessageIdsProvider = Provider<UuidFactory>(
 
 /// Tells the watch an account was permanently deleted so it drops that
 /// account's unsent workouts too. Reads no provider, so the account
-/// controller can call it after the signed-in scope has gone. Sends nothing
-/// when no watch with the app is paired.
+/// controller can call it after the signed-in scope has gone. Does nothing
+/// unless a watch with the app is paired: then the wipe is persisted first
+/// (outside the account store, which deletion removes) and resent by
+/// `WatchWipeRetrier` until the watch acks it. Nothing is persisted on
+/// Android or without a paired watch with the app, so no deleted account's
+/// key is left behind. Sends nothing now when the watch is out of reach.
 Future<void> announceWatchAccountDeleted({
   required WatchLink link,
   required String userId,
   required UuidFactory ids,
   required DateTime nowUtc,
+  required Future<WatchWipeQueue> queue,
 }) async {
-  if (!await link.isReachableForUpdates()) return;
+  // Listened to now so a failing open is never reported as unhandled.
+  final opened = queue.then<WatchWipeQueue?>((q) => q, onError: (_) => null);
+  final device = await link.status();
+  if (!device.supported || !device.paired || !device.installed) return;
+  final messageId = ids.newId();
   final json = jsonEncode(
     buildAccountCleared(
       accountKey: watchAccountKey(userId),
       wipeUnsent: true,
-      messageId: ids.newId(),
+      messageId: messageId,
       nowUtc: nowUtc,
     ).toJson(),
   );
+  try {
+    await (await opened)?.add(
+      PendingWatchWipe(messageId: messageId, json: json),
+    );
+  } catch (_) {
+    // Never stops the immediate send.
+  }
+  if (!await link.isReachableForUpdates()) return;
   await link.transfer(json);
   // The context holds the clear too, so the old context a watch replays on
   // launch is gone and cannot bring the account back.
@@ -170,6 +190,16 @@ class WatchSyncController {
     try {
       message = WatchMessage.fromJson(jsonDecode(json) as Map<String, Object?>);
     } catch (_) {
+      return;
+    }
+    if (message is CompletedWorkout) {
+      // A failed import sends no ack, so the watch keeps the workout.
+      unawaited(
+        _ref
+            .read(watchWorkoutInboxProvider)
+            .handle(message)
+            .then<void>((_) {}, onError: (_) {}),
+      );
       return;
     }
     if (message is! Ack) return;
@@ -396,6 +426,7 @@ class WatchSyncController {
       userId: userId,
       ids: _ids,
       nowUtc: _clock().toUtc(),
+      queue: _ref.read(watchWipeQueueProvider),
     );
   }
 

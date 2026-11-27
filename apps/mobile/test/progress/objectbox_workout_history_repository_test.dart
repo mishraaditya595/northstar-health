@@ -230,6 +230,20 @@ void main() {
     expect(history.readCompleted().sessions, isEmpty);
   });
 
+  test('completed watch workouts are in history with origin watch', () {
+    create('phone', DateTime.utc(2026, 10, 21, 8));
+    create('watch', DateTime.utc(2026, 10, 22, 8));
+    final raw = store.box<WorkoutSessionEntity>();
+    raw.put(
+      raw.getAll().singleWhere((e) => e.uuid == 'watch')
+        ..origin = 'beyondrep_watch',
+    );
+    final byId = {for (final s in history.readCompleted().sessions) s.uuid: s};
+    expect(byId.keys, containsAll(['phone', 'watch']));
+    expect(byId['watch']!.origin, WorkoutOrigin.watch);
+    expect(byId['phone']!.origin, WorkoutOrigin.phone);
+  });
+
   test('history order uses completion time descending, not creation order', () {
     create('late', DateTime.utc(2026, 10, 24, 8));
     create('early', DateTime.utc(2026, 10, 23, 8));

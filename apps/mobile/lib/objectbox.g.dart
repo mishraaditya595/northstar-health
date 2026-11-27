@@ -15,6 +15,7 @@ import 'package:objectbox/objectbox.dart' as obx;
 import 'package:objectbox_flutter_libs/objectbox_flutter_libs.dart';
 
 import 'features/health/data/health_connection_entity.dart';
+import 'features/watch/data/watch_workout_receipt_entity.dart';
 import 'features/workouts/data/workout_entities.dart';
 
 export 'package:objectbox/objectbox.dart'; // so that callers only have to import this file
@@ -992,6 +993,48 @@ final _entities = <obx_int.ModelEntity>[
     relations: <obx_int.ModelRelation>[],
     backlinks: <obx_int.ModelBacklink>[],
   ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(15, 5448564801117840993),
+    name: 'WatchWorkoutReceiptEntity',
+    lastPropertyId: const obx_int.IdUid(5, 11174468375951725),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 5909427177861759185),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 1718115503878110265),
+        name: 'workoutUuid',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(23, 2848549624512229985),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 826523671492770393),
+        name: 'messageId',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(24, 6056147980862212468),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 1729971269259454684),
+        name: 'platformWorkoutUuid',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 11174468375951725),
+        name: 'receivedAtMs',
+        type: 6,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
 ];
 
 /// Shortcut for [obx.Store.new] that passes [getObjectBoxModel] and for Flutter
@@ -1037,8 +1080,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
     // Typically, this is done with `dart run build_runner build`.
     generatorVersion: obx_int.GeneratorVersion.v2025_12_16,
     entities: _entities,
-    lastEntityId: const obx_int.IdUid(14, 594895591915760983),
-    lastIndexId: const obx_int.IdUid(22, 7929442221991526730),
+    lastEntityId: const obx_int.IdUid(15, 5448564801117840993),
+    lastIndexId: const obx_int.IdUid(24, 6056147980862212468),
     lastRelationId: const obx_int.IdUid(0, 0),
     lastSequenceId: const obx_int.IdUid(0, 0),
     retiredEntityUids: const [],
@@ -2299,6 +2342,65 @@ obx_int.ModelDefinition getObjectBoxModel() {
         return object;
       },
     ),
+    WatchWorkoutReceiptEntity:
+        obx_int.EntityDefinition<WatchWorkoutReceiptEntity>(
+          model: _entities[14],
+          toOneRelations: (WatchWorkoutReceiptEntity object) => [],
+          toManyRelations: (WatchWorkoutReceiptEntity object) => {},
+          getId: (WatchWorkoutReceiptEntity object) => object.id,
+          setId: (WatchWorkoutReceiptEntity object, int id) {
+            object.id = id;
+          },
+          objectToFB: (WatchWorkoutReceiptEntity object, fb.Builder fbb) {
+            final workoutUuidOffset = fbb.writeString(object.workoutUuid);
+            final messageIdOffset = fbb.writeString(object.messageId);
+            final platformWorkoutUuidOffset = object.platformWorkoutUuid == null
+                ? null
+                : fbb.writeString(object.platformWorkoutUuid!);
+            fbb.startTable(6);
+            fbb.addInt64(0, object.id);
+            fbb.addOffset(1, workoutUuidOffset);
+            fbb.addOffset(2, messageIdOffset);
+            fbb.addOffset(3, platformWorkoutUuidOffset);
+            fbb.addInt64(4, object.receivedAtMs);
+            fbb.finish(fbb.endTable());
+            return object.id;
+          },
+          objectFromFB: (obx.Store store, ByteData fbData) {
+            final buffer = fb.BufferContext(fbData);
+            final rootOffset = buffer.derefObject(0);
+            final idParam = const fb.Int64Reader().vTableGet(
+              buffer,
+              rootOffset,
+              4,
+              0,
+            );
+            final workoutUuidParam = const fb.StringReader(
+              asciiOptimization: true,
+            ).vTableGet(buffer, rootOffset, 6, '');
+            final messageIdParam = const fb.StringReader(
+              asciiOptimization: true,
+            ).vTableGet(buffer, rootOffset, 8, '');
+            final platformWorkoutUuidParam = const fb.StringReader(
+              asciiOptimization: true,
+            ).vTableGetNullable(buffer, rootOffset, 10);
+            final receivedAtMsParam = const fb.Int64Reader().vTableGet(
+              buffer,
+              rootOffset,
+              12,
+              0,
+            );
+            final object = WatchWorkoutReceiptEntity(
+              id: idParam,
+              workoutUuid: workoutUuidParam,
+              messageId: messageIdParam,
+              platformWorkoutUuid: platformWorkoutUuidParam,
+              receivedAtMs: receivedAtMsParam,
+            );
+
+            return object;
+          },
+        ),
   };
 
   return obx_int.ModelDefinition(model, bindings);
@@ -3050,4 +3152,34 @@ class TrainingProgramEntity_ {
   static final archivedAtMs = obx.QueryIntegerProperty<TrainingProgramEntity>(
     _entities[13].properties[11],
   );
+}
+
+/// [WatchWorkoutReceiptEntity] entity fields to define ObjectBox queries.
+class WatchWorkoutReceiptEntity_ {
+  /// See [WatchWorkoutReceiptEntity.id].
+  static final id = obx.QueryIntegerProperty<WatchWorkoutReceiptEntity>(
+    _entities[14].properties[0],
+  );
+
+  /// See [WatchWorkoutReceiptEntity.workoutUuid].
+  static final workoutUuid = obx.QueryStringProperty<WatchWorkoutReceiptEntity>(
+    _entities[14].properties[1],
+  );
+
+  /// See [WatchWorkoutReceiptEntity.messageId].
+  static final messageId = obx.QueryStringProperty<WatchWorkoutReceiptEntity>(
+    _entities[14].properties[2],
+  );
+
+  /// See [WatchWorkoutReceiptEntity.platformWorkoutUuid].
+  static final platformWorkoutUuid =
+      obx.QueryStringProperty<WatchWorkoutReceiptEntity>(
+        _entities[14].properties[3],
+      );
+
+  /// See [WatchWorkoutReceiptEntity.receivedAtMs].
+  static final receivedAtMs =
+      obx.QueryIntegerProperty<WatchWorkoutReceiptEntity>(
+        _entities[14].properties[4],
+      );
 }

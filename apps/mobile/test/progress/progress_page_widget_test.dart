@@ -287,6 +287,61 @@ void main() {
     expect(find.text('Not synced'), findsOneWidget);
   });
 
+  void markWatch(String id) {
+    final sessions = store.box<WorkoutSessionEntity>();
+    sessions.put(
+      sessions.getAll().singleWhere((e) => e.uuid == id)
+        ..origin = 'beyondrep_watch',
+    );
+  }
+
+  testWidgets('a watch workout row and detail show the Apple Watch tag', (
+    tester,
+  ) async {
+    tallView(tester);
+    writeWorkout('wk', startedAtUtc: DateTime.utc(2026, 10, 22, 10));
+    markWatch('wk');
+    await showProgressAt(tester, DateTime.utc(2026, 10, 24, 12));
+    expect(find.text('Apple Watch'), findsOneWidget);
+    await tester.ensureVisible(find.text('View details'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('View details'));
+    await tester.pumpAndSettle();
+    expect(find.text('Workout details'), findsOneWidget);
+    expect(find.text('Apple Watch'), findsOneWidget);
+  });
+
+  testWidgets('a phone workout shows no Apple Watch tag', (tester) async {
+    tallView(tester);
+    writeWorkout('wk', startedAtUtc: DateTime.utc(2026, 10, 22, 10));
+    await showProgressAt(tester, DateTime.utc(2026, 10, 24, 12));
+    expect(find.text('Apple Watch'), findsNothing);
+    await tester.ensureVisible(find.text('View details'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('View details'));
+    await tester.pumpAndSettle();
+    expect(find.text('Workout details'), findsOneWidget);
+    expect(find.text('Apple Watch'), findsNothing);
+  });
+
+  testWidgets('the watch row at text scale 2.0 on 320 wide has no overflow', (
+    tester,
+  ) async {
+    tallView(tester, width: 320);
+    tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    writeWorkout('wk', startedAtUtc: DateTime.utc(2026, 10, 22, 10));
+    markWatch('wk');
+    await showProgressAt(tester, DateTime.utc(2026, 10, 24, 12));
+    await tester.scrollUntilVisible(
+      find.text('Apple Watch'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Apple Watch'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('the month arrows browse history and stop at this month', (
     tester,
   ) async {

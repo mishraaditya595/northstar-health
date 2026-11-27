@@ -21,12 +21,13 @@ const epochB = '00000000-0000-4000-8000-000000000902';
 Map<String, dynamic> dto({
   String id = workout,
   String name = 'Rows',
+  String origin = 'northstar_phone',
   Map<String, Object?> exerciseExtra = const {},
   Map<String, Object?> setExtra = const {},
 }) => {
   'schema_version': 1,
   'workout_id': id,
-  'origin': 'northstar_phone',
+  'origin': origin,
   'status': 'completed',
   'name': name,
   'started_at_utc': '2026-10-25T05:00:00Z',
@@ -63,6 +64,7 @@ WorkoutRestorePage feed({
   int revision = 1,
   String id = workout,
   String? name = 'Rows',
+  String origin = 'northstar_phone',
   bool tombstone = false,
   bool reset = false,
   Map<String, Object?> exerciseExtra = const {},
@@ -87,6 +89,7 @@ WorkoutRestorePage feed({
                   : dto(
                       id: id,
                       name: name!,
+                      origin: origin,
                       exerciseExtra: exerciseExtra,
                       setExtra: setExtra,
                     ),
@@ -1000,6 +1003,60 @@ void main() {
     expect(
       store.box<WorkoutSyncOutboxEntity>().getAll().last.state,
       'dependency_paused',
+    );
+  });
+
+  test('restoring a watch workout keeps origin beyondrep_watch', () {
+    importer.applyPage(
+      feed(origin: 'beyondrep_watch'),
+      afterSeq: 0,
+      requestedEpoch: null,
+    );
+    expect(
+      store.box<WorkoutSessionEntity>().getAll().single.origin,
+      'beyondrep_watch',
+    );
+    importer.applyPage(
+      feed(
+        origin: 'beyondrep_watch',
+        name: 'Rows v2',
+        after: 1,
+        requestedEpoch: epochA,
+        seq: 2,
+        revision: 2,
+      ),
+      afterSeq: 1,
+      requestedEpoch: epochA,
+    );
+    final session = store.box<WorkoutSessionEntity>().getAll().single;
+    expect(session.name, 'Rows v2');
+    expect(session.origin, 'beyondrep_watch');
+    expect(session.revision, 2);
+  });
+
+  test('a local watch workout is not a local_workout_conflict', () {
+    store.box<WorkoutSessionEntity>().put(
+      WorkoutSessionEntity(
+        uuid: workout,
+        name: 'Watch rows',
+        origin: 'beyondrep_watch',
+        status: 'completed',
+        revision: 1,
+        startedAtMs: DateTime.utc(2026, 10, 25, 5).millisecondsSinceEpoch,
+        completedAtMs: DateTime.utc(2026, 10, 25, 6).millisecondsSinceEpoch,
+        originalOffsetMinutes: 330,
+        updatedAtMs: DateTime.utc(2026, 10, 25, 6).millisecondsSinceEpoch,
+      ),
+    );
+    expect(
+      () => importer.applyPage(feed(), afterSeq: 0, requestedEpoch: null),
+      throwsA(
+        isA<RestoreImportException>().having(
+          (e) => e.code,
+          'code',
+          'untracked_local_workout',
+        ),
+      ),
     );
   });
 }

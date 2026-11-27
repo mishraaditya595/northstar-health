@@ -58,7 +58,8 @@ returns from `get_workout_changes` and includes in the account export. It is
 separate from the portable watch event envelope above. Authority:
 `northstar_private.validate_workout_v1`; extra keys are rejected.
 
-Workout: `schema_version` (1), `workout_id`, `origin` (`northstar_phone`),
+Workout: `schema_version` (1), `workout_id`, `origin` (`northstar_phone` or
+`beyondrep_watch`, case sensitive; anything else is rejected),
 `status` (`completed`), `name`, `started_at_utc`, `completed_at_utc`,
 `original_offset_minutes`, `exercises` (at most 120).
 
@@ -104,6 +105,12 @@ completed set needs `completed_at_utc` and either `reps` or `duration_seconds`.
   be deployed before any app build that uploads `duration_seconds`. Older app
   builds reject the unknown set key when restoring (`unsupported_field`, the
   whole page is refused), so update every install.
+- Deploy order: the migration `20261127090000_workout_origin_beyondrep_watch.sql`
+  must be deployed before any app build that uploads `beyondrep_watch`. Older
+  app builds reject the unknown origin when restoring
+  (`invalid_workout_origin`, the whole page is refused). Older builds also
+  fail the whole account JSON export and conflict review once any watch
+  workout exists in the cloud, so update every install.
 
 ## Watch link v1
 
@@ -123,13 +130,13 @@ Origin is stable across reconnection; do not arbitrarily transfer active workout
 ## Replay and consistency rules
 
 1. Watch commits set/status and its outbox event in **one native device-local transaction**; no successful haptic/green check until saved.
-2. Watch sends event UUID and per-session sequence. Receiver validates IDs, unit, schema version, owner/pairing and event shape; write domain update **and inbox dedupe receipt in one ObjectBox transaction**.
+2. Watch sends event UUID and per-session sequence. Receiver validates IDs, unit, schema version, owner/pairing and event shape; write domain update **and inbox dedupe receipt in one ObjectBox transaction**. For a completed watch workout the import is one ObjectBox transaction with the inbox receipt and the cloud outbox entry, then the `ack`.
 3. Only then send an explicit ACK #1 for the accepted `event_id`. Retrying the same event must return the same receipt without duplicating a set.
 4. Sequence gaps, clock drift, deleted set corrections and unsupported schema versions are handled explicitly; no wall-clock-only total ordering.
 5. Phone's cloud outbox synchronizes **completed** workouts as stable revisioned aggregates under ADR-0005: BeyondRep phone workouts, and, after the phone's durable import, completed Apple Watch workouts with origin `beyondrep_watch` (ADR-0012). In-progress watch sessions, raw heart rate and the health snapshot are never backed up. Cloud operation UUID/revision is different from watch event UUID/sequence.
 6. Server enforces authenticated conditional update, operation idempotency and owner isolation; ACK #2 is returned only after commit.
 7. Account logout stops cloud transfers; no unknown account auto-association. Device reboot, backgrounding and network loss preserve pending queues.
-8. Watch platform export receipt is transmitted with `platform_workout_exported` so phone doesn't duplicate HealthKit `HKWorkout`. Android uses one elected writer. External record metadata never becomes a sync event of raw HR/SpO₂.
+8. Watch platform export receipt is transmitted with `platform_workout_exported`, and as `healthkit_workout_uuid` on `completed_workout`, so phone doesn't duplicate HealthKit `HKWorkout`. Android uses one elected writer. External record metadata never becomes a sync event of raw HR/SpO₂.
 9. Never include raw watch sensor streams or platform health caches in Supabase workout DTO; they remain in health platforms.
 10. Queue compaction requires durable receipt and documented retention; never discard only pending copy on timeout or UI shutdown.
 

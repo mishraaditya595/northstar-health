@@ -20,6 +20,7 @@ Phase 3 platform permissions and measurements are implemented. **ObjectBox's own
 | `WorkoutSyncOutboxEntity` | Completed phone workout snapshots remain pending until matched server ACK; retain ack receipts as needed for retry and conflict | Completed-workout DTOs use authenticated Supabase RPC in foreground; local outbox records remain device-only |
 | `WorkoutRestoreCursorEntity` / `WorkoutRemoteStateEntity` | Account-scoped durable restore epoch/cursor, remote revisions and tombstones (P2-06 merged #20) | No — local protocol metadata only |
 | `WorkoutRestoreSkipEntity` | Remote change deliberately not imported because this phone has a conflicted/blocked upload for that workout; local copy kept (ADR-0006, PR #22) | No — local protocol metadata only |
+| `WatchWorkoutReceipt` | Until the account store is deleted | Never — local dedup and platform record reference only |
 | `HealthExportReceipt` | As long as corresponding workout relevant | Local platform-record references only |
 | `HealthCache` | Expiring, permission-scoped summaries | **Never** |
 | `HealthQueryCheckpoint` | Per-device until invalidated | **Never** |

@@ -883,6 +883,31 @@
         "healthkit_workout_uuid": {
           "type": "string",
           "format": "uuid"
+        },
+        "program_day": {
+          "type": "object",
+          "required": [
+            "plan_id",
+            "program_id",
+            "local_date"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "plan_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "program_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "local_date": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            }
+          }
         }
       }
     },
