@@ -1,0 +1,18 @@
+{
+  "description": "A 40 minute afternoon nap and no night: the nap shows.",
+  "utc_offset_minutes": 0,
+  "now": "2026-11-20T18:00:00Z",
+  "sleep": [
+    {
+      "from": "2026-11-20T13:00:00Z",
+      "to": "2026-11-20T13:40:00Z",
+      "stage": "asleep_unspecified",
+      "source_key": "com.example.watch"
+    }
+  ],
+  "hrv": [],
+  "resting_hr": [],
+  "expected": {
+    "asleep_minutes": 40
+  }
+}

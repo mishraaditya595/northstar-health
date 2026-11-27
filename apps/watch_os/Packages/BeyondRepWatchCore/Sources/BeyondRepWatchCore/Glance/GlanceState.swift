@@ -95,17 +95,23 @@ public struct Glance: Equatable {
     }
 }
 
-/// What the Home screen shows, computed from the journal. Only values the
-/// phone sent are shown; missing is "—", never 0, and health from another
-/// local date is never shown.
+/// What the Home screen shows, computed from the journal and, for the four
+/// tiles, what the watch read itself. Only values the phone sent or the watch
+/// read are shown; missing is "—", never 0, and health from another local
+/// date is never shown. Readiness and every score come from the phone only.
 public enum GlanceState: Equatable {
     case notPaired
     case ready(Glance)
 
     public static let missing = "—"
     public static let refreshCaption = "Open BeyondRep on your iPhone to refresh"
+    public static let watchCaption = "From this watch. Open BeyondRep on your iPhone for readiness"
 
-    public static func make(journal: WatchJournal, now: Date, timeZone: TimeZone, locale: Locale) throws -> GlanceState {
+    /// [watch] is what the watch read from its own HealthKit store (memory
+    /// only); a value for another local date than [now]'s is ignored.
+    public static func make(
+        journal: WatchJournal, now: Date, timeZone: TimeZone, locale: Locale, watch: WatchHealth? = nil
+    ) throws -> GlanceState {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
         let c = calendar.dateComponents([.year, .month, .day], from: now)
@@ -116,6 +122,7 @@ public enum GlanceState: Equatable {
         try journal.purgeHealth(exceptLocalDate: today)
         guard let binding = try journal.binding() else { return .notPaired }
         let key = binding.accountKey
+        let watch = watch.flatMap { $0.localDate == today ? $0 : nil }
 
         var plans: [PlanRow] = []
         var todayRow: PlanRow?
@@ -144,8 +151,9 @@ public enum GlanceState: Equatable {
             case .healthSnapshot(_, let raw) = health.body
         else {
             return .ready(Glance(
-                readiness: nil, readinessReason: nil, factors: [], tiles: tiles(nil, locale: locale),
-                caption: refreshCaption, today: todayRow, plans: plans))
+                readiness: nil, readinessReason: nil, factors: [], tiles: tiles(nil, watch: watch, locale: locale),
+                caption: watch?.hasAnyValue == true ? watchCaption : refreshCaption, today: todayRow,
+                plans: plans))
         }
 
         var readiness: ReadinessLine?
@@ -175,7 +183,7 @@ public enum GlanceState: Equatable {
             caption = "as of " + formatter.string(from: date)
         }
         return .ready(Glance(
-            readiness: readiness, readinessReason: reason, factors: factors, tiles: tiles(raw, locale: locale),
+            readiness: readiness, readinessReason: reason, factors: factors, tiles: tiles(raw, watch: watch, locale: locale),
             caption: caption, today: todayRow, plans: plans))
     }
 
@@ -198,21 +206,19 @@ public enum GlanceState: Equatable {
         return (text, (betterWhenHigher ? diff > 0 : diff < 0) ? .good : .neutral)
     }
 
-    private static func tiles(_ raw: [String: Any]?, locale: Locale) -> [GlanceTile] {
-        func int(_ value: Any?) -> Int? { (value as? NSNumber).map { $0.intValue } }
+    private static func tiles(_ raw: [String: Any]?, watch: WatchHealth?, locale: Locale) -> [GlanceTile] {
+        func int(_ value: Any?) -> Int? { HealthMerge.int(value) }
+        let merged = HealthMerge.today(snapshot: raw, watch: watch)
         let count = NumberFormatter()
         count.locale = locale
         count.numberStyle = .decimal
 
-        var sleepValue = missing
-        var sleepStatus: String?
-        if let sleep = raw?["sleep"] as? [String: Any] {
-            if let minutes = int(sleep["asleep_minutes"]) { sleepValue = sleepText(minutes: minutes) }
-            if let score = int(sleep["score"]) { sleepStatus = "Score \(score)" }
-        }
-        let rhr = int(raw?["resting_hr_bpm"])
-        let hrv = int(raw?["hrv_ms"])
-        let steps = int(raw?["steps"])
+        let sleepValue = merged.sleepMinutes.map { sleepText(minutes: $0) } ?? missing
+        // The score is the phone's; the watch never computes one.
+        let sleepStatus = int((raw?["sleep"] as? [String: Any])?["score"]).map { "Score \($0)" }
+        let rhr = merged.restingHr
+        let hrv = merged.hrv
+        let steps = merged.steps
         let rhrLine = versusUsual(rhr, int(raw?["resting_hr_usual_bpm"]), betterWhenHigher: false)
         let hrvLine = versusUsual(hrv, int(raw?["hrv_usual_ms"]), betterWhenHigher: true)
         return [

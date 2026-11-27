@@ -27,7 +27,7 @@ SOURCE_DIRS = [
   "Sources",
   "Packages/BeyondRepWatchCore/Sources/BeyondRepWatchCore",
 ].freeze
-HEALTH_SHARE_USAGE = "BeyondRep reads your heart rate and active energy during a workout on your watch."
+HEALTH_SHARE_USAGE = "BeyondRep reads your sleep, steps, heart rate, HRV and active energy to show them on your watch and during a workout."
 HEALTH_UPDATE_USAGE = "BeyondRep saves each strength workout you finish on your watch to Apple Health."
 # Resource folders referenced by the watch target (asset catalog with the icon).
 RESOURCE_GLOB = "Sources/**/*.xcassets"

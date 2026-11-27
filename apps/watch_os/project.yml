@@ -31,5 +31,5 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_ENTITLEMENTS: BeyondRepWatch.entitlements
         INFOPLIST_FILE: Sources/Resources/Info.plist
-        INFOPLIST_KEY_NSHealthShareUsageDescription: BeyondRep reads your heart rate and active energy during a workout on your watch.
+        INFOPLIST_KEY_NSHealthShareUsageDescription: BeyondRep reads your sleep, steps, heart rate, HRV and active energy to show them on your watch and during a workout.
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: BeyondRep saves each strength workout you finish on your watch to Apple Health.

@@ -123,7 +123,7 @@ class WatchEmbeddingTest(unittest.TestCase):
             {"com.apple.developer.healthkit": True, "com.apple.developer.healthkit.access": []},
         )
         self.assertEqual(plistlib.loads(info.read_bytes()), {"WKBackgroundModes": ["workout-processing"]})
-        share = "BeyondRep reads your heart rate and active energy during a workout on your watch."
+        share = "BeyondRep reads your sleep, steps, heart rate, HRV and active energy to show them on your watch and during a workout."
         update = "BeyondRep saves each strength workout you finish on your watch to Apple Health."
         configs = re.findall(
             r"isa = XCBuildConfiguration;.*?buildSettings = \{(.*?)\n\t\t\t\};", self.pbx, re.S

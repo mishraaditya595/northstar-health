@@ -19,8 +19,8 @@ final class GlanceStateTests: XCTestCase {
         try? FileManager.default.removeItem(at: dir)
     }
 
-    private func make(now: String) throws -> GlanceState {
-        try GlanceState.make(journal: journal, now: M.date(now), timeZone: kolkata, locale: locale)
+    private func make(now: String, watch: WatchHealth? = nil) throws -> GlanceState {
+        try GlanceState.make(journal: journal, now: M.date(now), timeZone: kolkata, locale: locale, watch: watch)
     }
 
     private func ready(_ state: GlanceState) throws -> Glance {
@@ -133,6 +133,96 @@ final class GlanceStateTests: XCTestCase {
         try journal.saveHealth(M.health(asOf: "2026-10-23T01:40:00.123Z"))
         let g = try ready(try make(now: "2026-10-23T05:00:00Z"))
         XCTAssertTrue(g.caption.contains("7:10"), g.caption)
+    }
+
+    // MARK: Values the watch read itself
+
+    private let watchNow = "2026-10-23T05:00:00Z"  // 10:30 on 2026-10-23 in Asia/Kolkata
+
+    func testWatchValuesShowWithoutAPhoneSnapshot() throws {
+        try journal.saveBinding(M.binding())
+        let watch = WatchHealth(
+            localDate: "2026-10-23", asleepMinutes: 432, restingHrBpm: 55, hrvMs: 48, steps: 3210)
+        let g = try ready(try make(now: watchNow, watch: watch))
+        XCTAssertEqual(g.tiles.map { $0.value }, ["7h 12m", "55", "48", "3,210"])
+        XCTAssertNil(g.readiness, "readiness stays on the phone")
+        XCTAssertNil(g.readinessReason)
+        XCTAssertEqual(g.factors, [])
+        XCTAssertNil(g.tiles[0].status, "no sleep score without the phone")
+        XCTAssertNil(g.tiles[1].status, "no usual value without the phone")
+        XCTAssertEqual(g.tiles[1].unit, "bpm")
+        XCTAssertEqual(g.tiles[3].status, "today")
+        XCTAssertEqual(g.caption, "From this watch. Open BeyondRep on your iPhone for readiness")
+    }
+
+    func testPhoneValuesWinAndStepsTakeTheLargerOne() throws {
+        try journal.saveBinding(M.binding())
+        try journal.saveHealth(M.health(extra: ["steps": 9000]))
+        let watch = WatchHealth(
+            localDate: "2026-10-23", asleepMinutes: 300, restingHrBpm: 50, hrvMs: 40, steps: 9450)
+        let g = try ready(try make(now: watchNow, watch: watch))
+        XCTAssertEqual(g.tiles.map { $0.value }, ["7h 12m", "54", "62", "9,450"])
+        XCTAssertEqual(g.tiles[0].status, "Score 81")
+        XCTAssertNotNil(g.readiness)
+        XCTAssertTrue(g.caption.hasPrefix("as of "), g.caption)
+    }
+
+    func testPhoneStepsStayWhenTheWatchHasFewer() throws {
+        try journal.saveBinding(M.binding())
+        try journal.saveHealth(M.health(extra: ["steps": 9000]))
+        let watch = WatchHealth(localDate: "2026-10-23", steps: 4000)
+        XCTAssertEqual(try ready(try make(now: watchNow, watch: watch)).tiles[3].value, "9,000")
+    }
+
+    func testWatchFillsWhatTheSnapshotLeftOut() throws {
+        try journal.saveBinding(M.binding())
+        let raw: [String: Any] = [
+            "local_date": "2026-10-23", "as_of_utc": "2026-10-23T01:40:00Z", "resting_hr_bpm": 54,
+            "resting_hr_usual_bpm": 56, "hrv_usual_ms": 40,
+        ]
+        try journal.saveHealth(
+            WatchMessage(
+                messageId: M.id(), sentAtUtc: "2026-10-23T01:45:00Z", accountKey: M.keyA,
+                body: .healthSnapshot(localDate: "2026-10-23", raw: raw)))
+        let watch = WatchHealth(
+            localDate: "2026-10-23", asleepMinutes: 420, restingHrBpm: 99, hrvMs: 46, steps: 800)
+        let g = try ready(try make(now: watchNow, watch: watch))
+        XCTAssertEqual(g.tiles.map { $0.value }, ["7h 0m", "54", "46", "800"])
+        // The watch's HRV is compared with the phone's usual value.
+        XCTAssertEqual(g.tiles[2].status, "+6 vs usual")
+        XCTAssertEqual(g.tiles[2].tone, .good)
+        XCTAssertEqual(g.tiles[1].status, "\u{2212}2 vs usual")
+    }
+
+    func testAWatchValueForAnotherDateIsIgnored() throws {
+        try journal.saveBinding(M.binding())
+        let watch = WatchHealth(
+            localDate: "2026-10-22", asleepMinutes: 432, restingHrBpm: 55, hrvMs: 48, steps: 3210)
+        let g = try ready(try make(now: watchNow, watch: watch))
+        XCTAssertEqual(g.tiles.map { $0.value }, ["—", "—", "—", "—"])
+        XCTAssertEqual(g.caption, "Open BeyondRep on your iPhone to refresh")
+    }
+
+    func testNoWatchValuesStayDashesAndKeepTheRefreshCaption() throws {
+        try journal.saveBinding(M.binding())
+        let g = try ready(try make(now: watchNow, watch: WatchHealth(localDate: "2026-10-23")))
+        XCTAssertEqual(g.tiles.map { $0.value }, ["—", "—", "—", "—"])
+        XCTAssertEqual(g.tiles.map { $0.unit }, [nil, nil, nil, nil])
+        XCTAssertEqual(g.caption, "Open BeyondRep on your iPhone to refresh")
+    }
+
+    func testWatchValuesAreNotShownWithoutABinding() throws {
+        let watch = WatchHealth(localDate: "2026-10-23", asleepMinutes: 432)
+        XCTAssertEqual(try make(now: watchNow, watch: watch), .notPaired)
+    }
+
+    func testWatchValuesNeverEnterTheJournal() throws {
+        try journal.saveBinding(M.binding())
+        let watch = WatchHealth(
+            localDate: "2026-10-23", asleepMinutes: 432, restingHrBpm: 55, hrvMs: 48, steps: 3210)
+        _ = try make(now: watchNow, watch: watch)
+        let check = try SQLiteDatabase(url: dir.appendingPathComponent("journal.sqlite"))
+        XCTAssertEqual(try check.query("SELECT COUNT(*) FROM health").first?.first, .int(0))
     }
 
     // MARK: Tile status, factors and plan rows

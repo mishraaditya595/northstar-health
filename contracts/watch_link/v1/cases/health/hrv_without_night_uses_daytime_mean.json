@@ -1,0 +1,27 @@
+{
+  "description": "No night: today's daytime samples average to 57.7 and round to 58; yesterday's 99 is ignored.",
+  "utc_offset_minutes": 0,
+  "now": "2026-11-20T09:30:00Z",
+  "sleep": [],
+  "hrv": [
+    {
+      "from": "2026-11-19T10:00:00Z",
+      "to": "2026-11-19T10:05:00Z",
+      "value": 99.0
+    },
+    {
+      "from": "2026-11-20T08:00:00Z",
+      "to": "2026-11-20T08:05:00Z",
+      "value": 60.4
+    },
+    {
+      "from": "2026-11-20T09:00:00Z",
+      "to": "2026-11-20T09:05:00Z",
+      "value": 55.0
+    }
+  ],
+  "resting_hr": [],
+  "expected": {
+    "hrv_ms": 58
+  }
+}

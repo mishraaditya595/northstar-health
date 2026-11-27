@@ -1,0 +1,18 @@
+{
+  "description": "A session that ends at 02:30 but started the day before crosses a date, so it counts (210 min).",
+  "utc_offset_minutes": 0,
+  "now": "2026-11-20T09:30:00Z",
+  "sleep": [
+    {
+      "from": "2026-11-19T23:00:00Z",
+      "to": "2026-11-20T02:30:00Z",
+      "stage": "asleep_unspecified",
+      "source_key": "com.example.watch"
+    }
+  ],
+  "hrv": [],
+  "resting_hr": [],
+  "expected": {
+    "asleep_minutes": 210
+  }
+}

@@ -31,8 +31,9 @@ public struct SleepStages: Equatable {
 }
 
 /// One metric's detail screen: today, the phone's usual and the 7 days ending
-/// today, all from today's `health_snapshot`. Nothing is computed beyond the
-/// week average; the phone wrote every number.
+/// today, from today's `health_snapshot`. Today's number is the merged one
+/// (the watch fills in what the phone did not send). Nothing is computed
+/// beyond the week average; the phone wrote every other number.
 public struct DetailModel: Equatable {
     public let title: String
     public let value: String
@@ -60,36 +61,46 @@ public struct DetailModel: Equatable {
         self.weekAverage = weekAverage
     }
 
-    /// Nil when nothing is bound or there is no snapshot for today's local
-    /// date, so yesterday's week is never shown.
+    /// Nil when nothing is bound, or when there is neither a snapshot for
+    /// today's local date nor a watch value for this metric, so yesterday's
+    /// week is never shown. [watch] is memory only; one for another local
+    /// date is ignored.
     public static func make(
-        metric: Metric, journal: WatchJournal, now: Date, timeZone: TimeZone, locale: Locale
+        metric: Metric, journal: WatchJournal, now: Date, timeZone: TimeZone, locale: Locale,
+        watch: WatchHealth? = nil
     ) throws -> DetailModel? {
         let calendar = LocalDay.calendar(timeZone)
         let today = LocalDay.string(now, calendar: calendar)
         try journal.purgeHealth(exceptLocalDate: today)
-        guard let binding = try journal.binding(),
-            let message = try journal.health(accountKey: binding.accountKey, forLocalDate: today),
+        guard let binding = try journal.binding() else { return nil }
+        var snapshot: [String: Any]?
+        if let message = try journal.health(accountKey: binding.accountKey, forLocalDate: today),
             case .healthSnapshot(_, let raw) = message.body
-        else { return nil }
+        {
+            snapshot = raw
+        }
+        let merged = HealthMerge.today(snapshot: snapshot, watch: watch.flatMap { $0.localDate == today ? $0 : nil })
 
-        func int(_ value: Any?) -> Int? { (value as? NSNumber).map { $0.intValue } }
+        func int(_ value: Any?) -> Int? { HealthMerge.int(value) }
+        let raw = snapshot ?? [:]
         let sleep = raw["sleep"] as? [String: Any]
         let info: (title: String, unit: String?, weekKey: String, top: Int?, usual: Int?)
         switch metric {
         case .sleep:
-            info = ("Sleep", nil, "asleep_minutes", int(sleep?["asleep_minutes"]), nil)
+            info = ("Sleep", nil, "asleep_minutes", merged.sleepMinutes, nil)
         case .restingHr:
             info = (
-                "Resting HR", "bpm", "resting_hr_bpm", int(raw["resting_hr_bpm"]), int(raw["resting_hr_usual_bpm"])
+                "Resting HR", "bpm", "resting_hr_bpm", merged.restingHr, int(raw["resting_hr_usual_bpm"])
             )
         case .hrv:
-            info = ("HRV", "ms", "hrv_ms", int(raw["hrv_ms"]), int(raw["hrv_usual_ms"]))
+            info = ("HRV", "ms", "hrv_ms", merged.hrv, int(raw["hrv_usual_ms"]))
         case .steps:
-            info = ("Steps", nil, "steps", int(raw["steps"]), nil)
+            info = ("Steps", nil, "steps", merged.steps, nil)
         }
 
         let (title, unit, weekKey, top, usual) = info
+        // Without a snapshot only a value the watch read gives a screen.
+        if snapshot == nil, top == nil { return nil }
 
         var days: [String: [String: Any]] = [:]
         for case let day as [String: Any] in raw["week"] as? [Any] ?? [] {
@@ -106,7 +117,8 @@ public struct DetailModel: Equatable {
             guard let date = calendar.date(byAdding: .day, value: -back, to: startOfToday) else { continue }
             let key = LocalDay.string(date, calendar: calendar)
             var value = int(days[key]?[weekKey])
-            if value == nil, back == 0 { value = top }
+            // Today's point is the merged number the tile shows.
+            if back == 0, let top { value = top }
             week.append(DayPoint(date: date, label: labeler.string(from: date), value: value, isToday: back == 0))
         }
 

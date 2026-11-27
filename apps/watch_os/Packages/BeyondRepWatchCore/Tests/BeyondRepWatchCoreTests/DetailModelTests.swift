@@ -21,9 +21,10 @@ final class DetailModelTests: XCTestCase {
         try? FileManager.default.removeItem(at: dir)
     }
 
-    private func detail(_ metric: Metric, at: String? = nil) throws -> DetailModel? {
+    private func detail(_ metric: Metric, at: String? = nil, watch: WatchHealth? = nil) throws -> DetailModel? {
         try DetailModel.make(
-            metric: metric, journal: journal, now: M.date(at ?? now), timeZone: kolkata, locale: locale)
+            metric: metric, journal: journal, now: M.date(at ?? now), timeZone: kolkata, locale: locale,
+            watch: watch)
     }
 
     private func localDates(_ model: DetailModel) -> [String] {
@@ -129,5 +130,62 @@ final class DetailModelTests: XCTestCase {
         try journal.clearAccount(M.keyA, wipeUnsent: false)
         try journal.saveHealth(M.health())
         XCTAssertNil(try detail(.hrv))
+    }
+
+    // MARK: Values the watch read itself
+
+    func testWatchValueGivesADetailWithoutAPhoneSnapshot() throws {
+        let watch = WatchHealth(localDate: "2026-10-23", asleepMinutes: 432, restingHrBpm: 55, hrvMs: 48, steps: 3210)
+        let hrv = try XCTUnwrap(try detail(.hrv, watch: watch))
+        XCTAssertEqual(hrv.value, "48")
+        XCTAssertEqual(hrv.unit, "ms")
+        XCTAssertNil(hrv.usual)
+        XCTAssertNil(hrv.caption)
+        XCTAssertEqual(hrv.week.map { $0.value }, [nil, nil, nil, nil, nil, nil, 48])
+        XCTAssertEqual(hrv.weekAverage, 48)
+        XCTAssertEqual(try XCTUnwrap(try detail(.steps, watch: watch)).value, "3,210")
+        let sleep = try XCTUnwrap(try detail(.sleep, watch: watch))
+        XCTAssertEqual(sleep.value, "7h 12m")
+        XCTAssertNil(sleep.stages)
+        XCTAssertNil(sleep.caption, "no sleep score without the phone")
+    }
+
+    func testNoDetailForAMetricTheWatchCouldNotRead() throws {
+        let watch = WatchHealth(localDate: "2026-10-23", hrvMs: 48)
+        XCTAssertNotNil(try detail(.hrv, watch: watch))
+        XCTAssertNil(try detail(.steps, watch: watch))
+        XCTAssertNil(try detail(.sleep, watch: watch))
+    }
+
+    func testAWatchValueForAnotherDateOrWithoutABindingGivesNoDetail() throws {
+        XCTAssertNil(try detail(.hrv, watch: WatchHealth(localDate: "2026-10-22", hrvMs: 48)))
+        try journal.clearAccount(M.keyA, wipeUnsent: false)
+        XCTAssertNil(try detail(.hrv, watch: WatchHealth(localDate: "2026-10-23", hrvMs: 48)))
+    }
+
+    func testTodaysPointUsesTheMergedValueAndThePhoneKeepsTheOtherDays() throws {
+        let week: [[String: Any]] = [
+            ["local_date": "2026-10-22", "steps": 8000],
+            ["local_date": "2026-10-23", "steps": 9000],
+        ]
+        try journal.saveHealth(M.health(extra: ["week": week, "steps": 9000]))
+        let watch = WatchHealth(localDate: "2026-10-23", steps: 9450)
+        let model = try XCTUnwrap(try detail(.steps, watch: watch))
+        XCTAssertEqual(model.value, "9,450")
+        XCTAssertEqual(model.week.suffix(2).map { $0.value }, [8000, 9450])
+    }
+
+    func testWatchValueFillsInAndIsComparedWithThePhonesUsual() throws {
+        let raw: [String: Any] = [
+            "local_date": "2026-10-23", "as_of_utc": "2026-10-23T01:40:00Z", "resting_hr_usual_bpm": 56,
+        ]
+        try journal.saveHealth(
+            WatchMessage(
+                messageId: M.id(), sentAtUtc: "2026-10-23T01:45:00Z", accountKey: M.keyA,
+                body: .healthSnapshot(localDate: "2026-10-23", raw: raw)))
+        let model = try XCTUnwrap(try detail(.restingHr, watch: WatchHealth(localDate: "2026-10-23", restingHrBpm: 54)))
+        XCTAssertEqual(model.value, "54")
+        XCTAssertEqual(model.usual, 56)
+        XCTAssertEqual(model.caption, "Usual 56 bpm")
     }
 }
