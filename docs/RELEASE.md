@@ -366,3 +366,19 @@ Neither Account > Sync nor a debug log reports catalogue download time or size t
 ## CI/CD cutover status
 
 Codemagic will become the main build/release provider, but `codemagic.yaml` is currently a **manual-only, intentionally failing template**. Refer to [Codemagic setup](CODEMAGIC.md). Existing GitHub Actions checks remain the only verified build automation until Codemagic is connected and equivalent builds pass. No CI template authorizes store delivery or watchOS companion release.
+
+## Phase 4 stage 4b: record workouts on the Apple Watch (owner actions, none done)
+
+The watch starts a plan, today's program workout or a quick workout, logs sets, rests with a haptic, saves one workout to Apple Health and sends it to the phone. Implemented in source, **not released or device-verified**. Every row is not run. Needs the watch HealthKit capability and profile (see [IOS_TESTFLIGHT_CODEMAGIC.md](IOS_TESTFLIGHT_CODEMAGIC.md)).
+
+| Check | Result |
+|---|---|
+| A 45-minute workout with the phone left in another room: every set is kept, and the workout reaches the phone when it is back in range | not run |
+| Screen off during rest: the haptic fires at zero | not run |
+| Force-quit the watch app mid-workout: it restores to the same set with the same rest | not run |
+| Force-quit right after Save: one HKWorkout in the Health app, and the workout appears on the phone | not run |
+| Deny the HealthKit prompt: the workout records without heart rate and still reaches the phone | not run |
+| A second workout from the same plan imports on the phone (no `exercise_uuid_collision`) | not run |
+| Discard: nothing appears on the phone | not run |
+| Sign in as another account with an unsent workout: it waits ("from another account waiting"), is not sent as the new account's and is not deleted | not run |
+| Dynamic Type on 41 mm: weight, reps and the rest timer are not truncated | not run |
