@@ -445,6 +445,37 @@ public final class WatchJournal {
         }
     }
 
+    /// Drops a binding the phone has not refreshed for `maxSilenceDays`, and
+    /// keeps only the newest `maxTombstones` clear tombstones. Returns true
+    /// when the binding was dropped. Nothing is dropped while a workout is
+    /// active or paused, and unsent workouts are never dropped. The binding's
+    /// send time becomes the account's tombstone, so a replay of the old
+    /// application context is ignored. Tombstones are capped by count, never
+    /// by age, because the watch replays the last application context on launch.
+    @discardableResult
+    public func pruneStale(nowMs: Int64, maxSilenceDays: Int = 90, maxTombstones: Int = 20) throws -> Bool {
+        try db.transaction { () throws -> Bool in
+            var dropped = false
+            if let binding = try bindingState(), let received = try lastReceivedMs(),
+                received < nowMs - Int64(maxSilenceDays) * 86_400_000
+            {
+                let busy = try db.query(
+                    "SELECT 1 FROM sessions WHERE account_key = ? AND status IN ('active','paused') LIMIT 1",
+                    [.text(binding.accountKey)])
+                if busy.isEmpty {
+                    try recordCleared(binding.accountKey, sentAtMs: binding.sentAtMs)
+                    try clearAccount(binding.accountKey, wipeUnsent: false)
+                    dropped = true
+                }
+            }
+            try db.execute(
+                "DELETE FROM cleared WHERE account_key NOT IN "
+                    + "(SELECT account_key FROM cleared ORDER BY sent_at_ms DESC, account_key LIMIT ?)",
+                [.int(Int64(maxTombstones))])
+            return dropped
+        }
+    }
+
     /// `accountKey`'s newest active or paused session with its events, replayed
     /// state and the phone command ids already applied. Another account's
     /// session is never returned.

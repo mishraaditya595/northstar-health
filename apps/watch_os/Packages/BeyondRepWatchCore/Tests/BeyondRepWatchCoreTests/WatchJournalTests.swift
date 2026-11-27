@@ -340,6 +340,106 @@ final class WatchJournalTests: XCTestCase {
         XCTAssertNil(try journal.lastReceivedMs())
     }
 
+    // MARK: Pruning a binding the phone stopped refreshing
+
+    private let dayMs: Int64 = 86_400_000
+    private let receivedMs: Int64 = 1_792_000_000_000
+
+    /// A bound account with plans, health and a received time.
+    private func bindWithData(_ journal: WatchJournal) throws {
+        try journal.saveBinding(TestMessages.binding(key))
+        try journal.savePlans(fixture("plans_snapshot"))
+        try journal.saveHealth(fixture("health_snapshot"))
+        try journal.recordReceived(atMs: receivedMs)
+    }
+
+    func testBindingSilentFor91DaysIsDropped() throws {
+        let journal = try WatchJournal(url: url)
+        try bindWithData(journal)
+        XCTAssertTrue(try journal.pruneStale(nowMs: receivedMs + 91 * dayMs))
+        XCTAssertNil(try journal.binding())
+        XCTAssertNil(try journal.plans(accountKey: key))
+        XCTAssertNil(try journal.health(accountKey: key, forLocalDate: "2026-10-23"))
+        XCTAssertNil(try journal.lastReceivedMs())
+    }
+
+    func testBindingSilentFor89DaysIsKept() throws {
+        let journal = try WatchJournal(url: url)
+        try bindWithData(journal)
+        XCTAssertFalse(try journal.pruneStale(nowMs: receivedMs + 89 * dayMs))
+        XCTAssertNotNil(try journal.binding())
+        XCTAssertNotNil(try journal.plans(accountKey: key))
+        XCTAssertNil(try journal.clearedAt(key))
+    }
+
+    func testNoPruneWithoutLastReceived() throws {
+        let journal = try WatchJournal(url: url)
+        try journal.saveBinding(TestMessages.binding(key))
+        XCTAssertFalse(try journal.pruneStale(nowMs: receivedMs + 400 * dayMs))
+        XCTAssertNotNil(try journal.binding())
+    }
+
+    func testNoPruneWithoutABinding() throws {
+        let journal = try WatchJournal(url: url)
+        try journal.recordReceived(atMs: receivedMs)
+        XCTAssertFalse(try journal.pruneStale(nowMs: receivedMs + 400 * dayMs))
+        XCTAssertEqual(try journal.lastReceivedMs(), receivedMs)
+    }
+
+    func testNoPruneDuringActiveSession() throws {
+        let journal = try WatchJournal(url: url)
+        try bindWithData(journal)
+        try recordSession(journal, sets: 1)
+        XCTAssertFalse(try journal.pruneStale(nowMs: receivedMs + 91 * dayMs))
+        XCTAssertNotNil(try journal.binding())
+        XCTAssertNotNil(try journal.plans(accountKey: key))
+        XCTAssertNotNil(try journal.activeSession(accountKey: key))
+    }
+
+    func testUnsentWorkoutSurvivesPrune() throws {
+        let journal = try WatchJournal(url: url)
+        try bindWithData(journal)
+        let message = try completedMessage()
+        try journal.queueCompleted(message, sessionId: session)
+        XCTAssertTrue(try journal.pruneStale(nowMs: receivedMs + 91 * dayMs))
+        XCTAssertEqual(try journal.pendingCompleted(limit: 10).map(\.messageId), [message.messageId])
+        let counts = try journal.waitingCounts(boundKey: nil)
+        XCTAssertEqual(counts.thisAccount, 0)
+        XCTAssertEqual(counts.otherAccounts, 1)
+    }
+
+    func testReplayAfterPruneIsIgnored() throws {
+        let journal = try WatchJournal(url: url)
+        let inbox = PhoneInbox(journal: journal)
+        let binding = TestMessages.binding(key)
+        let context: [String: Any] = ["account_binding": try TestMessages.json(binding)]
+        let received = Date(timeIntervalSince1970: Double(receivedMs) / 1000)
+        try inbox.receive(applicationContext: context, now: received)
+        XCTAssertNotNil(try journal.binding())
+        XCTAssertTrue(try journal.pruneStale(nowMs: receivedMs + 91 * dayMs))
+        XCTAssertNil(try journal.binding())
+        let ignoredBefore = inbox.ignoredCount
+        try inbox.receive(applicationContext: context, now: received.addingTimeInterval(91 * 86_400))
+        XCTAssertNil(try journal.binding())
+        XCTAssertEqual(inbox.ignoredCount, ignoredBefore + 1)
+    }
+
+    func testTombstonesCappedAtTwenty() throws {
+        let journal = try WatchJournal(url: url)
+        for n in 1...25 { try journal.recordCleared("account-\(n)", sentAtMs: Int64(n)) }
+        XCTAssertFalse(try journal.pruneStale(nowMs: receivedMs))
+        for n in 1...5 { XCTAssertNil(try journal.clearedAt("account-\(n)"), "account-\(n)") }
+        for n in 6...25 { XCTAssertEqual(try journal.clearedAt("account-\(n)"), Int64(n)) }
+    }
+
+    func testPruneRecordsTheBindingsSendTimeAsTheTombstone() throws {
+        let journal = try WatchJournal(url: url)
+        try bindWithData(journal)
+        let sentAt = try XCTUnwrap(try journal.bindingState()).sentAtMs
+        XCTAssertTrue(try journal.pruneStale(nowMs: receivedMs + 91 * dayMs))
+        XCTAssertEqual(try journal.clearedAt(key), sentAt)
+    }
+
     // MARK: Version 6 (delivery state and a filtered outbox)
 
     private func completedMessage(key: String? = nil, id: String = UUID().uuidString.lowercased()) throws -> WatchMessage {

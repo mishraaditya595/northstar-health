@@ -17,6 +17,7 @@ struct BeyondRepWatchApp: App {
             RootView(model: model)
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
+                        model.pruneStale()
                         model.refresh()
                         model.sendQueued()
                     }
