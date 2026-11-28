@@ -61,34 +61,41 @@ const jsonLd = [
   <div class="seam" aria-hidden="true"></div>
 
   <section id="details" class="feature" data-backdrop="lime" aria-labelledby="offline">
-    <div class="wrap split">
-      <div class="split-head" data-reveal>
-        <p class="kicker">Offline first</p>
-        <h2 class="display" id="offline">Built for the gym, not for signal bars</h2>
-        <p class="section-lede">
-          Basements, garages and hotel gyms rarely have good coverage. BeyondRep never waits on the network to save a
-          set.
-        </p>
-      </div>
-      <ul class="points" data-reveal>
+    <div class="wrap split scene-split">
+      <div class="copy">
+        <div class="split-head" data-reveal>
+          <p class="kicker">Offline first</p>
+          <h2 class="display" id="offline" data-words>Built for the gym, not for signal bars</h2>
+          <p class="section-lede">
+            Basements, garages and hotel gyms rarely have good coverage. BeyondRep never waits on the network to save a
+            set.
+          </p>
+        </div>
+        <ul class="points" data-reveal>
           <li><span class="tag">Saved locally first</span><h3>Nothing to lose mid-workout</h3><p>Each set is written to your phone the moment you tick it, so a dead zone or a crash costs you nothing.</p></li>
           <li><span class="tag">Backs up later</span><h3>Syncs when you’re back online</h3><p>Finished workouts queue up and back up when you reconnect. You can see what is still waiting to back up.</p></li>
           <li><span class="tag">Multi-device</span><h3>New phone, same history</h3><p>Sign in on another phone and your finished workouts come back. If two phones disagree, you choose which version to keep.</p></li>
-      </ul>
-      <div class="demo demo-offline" data-reveal data-glow aria-hidden="true">
-        <div class="demo-head">
-          <span class="demo-title">Bench press</span>
-          <span class="chip chip-offline">No signal</span>
-          <span class="chip chip-online">Backed up</span>
+        </ul>
+      </div>
+      <div class="demo-track" data-scene-track="offline">
+        <div data-scene-stage>
+          <div class="demo demo-offline" data-reveal data-glow aria-hidden="true">
+            <div class="demo-head">
+              <span class="demo-title">Bench press</span>
+              <span class="signal" aria-hidden="true"><i style="--k:1"></i><i style="--k:2"></i><i style="--k:3"></i><i style="--k:4"></i></span>
+              <span class="chip chip-offline">No signal</span>
+              <span class="chip chip-online">Backed up</span>
+            </div>
+            <div class="set-row" data-n="1"><b>1</b><span>60 kg × 8</span><em>Saved on phone</em><i>✓</i></div>
+            <div class="set-row" data-n="2"><b>2</b><span>70 kg × 6</span><em>Saved on phone</em><i>✓</i></div>
+            <div class="set-row" data-n="3"><b>3</b><span>70 kg × 6</span><em>Saved on phone</em><i>✓</i></div>
+            <div class="sync">
+              <div class="sync-text"><span class="sync-wait">Finished workout waiting to back up</span><span class="sync-done">Finished workout backed up</span></div>
+              <div class="sync-bar"><i></i></div>
+            </div>
+            <p class="demo-note">Illustration · sample values</p>
+          </div>
         </div>
-        <div class="set-row" style="--i:0"><b>1</b><span>60 kg × 8</span><em>Saved on phone</em><i>✓</i></div>
-        <div class="set-row" style="--i:1"><b>2</b><span>70 kg × 6</span><em>Saved on phone</em><i>✓</i></div>
-        <div class="set-row" style="--i:2"><b>3</b><span>70 kg × 6</span><em>Saved on phone</em><i>✓</i></div>
-        <div class="sync">
-          <div class="sync-text"><span class="sync-wait">Finished workout waiting to back up</span><span class="sync-done">Finished workout backed up</span></div>
-          <div class="sync-bar"><i></i></div>
-        </div>
-        <p class="demo-note">Illustration · sample values</p>
       </div>
     </div>
   </section>
@@ -233,6 +240,9 @@ const jsonLd = [
   </section>
   <script>
     import { mountReveals } from '../scripts/home-reveal.mjs';
+    import { mountScenes } from '../scripts/scroll-scenes.mjs';
+    import { frames } from '../scripts/scenes/index.mjs';
     mountReveals(document, window);
+    mountScenes(document, window, frames);
   </script>
 </Base>

@@ -1,9 +1,33 @@
 /* Scroll scenes on the home page. The resting rules (outside the media block)
    are the finished, readable state and need no JS. Pinning and track heights
    apply only under .scenes-ready, which scroll-scenes.mjs sets when motion is
-   allowed. Per-frame values arrive as custom properties and data attributes. */
+   allowed. Per-frame values arrive as custom properties and data attributes
+   on the [data-scene-track] element; only transforms, opacity and strokes
+   consume them. */
 
-[data-scene-stage] { width: 100%; }
+/* Text left, demo right. On phones: heading, demo, then the points. */
+.scene-split { grid-template-areas: 'head' 'demo' 'points'; }
+.scene-split .copy { display: contents; }
+.scene-split .split-head { grid-area: head; }
+.scene-split .points { grid-area: points; margin: 0; }
+.scene-split .demo-track { grid-area: demo; }
+.scene-split .demo { align-self: stretch; }
+@media (min-width: 900px) {
+  .scene-split { grid-template-columns: 1fr 1fr; grid-template-areas: 'copy demo'; align-items: start; }
+  .scene-split.split-flip { grid-template-areas: 'demo copy'; }
+  .scene-split .copy { display: block; grid-area: copy; }
+  .scene-split .split-head, .scene-split .points { grid-area: auto; }
+  .scene-split .points { margin: 28px 0 0; }
+  .scene-split .demo-track { align-self: center; }
+}
+
+/* Offline demo, finished state: all sets saved, backed up. */
+.signal { display: inline-flex; align-items: flex-end; gap: 3px; height: 16px; }
+.signal i { width: 4px; border-radius: 1px; background: var(--performance); }
+.signal i:nth-child(1) { height: 5px; }
+.signal i:nth-child(2) { height: 8px; }
+.signal i:nth-child(3) { height: 12px; }
+.signal i:nth-child(4) { height: 16px; }
 
 @media (prefers-reduced-motion: no-preference) {
   .scenes-ready [data-scene-track] { height: var(--track, 220vh); }
@@ -14,10 +38,49 @@
     height: 100svh;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
-    padding-top: clamp(24px, 7vh, 72px);
+    justify-content: center;
   }
+
+  /* Offline */
+  .scenes-ready [data-scene-track="offline"] .signal i {
+    opacity: clamp(0.22, calc(var(--bars, 4) - var(--k) + 1), 1);
+    transition: opacity 0.2s ease, background-color 0.3s ease;
+  }
+  .scenes-ready [data-scene-track="offline"][data-online="no"] .signal i { background: var(--caution); }
+  .scenes-ready [data-scene-track="offline"] .chip-offline { transition: opacity 0.3s ease; }
+  .scenes-ready [data-scene-track="offline"][data-online="no"] .chip-offline { opacity: 1; }
+  .scenes-ready [data-scene-track="offline"] .chip-online { opacity: clamp(0, calc((var(--sync, 1) - 0.9) * 10), 1); }
+  .scenes-ready [data-scene-track="offline"] .set-row { transition: opacity 0.35s ease, transform 0.35s ease; }
+  .scenes-ready [data-scene-track="offline"] .set-row i,
+  .scenes-ready [data-scene-track="offline"] .set-row em { transition: opacity 0.3s ease, transform 0.3s ease; }
+  .scenes-ready [data-scene-track="offline"][data-saved="0"] .set-row,
+  .scenes-ready [data-scene-track="offline"][data-saved="1"] .set-row:is([data-n="2"], [data-n="3"]),
+  .scenes-ready [data-scene-track="offline"][data-saved="2"] .set-row[data-n="3"] { opacity: 0.3; transform: translateX(-8px); }
+  .scenes-ready [data-scene-track="offline"][data-saved="0"] .set-row :is(i, em),
+  .scenes-ready [data-scene-track="offline"][data-saved="1"] .set-row:is([data-n="2"], [data-n="3"]) :is(i, em),
+  .scenes-ready [data-scene-track="offline"][data-saved="2"] .set-row[data-n="3"] :is(i, em) { opacity: 0; }
+  .scenes-ready [data-scene-track="offline"][data-saved="0"] .set-row i,
+  .scenes-ready [data-scene-track="offline"][data-saved="1"] .set-row:is([data-n="2"], [data-n="3"]) i,
+  .scenes-ready [data-scene-track="offline"][data-saved="2"] .set-row[data-n="3"] i { transform: scale(0.4); }
+  .scenes-ready [data-scene-track="offline"] .sync-wait { opacity: clamp(0, calc(1 - (var(--sync, 1) - 0.9) * 10), 1); }
+  .scenes-ready [data-scene-track="offline"] .sync-done { opacity: clamp(0, calc((var(--sync, 1) - 0.9) * 10), 1); }
+  .scenes-ready [data-scene-track="offline"] .sync-bar i { transform: scaleX(var(--sync, 1)); }
+
+  /* Points light up in step: border and tag colour only, text stays full. */
+  .scenes-ready .scene-split:has([data-scene-track="offline"]) .points li { transition: border-color 0.3s ease; }
+  .scenes-ready .scene-split:has([data-scene-track="offline"]) .points .tag { color: var(--ink-2); transition: color 0.3s ease; }
+  .scenes-ready .scene-split:has([data-point="0"]) .points li:nth-child(1),
+  .scenes-ready .scene-split:has([data-point="1"]) .points li:nth-child(2),
+  .scenes-ready .scene-split:has([data-point="2"]) .points li:nth-child(3) { border-color: var(--performance); }
+  .scenes-ready .scene-split:has([data-point="0"]) .points li:nth-child(1) .tag,
+  .scenes-ready .scene-split:has([data-point="1"]) .points li:nth-child(2) .tag,
+  .scenes-ready .scene-split:has([data-point="2"]) .points li:nth-child(3) .tag { color: var(--performance); }
+}
+@media (prefers-reduced-motion: no-preference) and (min-width: 900px) {
+  .scenes-ready .scene-split .copy { position: sticky; top: clamp(24px, 7vh, 72px); }
+  .scenes-ready .scene-split .demo-track { align-self: stretch; }
 }
 @media (prefers-reduced-motion: no-preference) and (max-width: 899px) {
-  .scenes-ready [data-scene-track] { --track: 150vh; }
+  .scenes-ready [data-scene-track] { --track: 175vh; }
+  .scenes-ready [data-scene-stage] { height: auto; top: 8vh; top: 8svh; }
 }

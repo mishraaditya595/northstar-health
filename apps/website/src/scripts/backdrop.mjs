@@ -162,6 +162,9 @@ export function mountBackdrop(canvas, win) {
     if (!runnable()) { last = 0; return; }
     // 30 fps is plenty for a slow glow and halves the battery cost.
     frame++;
+    // Scenes and fonts change the page's height after mount; keep the
+    // section positions current (one layout read about every two seconds).
+    if (frame % 120 === 0) measure();
     if (frame % 2 === 0) { raf = win.requestAnimationFrame(draw); return; }
     time += last ? Math.min(0.1, (now - last) / 1000) * 2 : 0;
     last = now;

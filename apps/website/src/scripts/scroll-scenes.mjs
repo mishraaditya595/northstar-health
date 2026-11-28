@@ -36,6 +36,20 @@ export function mountScenes(doc, win, frames) {
   // What each track has had written to it, so it can be undone.
   const touched = new Map(tracks.map(t => [t, { vars: new Set(), attrs: new Set(), texts: new Map() }]));
   const visible = new Set();
+  // Height the stage covers while pinned (its own height plus its sticky top),
+  // measured again after a resize. A stage as tall as the screen gives vh.
+  const pins = new Map();
+  function pinHeight(track, vh) {
+    if (pins.has(track)) return pins.get(track);
+    const stage = track.querySelector('[data-scene-stage]');
+    let pin = vh;
+    if (stage?.offsetHeight) {
+      const top = parseFloat(win.getComputedStyle?.(stage).top) || 0;
+      pin = Math.min(vh, stage.offsetHeight + top);
+    }
+    pins.set(track, pin);
+    return pin;
+  }
   let dirty = new Set();
   let io = null, raf = 0, enabled = false;
 
@@ -86,7 +100,7 @@ export function mountScenes(doc, win, frames) {
       const r = rects[i];
       const p = track.dataset.sceneMode === 'cross'
         ? crossProgress(r.top, r.height, vh)
-        : sceneProgress(r.top, r.height, vh);
+        : sceneProgress(r.top, r.height, pinHeight(track, vh));
       apply(track, fn(p, ctx));
     });
   }
@@ -97,6 +111,7 @@ export function mountScenes(doc, win, frames) {
     if (visible.size) schedule();
   }
   function onResize() {
+    pins.clear();
     tracks.forEach(t => dirty.add(t));
     schedule();
   }
@@ -121,7 +136,7 @@ export function mountScenes(doc, win, frames) {
     if (raf) win.cancelAnimationFrame(raf);
     raf = 0;
     io?.disconnect(); io = null;
-    visible.clear(); dirty = new Set();
+    visible.clear(); dirty = new Set(); pins.clear();
     root.classList.remove('scenes-ready');
     undo();
   }

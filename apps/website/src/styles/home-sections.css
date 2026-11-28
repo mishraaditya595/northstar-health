@@ -177,15 +177,6 @@
   }
   .reveal-ready [data-reveal].is-in { opacity: 1; transform: none; }
 
-  /* Offline demo: sets save with no signal, then the workout backs up. */
-  .is-in .chip-offline { animation: chip-out 3.6s both; }
-  .is-in .chip-online { animation: chip-in 0.4s 3.3s both; }
-  .is-in .set-row { animation: row-in 0.5s calc(0.35s + var(--i) * 0.5s) both; }
-  .is-in .set-row i { animation: pop 0.45s calc(0.65s + var(--i) * 0.5s) both; }
-  .is-in .sync-wait { animation: chip-out 3.5s both; }
-  .is-in .sync-done { animation: chip-in 0.4s 3.3s both; }
-  .is-in .sync-bar i { animation: fill 1.1s 2.2s cubic-bezier(0.6, 0, 0.2, 1) both; }
-
   .is-in .result { animation: row-in 0.45s calc(0.5s + var(--j) * 0.18s) both; }
   .is-in .chips span { animation: pop 0.4s 0.3s both; }
   .is-in .viz-timer .ring { animation: drain 1.6s 0.3s cubic-bezier(0.3, 0, 0.2, 1) both; }
