@@ -7,6 +7,7 @@ import 'package:beyondrep/core/design/stats.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
+import 'package:beyondrep/features/health/domain/energy.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/features/health/widgets/readiness_hero.dart';
 import 'package:beyondrep/features/health/widgets/today_health_row.dart';
@@ -38,6 +39,7 @@ Future<void> pumpRow(
   List<WorkoutSessionRecord> sessions = const [],
   Future<WorkoutHistorySnapshot> Function()? history,
   String? owner,
+  DateTime? clock,
 }) async {
   final router = GoRouter(
     routes: [
@@ -77,8 +79,8 @@ Future<void> pumpRow(
         ),
         healthReaderProvider.overrideWithValue(reader ?? FakeHealthReader()),
         if (owner != null) healthOwnerIdProvider.overrideWithValue(owner),
-        healthClockProvider.overrideWithValue(() => now),
-        localNowProvider.overrideWithValue(now),
+        healthClockProvider.overrideWithValue(() => clock ?? now),
+        localNowProvider.overrideWithValue(clock ?? now),
         completedWorkoutHistoryProvider.overrideWith(
           (ref) =>
               history?.call() ??
@@ -402,7 +404,7 @@ void main() {
     expect(c.buildCalls, before + 1);
   });
 
-  testWidgets('ready readiness shows hero with READINESS · FAIR and advice', (
+  testWidgets('ready energy shows hero with ENERGY NOW · FAIR and advice', (
     tester,
   ) async {
     await pumpRow(
@@ -412,13 +414,180 @@ void main() {
         overview(readiness: _ready(55)),
       ),
     );
-    expect(find.text('READINESS · FAIR'), findsOneWidget);
+    expect(find.text('ENERGY NOW · FAIR'), findsOneWidget);
     expect(find.text('55'), findsOneWidget);
     expect(find.text('Train as planned, watch effort'), findsOneWidget);
-    expect(find.bySemanticsLabel('About Readiness'), findsOneWidget);
+    expect(find.bySemanticsLabel('About Energy'), findsOneWidget);
     // The grid keeps all four tiles beside the hero.
     expect(find.text('Resting HR'), findsOneWidget);
     expect(find.text('Workouts'), findsOneWidget);
+  });
+
+  group('energy hero', () {
+    Energy energyOf(int value, int start) => Energy(
+      value: value,
+      band: readinessBandOf(value),
+      start: start,
+      items: const [],
+    );
+
+    HealthOverview withEnergy(
+      int value,
+      int start, {
+      EnergyLearning learning = const EnergyLearning(),
+      DateTime? wake,
+      DateTime? readAt,
+    }) {
+      final startSection = _ready(start);
+      return overview(
+        readiness: startSection,
+        readAt: readAt,
+        energy: energySection(
+          startSection,
+          energy: energyOf(value, start),
+          learning: learning,
+          wake: wake ?? DateTime(2026, 11, 24, 6, 31),
+        ),
+      );
+    }
+
+    Future<void> pumpWith(
+      WidgetTester tester,
+      HealthOverview o, {
+      double textScale = 1,
+      double width = 390,
+    }) => pumpRow(
+      tester,
+      FakeHealthSummaryController(connectedAt(now)),
+      overviewController: FakeHealthOverviewController(o),
+      textScale: textScale,
+      width: width,
+    );
+
+    testWidgets('shows energy now, the change since morning and a label', (
+      tester,
+    ) async {
+      await pumpWith(tester, withEnergy(62, 78));
+      expect(find.text('62'), findsOneWidget);
+      expect(find.text('ENERGY NOW · FAIR'), findsOneWidget);
+      expect(find.text('Train as planned, watch effort'), findsOneWidget);
+      expect(
+        find.text('Started today at 78 · down 16 since morning'),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel(
+          'Energy now 62 of 100, Train as planned, watch effort. '
+          'Started today at 78 · down 16 since morning. See why',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('shows the learning text in the hero', (tester) async {
+      await pumpWith(
+        tester,
+        withEnergy(62, 78, learning: const EnergyLearning(workoutsNeeded: 12)),
+      );
+      const text =
+          'Still learning your patterns: 12 more workouts for a calibrated score.';
+      expect(find.text(text), findsOneWidget);
+      expect(
+        find.bySemanticsLabel(RegExp(RegExp.escape(text))),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a building start shows the N more days row', (tester) async {
+      await pumpWith(
+        tester,
+        overview(
+          readiness: const SectionData(
+            ReadinessOverview(
+              result: ReadinessNotReady(daysUntilBaseline: 2),
+              hasHrv: true,
+              hasRestingHr: false,
+              hasSleep: true,
+              hrvVsNormal: null,
+              restingHrVsNormal: null,
+              hrvBaseline: null,
+              restingHrBaseline: null,
+              hrvIsSdnn: true,
+            ),
+          ),
+        ),
+      );
+      expect(
+        find.text('Energy starts after 2 more days with data.'),
+        findsOneWidget,
+      );
+      expect(find.byType(NsScoreRing), findsNothing);
+    });
+
+    testWidgets('a ready start without a waking day shows no hero', (
+      tester,
+    ) async {
+      final start = _ready(80);
+      await pumpWith(
+        tester,
+        overview(
+          readiness: start,
+          energy: SectionData(
+            EnergyOverview(
+              day: DateTime(2026, 11, 24),
+              wake: null,
+              start: (start as SectionData<ReadinessOverview>).value,
+              energy: null,
+              learning: const EnergyLearning(),
+            ),
+          ),
+        ),
+      );
+      expect(find.byType(NsScoreRing), findsNothing);
+      expect(find.textContaining('ENERGY NOW'), findsNothing);
+      expect(find.text('80'), findsNothing);
+    });
+
+    testWidgets('after midnight the waking day still shows its energy', (
+      tester,
+    ) async {
+      final late = DateTime(2026, 11, 25, 0, 30);
+      await pumpRow(
+        tester,
+        FakeHealthSummaryController(connectedAt(late)),
+        clock: late,
+        overviewController: FakeHealthOverviewController(
+          withEnergy(
+            62,
+            78,
+            wake: DateTime(2026, 11, 24, 7),
+            readAt: DateTime(2026, 11, 25, 0, 28),
+          ),
+        ),
+      );
+      expect(find.text('ENERGY NOW · FAIR'), findsOneWidget);
+    });
+
+    testWidgets('text scale 2.0 at 320 dp with the learning line', (
+      tester,
+    ) async {
+      await pumpWith(
+        tester,
+        withEnergy(62, 78, learning: const EnergyLearning(workoutsNeeded: 12)),
+        textScale: 2,
+        width: 320,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('no text mentions readiness', (tester) async {
+      await pumpWith(
+        tester,
+        withEnergy(62, 78, learning: const EnergyLearning(workoutsNeeded: 3)),
+      );
+      expect(find.textContaining('Readiness'), findsNothing);
+      expect(find.textContaining('READINESS'), findsNothing);
+    });
   });
 
   testWidgets('hero tap navigates to /health/readiness', (tester) async {
@@ -471,11 +640,11 @@ void main() {
     );
     expect(tester.takeException(), isNull);
     final text = [
-      tester.getRect(find.text('READINESS · FAIR')),
+      tester.getRect(find.text('ENERGY NOW · FAIR')),
       tester.getRect(find.text('Train as planned, watch effort')),
     ];
     final controls = [
-      tester.getRect(find.bySemanticsLabel('About Readiness')),
+      tester.getRect(find.bySemanticsLabel('About Energy')),
       tester.getRect(
         find.descendant(
           of: find.byType(ReadinessHero),
@@ -498,7 +667,7 @@ void main() {
         overview(readiness: _ready(41)),
       ),
     );
-    expect(find.text('READINESS · LOW'), findsOneWidget);
+    expect(find.text('ENERGY NOW · LOW'), findsOneWidget);
     final ring = tester.widget<NsScoreRing>(find.byType(NsScoreRing));
     expect(ring.color, BeyondRepPalette.redDark);
   });
@@ -528,11 +697,11 @@ void main() {
       ),
     );
     expect(
-      find.text('Readiness starts after 4 more days with data.'),
+      find.text('Energy starts after 4 more days with data.'),
       findsOneWidget,
     );
     expect(find.byType(NsScoreRing), findsNothing);
-    expect(find.textContaining('READINESS'), findsNothing);
+    expect(find.textContaining('ENERGY NOW'), findsNothing);
   });
 
   testWidgets('not enough data and gaps show no hero and no row', (
@@ -562,7 +731,7 @@ void main() {
         ),
       );
       expect(find.byType(NsScoreRing), findsNothing);
-      expect(find.textContaining('Readiness starts'), findsNothing);
+      expect(find.textContaining('Energy starts'), findsNothing);
       expect(find.text('Sleep'), findsOneWidget);
       expect(find.text('Resting HR'), findsOneWidget);
     }

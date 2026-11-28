@@ -1353,5 +1353,65 @@ void main() {
       expect(currentEnergy(o, DateTime(2026, 11, 25, 0, 1)), isNull);
       expect(currentEnergy(overview(), DateTime(2026, 11, 24, 8)), isNull);
     });
+
+    group('currentEnergyScore', () {
+      ReadinessOverview ready78() => startOf(
+        ReadinessReady(
+          Readiness(value: 78, band: readinessBandOf(78), parts: const []),
+        ),
+      );
+
+      test('returns the energy within 20 hours of the wake time', () {
+        final o = overview(readiness: SectionData(ready78()));
+        expect(currentEnergyScore(o, DateTime(2026, 11, 25, 2, 31))?.value, 78);
+        expect(currentEnergyScore(o, DateTime(2026, 11, 25, 2, 32)), isNull);
+      });
+
+      test('has no energy and no fallback without a waking day', () {
+        final start = SectionData(ready78());
+        final o = overview(
+          readiness: start,
+          energy: SectionData(
+            EnergyOverview(
+              day: DateTime(2026, 11, 24),
+              wake: null,
+              start: start.value,
+              energy: null,
+              learning: const EnergyLearning(),
+            ),
+          ),
+        );
+        final now = DateTime(2026, 11, 24, 9);
+        expect(todaysReadiness(o, now), isNotNull);
+        expect(currentEnergyScore(o, now), isNull);
+      });
+
+      test('is null for a gap', () {
+        expect(
+          currentEnergyScore(overview(), DateTime(2026, 11, 24, 9)),
+          isNull,
+        );
+      });
+    });
+
+    group('energyBuilding', () {
+      test('returns the days until the baseline', () {
+        final o = overview(
+          readiness: SectionData(
+            startOf(const ReadinessNotReady(daysUntilBaseline: 2)),
+          ),
+        );
+        expect(energyBuilding(o, DateTime(2026, 11, 24, 9))?.days, 2);
+      });
+
+      test('is null without a day count', () {
+        final o = overview(
+          readiness: SectionData(
+            startOf(const ReadinessNotReady(noSleep: true)),
+          ),
+        );
+        expect(energyBuilding(o, DateTime(2026, 11, 24, 9)), isNull);
+      });
+    });
   });
 }

@@ -1,6 +1,7 @@
 import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
+import 'package:beyondrep/features/health/domain/energy.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
 import 'package:beyondrep/features/progress/muscle_recovery.dart';
@@ -312,6 +313,67 @@ void main() {
     await tester.tap(find.text('Start'));
     await tester.pumpAndSettle();
     expect(_actions.started, ['core']);
+  });
+
+  testWidgets('good start drained to low energy picks the lightest plan', (
+    tester,
+  ) async {
+    final start = _ready(80);
+    await _pump(
+      tester,
+      plans: [_push, _legs, _core],
+      history: _chestDone(),
+      health: FakeHealthOverviewController(
+        overview(
+          readiness: start,
+          energy: energySection(
+            start,
+            energy: Energy(
+              value: 45,
+              band: readinessBandOf(45),
+              start: 80,
+              items: const [],
+            ),
+            wake: DateTime(2026, 11, 24, 6, 31),
+          ),
+        ),
+      ),
+    );
+    expect(
+      find.text(
+        'Lightest plan with recovered muscles · keep effort around RPE 7',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a low start without energy does not use the low rule', (
+    tester,
+  ) async {
+    final start = _ready(40);
+    await _pump(
+      tester,
+      plans: [_push, _legs, _core],
+      history: _chestDone(),
+      health: FakeHealthOverviewController(
+        overview(
+          readiness: start,
+          energy: SectionData(
+            EnergyOverview(
+              day: DateTime(2026, 11, 24),
+              wake: null,
+              start: (start as SectionData<ReadinessOverview>).value,
+              energy: null,
+              learning: const EnergyLearning(),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(
+      find.textContaining('Lightest plan with recovered muscles'),
+      findsNothing,
+    );
   });
 
   testWidgets('recovery lines read Recovered and Legs recovering', (

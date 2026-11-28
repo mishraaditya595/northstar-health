@@ -79,3 +79,5 @@ Rules: only exercises with at least one completed or skipped set appear, in temp
 ## Cross-language strictness
 
 All three implementations (Python `jsonschema`, Dart, Swift) must agree on every fixture. Rules they share: patterns match the whole string (a trailing newline is rejected; the Python tests use `re.fullmatch` for `pattern` because `re.search` lets `$` match before a final newline, see `tool/contract_validation.py`); `date-time` is checked as a real RFC 3339 date-time (`rfc3339-validator` in `tool/requirements-ci.txt`); `minLength`/`maxLength` count Unicode code points (Dart `runes.length`, Swift `unicodeScalars.count`).
+
+The Kotlin core in `apps/wear_os/core` runs the same fixtures and cases (`:core:test`).

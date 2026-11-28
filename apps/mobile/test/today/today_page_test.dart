@@ -361,7 +361,7 @@ void main() {
     );
     await tester.tap(find.text('Start workout'));
     await tester.pumpAndSettle();
-    expect(find.text('Recovery is low today'), findsWidgets);
+    expect(find.text('Energy is low right now'), findsWidgets);
     expect(find.text('Not now'), findsOneWidget);
     await tester.tap(find.text('Not now'));
     await tester.pumpAndSettle();

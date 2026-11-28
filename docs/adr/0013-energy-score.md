@@ -1,6 +1,6 @@
 # ADR-0013 — Energy score replaces readiness
 
-**Status:** **Accepted** — decided by the human owner on 2026-11-27 (design approved). Stage 1 (energy on the Health tab hero and the readiness detail Today view) is implemented in source, not released or device-verified; stages 2 and 3 are not started.
+**Status:** **Accepted** — decided by the human owner on 2026-11-27 (design approved). Stages 1 (energy on the Health tab hero and the readiness detail Today view) and 2 (every other surface and the words) are implemented in source, not released or device-verified; stage 3 is not started.
 **Amends:** [ADR-0009](0009-health-insights-trends.md) stage 2 (readiness score, its 14-day baseline minimum and its midnight cut-off) and [ADR-0011](0011-read-workouts-from-health-platforms.md) decision 6 (training load stays a starting-value input). Does not alter ADR-0003 ownership, ADR-0005 backup scope or ADR-0012 watch rules. Design: [`docs/superpowers/specs/2026-11-27-energy-score-design.md`](../superpowers/specs/2026-11-27-energy-score-design.md).
 
 ## Context
@@ -56,3 +56,11 @@ Implemented in source, not released or device-verified. These values are a start
 - **Awake dip:** `min(max(0, hoursAwake − 8) × 0.5, 5)` points.
 - **Naps:** asleep segments from any source that start at least 60 minutes after the wake and end by now, merged across sources and joined when the gap is 30 minutes or less, kept at 10 to 180 minutes. Credit is minutes × 0.2, and total recharge is capped at the smaller of 10 and the drain so far, so a nap never lifts energy above the morning start; when capped, each nap's credit is scaled by the same factor and its item is marked capped.
 - **Learning note:** shown while fewer than 20 completed BeyondRep sessions fall in the last 90 days, or while the baseline has under 14 days. In stage 1 the generic rates apply; no personal tuning is learned yet.
+
+## Stage 2
+
+Implemented in source, not released or device-verified. One selector, `currentEnergyScore`, replaces `todaysReadiness` on every remaining consumer; there is no new read, no stored value and no wire change.
+
+- **Surfaces:** the Today hero (`ENERGY NOW · GOOD`, change since morning, learning note), the Train strip, the once-per-day low note before a workout ("Energy is low right now"), the "Better fit today" low rule, and the watch snapshot. With no energy (no waking day, or the start not ready) a surface shows nothing and never falls back to the morning score; the only other state is the building line while the start has `n` days to go.
+- **Watch:** the snapshot key stays `readiness` (`score`, `band`, `headline`, `reason` up to 140 characters, optional `factors`) and carries energy. `reason` is `Started at 78 · down 16 since morning`, plus ` · still learning` while the learning note applies. It is sent only for a waking day that began on the watch's local date (ADR-0012 local-midnight rule). The watch app's accessibility labels and caption say energy.
+- **Words:** no user-visible string says readiness. The explain sheet, the detail chart ("Starting energy") and the glossary are updated; `test/energy_wording_guard_test.dart` enforces it. Identifiers, routes and the wire key keep the old name.

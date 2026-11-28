@@ -9,7 +9,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "in.beyondrep.wear"
+        applicationId = "in.beyondrep.app"
         minSdk = 30
         targetSdk = 35
         versionCode = 1
@@ -31,6 +31,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":core"))
     implementation(platform("androidx.compose:compose-bom:2025.04.01"))
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.compose.foundation:foundation")

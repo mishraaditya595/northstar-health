@@ -124,27 +124,27 @@ MetricUsual? dailyAverageFrom(List<DayValue> daily, DateTime today) {
 
 const _copy = <MetricKey, MetricExplanation>{
   MetricKey.readiness: MetricExplanation(
-    title: 'Readiness',
-    summary: 'How ready your body is to train today',
-    what: 'A 0 to 100 score for today, worked out on your phone from your HRV, resting heart rate, last night\'s sleep and your sleep over the past week, plus your recent training load once you have 14 days of workout history.',
-    tells: '70 and up is Good: train as planned. 50 to 69 is Fair: train, but watch your effort. Under 50 is Low: consider an easier session. It compares you only with your own last 30 days.',
-    inBeyondRep: 'Shown on Today, Health and Train. It never changes your plans. It is guidance, not medical advice.',
+    title: 'Energy',
+    summary: 'How much energy you have to train right now',
+    what: 'A 0 to 100 score worked out on your phone. Each day starts from your recovery when you wake (HRV, resting heart rate, last night\'s sleep, your sleep over the past week and your recent training load), then goes down with each workout you finish, with active calories above your usual and a little with long hours awake. A nap adds a few points back.',
+    tells: '70 and up is Good: train as planned. 50 to 69 is Fair: train, but watch your effort. Under 50 is Low: consider an easier session. It compares you only with your own last 30 days. While it is still learning your patterns, the score can move more.',
+    inBeyondRep: 'Shown on Today, Health, Train and Apple Watch. It never changes your plans. It is guidance, not medical advice.',
   ),
   MetricKey.sleepScore: MetricExplanation(
     title: 'Sleep score',
     summary: 'Our 0 to 100 view of last night',
     what: 'A score for last night from how long you slept, your deep and REM sleep, time awake in bed, how regular your bedtime was and your sleeping heart rate.',
     tells: 'Higher means more restful sleep. One poor night is normal; look at the trend over a week.',
-    inBeyondRep: 'Feeds readiness. Without a sleep score, readiness uses your time asleep instead.',
+    inBeyondRep: 'Feeds energy. Without a sleep score, energy uses your time asleep instead.',
   ),
   MetricKey.timeAsleep: MetricExplanation(
     title: 'Time asleep',
     summary: 'Hours you were actually asleep',
     what:
         'The time you were asleep last night, not counting time awake in bed.',
-    tells: 'Most adults need around 7 to 9 hours. Short nights add up and lower readiness over the week.',
+    tells: 'Most adults need around 7 to 9 hours. Short nights add up and lower energy over the week.',
     inBeyondRep:
-        'Feeds readiness, both last night and your average over the past week.',
+        'Feeds energy, both last night and your average over the past week.',
   ),
   MetricKey.deepSleep: MetricExplanation(
     title: 'Deep sleep',
@@ -208,21 +208,21 @@ const _copy = <MetricKey, MetricExplanation>{
     summary: 'Beats a minute at full rest',
     what: 'How many times your heart beats in a minute when you\'re fully at rest. Your watch measures it while you\'re still or asleep.',
     tells: 'Lower than your usual often means you\'re well recovered. Five or more beats above your usual can come from poor sleep, stress, alcohol, illness or a hard training block.',
-    inBeyondRep: 'One of the inputs to readiness, compared only with your own last 30 days.',
+    inBeyondRep: 'One of the inputs to energy, compared only with your own last 30 days.',
   ),
   MetricKey.hrv: MetricExplanation(
     title: 'Heart rate variability (HRV)',
     summary: 'Small changes in time between heartbeats',
     what: 'The tiny differences in time from one heartbeat to the next. Apple and Android measure it in different ways, so the numbers can\'t be compared between phones or with other people.',
     tells: 'Higher than your usual generally means you\'re rested; lower can mean stress, poor sleep, illness or hard training. Only your own trend matters.',
-    inBeyondRep: 'The biggest input to readiness, compared only with your own last 30 days.',
+    inBeyondRep: 'The biggest input to energy, compared only with your own last 30 days.',
   ),
   MetricKey.vo2Max: MetricExplanation(
     title: 'VO₂ max',
     summary: 'Your aerobic fitness',
     what: 'An estimate of how much oxygen your body can use during hard exercise, made by your watch from walks and runs.',
     tells: 'Higher means fitter. It changes slowly over weeks, so look at the trend.',
-    inBeyondRep: 'Shown on Heart details. Not part of readiness.',
+    inBeyondRep: 'Shown on Heart details. Not part of energy.',
   ),
   MetricKey.walkingHeartRate: MetricExplanation(
     title: 'Walking heart rate',
@@ -236,28 +236,28 @@ const _copy = <MetricKey, MetricExplanation>{
     summary: 'Steps taken today',
     what: 'Steps counted by your phone or watch today.',
     tells: 'Steps add up over the day, so the morning number is always low. Your daily average is a better guide than any one day.',
-    inBeyondRep: 'Shown on Today and Activity. Not part of readiness.',
+    inBeyondRep: 'Shown on Today and Activity. Not part of energy.',
   ),
   MetricKey.activeCalories: MetricExplanation(
     title: 'Active calories',
     summary: 'Energy burned by moving',
     what: 'Energy you burned by moving and exercising today, on top of what your body uses at rest.',
     tells: 'Like steps, it adds up through the day. Watch estimates can be off, so compare with your own average.',
-    inBeyondRep: 'Shown on Activity. Not part of readiness.',
+    inBeyondRep: 'Shown on Activity. Not part of energy.',
   ),
   MetricKey.weight: MetricExplanation(
     title: 'Weight',
     summary: 'Your latest weigh-in',
     what: 'Your most recent weight from a scale or entered by hand.',
     tells: 'Day-to-day changes of a kilo or so are mostly water. Look at the trend over weeks.',
-    inBeyondRep: 'Shown on Body. Not part of readiness.',
+    inBeyondRep: 'Shown on Body. Not part of energy.',
   ),
   MetricKey.bodyFat: MetricExplanation(
     title: 'Body fat',
     summary: 'Share of your weight that is fat',
     what: 'Your most recent body fat percentage from a smart scale or other device.',
     tells: 'Home scales vary a lot between readings; the trend over weeks is more useful than one number.',
-    inBeyondRep: 'Shown on Body. Not part of readiness.',
+    inBeyondRep: 'Shown on Body. Not part of energy.',
   ),
   MetricKey.muscleRecovery: MetricExplanation(
     title: 'Muscle recovery',
@@ -271,7 +271,7 @@ const _copy = <MetricKey, MetricExplanation>{
     summary: 'How much you\'ve trained lately compared with usual',
     what: 'How much you trained over the past 7 days compared with your usual week over the past 28 days. Each workout counts its minutes, weighted by effort: your logged RPE for BeyondRep workouts, and a moderate effort for workouts from other apps.',
     tells: 'A week well above your usual can leave you less recovered. A steady or slightly lighter week usually means you\'re fresh.',
-    inBeyondRep: 'One of the inputs to readiness once you have 14 days of workout history. Today\'s workouts count from tomorrow.',
+    inBeyondRep: 'One of the inputs to energy once you have 14 days of workout history. Today\'s workouts count from tomorrow in the starting value and lower energy today.',
   ),
   MetricKey.otherAppWorkouts: MetricExplanation(
     title: 'Workouts from other apps',

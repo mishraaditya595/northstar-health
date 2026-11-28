@@ -11,12 +11,11 @@ import '../application/health_overview.dart';
 import '../application/health_summary_controller.dart';
 import '../data/health_reader.dart';
 import '../domain/metric_explanations.dart';
-import '../domain/readiness.dart';
 import '../health_format.dart';
 import 'health_actions_mixin.dart';
 import 'health_connect_card.dart';
 import 'metric_info_sheet.dart';
-import 'readiness_card.dart';
+import 'energy_text.dart';
 import 'readiness_hero.dart';
 import 'today_health_tiles.dart';
 
@@ -81,7 +80,7 @@ class _TodayHealthRowState extends ConsumerState<TodayHealthRow>
       return const _Loading();
     }
     final now = ref.watch(localNowProvider);
-    final today = todaysReadiness(overview, now);
+    final today = currentEnergy(overview, now);
     final sessions = ref.watch(completedWorkoutHistoryProvider).value?.sessions;
     final tiles = [
       sleepTile(overview),
@@ -98,19 +97,21 @@ class _TodayHealthRowState extends ConsumerState<TodayHealthRow>
         MediaQuery.textScalerOf(context).scale(1) >= 1.6 ||
         MediaQuery.sizeOf(context).width < 360;
     Widget tile(TodayTile t) => _tile(t, overview.platform, busy);
-    final hero = switch (today?.result) {
-      ReadinessReady(:final readiness) => ReadinessHero(
-        readiness: readiness,
-        reasons: readinessReasons(overview, today!, readiness),
-        platform: overview.platform,
-        onOpen: () => context.push('/health/readiness'),
-      ),
-      ReadinessNotReady(:final daysUntilBaseline?) => InsightCard(
-        icon: Icons.bolt_outlined,
-        text: TextSpan(text: readinessBuildingText(daysUntilBaseline)),
-      ),
-      _ => null,
-    };
+    final energy = today?.energy;
+    final building = energyBuilding(overview, now);
+    final hero = energy != null
+        ? ReadinessHero(
+            energy: energy,
+            learning: today!.learning,
+            platform: overview.platform,
+            onOpen: () => context.push('/health/readiness'),
+          )
+        : building != null
+        ? InsightCard(
+            icon: Icons.bolt_outlined,
+            text: TextSpan(text: energyBuildingText(building.days)),
+          )
+        : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

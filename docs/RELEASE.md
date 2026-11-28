@@ -113,11 +113,11 @@ Workouts from other apps and the training-load readiness input are implemented i
 | Account switch: sign in as another account, no workout or load from the first account appears | not run | not run |
 | No outside workout, kcal, heart rate or load appears in Account > export, Supabase, logs or an iCloud/Android backup | not run | not run |
 
-## Energy score stage 1 device QA (ADR-0013, owner actions, none done)
+## Energy score stages 1 and 2 device QA (ADR-0013, owner actions, none done)
 
-Energy on the Health tab hero and the readiness detail Today view is implemented in source, **not released or device-verified**. Every row is not run.
+Energy on the Health tab hero, the detail Today view, Today, the Train strip, the pre-workout note, "Better fit today" and the watch is implemented in source, **not released or device-verified**. Every row is not run.
 
-**Release gate:** energy stage 1 must not ship to users without stage 2. From this branch on, readiness is scored from 3 baseline days on Today, Train, the pre-workout note, "Better fit today" and the watch, and those surfaces carry no learning note (that comes in stage 2).
+**Release gate:** energy stages 1 and 2 ship together; stage 3 tuning is not started.
 
 | Check | iOS | Android |
 | --- | --- | --- |
@@ -126,6 +126,12 @@ Energy on the Health tab hero and the readiness detail Today view is implemented
 | A nap tracked by Apple Watch (iOS) or a Health Connect source (Android): a "Nap at" row adds recharge and never lifts energy above the morning start | not run | not run |
 | The next morning before last night's sleep syncs: no stale energy from yesterday shows, the hero shows the not-enough-data state | not run | not run |
 | Android without the active-energy permission: no "Active day so far" row and no zero, energy is still computed from the other parts | n/a | not run |
+| Stage 2: the Today hero shows energy now with the change since morning and the learning line while it applies | not run | not run |
+| Stage 2: the Train strip and the low note after a draining workout (good morning start, Low energy) | not run | not run |
+| Stage 2: "Better fit today" on a low-energy afternoon picks the lightest recovered plan | not run | not run |
+| Stage 2: watch Home and detail show energy and `· still learning`, cleared at local midnight | n/a | not run |
+| Stage 2: VoiceOver and TalkBack read "Energy" on Today, Train and the watch, never "Readiness" | not run | not run |
+| Stage 2: 41 mm Apple Watch Home shows the whole reason line including `· still learning` | not run | n/a |
 
 ## Phase 4 stage 3: watch link, glance and TestFlight embedding (owner actions, none done)
 

@@ -506,7 +506,7 @@ void main() {
       tester,
     ) async {
       await _pump(tester, _todayOverview(), FakeHealthReader());
-      expect(find.bySemanticsLabel('About Readiness'), findsOneWidget);
+      expect(find.bySemanticsLabel('About Energy'), findsOneWidget);
       expect(
         find.bySemanticsLabel('About Heart rate variability (HRV)'),
         findsOneWidget,
@@ -755,6 +755,16 @@ void main() {
       expect(find.text('${avg.round()}'), findsOneWidget);
       expect(find.text('Scored on 3 of 7 days'), findsOneWidget);
       expect(find.byType(NsTrendLabel), findsNothing);
+    });
+
+    testWidgets('the range panel is Starting energy and says when empty', (
+      tester,
+    ) async {
+      final reader = FakeHealthReader()..sleep = _nights(-40);
+      await _pump(tester, _overview(_nights(-40), reader), reader);
+      await _selectRange(tester, '7 days');
+      expect(find.text('Starting energy'), findsOneWidget);
+      expect(find.text('No starting energy in these 7 days.'), findsOneWidget);
     });
 
     testWidgets('the previous period shows with 5 scored days', (tester) async {

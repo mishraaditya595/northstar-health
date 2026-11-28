@@ -2,6 +2,7 @@ import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
+import 'package:beyondrep/features/health/domain/energy.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/features/health/widgets/readiness_note.dart';
 import 'package:beyondrep/features/train/active_workout_state.dart';
@@ -148,13 +149,48 @@ Future<void> _tapStart(WidgetTester tester) async {
 
 HealthOverview _low() => overview(readiness: _ready(48));
 
+/// A good morning start drained to Low energy by a workout.
+HealthOverview _drained() {
+  final start = _ready(80);
+  return overview(
+    readiness: start,
+    energy: energySection(
+      start,
+      energy: Energy(
+        value: 45,
+        band: readinessBandOf(45),
+        start: 80,
+        items: const [],
+      ),
+      wake: DateTime(2026, 11, 24, 6, 31),
+    ),
+  );
+}
+
+/// A low start but no waking day, so no energy.
+HealthOverview _lowStartNoEnergy() {
+  final start = _ready(40);
+  return overview(
+    readiness: start,
+    energy: SectionData(
+      EnergyOverview(
+        day: DateTime(2026, 11, 24),
+        wake: null,
+        start: (start as SectionData<ReadinessOverview>).value,
+        energy: null,
+        learning: const EnergyLearning(),
+      ),
+    ),
+  );
+}
+
 void main() {
   testWidgets('first low-day start shows the note, the second does not', (
     tester,
   ) async {
     await _pump(tester, _low());
     await _tapStart(tester);
-    expect(find.text('Recovery is low today'), findsOneWidget);
+    expect(find.text('Energy is low right now'), findsOneWidget);
     expect(find.textContaining('Your plans are not changed'), findsNWidgets(2));
     expect(_actions.started, isEmpty);
     await tester.tap(find.text('Start workout'));
@@ -164,6 +200,24 @@ void main() {
     await _tapStart(tester);
     expect(_actions.started, ['plan-1', 'plan-1']);
     expect(find.text('Not now'), findsNothing);
+  });
+
+  testWidgets('a good start drained to low energy shows the note', (
+    tester,
+  ) async {
+    await _pump(tester, _drained());
+    await _tapStart(tester);
+    expect(find.text('Energy is low right now'), findsOneWidget);
+    expect(_actions.started, isEmpty);
+  });
+
+  testWidgets('a low start without energy never shows the note', (
+    tester,
+  ) async {
+    await _pump(tester, _lowStartNoEnergy());
+    await _tapStart(tester);
+    expect(find.text('Not now'), findsNothing);
+    expect(_actions.started, ['plan-1']);
   });
 
   testWidgets('an unfinished workout blocks the start before the note', (
@@ -240,6 +294,43 @@ void main() {
     _container.read(_nowProvider.notifier).set(DateTime(2026, 11, 25, 7));
     _controller.replace(
       overview(readiness: _ready(48), readAt: DateTime(2026, 11, 25, 7)),
+    );
+    await tester.pump();
+    await _tapStart(tester);
+    expect(find.text('Not now'), findsOneWidget);
+  });
+
+  testWidgets('the note is once per waking day, across midnight', (
+    tester,
+  ) async {
+    await _pump(tester, _low());
+    _container.read(_nowProvider.notifier).set(DateTime(2026, 11, 24, 23));
+    await tester.pump();
+    await _tapStart(tester);
+    expect(find.text('Not now'), findsOneWidget);
+    await tester.tap(find.text('Not now'));
+    await tester.pumpAndSettle();
+
+    // 00:30 is still the waking day that began at 06:31 the day before.
+    _container.read(_nowProvider.notifier).set(DateTime(2026, 11, 25, 0, 30));
+    await tester.pump();
+    await _tapStart(tester);
+    expect(find.text('Not now'), findsNothing);
+    expect(_actions.started, ['plan-1']);
+
+    // The next waking day shows it again.
+    _container.read(_nowProvider.notifier).set(DateTime(2026, 11, 25, 7, 30));
+    final start = _ready(48);
+    _controller.replace(
+      overview(
+        readiness: start,
+        readAt: DateTime(2026, 11, 25, 7, 30),
+        energy: energySection(
+          start,
+          wake: DateTime(2026, 11, 25, 7),
+          day: DateTime(2026, 11, 25),
+        ),
+      ),
     );
     await tester.pump();
     await _tapStart(tester);

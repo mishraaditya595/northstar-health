@@ -47,12 +47,10 @@ final planFitProvider = Provider.autoDispose<PlanFit?>((ref) {
     if (planRecovery != null) byPlan[plan.uuid] = planRecovery;
   }
   final overview = ref.watch(healthOverviewProvider).value;
-  final readiness = overview == null
+  final energy = overview == null
       ? null
-      : todaysReadiness(overview, ref.watch(localNowProvider))?.result;
-  final low =
-      readiness is ReadinessReady &&
-      readiness.readiness.band == ReadinessBand.low;
+      : currentEnergyScore(overview, ref.watch(localNowProvider));
+  final low = energy != null && energy.band == ReadinessBand.low;
   return PlanFit(
     byPlan: byPlan,
     suggestion: suggestPlan(byPlan.values.toList(), lowReadiness: low),

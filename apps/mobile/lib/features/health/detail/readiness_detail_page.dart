@@ -342,7 +342,7 @@ class _RangeView extends ConsumerWidget {
         children: [
           DetailUnavailable(
             gap: MetricGap.failed,
-            metricName: 'Readiness',
+            metricName: 'Energy',
             platform: overview.platform,
             // Its own reads are guarded: a failure comes from the sleep
             // range providers it builds on.
@@ -383,7 +383,7 @@ class _RangeView extends ConsumerWidget {
         '${formatHealthDate(first)} – ${formatHealthDate(overview.readAt)}';
     final count = 'Scored on ${scored.length} of $days days';
     return DetailPanel(
-      title: 'Daily readiness',
+      title: 'Starting energy',
       trailing: label,
       children: [
         Wrap(
@@ -400,7 +400,7 @@ class _RangeView extends ConsumerWidget {
           ],
         ),
         HealthCaption(
-          avg == null ? 'No readiness score in these $days days.' : count,
+          avg == null ? 'No starting energy in these $days days.' : count,
         ),
         const SizedBox(height: 10),
         NsBarChart(
@@ -432,7 +432,7 @@ class _RangeView extends ConsumerWidget {
                 ]
               : const [],
           semanticsLabel:
-              'Daily readiness, $label. '
+              'Starting energy, $label. '
               '${avgText == null ? 'No days scored' : 'Average $avgText. $count'}. '
               'Dashed line at $_reference, good to train.',
         ),
