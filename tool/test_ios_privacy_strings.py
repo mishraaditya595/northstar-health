@@ -43,6 +43,10 @@ class IosPrivacyStringsTest(unittest.TestCase):
         self.assertIn("write", value.lower())
         self.assertNotIn("does not write", value.lower())
 
+    def test_update_string_mentions_weight(self):
+        value = self.info.get("NSHealthUpdateUsageDescription", "")
+        self.assertIn("weight", value.lower())
+
     def test_share_string_mentions_trends(self):
         value = self.info.get("NSHealthShareUsageDescription", "")
         self.assertIn("trends", value)

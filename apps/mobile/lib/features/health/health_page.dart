@@ -19,6 +19,7 @@ import 'widgets/health_card_frame.dart';
 import 'widgets/health_connect_card.dart';
 import 'widgets/health_export_row.dart';
 import 'widgets/heart_card.dart';
+import 'widgets/log_weight_sheet.dart';
 import 'widgets/readiness_card.dart';
 import 'widgets/sleep_card.dart';
 import 'widgets/training_insight_line.dart';
@@ -196,6 +197,7 @@ class _HealthPageState extends ConsumerState<HealthPage>
           today: today,
           onTap: tapFor(overview.body, '/health/body'),
           onAllowMore: allowMore,
+          onLogWeight: () => showLogWeightSheet(context, ref),
         ),
       ];
     } else {

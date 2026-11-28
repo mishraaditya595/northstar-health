@@ -679,4 +679,44 @@ void main() {
       expect(nav.selectedIndex, 3, reason: path);
     }
   });
+
+  group('Log weight button', () {
+    testWidgets('Body card shows Log weight with data and does not navigate', (
+      tester,
+    ) async {
+      await pumpHealth(tester, overview());
+      expect(find.text('Log weight'), findsOneWidget);
+      await tester.tap(find.text('Log weight'));
+      await tester.pumpAndSettle();
+      expect(find.text('detail body'), findsNothing);
+    });
+
+    testWidgets('Body card shows Log weight in a gap state', (tester) async {
+      await pumpHealth(
+        tester,
+        overview(body: const SectionGap(MetricGap.noData)),
+      );
+      expect(find.text('Log weight'), findsOneWidget);
+    });
+
+    testWidgets('Log weight stays reachable for screen readers', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      await pumpHealth(tester, overview());
+      expect(find.bySemanticsLabel('Log weight'), findsOneWidget);
+      handle.dispose();
+    });
+
+    testWidgets('Log weight fits at text scale 2.0 in dark', (tester) async {
+      await pumpHealth(
+        tester,
+        overview(),
+        textScale: 2,
+        brightness: Brightness.dark,
+      );
+      expect(find.text('Log weight'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
 }

@@ -11,6 +11,7 @@ import '../domain/daily_series.dart';
 import '../health_format.dart';
 import '../widgets/detail_layout.dart';
 import '../widgets/health_card_frame.dart';
+import '../widgets/log_weight_sheet.dart';
 import '../widgets/metric_info_sheet.dart';
 
 /// Signed kg per week; neutral, as goals differ.
@@ -52,6 +53,7 @@ class _BodyDetailPageState extends ConsumerState<BodyDetailPage> {
               onRetry: () =>
                   ref.read(healthOverviewProvider.notifier).refresh(),
             ),
+            const _LogWeightButton(),
           ],
         ),
         SectionData(:final value) => _BodyView(
@@ -63,6 +65,20 @@ class _BodyDetailPageState extends ConsumerState<BodyDetailPage> {
       },
     );
   }
+}
+
+class _LogWeightButton extends ConsumerWidget {
+  const _LogWeightButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Align(
+    alignment: AlignmentDirectional.centerStart,
+    child: TextButton.icon(
+      onPressed: () => showLogWeightSheet(context, ref),
+      icon: const Icon(Icons.add),
+      label: const Text('Log weight'),
+    ),
+  );
 }
 
 class _BodyView extends ConsumerWidget {
@@ -140,6 +156,7 @@ class _BodyView extends ConsumerWidget {
         metricName: 'weight',
         platform: overview.platform,
         onRetry: onRetry,
+        footer: const _LogWeightButton(),
       );
     }
     return DetailPanel(
@@ -187,6 +204,7 @@ class _BodyView extends ConsumerWidget {
         DetailRow('Average weekly change', rate == null ? '—' : _rate(rate)),
         if (rate == null)
           HealthCaption('Needs 4 weigh-ins in these $days days.'),
+        const _LogWeightButton(),
       ],
     );
   }

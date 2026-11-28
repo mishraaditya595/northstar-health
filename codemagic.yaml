@@ -142,6 +142,67 @@ workflows:
       - name: "Install locked dependencies"
         script: |
           flutter pub get --enforce-lockfile
+      - name: "Install Android SDK platform 37"
+        script: |
+          # compileSdk is 37 (health 14.0.0 and connect-client need it) and
+          # the Codemagic image does not ship that platform.
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          test -n "$SDK_ROOT"
+          if compgen -G "$SDK_ROOT/platforms/android-37*/android.jar" > /dev/null; then
+            echo "Android SDK platform 37 is already installed."
+            exit 0
+          fi
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [[ ! -x "$SDKMANAGER" ]]; then
+            SDKMANAGER="$(command -v sdkmanager)"
+          fi
+          # The image's sdkmanager cannot see API 37, so install the current
+          # command-line tools. Their `android sdk` command replaces sdkmanager.
+          # sdkmanager cannot replace itself, so the update may land in latest-2.
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses > /dev/null || true
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "cmdline-tools;latest"
+          ANDROID_CLI=""
+          for dir in latest-2 latest; do
+            for bin in "bin/android" "android"; do
+              if [[ -z "$ANDROID_CLI" && -x "$SDK_ROOT/cmdline-tools/$dir/$bin" ]]; then
+                ANDROID_CLI="$SDK_ROOT/cmdline-tools/$dir/$bin"
+              fi
+            done
+          done
+          if [[ -n "$ANDROID_CLI" ]]; then
+            "$ANDROID_CLI" --version || true
+            list() { "$ANDROID_CLI" --sdk="$SDK_ROOT" sdk list --all 'platforms/*'; }
+            install() { "$ANDROID_CLI" --sdk="$SDK_ROOT" sdk install "$1"; }
+          else
+            # No new CLI: fall back to the updated sdkmanager.
+            for dir in latest-2 latest; do
+              if [[ -x "$SDK_ROOT/cmdline-tools/$dir/bin/sdkmanager" ]]; then
+                SDKMANAGER="$SDK_ROOT/cmdline-tools/$dir/bin/sdkmanager"
+                break
+              fi
+            done
+            list() { "$SDKMANAGER" --sdk_root="$SDK_ROOT" --list; }
+            install() { "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "$1"; }
+          fi
+          # Package paths use "/" in the new CLI and ";" in sdkmanager; API 37
+          # may be published as android-37 or android-37.0.
+          LIST="$(list 2>&1 || true)"
+          # Split every word onto its own line so any table layout is matched.
+          PACKAGES="$(printf '%s\n' "$LIST" | tr -s ' \t|,' '\n\n\n\n')"
+          PLATFORM="$(printf '%s\n' "$PACKAGES" | grep -E '^platforms[/;]android-37$' | head -n 1 || true)"
+          if [[ -z "$PLATFORM" ]]; then
+            PLATFORM="$(printf '%s\n' "$PACKAGES" | grep -E '^platforms[/;]android-37\.0$' | head -n 1 || true)"
+          fi
+          if [[ -z "$PLATFORM" ]]; then
+            echo "No Android SDK platform 37 package found. The SDK package list printed:"
+            printf '%s\n' "$LIST"
+            exit 1
+          fi
+          echo "Installing $PLATFORM"
+          printf 'y\ny\ny\ny\ny\n' | install "$PLATFORM"
+          ls "$SDK_ROOT/platforms"
+          compgen -G "$SDK_ROOT/platforms/android-37*/android.jar" > /dev/null
       - name: "Build signed AAB"
         script: |
           set -euo pipefail

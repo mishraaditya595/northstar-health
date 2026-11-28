@@ -8,7 +8,7 @@
 
 1. Checks that `SUPABASE_URL` is an `https://<ref>.supabase.co` URL and `SUPABASE_PUBLISHABLE_KEY` is a publishable key (`sb_publishable_…`).
 2. Resolves the version name and versionCode (see [Version name and versionCode](#version-name-and-versioncode)).
-3. Runs `flutter pub get --enforce-lockfile`.
+3. Runs `flutter pub get --enforce-lockfile`, then installs the Android SDK platform 37 (`compileSdk`), which the Codemagic image does not include.
 4. Builds a release AAB with `--build-name`, `--build-number` and the two public Supabase values through a temporary `--dart-define-from-file`. `BEYONDREP_REQUIRE_RELEASE_SIGNING=true` makes Gradle fail if the upload key is missing, so the job can never fall back to the debug key.
 5. Refuses the AAB if `keytool -printcert -jarfile` shows it unsigned or signed by `CN=Android Debug`.
 6. Builds the Wear OS bundle from `apps/wear_os` with Gradle (`:app:bundleRelease`, Java 17), versionCode = the phone's + 1 and the same version name, signed with the same upload key, and refuses it if it is unsigned or debug-signed (see [Wear OS bundle](#wear-os-bundle)).

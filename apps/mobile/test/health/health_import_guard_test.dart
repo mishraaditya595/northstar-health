@@ -65,6 +65,7 @@ import 'sibling.dart'
     expect(offenders, {
       'lib/features/health/data/platform_health_reader.dart',
       'lib/features/health/data/health_workout_writer.dart',
+      'lib/features/health/data/health_weight_writer.dart',
     });
   });
 
