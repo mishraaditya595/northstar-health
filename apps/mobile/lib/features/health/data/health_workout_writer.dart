@@ -3,8 +3,20 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:health/health.dart' hide HealthValue;
 
-/// One BeyondRep workout summary to save: name, start and end only. No heart
-/// rate, calories, distance, sets or reps (ADR-0014).
+/// One minute of a watch workout: the average heart rate of the minute that
+/// starts at [at]. Held in memory for the write only.
+class HeartRateMinute {
+  const HeartRateMinute({required this.at, required this.bpm});
+
+  final DateTime at;
+  final int bpm;
+}
+
+/// One BeyondRep workout summary to save: name, start and end. A phone
+/// workout carries nothing else: no heart rate, calories, distance, sets or
+/// reps (ADR-0014). A watch workout on Android (Wear OS stage 3b, ADR-0015)
+/// also carries its total calories and per-minute heart rate, which live only
+/// in memory during the write.
 class HealthWorkoutRecord {
   const HealthWorkoutRecord({
     required this.workoutUuid,
@@ -13,6 +25,8 @@ class HealthWorkoutRecord {
     required this.end,
     required this.offsetMinutes,
     required this.version,
+    this.totalKcal,
+    this.heartRate = const [],
   });
 
   /// Lowercase BeyondRep workout UUID; the platform id for idempotent rewrites.
@@ -24,6 +38,12 @@ class HealthWorkoutRecord {
 
   /// Grows on every edit of the workout; a greater version replaces the entry.
   final int version;
+
+  /// Total calories of a watch workout; null when the watch measured none.
+  final double? totalKcal;
+
+  /// One average per minute, oldest first; empty for a phone workout.
+  final List<HeartRateMinute> heartRate;
 }
 
 sealed class HealthWriteResult {
@@ -68,9 +88,15 @@ abstract interface class HealthWorkoutWriter {
 
   Future<bool> isAvailable();
 
-  /// Shows the platform permission prompt for workout read and write.
-  Future<bool> requestAccess();
+  /// Shows the platform permission prompt for workout read and write. With
+  /// [watchHealth] (Android) it also asks to write heart rate and total
+  /// calories, which only a watch workout needs.
+  Future<bool> requestAccess({bool watchHealth = false});
   Future<bool> hasWriteAccess();
+
+  /// Android: exercise, heart rate and total calories write are all granted.
+  /// False on iOS, where the Apple Watch saves its own workout.
+  Future<bool> hasWatchHealthWriteAccess();
   Future<HealthWriteResult> write(HealthWorkoutRecord record);
   Future<HealthWriteResult> delete(
     String workoutUuid,
@@ -129,7 +155,7 @@ class PlatformHealthWorkoutWriter implements HealthWorkoutWriter {
   }
 
   @override
-  Future<bool> requestAccess() async {
+  Future<bool> requestAccess({bool watchHealth = false}) async {
     try {
       await _configure();
       return await _health.requestAuthorization(
@@ -157,6 +183,9 @@ class PlatformHealthWorkoutWriter implements HealthWorkoutWriter {
       return false;
     }
   }
+
+  @override
+  Future<bool> hasWatchHealthWriteAccess() async => false;
 
   HealthWriteResult _failure(Object error) {
     if (error is HealthException &&

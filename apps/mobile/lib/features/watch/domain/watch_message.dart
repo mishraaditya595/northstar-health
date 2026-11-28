@@ -15,6 +15,7 @@ const _types = {
   'ack',
   'workout_link',
   'join',
+  'workout_health',
 };
 
 const _commands = {
@@ -464,6 +465,56 @@ sealed class WatchMessage {
           workoutId: b.uuid('workout_id'),
           healthkitWorkoutUuid: b.uuid('healthkit_workout_uuid'),
         );
+      case 'workout_health':
+        final b = body(
+          {'workout_id', 'start_utc', 'end_utc', 'heart_rate'},
+          {'total_kcal'},
+        );
+        final startText = b.dateTime('start_utc');
+        final endText = b.dateTime('end_utc');
+        final start = DateTime.parse(startText).toUtc();
+        final end = DateTime.parse(endText).toUtc();
+        if (!end.isAfter(start)) {
+          throw const WatchContractException('invalid_value');
+        }
+        DateTime? previous;
+        final points = <HeartRatePoint>[];
+        for (final item in b.list('heart_rate', max: 600)) {
+          final p = StrictObject(item, required: {'at_utc', 'bpm'});
+          final atText = p.dateTime('at_utc');
+          final at = DateTime.parse(atText).toUtc();
+          // Inside the workout and strictly increasing; JSON Schema cannot say so.
+          if (at.isBefore(start) ||
+              at.isAfter(end) ||
+              (previous != null && !at.isAfter(previous))) {
+            throw const WatchContractException('invalid_value');
+          }
+          previous = at;
+          points.add(
+            HeartRatePoint(
+              atUtc: atText,
+              bpm: p.integer('bpm', min: 25, max: 250),
+            ),
+          );
+        }
+        double? kcal;
+        if (b.has('total_kcal')) {
+          final k = b.map['total_kcal'];
+          if (k is! num || !(k > 0 && k <= 10000)) {
+            throw const WatchContractException('invalid_value');
+          }
+          kcal = k.toDouble();
+        }
+        return WorkoutHealth(
+          messageId: id,
+          sentAtUtc: sent,
+          accountKey: key,
+          workoutId: b.uuid('workout_id'),
+          startUtc: startText,
+          endUtc: endText,
+          heartRate: points,
+          totalKcal: kcal,
+        );
       case 'join':
         final b = body(const {}, {'session_id'});
         return JoinMessage(
@@ -474,19 +525,26 @@ sealed class WatchMessage {
         );
       default:
         final b = body({'acked_message_id', 'result'}, {'reason'});
+        final result = b.oneOf('result', {'stored', 'duplicate', 'rejected'});
+        final reason = b.has('reason')
+            ? b.oneOf('reason', {
+                'wrong_account',
+                'invalid',
+                'unsupported_version',
+                'not_written',
+              })
+            : null;
+        // `not_written` goes with `rejected` only.
+        if (reason == 'not_written' && result != 'rejected') {
+          throw const WatchContractException('invalid_value');
+        }
         return Ack(
           messageId: id,
           sentAtUtc: sent,
           accountKey: key,
           ackedMessageId: b.uuid('acked_message_id'),
-          result: b.oneOf('result', {'stored', 'duplicate', 'rejected'}),
-          reason: b.has('reason')
-              ? b.oneOf('reason', {
-                  'wrong_account',
-                  'invalid',
-                  'unsupported_version',
-                })
-              : null,
+          result: result,
+          reason: reason,
         );
     }
   }
@@ -879,5 +937,50 @@ final class JoinMessage extends WatchMessage {
   @override
   Map<String, Object?> get bodyJson => {
     if (sessionId != null) 'session_id': sessionId,
+  };
+}
+
+/// One per-minute heart rate average of [WorkoutHealth].
+class HeartRatePoint {
+  const HeartRatePoint({required this.atUtc, required this.bpm});
+
+  final String atUtc;
+  final int bpm;
+}
+
+/// The heart rate and total calories of one finished watch workout, sent after
+/// the phone acked the workout (Wear OS stage 3b). With `health_snapshot` the
+/// only message that carries health values: the phone holds them in memory for
+/// the Health Connect write and stores none of them.
+final class WorkoutHealth extends WatchMessage {
+  const WorkoutHealth({
+    required super.messageId,
+    required super.sentAtUtc,
+    required super.accountKey,
+    required this.workoutId,
+    required this.startUtc,
+    required this.endUtc,
+    required this.heartRate,
+    this.totalKcal,
+  });
+
+  final String workoutId;
+  final String startUtc;
+  final String endUtc;
+  final List<HeartRatePoint> heartRate;
+  final double? totalKcal;
+
+  @override
+  String get type => 'workout_health';
+
+  @override
+  Map<String, Object?> get bodyJson => {
+    'workout_id': workoutId,
+    'start_utc': startUtc,
+    'end_utc': endUtc,
+    'heart_rate': [
+      for (final p in heartRate) {'at_utc': p.atUtc, 'bpm': p.bpm},
+    ],
+    'total_kcal': ?totalKcal,
   };
 }

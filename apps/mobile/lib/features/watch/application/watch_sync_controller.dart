@@ -22,6 +22,7 @@ import 'watch_snapshots.dart';
 import 'watch_status_provider.dart';
 import 'watch_wipe_retrier.dart';
 import 'phone_live_session.dart';
+import 'watch_workout_health_inbox.dart';
 import 'watch_workout_inbox.dart';
 
 /// Ids for outgoing watch messages; tests replace it.
@@ -208,6 +209,16 @@ class WatchSyncController {
         _ref
             .read(watchWorkoutInboxProvider)
             .handleLink(message)
+            .then<void>((_) {}, onError: (_) {}),
+      );
+      return;
+    }
+    if (message is WorkoutHealth) {
+      // No ack while the workout is unknown or a write failed: the watch resends.
+      unawaited(
+        _ref
+            .read(watchWorkoutHealthInboxProvider)
+            .handle(message)
             .then<void>((_) {}, onError: (_) {}),
       );
       return;
