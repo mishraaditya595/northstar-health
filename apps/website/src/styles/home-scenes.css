@@ -84,3 +84,67 @@
   .scenes-ready [data-scene-track] { --track: 175vh; }
   .scenes-ready [data-scene-stage] { height: auto; top: 8vh; top: 8svh; }
 }
+
+/* Training. Phones: no pin; each tile's mini demo scrubs with --k as the tile
+   crosses the screen. Wide and tall windows: one pinned panel steps through
+   the five tiles. Anything else shows the finished tile grid. */
+@media (prefers-reduced-motion: no-preference) {
+  .scenes-ready [data-scene-track="training"],
+  .scenes-ready [data-scene-track^="tile-"] { --track: auto; }
+  .scenes-ready [data-scene-track="training"] [data-scene-stage] { position: static; height: auto; display: block; }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 899px) {
+  .scenes-ready .tile { --lib: var(--k, 1); --prog: var(--k, 1); --log: var(--k, 1); --ring: var(--k, 1); --bars: var(--k, 1); }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 899px), (prefers-reduced-motion: no-preference) and (min-width: 900px) and (min-height: 720px) {
+  .scenes-ready .result {
+    opacity: clamp(0, calc(var(--lib, 1) * 4 - var(--j)), 1);
+    transform: translateX(calc((1 - clamp(0, calc(var(--lib, 1) * 4 - var(--j)), 1)) * -14px));
+  }
+  .scenes-ready .chips span { transform: scale(clamp(0.4, calc(0.4 + var(--lib, 1) * 6), 1)); opacity: clamp(0, calc(var(--lib, 1) * 6), 1); }
+  .scenes-ready .week span { opacity: clamp(0.25, calc(var(--prog, 1) * 9 - var(--j)), 1); }
+  .scenes-ready .today-card {
+    opacity: clamp(0, calc(var(--prog, 1) * 3 - 1.4), 1);
+    transform: translateY(calc((1 - clamp(0, calc(var(--prog, 1) * 3 - 1.4), 1)) * 12px));
+  }
+  .scenes-ready .viz-timer .ring { stroke-dashoffset: calc(var(--ring, 0.62) * 100); }
+  .scenes-ready .bars i { transform: scaleY(clamp(0.02, calc(var(--bars, 1) * 9 - var(--j)), 1)); }
+  .scenes-ready .muscles span { opacity: clamp(0, calc(var(--bars, 1) * 9 - 5 - var(--j)), 1); transform: scale(clamp(0.5, calc(var(--bars, 1) * 9 - 5 - var(--j)), 1)); }
+}
+@media (prefers-reduced-motion: no-preference) and (min-width: 900px) and (min-height: 720px) {
+  .scenes-ready [data-scene-track="training"] { --track: 280vh; }
+  .scenes-ready [data-scene-track="training"] [data-scene-stage] {
+    position: sticky; top: 0; height: 100vh; height: 100svh;
+    display: grid; grid-template-columns: 1fr 1.1fr; column-gap: clamp(40px, 6vw, 88px);
+    grid-template-rows: auto repeat(10, auto) auto; align-content: center; padding: 24px 0;
+  }
+  .scenes-ready .train-head { grid-column: 1; grid-row: 1; margin-bottom: 20px; }
+  .scenes-ready .tiles, .scenes-ready .tile { display: contents; }
+  .scenes-ready .tile h3 {
+    grid-column: 1; grid-row: calc(var(--n) * 2); margin: 0; padding: 4px 0 0 18px;
+    border-left: 2px solid var(--border); font-size: 1.0625rem; transition: border-color 0.3s ease;
+  }
+  .scenes-ready .tile p {
+    grid-column: 1; grid-row: calc(var(--n) * 2 + 1); margin: 0; padding: 2px 0 14px 18px;
+    border-left: 2px solid var(--border); font-size: 0.9375rem; transition: border-color 0.3s ease;
+  }
+  .scenes-ready [data-step="0"] .tile:nth-child(1) :is(h3, p),
+  .scenes-ready [data-step="1"] .tile:nth-child(2) :is(h3, p),
+  .scenes-ready [data-step="2"] .tile:nth-child(3) :is(h3, p),
+  .scenes-ready [data-step="3"] .tile:nth-child(4) :is(h3, p),
+  .scenes-ready [data-step="4"] .tile:nth-child(5) :is(h3, p) { border-color: var(--performance); }
+  .scenes-ready .train-note { grid-column: 1; grid-row: 12; margin-top: 4px; }
+  .scenes-ready .tile .viz {
+    grid-column: 2; grid-row: 1 / span 11; align-self: center;
+    height: clamp(320px, 52vh, 440px); padding: 28px; opacity: 0; transition: opacity 0.4s ease;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card);
+    box-shadow: 0 30px 80px -40px rgb(0 0 0 / 0.45);
+  }
+  .scenes-ready .tile .viz > * { zoom: 1.65; }
+  .scenes-ready .tile .viz:not(.viz-timer) { display: flex; flex-direction: column; justify-content: center; }
+  .scenes-ready [data-step="0"] .tile:nth-child(1) .viz,
+  .scenes-ready [data-step="1"] .tile:nth-child(2) .viz,
+  .scenes-ready [data-step="2"] .tile:nth-child(3) .viz,
+  .scenes-ready [data-step="3"] .tile:nth-child(4) .viz,
+  .scenes-ready [data-step="4"] .tile:nth-child(5) .viz { opacity: 1; }
+}

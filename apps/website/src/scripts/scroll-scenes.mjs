@@ -64,6 +64,12 @@ export function mountScenes(doc, win, frames) {
       mine.attrs.add(k);
       put('a:' + k, String(v), s => { track.dataset[k] = s; });
     }
+    // Keys a frame stops returning go back to their resting value.
+    const seen = written.get(track) ?? {};
+    const forget = key => { delete seen[key]; };
+    for (const k of [...mine.vars]) if (!(k in (state.vars ?? {}))) { track.style.removeProperty('--' + k); mine.vars.delete(k); forget('v:' + k); }
+    for (const k of [...mine.attrs]) if (!(k in (state.attrs ?? {}))) { delete track.dataset[k]; mine.attrs.delete(k); forget('a:' + k); }
+    for (const [sel, rec] of [...mine.texts]) if (!(sel in (state.text ?? {}))) { rec.target.textContent = rec.original; mine.texts.delete(sel); forget('t:' + sel); }
     for (const [sel, text] of Object.entries(state.text ?? {})) {
       let rec = mine.texts.get(sel);
       if (!rec) {
@@ -89,7 +95,7 @@ export function mountScenes(doc, win, frames) {
     raf = 0;
     if (!enabled) return;
     const vh = win.innerHeight;
-    const ctx = { mobile: win.innerWidth < 900 };
+    const ctx = { mobile: win.innerWidth < 900, short: vh < 720 };
     const todo = tracks.filter(t => visible.has(t) || dirty.has(t));
     dirty = new Set();
     // Read every rect first, then write, so the frame forces one layout.

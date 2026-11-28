@@ -102,47 +102,60 @@ const jsonLd = [
 
   <section class="feature" data-backdrop="lime" aria-labelledby="train">
     <div class="wrap">
-      <div data-reveal>
-        <p class="kicker">Training</p>
-        <h2 class="display" id="train">Plan it, lift it, see it add up</h2>
-        <p class="section-lede">The tools you reach for every session, without the clutter.</p>
-      </div>
-      <div class="tiles">
-        <div class="tile" data-reveal data-glow style="--i:0">
-          <div class="viz viz-library" aria-hidden="true">
-            <div class="search">Search exercises</div>
-            <div class="chips"><span>Chest</span><span>Dumbbell</span><span>Barbell</span></div>
-            <div class="result" style="--j:0">Incline dumbbell press</div>
-            <div class="result" style="--j:1">Barbell bench press</div>
-            <div class="result" style="--j:2">Cable fly</div>
+      <div data-scene-track="training">
+        <div data-scene-stage>
+          <div class="train-head" data-reveal>
+            <p class="kicker">Training</p>
+            <h2 class="display" id="train" data-words>Plan it, lift it, see it add up</h2>
+            <p class="section-lede">The tools you reach for every session, without the clutter.</p>
           </div>
-          <h3>Plans and an exercise library</h3>
-          <p>Build your own routines from an exercise catalog you can search by name, muscle or equipment, or add your own.</p>
-        </div>
-        <div class="tile" data-reveal data-glow style="--i:1">
-          <div class="viz viz-log" aria-hidden="true">
-            <div class="log-last">Last time <b>65 kg × 8</b></div>
-            <div class="log-now"><span class="big"><span data-count="70">70</span><small>kg</small></span><span class="times">×</span><span class="big"><span data-count="6">6</span><small>reps</small></span></div>
-            <div class="log-unit"><span class="on">kg</span><span>lb</span></div>
+          <div class="tiles">
+            <div class="tile" data-scene-track="tile-1" data-scene-mode="cross" data-reveal data-glow style="--i:0;--n:1">
+              <div class="viz viz-library" aria-hidden="true">
+                <div class="search">Search exercises</div>
+                <div class="chips"><span>Chest</span><span>Dumbbell</span><span>Barbell</span></div>
+                <div class="result" style="--j:0">Incline dumbbell press</div>
+                <div class="result" style="--j:1">Barbell bench press</div>
+                <div class="result" style="--j:2">Cable fly</div>
+              </div>
+              <h3>Plans and an exercise library</h3>
+              <p>Build your own routines from an exercise catalog you can search by name, muscle or equipment, or add your own.</p>
+            </div>
+            <div class="tile" data-scene-track="tile-2" data-scene-mode="cross" data-reveal data-glow style="--i:1;--n:2">
+              <div class="viz viz-program" aria-hidden="true">
+                <div class="week">{['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, j) => <span class={j === 0 || j === 2 ? 'done' : j === 3 ? 'today' : ''} style={`--j:${j}`}>{d}</span>)}</div>
+                <div class="today-card"><small>Today</small><b>Upper body A</b><span>6 exercises</span></div>
+              </div>
+              <h3>Programs with a plan for today</h3>
+              <p>Follow a multi-week program and today’s workout is waiting on your Today screen. Miss a day and you can still start it later.</p>
+            </div>
+            <div class="tile" data-scene-track="tile-3" data-scene-mode="cross" data-reveal data-glow style="--i:2;--n:3">
+              <div class="viz viz-log" aria-hidden="true">
+                <div class="log-last">Last time <b>65 kg × 8</b></div>
+                <div class="log-now"><span class="big"><span data-kg>70</span><small>kg</small></span><span class="times">×</span><span class="big"><span data-reps>6</span><small>reps</small></span></div>
+                <div class="log-unit"><span class="on">kg</span><span>lb</span></div>
+              </div>
+              <h3>Fast set logging</h3>
+              <p>Log weight, reps and RPE in kg or lb, with last session’s numbers shown next to each set.</p>
+            </div>
+            <div class="tile" data-scene-track="tile-4" data-scene-mode="cross" data-reveal data-glow style="--i:3;--n:4">
+              <div class="viz viz-timer" aria-hidden="true">
+                <svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="50" /><circle class="ring" cx="60" cy="60" r="50" pathLength="100" /></svg>
+                <div class="timer-text"><b>01:28</b><span>Rest</span></div>
+              </div>
+              <h3>Rest timer</h3>
+              <p>Finish a set and the rest timer starts, so you know when to go again.</p>
+            </div>
+            <div class="tile" data-scene-track="tile-5" data-scene-mode="cross" data-reveal data-glow style="--i:4;--n:5">
+              <div class="viz viz-progress" aria-hidden="true">
+                <div class="bars">{[42, 64, 38, 80, 55, 92, 70].map((h, j) => <i style={`height:${h}%;--j:${j}`}></i>)}</div>
+                <div class="muscles"><span style="--j:0">Chest</span><span style="--j:1">Back</span><span style="--j:2">Legs</span></div>
+              </div>
+              <h3>Progress and recovery map</h3>
+              <p>Workout history and weekly volume and training-time trends, plus a body map of which muscle groups you have trained in the last 72 hours.</p>
+            </div>
           </div>
-          <h3>Fast set logging</h3>
-          <p>Log weight, reps and RPE in kg or lb, with last session’s numbers shown next to each set.</p>
-        </div>
-        <div class="tile" data-reveal data-glow style="--i:2">
-          <div class="viz viz-timer" aria-hidden="true">
-            <svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="50" /><circle class="ring" cx="60" cy="60" r="50" pathLength="100" /></svg>
-            <div class="timer-text"><b>01:28</b><span>Rest</span></div>
-          </div>
-          <h3>Rest timer</h3>
-          <p>Finish a set and the rest timer starts, so you know when to go again.</p>
-        </div>
-        <div class="tile" data-reveal data-glow style="--i:3">
-          <div class="viz viz-progress" aria-hidden="true">
-            <div class="bars">{[42, 64, 38, 80, 55, 92, 70].map((h, j) => <i style={`height:${h}%;--j:${j}`}></i>)}</div>
-            <div class="muscles"><span style="--j:0">Chest</span><span style="--j:1">Back</span><span style="--j:2">Legs</span></div>
-          </div>
-          <h3>Progress and recovery map</h3>
-          <p>Workout history and weekly volume and training-time trends, plus a body map of which muscle groups you have trained in the last 72 hours.</p>
+          <p class="demo-note train-note">Illustration · sample values</p>
         </div>
       </div>
     </div>

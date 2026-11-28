@@ -120,6 +120,17 @@ test('writes text and does not rewrite unchanged values', () => {
   h.listeners.scroll.forEach(f => f()); h.tick();
   assert.equal(writes, 1);
 });
+test('keys a frame stops returning go back to the resting value', () => {
+  const h = setup();
+  let first = true;
+  mountScenes(h.doc, h.win, { x: () => { const s = first ? { vars: { a: 1 }, attrs: { b: '1' }, text: { '.label': 'new' } } : {}; first = false; return s; } });
+  h.tick();
+  assert.equal(h.label.textContent, 'new');
+  h.listeners.resize.forEach(f => f()); h.tick();
+  assert.deepEqual(h.track.style.props, {});
+  assert.equal(h.track.dataset.b, undefined);
+  assert.equal(h.label.textContent, 'orig');
+});
 test('only loops while a track is visible', () => {
   const h = setup();
   mountScenes(h.doc, h.win, { x: () => ({}) });

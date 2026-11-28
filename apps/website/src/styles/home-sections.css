@@ -84,7 +84,13 @@
 /* Training tiles */
 .tiles { display: grid; gap: 16px; margin-top: 32px; }
 @media (min-width: 640px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 1040px) { .tiles { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 640px) { .tile:last-child:nth-child(odd) { grid-column: 1 / -1; } }
+@media (min-width: 1040px) {
+  .tiles { grid-template-columns: repeat(6, 1fr); }
+  .tile, .tile:last-child:nth-child(odd) { grid-column: span 2; }
+  .tile:nth-child(n + 4) { grid-column: span 3; }
+}
+.train-note { margin-top: 16px; }
 .tile { padding: 20px; display: flex; flex-direction: column; }
 .tile h3 { margin: 18px 0 6px; font-size: 1.125rem; }
 .tile p { margin: 0; color: var(--ink-2); font-size: 0.9375rem; }
@@ -94,6 +100,15 @@
 .chips { display: flex; gap: 6px; margin: 8px 0; }
 .chips span { font-size: 0.6875rem; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: var(--surface); color: var(--performance); }
 .result { font-size: 0.8125rem; font-weight: 700; padding: 3px 2px; }
+
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.week span { display: grid; place-items: center; height: 26px; border-radius: 8px; background: var(--surface); font-size: 0.6875rem; font-weight: 800; color: var(--ink-2); }
+.week .done { color: var(--performance); }
+.week .today { background: var(--performance); color: var(--canvas); }
+.today-card { margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface); border: 1px solid color-mix(in srgb, var(--performance) 40%, var(--border)); display: grid; gap: 2px; }
+.today-card small { font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--performance); }
+.today-card b { font-size: 1.0625rem; font-weight: 850; }
+.today-card span { font-size: 0.8125rem; color: var(--ink-2); }
 
 .log-last { font-size: 0.75rem; color: var(--ink-2); }
 .log-last b { color: var(--ink); }
@@ -177,11 +192,6 @@
   }
   .reveal-ready [data-reveal].is-in { opacity: 1; transform: none; }
 
-  .is-in .result { animation: row-in 0.45s calc(0.5s + var(--j) * 0.18s) both; }
-  .is-in .chips span { animation: pop 0.4s 0.3s both; }
-  .is-in .viz-timer .ring { animation: drain 1.6s 0.3s cubic-bezier(0.3, 0, 0.2, 1) both; }
-  .is-in .bars i { animation: grow 0.7s calc(0.25s + var(--j) * 0.08s) cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-  .is-in .muscles span { animation: pop 0.4s calc(0.9s + var(--j) * 0.15s) both; }
   .is-in .wave i { animation: grow-y 0.6s calc(0.2s + var(--j) * 0.06s) cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .is-in .checklist li { animation: row-in 0.45s calc(0.35s + var(--j) * 0.15s) both; }
   .is-in .finale-rings i { animation: turn 2.4s 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
