@@ -29,6 +29,9 @@ fun ExercisesScreen(
     onAdd: (RecentExercise) -> Unit,
 ) {
     var adding by remember { mutableStateOf(false) }
+    // Composable calls cannot sit inside the lazy list's item builder.
+    val template = remember(revision) { controller.template }
+    val state = remember(revision) { controller.state }
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -47,8 +50,6 @@ fun ExercisesScreen(
             for (exercise in recent) item { BrButton(exercise.name, { onAdd(exercise) }, Modifier.fillMaxWidth(0.85f)) }
         } else {
             item { BrText("Exercises", color = Palette.secondary, size = 13, weight = FontWeight.ExtraBold) }
-            val template = remember(revision) { controller.template }
-            val state = remember(revision) { controller.state }
             for (exercise in template.exercises) {
                 item {
                     val ids = exercise.sets.map { it.setId }.toSet()

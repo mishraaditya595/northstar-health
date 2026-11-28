@@ -11,7 +11,7 @@ import androidx.health.services.client.data.Availability
 import androidx.health.services.client.data.DataType
 import androidx.health.services.client.data.DataTypeAvailability
 import androidx.health.services.client.data.ExerciseConfig
-import androidx.health.services.client.data.ExerciseInfo
+import androidx.health.services.client.data.ExerciseTrackedStatus
 import androidx.health.services.client.data.ExerciseLapSummary
 import androidx.health.services.client.data.ExerciseType
 import androidx.health.services.client.data.ExerciseUpdate
@@ -68,8 +68,8 @@ class HealthServicesSensors(private val context: Context) : ExerciseSensors {
     override suspend fun owner(): ExerciseOwner {
         val info = client.getCurrentExerciseInfoAsync().await()
         return when (info.exerciseTrackedStatus) {
-            ExerciseInfo.ExerciseTrackedStatus.OWNED_EXERCISE_IN_PROGRESS -> ExerciseOwner.OURS
-            ExerciseInfo.ExerciseTrackedStatus.OTHER_APP_IN_PROGRESS -> ExerciseOwner.OTHER_APP
+            ExerciseTrackedStatus.OWNED_EXERCISE_IN_PROGRESS -> ExerciseOwner.OURS
+            ExerciseTrackedStatus.OTHER_APP_IN_PROGRESS -> ExerciseOwner.OTHER_APP
             else -> ExerciseOwner.NONE
         }
     }
