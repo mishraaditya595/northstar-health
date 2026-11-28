@@ -154,8 +154,29 @@ workflows:
             SDKMANAGER="$(command -v sdkmanager)"
           fi
           yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses > /dev/null || true
-          "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "platforms;android-37"
-          test -f "$SDK_ROOT/platforms/android-37/android.jar"
+          # The image's command-line tools are too old to list API 37, so
+          # update them first and use the new sdkmanager.
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "cmdline-tools;latest"
+          # sdkmanager cannot replace itself: the update lands in latest-2
+          # when latest/ is the running copy.
+          for dir in latest-2 latest; do
+            if [[ -x "$SDK_ROOT/cmdline-tools/$dir/bin/sdkmanager" ]]; then
+              SDKMANAGER="$SDK_ROOT/cmdline-tools/$dir/bin/sdkmanager"
+              break
+            fi
+          done
+          "$SDKMANAGER" --version
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses > /dev/null || true
+          PLATFORM="$("$SDKMANAGER" --sdk_root="$SDK_ROOT" --list 2>/dev/null |
+            awk '{print $1}' | grep -E '^platforms;android-37(\.0)?$' | head -n 1 || true)"
+          if [[ -z "$PLATFORM" ]]; then
+            echo "No Android SDK platform 37 package found. Available platforms:"
+            "$SDKMANAGER" --sdk_root="$SDK_ROOT" --list 2>/dev/null |
+              awk '{print $1}' | grep -E '^platforms;android-' | sort -u | tail -n 5
+            exit 1
+          fi
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "$PLATFORM"
+          ls "$SDK_ROOT/platforms"
       - name: "Build signed AAB"
         script: |
           set -euo pipefail
