@@ -37,6 +37,7 @@ class WeightLogger {
 
   final Ref _ref;
   final _undone = <String>{};
+  final _undoing = <String, Future<bool>>{};
 
   HealthWeightWriter get _writer => _ref.read(healthWeightWriterProvider);
 
@@ -67,7 +68,7 @@ class WeightLogger {
         );
       case HealthWriteDenied():
         return const WeightDenied();
-      default:
+      case HealthWriteFailed() || HealthWriteUnavailable() || HealthWriteOk():
         return const WeightSaveFailed();
     }
   }
@@ -75,6 +76,17 @@ class WeightLogger {
   /// True when the sample is gone (also when it was already undone).
   Future<bool> undo(SavedWeight saved) async {
     if (_undone.contains(saved.clientRecordId)) return true;
+    final id = saved.clientRecordId;
+    final running = _undoing[id];
+    if (running != null) return running;
+    final future = _undo(saved).whenComplete(() {
+      _undoing.remove(id);
+    });
+    _undoing[id] = future;
+    return future;
+  }
+
+  Future<bool> _undo(SavedWeight saved) async {
     if (!await _writer.delete(saved)) return false;
     _undone.add(saved.clientRecordId);
     await _refresh();
@@ -86,7 +98,9 @@ class WeightLogger {
   Future<void> _refresh() async {
     try {
       await _ref.read(healthOverviewProvider.notifier).refresh();
-    } catch (_) {}
+    } catch (_) {
+      // The weight is already written; a stale overview fixes itself later.
+    }
   }
 }
 

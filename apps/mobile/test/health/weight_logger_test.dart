@@ -9,6 +9,13 @@ import 'package:flutter_test/flutter_test.dart';
 import '../support/fake_health_overview.dart';
 import '../support/fake_health_weight_writer.dart';
 
+class _ThrowingRefreshOverview extends FakeHealthOverviewController {
+  _ThrowingRefreshOverview() : super(null);
+
+  @override
+  Future<void> refresh() async => throw StateError('refresh failed');
+}
+
 class _Owner extends Notifier<String?> {
   @override
   String? build() => 'user-1';
@@ -137,5 +144,34 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(await container.read(weightLoggerProvider).undo(saved), isTrue);
     expect(writer.deletes, [saved]);
+  });
+
+  test(
+    'a failing overview refresh still reports the weight as saved',
+    () async {
+      container.dispose();
+      container = ProviderContainer(
+        overrides: [
+          healthWeightWriterProvider.overrideWithValue(writer),
+          healthOwnerIdProvider.overrideWith(
+            (ref) => ref.watch(_ownerProvider),
+          ),
+          wallClockProvider.overrideWithValue(() => fixedNow),
+          fakeHealthOverview(_ThrowingRefreshOverview()),
+        ],
+      );
+      addTearDown(container.dispose);
+      expect(await logger().save('70'), isA<WeightSaved>());
+    },
+  );
+
+  test('concurrent undos of the same weight delete once', () async {
+    final saved = (await logger().save('70') as WeightSaved).saved;
+    final results = await Future.wait([
+      logger().undo(saved),
+      logger().undo(saved),
+    ]);
+    expect(results, [true, true]);
+    expect(writer.deletes, hasLength(1));
   });
 }

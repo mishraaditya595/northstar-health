@@ -16,5 +16,15 @@ void main() {
     expect(parseWeightKg('400.05'), isNull);
     expect(parseWeightKg('-70'), isNull);
     expect(parseWeightKg('1e2'), isNull);
+    expect(parseWeightKg('.5'), isNull);
+  });
+
+  test('a very long digit string is rejected, not thrown on', () {
+    expect(parseWeightKg('9' * 400), isNull);
+  });
+
+  test('a trailing separator is accepted', () {
+    expect(parseWeightKg('72.'), 72.0);
+    expect(parseWeightKg('72,'), 72.0);
   });
 }
