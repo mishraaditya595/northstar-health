@@ -52,6 +52,7 @@ final class WatchLinkBridge: NSObject, WCSessionDelegate {
     guard let session = session() else {
       switch call.method {
       case "isReachableForUpdates": result(false)
+      case "startMessages": result(nil)
       case "watchStatus":
         // iPad and other devices without WatchConnectivity: nothing is shown.
         result(["supported": false, "paired": false, "installed": false, "reachable": false])
@@ -70,6 +71,9 @@ final class WatchLinkBridge: NSObject, WCSessionDelegate {
         "installed": active && session.isPaired && session.isWatchAppInstalled,
         "reachable": active && session.isReachable,
       ])
+    case "startMessages":
+      // Android hands over queued watch messages here; iOS delivers them as they arrive.
+      result(nil)
     case "updateContext":
       guard let context = call.arguments as? [String: String] else {
         result(FlutterError(code: "bad_arguments", message: nil, details: nil))
