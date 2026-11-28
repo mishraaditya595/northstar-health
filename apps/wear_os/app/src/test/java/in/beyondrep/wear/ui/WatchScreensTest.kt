@@ -211,6 +211,9 @@ class WatchScreensTest {
         waitForText("Ready to train")
         compose.onNodeWithContentDescription("Sleep 7h 30m", substring = true).performClick()
         waitForText("Last 7 nights")
+        // The average is the last item of a lazy list, composed only once it scrolls into view.
+        compose.onAllNodes(hasScrollToNodeAction()).onLast()
+            .performScrollToNode(hasText("7-night average", substring = true))
         compose.onNodeWithText("7-night average", substring = true).assertExists()
     }
 
