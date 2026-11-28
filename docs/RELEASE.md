@@ -503,10 +503,14 @@ The Galaxy Watch (or Pixel Watch) starts a plan, today's program workout or a qu
 | The first Start asks for sensors, activity recognition and notifications once; a denial still starts the workout | not run |
 | Start from Today's card, from a plan and from "+ Quick workout" (the plan preview's Start too) | not run |
 | The bezel or crown changes the outlined box (weight, reps or seconds) by the unit step (2.5 kg or 5 lb, 1 rep, 5 s); a tap on the other box moves the outline | not run |
-| Log set shows the RPE question, then the Rest page with a countdown ring; one haptic at zero, also with the screen off; "+30 s" and "Skip" work | not run |
+| Log set shows the RPE question, then the Rest page with a countdown ring; one haptic at zero, also with the screen off (the pulse holds a partial wake lock until it fires; if the system kills the process there is no pulse); "+30 s" and "Skip" work | not run |
 | The ongoing activity chip on the watch face returns to the workout | not run |
 | Ambient mode dims the screen and updates the clock, set count and rest time once a minute, with no animation | not run |
 | App killed from recents mid-workout, then reopened: the same sets, the rest deadline and the recording continue | not run |
+| Android 14 and later with both sensor permissions denied: the workout records and saves without the foreground service and without a crash (the system may stop the process with the screen off; a relaunch restores it) | not run |
+| Process killed by the system mid-workout: the service restarts (sticky), restores the workout from the journal and the notification returns; with nothing to restore the service stops itself | not run |
+| TalkBack: the weight, reps and seconds boxes offer "Increase" and "Decrease" actions | not run |
+| Tapping the ongoing notification or the chip returns to the one workout activity, no second copy stacks | not run |
 | Heart rate permission denied: the overview shows "—", the workout records, the summary has no heart rate row | not run |
 | A Samsung Health (or other app) workout running: Start says "Another workout app is recording. End it there first." and no workout is created | not run |
 | Finish with the phone nearby: "Saved to phone" within a minute and the workout appears in phone history with the Watch tag, no heart rate row | not run |
