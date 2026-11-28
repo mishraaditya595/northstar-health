@@ -31,7 +31,7 @@ A deleted workout with no receipt is looked up in HealthKit once, and the final 
 - BeyondRep's own code logs no record ids, times or exception text. The `health` plugin itself prints record ids and UUIDs (no health values) to the device log (`debugPrint` on iOS, `Log.i` on Android); that is outside the app's control.
 - Platform ids, receipts and the switch stay in ObjectBox. Nothing about the export reaches Supabase, the outbox, the JSON export, logs or telemetry. `package:health` is imported only by `platform_health_reader.dart` and `health_workout_writer.dart` (the import guard test lists both); the exporter reads ObjectBox, so it lives in `features/health/data/`, not `application/`.
 - Our own saved workouts are dropped from the outside-workout read (`in.beyondrep.app` source), so they never count as outside workouts or feed training load twice.
-- The Wear OS stage extends `HealthWorkoutRecord` with optional heart-rate samples and calories later; this ADR does not add them.
+- Wear OS stage 3b ([ADR-0015](0015-wear-os-companion.md)) extends `HealthWorkoutRecord` with optional per-minute heart rate and total calories, written on Android only for a workout imported from the watch; a phone workout still carries neither, and iOS writes neither.
 - The App Store review notes, the App Privacy answers, the Play Health apps declaration and the privacy policy inputs mention the write permission before release ([`PRIVACY_POLICY_INPUTS.md`](../PRIVACY_POLICY_INPUTS.md)).
 - Changing what is written (energy, heart rate, sets), writing watch or outside workouts, or background export needs a new ADR.
 - Status: implemented in source; device rows are open in [`docs/RELEASE.md`](../RELEASE.md).

@@ -521,6 +521,23 @@ The Galaxy Watch (or Pixel Watch) starts a plan, today's program workout or a qu
 | Round 192 dp and 240 dp watches at font scale 1.3: Log set stays reachable on the Set page | not run |
 | Whether Samsung Health or Health Connect shows a second copy of the session (input for stage 3b) | not run |
 
+## Wear OS stage 3b: workout heart rate and calories to Health Connect (device checks, none run)
+
+The phone writes a Wear OS workout's per-minute heart rate and total calories to Health Connect after the watch sends `workout_health`. Implemented in source, **not released or device-verified**; the Android code compiles and tests only on GitHub CI. Every row is not run.
+
+| Check | Result |
+|---|---|
+| Health tab with a Wear watch paired and the export switch on shows "Allow heart rate and calories"; the sheet button opens the Health Connect prompt for heart rate and calories | not run |
+| A watch workout with permission: Health Connect shows one strength session with calories and heart rate, no second copy | not run |
+| Samsung Health and Google Fit show the session and heart rate once (or note the duplicate) | not run |
+| Permission missing or switch off: the workout reaches phone history, nothing is written, the watch stops resending (`not_written`) | not run |
+| Phone off or out of range at Finish: the series arrives after the workout, written once | not run |
+| Phone history detail of a watch workout shows average heart rate, max heart rate and Calories ("From Health Connect") | not run |
+| Deleting the watch workout on the phone removes the Health Connect session, calories and heart rate | not run |
+| Android 13 and lower: Health Connect app installed and permissions work as on 14 | not run |
+| A 90 minute workout writes 90 heart rate records within Health Connect rate limits | not run |
+| Sign out on the phone: the unsent series on the watch is dropped | not run |
+
 ## Phase 5: save phone workouts to Apple Health / Health Connect (ADR-0014, device checks, none run)
 
 Opt-in per-account write of completed phone workouts. Implemented in source, **not released or device-verified**. Every row is not run.
