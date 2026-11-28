@@ -8,6 +8,7 @@ import androidx.health.connect.client.units.Mass
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -28,7 +29,7 @@ import java.time.ZoneOffset
  * Error codes: `permission_denied`, `unavailable`, `failed`.
  */
 class WeightWriter(
-    private val context: Context,
+    context: Context,
     messenger: BinaryMessenger,
 ) : MethodChannel.MethodCallHandler {
 
@@ -36,6 +37,7 @@ class WeightWriter(
         const val CHANNEL = "beyondrep/health_weight"
     }
 
+    private val context = context.applicationContext
     private val channel = MethodChannel(messenger, CHANNEL)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -72,6 +74,8 @@ class WeightWriter(
             val id = HealthConnectClient.getOrCreate(context)
                 .insertRecords(listOf(record)).recordIdsList.firstOrNull()
             if (id.isNullOrEmpty()) result.error("failed", null, null) else result.success(id)
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: SecurityException) {
             result.error("permission_denied", null, null)
         } catch (_: Exception) {
