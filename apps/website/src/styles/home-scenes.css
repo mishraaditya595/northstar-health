@@ -157,6 +157,7 @@
 }
 
 /* Privacy */
+[data-scene-stage] > .finale { width: 100%; }
 [data-scene-track="privacy"] .cards { position: relative; margin-top: 32px; }
 .phone-outline { display: none; }
 .vault-lock { position: absolute; top: 28px; right: 28px; width: 24px; height: 24px; fill: none; stroke: var(--performance); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
@@ -190,4 +191,16 @@
 }
 @media (prefers-reduced-motion: no-preference) and (max-width: 899px) {
   .scenes-ready [data-scene-track="privacy"] { --track: 150vh; }
+}
+
+/* Finale */
+@media (prefers-reduced-motion: no-preference) {
+  .scenes-ready [data-scene-track="finale"] { --track: 150vh; }
+  .scenes-ready [data-scene-track="finale"] .finale-rings {
+    transform: translateY(-50%) scale(calc(0.6 + 0.4 * var(--rings, 1))) rotate(calc((1 - var(--rings, 1)) * -50deg));
+    opacity: calc(0.25 + 0.75 * var(--rings, 1));
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 899px) {
+  .scenes-ready [data-scene-track="finale"] { --track: 135vh; }
 }

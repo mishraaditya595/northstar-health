@@ -185,7 +185,8 @@
   margin: 0; text-transform: uppercase; font-weight: 950; letter-spacing: -0.05em; line-height: 0.9;
   font-size: clamp(2.5rem, 8vw, 5.5rem);
 }
-.finale-title span { display: block; color: var(--lime); }
+.finale-title > span { display: block; }
+.finale-title > .ft-b { color: var(--lime); }
 .finale-rings { position: absolute; z-index: -1; right: -12%; top: 50%; width: min(70vw, 640px); aspect-ratio: 1; transform: translateY(-50%); pointer-events: none; }
 .finale-rings i { position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgb(214 255 96 / 0.2); }
 .finale-rings i:nth-child(2) { inset: 14%; border-style: dashed; }
@@ -202,8 +203,14 @@
   }
   .reveal-ready [data-reveal].is-in { opacity: 1; transform: none; }
 
-  .is-in .finale-rings i { animation: turn 2.4s 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-  .is-in .finale-rings i:nth-child(2) { animation-name: turn-back; }
+
+  /* Headings reveal word by word, once. */
+  .words-ready [data-words] .w {
+    display: inline-block; opacity: 0; transform: translateY(0.6em);
+    transition: opacity 0.6s ease, transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+    transition-delay: calc(var(--w) * 55ms);
+  }
+  .words-ready [data-words].words-in .w { opacity: 1; transform: none; }
 
   .faq summary::after { transition: transform 0.25s ease, background-size 0.25s ease; }
   @supports selector(::details-content) {
@@ -224,13 +231,10 @@
   }
 }
 
-@keyframes row-in { from { opacity: 0; transform: translateX(-14px); } }
-@keyframes pop { from { opacity: 0; transform: scale(0.4); } 70% { transform: scale(1.15); } }
-@keyframes chip-in { from { opacity: 0; transform: translateY(6px); } }
-@keyframes chip-out { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes fill { from { transform: scaleX(0.04); } }
-@keyframes drain { from { stroke-dashoffset: 0; } }
-@keyframes grow { from { transform: scaleY(0); } }
-@keyframes grow-y { from { transform: scaleY(0.1); opacity: 0.2; } }
-@keyframes turn { from { rotate: -120deg; opacity: 0; } }
-@keyframes turn-back { from { rotate: 120deg; opacity: 0; } }
+
+/* Thin page-progress bar, shown only while scenes run. */
+.page-progress { display: none; position: fixed; inset: 0 0 auto 0; z-index: 60; height: 2px; pointer-events: none; }
+.scenes-ready .page-progress { display: block; }
+.page-progress i { display: block; height: 100%; background: var(--performance); transform-origin: left; transform: scaleX(var(--page, 0)); }
+
+.finale .button { transition: translate 0.25s ease-out, background-color 0.2s ease, border-color 0.2s ease; }

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { sceneProgress, crossProgress, seg, mountScenes } from '../src/scripts/scroll-scenes.mjs';
+import { pageProgress, sceneProgress, crossProgress, seg, mountScenes } from '../src/scripts/scroll-scenes.mjs';
 
 test('sceneProgress clamps to the track and never returns NaN', () => {
   assert.equal(sceneProgress(100, 2200, 1000), 0);
@@ -9,6 +9,12 @@ test('sceneProgress clamps to the track and never returns NaN', () => {
   assert.equal(sceneProgress(-1200, 2200, 1000), 1);
   assert.equal(sceneProgress(-5000, 2200, 1000), 1);
   assert.equal(sceneProgress(0, 500, 1000), 0);
+});
+test('pageProgress is the share of the scrollable page already scrolled', () => {
+  assert.equal(pageProgress(0, 5000, 1000), 0);
+  assert.equal(pageProgress(2000, 5000, 1000), 0.5);
+  assert.equal(pageProgress(9000, 5000, 1000), 1);
+  assert.equal(pageProgress(0, 800, 1000), 0);
 });
 test('seg gives local progress inside a window', () => {
   assert.equal(seg(0.5, 0.4, 0.6), 0.5);
@@ -37,6 +43,7 @@ function setup({ top = -600, height = 2200, motion = true, width = 1440, io = tr
   const rootClasses = new Set();
   const doc = {
     documentElement: { classList: { add: c => rootClasses.add(c), remove: c => rootClasses.delete(c), contains: c => rootClasses.has(c) } },
+    querySelector: () => null,
     querySelectorAll: () => [track],
   };
   const mq = { matches: motion, listeners: [], addEventListener(t, f) { this.listeners.push(f); }, removeEventListener() {} };
@@ -130,6 +137,18 @@ test('keys a frame stops returning go back to the resting value', () => {
   assert.deepEqual(h.track.style.props, {});
   assert.equal(h.track.dataset.b, undefined);
   assert.equal(h.label.textContent, 'orig');
+});
+test('the page progress bar follows the scroll and is cleared without motion', () => {
+  const h = setup();
+  const bar = el();
+  h.doc.querySelector = sel => (sel === '[data-page-progress]' ? bar : null);
+  h.doc.documentElement.scrollHeight = 5000;
+  h.win.scrollY = 2000;
+  mountScenes(h.doc, h.win, { x: () => ({}) });
+  assert.equal(bar.style.props['--page'], '0.5000');
+  h.mq.matches = false;
+  h.mq.listeners.forEach(f => f({ matches: false }));
+  assert.equal(bar.style.props['--page'], undefined);
 });
 test('only loops while a track is visible', () => {
   const h = setup();

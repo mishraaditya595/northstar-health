@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { cinematicFrame, progressForScroll, settleFactor, setIfChanged, stackRank, introFits, stackReach, fitMobileStack, MAX_STACK_SIZE, MIN_STACK_SIZE, MOTION_QUERY } from '../src/scripts/home-motion.mjs';
-import { countUpText } from '../src/scripts/home-reveal.mjs';
+import { countUpText, splitWords, magnetOffset } from '../src/scripts/home-reveal.mjs';
 
 test('scroll progress is clamped to the pinned track', () => {
   assert.equal(progressForScroll(50,3600,1000),0);
@@ -188,4 +188,25 @@ test('count-up text starts at zero, ends on the exact value and keeps its format
 test('the pre-paint layout check uses the same media query as the script', () => {
   const astro = readFileSync(new URL('../src/components/CinematicIntro.astro', import.meta.url), 'utf8');
   assert.ok(astro.includes(`matchMedia('${MOTION_QUERY}')`));
+});
+
+test('splitWords keeps punctuation attached and ignores extra spaces', () => {
+  const words = splitWords('Plan it, lift it, see it add up');
+  assert.equal(words.length, 8);
+  assert.ok(words.includes('it,'));
+  assert.deepEqual(splitWords('  a  b '), ['a', 'b']);
+  assert.deepEqual(splitWords(''), []);
+});
+test('magnetOffset leans toward the pointer, never outside the radius', () => {
+  assert.deepEqual(magnetOffset(200, 0, 120, 8), { x: 0, y: 0 });
+  assert.deepEqual(magnetOffset(0, 0, 120, 8), { x: 0, y: 0 });
+  const near = magnetOffset(60, 0, 120, 8);
+  assert.ok(near.x > 0 && near.x <= 8);
+  assert.equal(near.y, 0);
+  const left = magnetOffset(-30, -30, 120, 8);
+  assert.ok(left.x < 0 && left.y < 0);
+  for (let d = 0; d <= 130; d += 5) {
+    const o = magnetOffset(d, 0, 120, 8);
+    assert.ok(Math.abs(o.x) <= 8 && Number.isFinite(o.x));
+  }
 });

@@ -269,24 +269,30 @@ const jsonLd = [
 
   <section class="feature" data-backdrop="lime" aria-labelledby="cta">
     <div class="wrap">
-      <div class="hero finale" data-reveal>
-        <div class="finale-rings" aria-hidden="true"><i></i><i></i><i></i></div>
-        <div class="hero-grid" style="grid-template-columns:1fr">
-          <div>
-            <h2 class="finale-title" id="cta">Show up. <span>Get strong.</span></h2>
-            <p class="lede">Be first to know when BeyondRep is out.</p>
-            <GetApp />
+      <div data-scene-track="finale">
+        <div data-scene-stage>
+          <div class="hero finale" data-reveal>
+            <div class="finale-rings" aria-hidden="true"><i></i><i></i><i></i></div>
+            <div class="hero-grid" style="grid-template-columns:1fr">
+              <div>
+                <h2 class="finale-title" id="cta"><span class="ft-a" data-words>Show up.</span> <span class="ft-b" data-words>Get strong.</span></h2>
+                <p class="lede">Be first to know when BeyondRep is out.</p>
+                <GetApp />
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </section>
   <script>
-    import { mountReveals } from '../scripts/home-reveal.mjs';
+    import { mountReveals, mountWords, mountMagnets } from '../scripts/home-reveal.mjs';
     import { mountScenes } from '../scripts/scroll-scenes.mjs';
     import { frames } from '../scripts/scenes/index.mjs';
     import { mountPrivacyOffsets } from '../scripts/scenes/privacy.mjs';
     mountReveals(document, window);
+    mountWords(document, window);
+    mountMagnets(document, window);
     mountScenes(document, window, frames);
     mountPrivacyOffsets(document, window);
   </script>

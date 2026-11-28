@@ -18,6 +18,11 @@ export function crossProgress(top, height, viewportHeight) {
   return clamp((viewportHeight * 0.85 - top) / (viewportHeight * 0.4 + height / 2));
 }
 
+// Share of the scrollable page already scrolled, for the progress bar.
+export function pageProgress(scrollY, scrollHeight, viewportHeight) {
+  return clamp(scrollY / Math.max(1, scrollHeight - viewportHeight));
+}
+
 // Local 0 to 1 progress of p inside the window [a, b].
 export function seg(p, a, b) {
   return clamp((p - a) / (b - a));
@@ -113,7 +118,14 @@ export function mountScenes(doc, win, frames) {
   function schedule() {
     if (!raf && enabled) raf = win.requestAnimationFrame(frame);
   }
+  // Thin page-progress bar; its custom property is written on the bar itself
+  // so no other element restyles.
+  const bar = doc.querySelector('[data-page-progress]');
   function onScroll() {
+    if (bar && enabled) {
+      const v = pageProgress(win.scrollY, root.scrollHeight, win.innerHeight).toFixed(4);
+      setIfChanged(written, bar, 'page', v, x => bar.style.setProperty('--page', x));
+    }
     if (visible.size) schedule();
   }
   function onResize() {
@@ -134,6 +146,7 @@ export function mountScenes(doc, win, frames) {
       schedule();
     }, { rootMargin: '10% 0px' });
     tracks.forEach(t => { dirty.add(t); io.observe(t); });
+    onScroll();
     schedule();
   }
   function disable() {
@@ -145,6 +158,7 @@ export function mountScenes(doc, win, frames) {
     visible.clear(); dirty = new Set(); pins.clear();
     root.classList.remove('scenes-ready');
     undo();
+    bar?.style.removeProperty('--page');
   }
   const onMedia = () => { if (media.matches) enable(); else disable(); };
 

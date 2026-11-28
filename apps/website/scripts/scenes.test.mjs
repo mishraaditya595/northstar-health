@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { offlineFrame } from '../src/scripts/scenes/offline.mjs';
+import { finaleFrame } from '../src/scripts/scenes/finale.mjs';
 import { privacyFrame, startOffsets } from '../src/scripts/scenes/privacy.mjs';
 import { recoveryFrame } from '../src/scripts/scenes/recovery.mjs';
 import { trainingFrame, tileFrame, restClock } from '../src/scripts/scenes/training.mjs';
@@ -103,4 +104,9 @@ test('startOffsets pile every item at the centre, stacked in order', () => {
   assert.deepEqual(o[0], { fx: 150, fy: 100 - 30 - 10 });
   assert.deepEqual(o[1], { fx: 150, fy: 100 - 50 });
   assert.deepEqual(o[2], { fx: -150, fy: 100 + 30 - 10 });
+});
+
+test('finale rings scale out as the card pins', () => {
+  assertSceneContract(finaleFrame, { vars: { rings: 1 } });
+  assert.equal(finaleFrame(0).vars.rings, 0);
 });

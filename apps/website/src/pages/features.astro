@@ -81,7 +81,7 @@ const later = [
   {groups.map((g) => (
     <section data-backdrop="lime" aria-labelledby={g.id}>
       <div class="wrap">
-        <h2 class="section-title" id={g.id}>{g.title}</h2>
+        <h2 class="section-title" id={g.id} data-words>{g.title}</h2>
         <div class="cards">
           {g.items.map(([title, body]) => (
             <div class="card">
@@ -96,7 +96,7 @@ const later = [
 
   <section data-backdrop="lime" aria-labelledby="later">
     <div class="wrap">
-      <h2 class="section-title" id="later">Coming later</h2>
+      <h2 class="section-title" id="later" data-words>Coming later</h2>
       <div class="panel">
         <ul>
           {later.map((item) => <li>{item}</li>)}
@@ -107,4 +107,8 @@ const later = [
       </div>
     </div>
   </section>
+  <script>
+    import { mountWords } from '../scripts/home-reveal.mjs';
+    mountWords(document, window);
+  </script>
 </Base>
