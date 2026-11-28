@@ -4,9 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import `in`.beyondrep.wear.app.WatchGraph
 import `in`.beyondrep.wear.link.PhoneReachability
 import `in`.beyondrep.wear.ui.RootScreen
@@ -50,6 +52,17 @@ class WearMainActivity : ComponentActivity() {
                 // Not user actionable; the next resume reads again.
             }
             reachability.refresh()
+            graph.outbox.flush()
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        lifecycleScope.launch {
+            // The phone coming within reach: put what is waiting for it.
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                graph.phoneReachable.collect { if (it) graph.outbox.flush() }
+            }
         }
     }
 
