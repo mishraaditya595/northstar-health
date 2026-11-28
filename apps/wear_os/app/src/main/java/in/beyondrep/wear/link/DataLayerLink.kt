@@ -11,6 +11,8 @@ import `in`.beyondrep.wear.core.link.DataChange
 import `in`.beyondrep.wear.core.link.DataLayerPaths
 import `in`.beyondrep.wear.core.link.DataLayerRouter
 import `in`.beyondrep.wear.core.link.Route
+import `in`.beyondrep.wear.core.link.WatchQueuePruner
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
 import java.time.Instant
 import java.util.UUID
@@ -82,15 +84,35 @@ class DataLayerLink(
         if (live.isEmpty()) return
         val now = clock()
         val outcomes = router.apply(live, now)
-        for (outcome in outcomes) {
-            if (!ackDuplicates && outcome.result == "duplicate") continue
-            val ackId = UUID.randomUUID().toString().lowercase()
-            items.put(DataLayerPaths.watchQueue(ackId), AckBuilder.json(outcome, ackId, now))
+        try {
+            for (outcome in outcomes) {
+                if (!ackDuplicates && outcome.result == "duplicate") continue
+                val ackId = UUID.randomUUID().toString().lowercase()
+                items.put(DataLayerPaths.watchQueue(ackId), AckBuilder.json(outcome, ackId, now))
+            }
+            // Handled, malformed or ignored alike: an undecodable item would otherwise stay forever.
+            for (change in live) {
+                if (DataLayerPaths.parse(change.path) is Route.PhoneQueued) items.delete(change.path)
+            }
+            pruneWatchQueue(now)
+        } finally {
+            // The journal already changed, so screens refresh even when an ack or delete failed.
+            // The ack and the delete stay in order and are not retried here: a failure leaves the
+            // phone item to be applied again as a duplicate and acked.
+            onApplied()
         }
-        // Handled, malformed or ignored alike: an undecodable item would otherwise stay forever.
-        for (change in live) {
-            if (DataLayerPaths.parse(change.path) is Route.PhoneQueued) items.delete(change.path)
+    }
+
+    /** Best effort: stale acks only matter for tidiness, so a failure here is ignored. */
+    private suspend fun pruneWatchQueue(now: Instant) {
+        try {
+            for (path in WatchQueuePruner.stalePaths(items.all(DataLayerPaths.WATCH_QUEUE_PREFIX), now)) {
+                items.delete(path)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Tried again after the next batch.
         }
-        onApplied()
     }
 }

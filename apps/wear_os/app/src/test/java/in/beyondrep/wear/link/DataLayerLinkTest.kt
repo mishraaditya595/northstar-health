@@ -141,5 +141,26 @@ class DataLayerLinkTest {
         runCatching { flaky.onChanges(listOf(DataChange(path, message.encode(), deleted = false))) }
         assertNotNull(items.store[path], "not deleted, so it is applied again as a duplicate and acked")
         assertNotNull(journal.binding(), "the journal write happened before the ack")
+        assertEquals(1, applied, "screens refresh because the journal changed, even though the ack failed")
+    }
+
+    @Test
+    fun oldWatchAcksAreDeletedAfterANewOneIsPut() = runBlocking<Unit> {
+        // 25 acks left by earlier runs, the oldest first.
+        for (i in 1..25) {
+            val minute = i.toString().padStart(2, '0')
+            val id = "old-$minute"
+            items.store[DataLayerPaths.watchQueue(id)] =
+                """{"type":"ack","sent_at_utc":"2026-10-23T01:$minute:00Z"}"""
+        }
+        val message = binding()
+        val path = DataLayerPaths.phoneQueue(message.messageId)
+        items.store[path] = message.encode()
+        link.onChanges(listOf(DataChange(path, message.encode(), deleted = false)))
+
+        val watchItems = items.store.keys.filter { it.startsWith(DataLayerPaths.WATCH_QUEUE_PREFIX) }
+        assertEquals(20, watchItems.size)
+        assertTrue(DataLayerPaths.watchQueue("old-01") !in watchItems, "the oldest acks go first")
+        assertTrue(items.puts.single().first in watchItems, "the new ack is kept")
     }
 }
