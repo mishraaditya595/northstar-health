@@ -202,7 +202,6 @@
   }
   .reveal-ready [data-reveal].is-in { opacity: 1; transform: none; }
 
-  .is-in .checklist li { animation: row-in 0.45s calc(0.35s + var(--j) * 0.15s) both; }
   .is-in .finale-rings i { animation: turn 2.4s 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
   .is-in .finale-rings i:nth-child(2) { animation-name: turn-back; }
 

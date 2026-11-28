@@ -217,27 +217,33 @@ const jsonLd = [
 
   <section class="feature" data-backdrop="teal" aria-labelledby="privacy">
     <div class="wrap">
-      <div data-reveal>
-        <p class="kicker">Privacy</p>
-        <h2 class="display" id="privacy">Your data stays yours</h2>
-        <p class="section-lede">We back up the minimum needed to keep your training safe, and we say exactly what that is.</p>
-      </div>
-      <div class="cards">
-        <div class="panel vault" data-reveal data-glow style="--i:0">
-          <svg class="vault-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.5-8.97A6 6 0 0 1 18 8.5a4.75 4.75 0 0 1-.5 9.5z" /></svg>
-          <h3>Stored with your account</h3>
-          <ul class="checklist">
-            <li style="--j:0">Your email address, for sign-in codes</li>
-            <li style="--j:1">Workouts you have finished, with their exercises and sets</li>
-          </ul>
-        </div>
-        <div class="panel vault" data-reveal data-glow style="--i:1">
-          <svg class="vault-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M10.5 18.5h3" /></svg>
-          <h3>Never leaves your phone</h3>
-          <ul class="checklist no">
-            <li style="--j:0">Apple Health and Health Connect data</li>
-            <li style="--j:1">Unfinished workouts, plans and templates</li>
-          </ul>
+      <div data-scene-track="privacy">
+        <div data-scene-stage>
+          <div data-reveal>
+            <p class="kicker">Privacy</p>
+            <h2 class="display" id="privacy" data-words>Your data stays yours</h2>
+            <p class="section-lede">We back up the minimum needed to keep your training safe, and we say exactly what that is.</p>
+          </div>
+          <div class="cards">
+            <div class="phone-outline" aria-hidden="true"></div>
+            <div class="panel vault" data-reveal data-glow style="--i:0">
+              <svg class="vault-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.5-8.97A6 6 0 0 1 18 8.5a4.75 4.75 0 0 1-.5 9.5z" /></svg>
+              <h3>Stored with your account</h3>
+              <ul class="checklist">
+                <li>Your email address, for sign-in codes</li>
+                <li>Workouts you have finished, with their exercises and sets</li>
+              </ul>
+            </div>
+            <div class="panel vault vault-phone" data-reveal data-glow style="--i:1">
+              <svg class="vault-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M10.5 18.5h3" /></svg>
+              <svg class="vault-lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9.5" rx="2.2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+              <h3>Never leaves your phone</h3>
+              <ul class="checklist no">
+                <li>Apple Health and Health Connect data</li>
+                <li>Unfinished workouts, plans and templates</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
       <p class="muted" data-reveal>
@@ -279,7 +285,9 @@ const jsonLd = [
     import { mountReveals } from '../scripts/home-reveal.mjs';
     import { mountScenes } from '../scripts/scroll-scenes.mjs';
     import { frames } from '../scripts/scenes/index.mjs';
+    import { mountPrivacyOffsets } from '../scripts/scenes/privacy.mjs';
     mountReveals(document, window);
     mountScenes(document, window, frames);
+    mountPrivacyOffsets(document, window);
   </script>
 </Base>

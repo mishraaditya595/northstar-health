@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { offlineFrame } from '../src/scripts/scenes/offline.mjs';
+import { privacyFrame, startOffsets } from '../src/scripts/scenes/privacy.mjs';
 import { recoveryFrame } from '../src/scripts/scenes/recovery.mjs';
 import { trainingFrame, tileFrame, restClock } from '../src/scripts/scenes/training.mjs';
 
@@ -85,4 +86,21 @@ test('recovery scene draws the wave, sweeps the gauge, then counts up', () => {
     assert.ok(Number(t['[data-steps]'].replace(',', '')) <= 6240);
     assert.ok(Number(t['[data-rhr]']) <= 58);
   }
+});
+
+test('privacy scene splits the data, then locks the phone card', () => {
+  assertSceneContract(privacyFrame, { vars: { split: 1 }, attrs: { locked: 'yes' } });
+  assert.equal(privacyFrame(0).vars.split, 0);
+  assert.equal(privacyFrame(0.5).attrs.locked, 'no');
+  assert.equal(privacyFrame(0.75).attrs.locked, 'yes');
+});
+test('startOffsets pile every item at the centre, stacked in order', () => {
+  const rects = [{ x: 0, y: 0, w: 100, h: 20 }, { x: 0, y: 40, w: 100, h: 20 }, { x: 300, y: 0, w: 100, h: 20 }];
+  const centre = { x: 0, y: 0, w: 400, h: 200 };
+  const o = startOffsets(rects, centre, 30);
+  assert.equal(o.length, 3);
+  // Item centres (50,10), (50,50), (350,10) move to x=200, and stack 30px apart around y=100.
+  assert.deepEqual(o[0], { fx: 150, fy: 100 - 30 - 10 });
+  assert.deepEqual(o[1], { fx: 150, fy: 100 - 50 });
+  assert.deepEqual(o[2], { fx: -150, fy: 100 + 30 - 10 });
 });

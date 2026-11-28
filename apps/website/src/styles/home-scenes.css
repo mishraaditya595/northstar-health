@@ -155,3 +155,39 @@
   .scenes-ready [data-scene-track="recovery"] .gauge .arc { stroke-dashoffset: calc(100 - 74 * var(--energy, 1)); }
   .scenes-ready [data-scene-track="recovery"] .energy-trend polyline { stroke-dashoffset: calc((1 - var(--trend, 1)) * 100); }
 }
+
+/* Privacy */
+[data-scene-track="privacy"] .cards { position: relative; margin-top: 32px; }
+.phone-outline { display: none; }
+.vault-lock { position: absolute; top: 28px; right: 28px; width: 24px; height: 24px; fill: none; stroke: var(--performance); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+@media (prefers-reduced-motion: no-preference) {
+  .scenes-ready [data-scene-track="privacy"] { --track: 170vh; }
+  .scenes-ready [data-scene-track="privacy"] .vault { overflow: visible; isolation: auto; }
+  .scenes-ready [data-scene-track="privacy"] .vault::before { display: none; }
+  .scenes-ready [data-scene-track="privacy"] .vault li {
+    z-index: 3;
+    border-radius: 12px;
+    transform:
+      translate(calc(var(--fx, 0px) * (1 - var(--split, 1))), calc(var(--fy, 0px) * (1 - var(--split, 1))))
+      scale(calc(0.62 + 0.38 * var(--split, 1)));
+    background: color-mix(in srgb, var(--surface-soft) clamp(0%, calc((1 - var(--split, 1)) * 300%), 100%), transparent);
+    box-shadow: 0 0 0 calc((1 - var(--split, 1)) * 6px) color-mix(in srgb, var(--surface-soft) clamp(0%, calc((1 - var(--split, 1)) * 300%), 100%), transparent);
+  }
+  .scenes-ready [data-scene-track="privacy"] .phone-outline {
+    display: block; position: absolute; z-index: 2; left: 50%; top: 50%;
+    width: min(340px, 78%); height: 270px; translate: -50% -50%;
+    border: 2px solid var(--performance); border-radius: 36px; pointer-events: none;
+    background: color-mix(in srgb, var(--performance) 7%, transparent);
+    opacity: calc(1 - var(--split, 1));
+    transform: scale(calc(1 - 0.12 * var(--split, 1)));
+  }
+  .scenes-ready [data-scene-track="privacy"] .phone-outline::before {
+    content: ''; position: absolute; top: 10px; left: 50%; width: 44px; height: 4px; margin-left: -22px;
+    border-radius: 4px; background: var(--performance); opacity: 0.6;
+  }
+  .scenes-ready [data-scene-track="privacy"] .vault-lock { transition: opacity 0.35s ease, transform 0.35s ease; }
+  .scenes-ready [data-scene-track="privacy"][data-locked="no"] .vault-lock { opacity: 0; transform: scale(0.5); }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 899px) {
+  .scenes-ready [data-scene-track="privacy"] { --track: 150vh; }
+}
