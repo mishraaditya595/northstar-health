@@ -24,7 +24,7 @@ People want to add a new weight from the app (a morning weigh-in) and see it in 
 
 - BeyondRep's own code logs no weight or record id. The `health` plugin itself prints the written record id (no value) to the device log (`debugPrint`); that is outside the app's control, as in ADR-0014. On Android the plugin also logs the client record id (`Log.e`) when a delete fails, and `debugPrint` prints in release builds too.
 - `package:health` is imported by one more file, `health_weight_writer.dart`, listed in the import guard test.
-- The Play Console Health apps declaration must list `WRITE_WEIGHT`. App Privacy answers are unchanged because nothing is collected by us. `NSHealthUpdateUsageDescription` now also names weights. `tool/test_android_health_permissions.py` pins the manifest to exactly `WRITE_EXERCISE` and `WRITE_WEIGHT` as health writes.
+- The Play Console Health apps declaration must list `WRITE_WEIGHT`. App Privacy answers are unchanged because nothing is collected by us. `NSHealthUpdateUsageDescription` now also names weights. `tool/test_android_health_permissions.py` pins the manifest to exactly `WRITE_EXERCISE` and `WRITE_WEIGHT` as health writes (ADR-0015 later adds `WRITE_HEART_RATE` and `WRITE_TOTAL_CALORIES_BURNED` for Wear OS watch workouts).
 - The design kit gains `showNsSheet(enableDrag:)`, `showNsMessageOn(messenger, ...)` and `nsMessengerOf(context)` so the snackbar outlives the sheet.
 - Editing past entries, pounds, other measurements or storing weights need a new ADR.
 - Status: implemented in source; device rows are open in [`docs/RELEASE.md`](../RELEASE.md).

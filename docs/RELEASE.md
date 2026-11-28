@@ -494,6 +494,55 @@ The Android phone sends account binding, plans and today's health to the BeyondR
 | After a sync the phone shows "Watch · synced ..." at the bottom of Today and a "WATCH" section in Account & sync | not run |
 | Watch app or phone app updated alone: the link still works (same Data Layer version) | not run |
 
+## Wear OS stage 3a: workout recording (device checks, none run)
+
+The Galaxy Watch (or Pixel Watch) starts a plan, today's program workout or a quick workout, logs sets with the bezel or crown, rests with a haptic, records with a Health Services session in a foreground service and sends the workout to the phone until acked. Implemented in source, **not released or device-verified**: the Android code (`apps/wear_os/app`) compiles and tests on GitHub CI only; the `:core` JVM tests, the Flutter tests and the Python tool suite ran locally. Heart rate and calories are memory only (stage 3b sends them to the phone). Needs an Android phone and a Wear OS watch. Every row is not run.
+
+| Check | Result |
+|---|---|
+| The first Start asks for sensors, activity recognition and notifications once; a denial still starts the workout | not run |
+| Start from Today's card, from a plan and from "+ Quick workout" (the plan preview's Start too) | not run |
+| The bezel or crown changes the outlined box (weight, reps or seconds) by the unit step (2.5 kg or 5 lb, 1 rep, 5 s); a tap on the other box moves the outline | not run |
+| Log set shows the RPE question, then the Rest page with a countdown ring; one haptic at zero, also with the screen off (the pulse holds a partial wake lock until it fires; if the system kills the process there is no pulse); "+30 s" and "Skip" work | not run |
+| The ongoing activity chip on the watch face returns to the workout | not run |
+| Ambient mode dims the screen and updates the clock, set count and rest time once a minute, with no animation | not run |
+| App killed from recents mid-workout, then reopened: the same sets, the rest deadline and the recording continue | not run |
+| Android 14 and later with both sensor permissions denied: the workout records and saves without the foreground service and without a crash (the system may stop the process with the screen off; a relaunch restores it) | not run |
+| Process killed by the system mid-workout: the service restarts (sticky), restores the workout from the journal and the notification returns; with nothing to restore the service stops itself | not run |
+| TalkBack: the weight, reps and seconds boxes offer "Increase" and "Decrease" actions | not run |
+| Tapping the ongoing notification or the chip returns to the one workout activity, no second copy stacks | not run |
+| Heart rate permission denied: the overview shows "—", the workout records, the summary has no heart rate row | not run |
+| A Samsung Health (or other app) workout running: Start says "Another workout app is recording. End it there first." and no workout is created | not run |
+| Finish with the phone nearby: "Saved to phone" within a minute and the workout appears in phone history with the Watch tag, no heart rate row | not run |
+| Finish in airplane mode: "Saved on watch · waiting for phone"; after reconnect it is delivered exactly once | not run |
+| Several workouts finished while the phone is away for days: all arrive once the phone is reachable, none is lost | not run |
+| Sign out on the phone mid-workout: the workout is discarded, the service stops and the watch shows the sign-in text | not run |
+| A 60 to 90 minute session: record the battery drop; the service and the sensor session stop at finish and at discard | not run |
+| Round 192 dp and 240 dp watches at font scale 1.3: Log set stays reachable on the Set page | not run |
+| Whether Samsung Health or Health Connect shows a second copy of the session (input for stage 3b) | not run |
+
+## Wear OS stage 3b: workout heart rate and calories to Health Connect (device checks, none run)
+
+The phone writes a Wear OS workout's per-minute heart rate and total calories to Health Connect after the watch sends `workout_health`. Implemented in source, **not released or device-verified**; the Android code compiles and tests only on GitHub CI. Every row is not run.
+
+| Check | Result |
+|---|---|
+| Health tab with a Wear watch paired and the export switch on shows "Allow heart rate and calories"; the sheet button opens the Health Connect prompt for heart rate and calories | not run |
+| A watch workout with permission: Health Connect shows one strength session with calories and heart rate, no second copy | not run |
+| Samsung Health and Google Fit show the session and heart rate once (or note the duplicate) | not run |
+| Switch off: the workout reaches phone history, nothing is written, the watch stops resending (`not_written`) | not run |
+| Switch on but heart rate and calories not allowed: nothing is written, the watch keeps the series; after "Allow heart rate and calories" the watch resends and the session, calories and heart rate appear in Health Connect | not run |
+| Phone history detail shows heart rate and calories only with Phase 3 health connected and `READ_HEART_RATE` granted (otherwise no rows, by design) | not run |
+| Retry after a failed write (airplane mode off, Health Connect killed mid-write): the retry is accepted and replaces the record (client record version `workout version * 1000 + attempt`; check Health Connect does not ignore it and returns the record id) | not run |
+| `adb logcat` during a watch workout write shows no bpm or calorie value from BeyondRep or the health plugin | not run |
+| A phone-origin workout overlapping a watch workout shows no heart rate rows in its history detail on Android | not run |
+| Phone off or out of range at Finish: the series arrives after the workout, written once | not run |
+| Phone history detail of a watch workout shows average heart rate, max heart rate and Calories ("From Health Connect") | not run |
+| Deleting the watch workout on the phone removes the Health Connect session, calories and heart rate | not run |
+| Android 13 and lower: Health Connect app installed and permissions work as on 14 | not run |
+| A 90 minute workout writes one heart rate record with 90 samples within Health Connect limits | not run |
+| Sign out on the phone: the unsent series on the watch is dropped | not run |
+
 ## Phase 5: save phone workouts to Apple Health / Health Connect (ADR-0014, device checks, none run)
 
 Opt-in per-account write of completed phone workouts. Implemented in source, **not released or device-verified**. Every row is not run.

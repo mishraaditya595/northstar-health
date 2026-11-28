@@ -1074,13 +1074,21 @@ void main() {
       );
     });
 
-    test('the Android manifest asks for READ_EXERCISE only, no calories or '
-        'distance permission', () {
+    test('the Android manifest asks for exercise, heart rate write and '
+        'calories (watch workouts, Wear OS 3b), never distance', () {
       final manifest = File('android/app/src/main/AndroidManifest.xml')
           .readAsStringSync();
-      expect(manifest, contains('android.permission.health.READ_EXERCISE"'));
-      expect(manifest, isNot(contains('READ_TOTAL_CALORIES_BURNED')));
-      expect(manifest, isNot(contains('READ_DISTANCE')));
+      for (final p in [
+        'READ_EXERCISE',
+        'WRITE_EXERCISE',
+        'READ_HEART_RATE',
+        'WRITE_HEART_RATE',
+        'READ_TOTAL_CALORIES_BURNED',
+        'WRITE_TOTAL_CALORIES_BURNED',
+      ]) {
+        expect(manifest, contains('android.permission.health.$p"'));
+      }
+      expect(manifest, isNot(contains('DISTANCE')));
     });
 
     test('a platform failure never throws', () async {
@@ -1142,7 +1150,8 @@ void main() {
       // The requested bounds differ from the workout's own, so this proves
       // heart rate is read over the matched workout's bounds.
       expect(hrCall.start, workoutStart);
-      expect(hrCall.end, workoutEnd);
+      // End-inclusive: a sample stamped at the workout end still counts.
+      expect(hrCall.end, workoutEnd.add(const Duration(seconds: 1)));
     });
 
     test('ignores workouts with another uuid', () async {
@@ -1169,11 +1178,75 @@ void main() {
       expect(data.isEmpty, isTrue);
     });
 
-    test('Android is unsupported', () async {
-      expect(
-        await android().readOwnWorkout('mine', start, end),
-        isA<SeriesUnsupported<OwnWorkoutHealth?>>(),
-      );
+    HealthDataPoint ownHr(
+      num value,
+      int minute, {
+      String source = 'in.beyondrep.app',
+    }) => HealthDataPoint(
+      uuid: 'h$minute',
+      value: NumericHealthValue(numericValue: value),
+      type: HealthDataType.HEART_RATE,
+      unit: HealthDataUnit.BEATS_PER_MINUTE,
+      dateFrom: start.add(Duration(minutes: minute)),
+      dateTo: start.add(Duration(minutes: minute)),
+      sourcePlatform: HealthPlatformType.googleHealthConnect,
+      sourceDeviceId: 'd',
+      sourceId: source,
+      sourceName: source,
+    );
+
+    test('readOwnWorkoutOnAndroidReturnsAverageMaxAndCalories', () async {
+      health.points = [
+        _workout(
+          HealthWorkoutActivityType.STRENGTH_TRAINING,
+          uuid: 'ab12-cd',
+          kcal: 212,
+          from: workoutStart,
+          to: workoutEnd,
+          sourceId: 'in.beyondrep.app',
+        ),
+        ownHr(100, 5),
+        ownHr(130, 10),
+        ownHr(160, 20),
+      ];
+      final r = await android().readOwnWorkout('AB12-CD', start, end);
+      final data = (r as SeriesData<OwnWorkoutHealth?>).data!;
+      expect(data.activeKcal, 212);
+      expect(data.averageBpm, 130);
+      expect(data.maxBpm, 160);
+    });
+
+    test('readOwnWorkoutIgnoresHeartRateFromOtherApps', () async {
+      health.points = [
+        _workout(
+          HealthWorkoutActivityType.STRENGTH_TRAINING,
+          uuid: 'mine',
+          kcal: null,
+          from: workoutStart,
+          to: workoutEnd,
+          sourceId: 'in.beyondrep.app',
+        ),
+        ownHr(100, 5),
+        ownHr(200, 10, source: 'com.other.app'),
+        ownHr(60, 15, source: 'in.beyondrep.apple'),
+      ];
+      final r = await android().readOwnWorkout('mine', start, end);
+      final data = (r as SeriesData<OwnWorkoutHealth?>).data!;
+      expect(data.averageBpm, 100);
+      expect(data.maxBpm, 100);
+      expect(data.activeKcal, isNull);
+    });
+
+    test('on Android a workout another app saved is not read', () async {
+      health.points = [
+        _workout(
+          HealthWorkoutActivityType.STRENGTH_TRAINING,
+          uuid: 'mine',
+          sourceId: 'com.other.app',
+        ),
+      ];
+      final r = await android().readOwnWorkout('mine', start, end);
+      expect((r as SeriesData<OwnWorkoutHealth?>).data, isNull);
     });
 
     test('a platform failure never throws', () async {

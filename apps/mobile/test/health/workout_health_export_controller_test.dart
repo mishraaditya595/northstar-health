@@ -116,6 +116,56 @@ void main() {
     },
   );
 
+  group('watch heart rate and calories on Android', () {
+    HealthExportOn on(ProviderContainer c) =>
+        c.read(healthExportControllerProvider).requireValue as HealthExportOn;
+
+    setUp(() {
+      writer = FakeHealthWorkoutWriter(isIos: false);
+      ObjectBoxHealthExportRepository(store).enable(accountA, _now);
+    });
+
+    test(
+      'is offered when a Wear watch is paired and the write is missing',
+      () async {
+        watch = const WatchWaiting();
+        writer.watchHealthAccess = false;
+        final c = container();
+        await c.read(healthExportControllerProvider.future);
+        expect(on(c).offersWatchHealthAccess, isTrue);
+      },
+    );
+
+    test('is not offered without a watch, with access, or on iOS', () async {
+      writer.watchHealthAccess = false;
+      var c = container();
+      await c.read(healthExportControllerProvider.future);
+      expect(on(c).offersWatchHealthAccess, isFalse);
+
+      watch = const WatchWaiting();
+      writer.watchHealthAccess = true;
+      c = container();
+      await c.read(healthExportControllerProvider.future);
+      expect(on(c).offersWatchHealthAccess, isFalse);
+
+      writer = FakeHealthWorkoutWriter()..watchHealthAccess = false;
+      c = container();
+      await c.read(healthExportControllerProvider.future);
+      expect(on(c).offersWatchHealthAccess, isFalse);
+    });
+
+    test('allowWatchHealth asks for heart rate and calories and clears the '
+        'offer', () async {
+      watch = const WatchWaiting();
+      writer.watchHealthAccess = false;
+      final c = container();
+      await c.read(healthExportControllerProvider.future);
+      await c.read(healthExportControllerProvider.notifier).allowWatchHealth();
+      expect(writer.watchHealthRequests, 1);
+      expect(on(c).offersWatchHealthAccess, isFalse);
+    });
+  });
+
   test('turnOff stops later passes writing', () async {
     final c = container();
     await c.read(healthExportControllerProvider.future);

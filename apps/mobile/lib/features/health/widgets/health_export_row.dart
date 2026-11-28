@@ -16,16 +16,24 @@ class HealthExportRow extends ConsumerWidget {
 
   final HealthPlatformKind platform;
 
+  String _counts(int saved, int waiting) => saved > 0 && waiting > 0
+      ? 'On · $saved saved, $waiting waiting'
+      : saved > 0
+      ? 'On · $saved saved'
+      : waiting > 0
+      ? 'On · $waiting waiting'
+      : 'On';
+
   String _subtitle(HealthExportStatus status) => switch (status) {
     HealthExportOn(needsAccess: true) => 'Allow access in Settings',
-    HealthExportOn(:final saved, :final waiting) =>
-      saved > 0 && waiting > 0
-          ? 'On · $saved saved, $waiting waiting'
-          : saved > 0
-          ? 'On · $saved saved'
-          : waiting > 0
-          ? 'On · $waiting waiting'
-          : 'On',
+    HealthExportOn(
+      :final saved,
+      :final waiting,
+      offersWatchHealthAccess: true,
+    ) =>
+      '${_counts(saved, waiting)} · Allow heart rate and calories for watch '
+          'workouts',
+    HealthExportOn(:final saved, :final waiting) => _counts(saved, waiting),
     _ => 'Off',
   };
 
@@ -37,6 +45,18 @@ class HealthExportRow extends ConsumerWidget {
     }
     final name = healthPlatformName(platform);
     final notifier = ref.read(healthExportControllerProvider.notifier);
+
+    Future<void> confirmStop() async {
+      final stop = await showNsConfirm(
+        context,
+        title: 'Stop saving workouts?',
+        message:
+            'New workouts will no longer be saved to $name. Workouts '
+            'already saved stay there.',
+        confirmLabel: 'Stop saving',
+      );
+      if (stop) await notifier.turnOff();
+    }
 
     Future<void> tap() async {
       if (status is HealthExportOn) {
@@ -53,15 +73,20 @@ class HealthExportRow extends ConsumerWidget {
           }
           return;
         }
-        final stop = await showNsConfirm(
-          context,
-          title: 'Stop saving workouts?',
-          message:
-              'New workouts will no longer be saved to $name. Workouts '
-              'already saved stay there.',
-          confirmLabel: 'Stop saving',
-        );
-        if (stop) await notifier.turnOff();
+        if (status.offersWatchHealthAccess) {
+          final action = await showNsSheet<_AccessAction>(
+            context,
+            heightFactor: 0.4,
+            builder: (_) => const _WatchHealthSheet(),
+          );
+          if (action == _AccessAction.allowWatchHealth) {
+            await notifier.allowWatchHealth();
+          } else if (action == _AccessAction.stop) {
+            await confirmStop();
+          }
+          return;
+        }
+        await confirmStop();
         return;
       }
       if (!context.mounted) return;
@@ -88,7 +113,7 @@ class HealthExportRow extends ConsumerWidget {
   }
 }
 
-enum _AccessAction { openSettings, stop }
+enum _AccessAction { openSettings, allowWatchHealth, stop }
 
 class _AccessSheet extends StatelessWidget {
   const _AccessSheet({required this.name});
@@ -126,6 +151,52 @@ class _AccessSheet extends StatelessWidget {
           onPressed: () =>
               Navigator.of(context).pop(_AccessAction.openSettings),
           child: const Text('Open Settings'),
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_AccessAction.stop),
+          child: Text('Stop saving', style: TextStyle(color: theme.mutedColor)),
+        ),
+      ],
+    );
+  }
+}
+
+class _WatchHealthSheet extends StatelessWidget {
+  const _WatchHealthSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        8,
+        20,
+        24 + MediaQuery.paddingOf(context).bottom,
+      ),
+      children: [
+        Semantics(
+          header: true,
+          child: Text(
+            'Watch heart rate and calories',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Your watch measures heart rate and calories during a workout. '
+          'Allow BeyondRep to save them to Health Connect with the workout. '
+          'Without this, watch workouts are not saved to Health Connect.',
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 24),
+        FilledButton(
+          onPressed: () =>
+              Navigator.of(context).pop(_AccessAction.allowWatchHealth),
+          child: const Text('Allow heart rate and calories'),
         ),
         const SizedBox(height: 8),
         TextButton(

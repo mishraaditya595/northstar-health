@@ -2,7 +2,9 @@ package `in`.beyondrep.wear.core.store
 
 import `in`.beyondrep.wear.core.FixtureLoader
 import `in`.beyondrep.wear.core.TestMessages
+import `in`.beyondrep.wear.core.contracts.ContractException
 import `in`.beyondrep.wear.core.contracts.ExerciseAddedPayload
+import `in`.beyondrep.wear.core.contracts.HeartRatePoint
 import `in`.beyondrep.wear.core.contracts.SessionCommand
 import `in`.beyondrep.wear.core.contracts.SetValues
 import `in`.beyondrep.wear.core.contracts.WatchMessage
@@ -22,6 +24,7 @@ import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -212,6 +215,18 @@ class WatchJournalTest {
     }
 
     @Test
+    fun activeSessionsOfEveryAccountAreListedUntilTheyEnd() {
+        val journal = open()
+        assertTrue(journal.activeSessionAccounts().isEmpty())
+        val m = machine()
+        val events = m.start("Synthetic push day").toMutableList()
+        journal.record(events, WorkoutReplay.replay(events))
+        assertEquals(listOf(SessionAccount(session, key)), journal.activeSessionAccounts())
+        journal.record(listOf(m.abandon()), m.state)
+        assertTrue(journal.activeSessionAccounts().isEmpty())
+    }
+
+    @Test
     fun restoredMachineContinuesTheSequenceWithoutReuse() {
         recordSession(open(), 1)
         val reopened = open()
@@ -393,12 +408,161 @@ class WatchJournalTest {
     }
 
     @Test
-    fun schemaVersionIsOneAndReopeningKeepsRows() {
+    fun schemaVersionIsTwoAndReopeningKeepsRows() {
         val journal = open()
         journal.saveBinding(TestMessages.binding())
         val reopened = open()
         assertEquals(TestMessages.keyA, reopened.binding()?.accountKey)
-        assertEquals(SqlValue.Int64(1), db().query("PRAGMA user_version").first().first())
+        assertEquals(SqlValue.Int64(2), db().query("PRAGMA user_version").first().first())
+    }
+
+    // Heart rate and calories of a finished workout (stage 3b)
+
+    private val endedMs = 1_792_000_000_000
+
+    private fun healthMessage(
+        key: String = this.key,
+        workoutId: String = session,
+        id: String = UUID.randomUUID().toString().lowercase(),
+    ) = WatchMessage(
+        id, "2026-10-23T11:41:00Z", key,
+        WatchMessageBody.WorkoutHealth(
+            workoutId, "2026-10-23T11:00:00Z", "2026-10-23T11:40:00Z",
+            listOf(HeartRatePoint("2026-10-23T11:00:00Z", 173)), 987.0))
+
+    /** A finished session whose completed workout is queued; returns the completed message id. */
+    private fun queueFinished(journal: WatchJournal): String {
+        recordFinishedSession(journal)
+        val message = completedMessage()
+        journal.queueCompleted(message, session)
+        return message.messageId
+    }
+
+    @Test
+    fun workoutHealthWaitsForTheCompletedWorkoutAck() {
+        val journal = open()
+        val completedId = queueFinished(journal)
+        journal.saveWorkoutHealth(session, key, healthMessage(), endedMs)
+        assertTrue(journal.pendingWorkoutHealth(key, 10).isEmpty())
+        journal.applyAck(completedId, "stored")
+        val pending = journal.pendingWorkoutHealth(key, 10)
+        assertEquals(1, pending.size)
+        assertIs<WatchMessageBody.WorkoutHealth>(pending.single().body)
+    }
+
+    @Test
+    fun aRejectedCompletedAckNeverReleasesTheSeries() {
+        val journal = open()
+        val completedId = queueFinished(journal)
+        journal.saveWorkoutHealth(session, key, healthMessage(), endedMs)
+        journal.applyAck(completedId, "rejected")
+        assertTrue(journal.pendingWorkoutHealth(key, 10).isEmpty())
+    }
+
+    @Test
+    fun anyAckDeletesTheSeries() {
+        for (result in listOf("stored", "duplicate", "rejected")) {
+            val journal = WatchJournal(JdbcSqlDatabase(dir.resolve("$result.sqlite")).also { opened.add(it) })
+            val completedId = queueFinished(journal)
+            journal.applyAck(completedId, "stored")
+            val health = healthMessage()
+            journal.saveWorkoutHealth(session, key, health, endedMs)
+            journal.applyAck(health.messageId, result)
+            assertTrue(journal.pendingWorkoutHealth(key, 10).isEmpty(), result)
+            assertEquals(0, JdbcSqlDatabase(dir.resolve("$result.sqlite")).also { opened.add(it) }
+                .query("SELECT COUNT(*) FROM session_health").first().first().let { (it as SqlValue.Int64).v.toInt() }, result)
+        }
+    }
+
+    @Test
+    fun aRejectedWorkoutDeletesItsSeries() {
+        val journal = WatchJournal(JdbcSqlDatabase(dir.resolve("rejected-workout.sqlite")).also { opened.add(it) })
+        val completedId = queueFinished(journal)
+        journal.saveWorkoutHealth(session, key, healthMessage(), endedMs)
+        journal.applyAck(completedId, "rejected")
+        assertEquals(0, JdbcSqlDatabase(dir.resolve("rejected-workout.sqlite")).also { opened.add(it) }
+            .query("SELECT COUNT(*) FROM session_health").first().first().let { (it as SqlValue.Int64).v.toInt() })
+    }
+
+    @Test
+    fun clearAccountDeletesTheSeries() {
+        for (wipe in listOf(false, true)) {
+            val journal = WatchJournal(JdbcSqlDatabase(dir.resolve("wipe$wipe.sqlite")).also { opened.add(it) })
+            journal.saveWorkoutHealth(session, key, healthMessage(), endedMs)
+            journal.saveWorkoutHealth(
+                "cccccccc-cccc-4ccc-8ccc-cccccccccccc", TestMessages.keyB,
+                healthMessage(TestMessages.keyB, "cccccccc-cccc-4ccc-8ccc-cccccccccccc"), endedMs)
+            journal.clearAccount(key, wipe)
+            val rows = JdbcSqlDatabase(dir.resolve("wipe$wipe.sqlite")).also { opened.add(it) }
+                .query("SELECT account_key FROM session_health")
+            assertEquals(listOf(SqlValue.Text(TestMessages.keyB)), rows.map { it.first() }, "wipe=$wipe")
+        }
+    }
+
+    @Test
+    fun droppingAStaleBindingDeletesTheSeries() {
+        val journal = open()
+        bindWithData(journal)
+        journal.recordReceived(receivedMs)
+        journal.saveWorkoutHealth(session, key, healthMessage(), receivedMs + 90 * dayMs)
+        assertTrue(journal.pruneStale(receivedMs + 91 * dayMs))
+        assertEquals(0, count("session_health"))
+    }
+
+    @Test
+    fun pruneStaleDropsSeriesAfterSevenDays() {
+        val journal = open()
+        journal.saveWorkoutHealth(session, key, healthMessage(), endedMs)
+        journal.pruneStale(endedMs + 6 * dayMs + 23 * 3_600_000L)
+        assertEquals(1, count("session_health"))
+        journal.pruneStale(endedMs + 7 * dayMs + 3_600_000L)
+        assertEquals(0, count("session_health"))
+    }
+
+    @Test
+    fun aSeriesOfAnotherAccountIsNeverPending() {
+        val journal = open()
+        val completedId = queueFinished(journal)
+        journal.applyAck(completedId, "stored")
+        journal.saveWorkoutHealth(session, key, healthMessage(), endedMs)
+        assertTrue(journal.pendingWorkoutHealth(TestMessages.keyB, 10).isEmpty())
+        assertEquals(1, journal.pendingWorkoutHealth(key, 10).size)
+    }
+
+    @Test
+    fun savingTheSameSeriesTwiceKeepsOneRow() {
+        val journal = open()
+        journal.saveWorkoutHealth(session, key, healthMessage(), endedMs)
+        journal.saveWorkoutHealth(session, key, healthMessage(), endedMs)
+        assertEquals(1, count("session_health"))
+    }
+
+    @Test
+    fun onlyAWorkoutHealthMessageCanBeSavedAsASeries() {
+        val journal = open()
+        assertFailsWith<ContractException> { journal.saveWorkoutHealth(session, key, completedMessage(), endedMs) }
+    }
+
+    @Test
+    fun migrationFromStage3aKeepsRows() {
+        val old = db()
+        old.execute("CREATE TABLE outbox(message_id TEXT PRIMARY KEY, account_key TEXT NOT NULL, json TEXT NOT NULL, created_at TEXT NOT NULL, type TEXT NOT NULL DEFAULT '', session_id TEXT NOT NULL DEFAULT '')")
+        old.execute("CREATE TABLE sessions(session_id TEXT PRIMARY KEY, account_key TEXT NOT NULL, status TEXT NOT NULL, state_json TEXT NOT NULL, delivery TEXT, template_json TEXT)")
+        old.execute("CREATE TABLE binding(slot INTEGER PRIMARY KEY CHECK(slot = 1), account_key TEXT NOT NULL, unit TEXT NOT NULL, message_id TEXT NOT NULL DEFAULT '', sent_at_ms INTEGER NOT NULL DEFAULT 0)")
+        old.execute("INSERT INTO binding(slot, account_key, unit, message_id, sent_at_ms) VALUES(1,?,?,?,?)",
+            listOf(SqlValue.Text(key), SqlValue.Text("kg"), SqlValue.Text("m"), SqlValue.Int64(5)))
+        old.execute("INSERT INTO sessions(session_id, account_key, status, state_json, delivery) VALUES(?,?,?,?,?)",
+            listOf(SqlValue.Text(session), SqlValue.Text(key), SqlValue.Text("completed"), SqlValue.Text("{}"), SqlValue.Text("delivered")))
+        old.execute("PRAGMA user_version = 1")
+        old.close()
+        opened.remove(old)
+
+        val journal = open()
+        assertEquals(key, journal.binding()?.accountKey)
+        assertEquals("delivered", journal.delivery(session))
+        assertEquals(SqlValue.Int64(2), db().query("PRAGMA user_version").first().first())
+        journal.saveWorkoutHealth(session, key, healthMessage(), endedMs)
+        assertEquals(1, journal.pendingWorkoutHealth(key, 10).size)
     }
 
     // Pruning a binding the phone stopped refreshing
@@ -569,6 +733,19 @@ class WatchJournalTest {
         assertEquals(2, journal.pendingOutbox(10).size)
         journal.queueCompleted(completedMessage(), session)
         assertEquals(listOf("completed_workout"), journal.pendingCompleted(10).map { it.type })
+    }
+
+    @Test
+    fun pendingCompletedForOneAccountFiltersInSqlBeforeTheLimit() {
+        val journal = open()
+        val other = "b".repeat(64)
+        // Three workouts of another account first: a limit applied before the filter would hide ours.
+        repeat(3) { journal.queueCompleted(completedMessage(other), "other-session-$it") }
+        val mine = completedMessage()
+        journal.queueCompleted(mine, session)
+        assertEquals(listOf(mine.messageId), journal.pendingCompleted(key, 1).map { it.messageId })
+        assertEquals(3, journal.pendingCompleted(other, 10).size)
+        assertTrue(journal.pendingCompleted("c".repeat(64), 10).isEmpty())
     }
 
     @Test

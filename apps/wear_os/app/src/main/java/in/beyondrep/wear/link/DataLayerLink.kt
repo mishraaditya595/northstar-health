@@ -60,13 +60,15 @@ class WearDataItems(private val context: Context) : DataItems {
  * only then is the `ack` put at `/beyondrep/queue/watch/<ack id>`, and only after the ack is out
  * is a handled phone-queued item deleted, so a failure leaves the item to be applied again as a
  * duplicate and acked. Context items belong to the phone and are never deleted here.
- * [onApplied] runs after anything was applied, so screens refresh.
+ * [onApplied] runs after anything was applied, so screens refresh, and [afterApplied] after
+ * that, so an `ack` that releases a queued `workout_health` puts it at once.
  */
 class DataLayerLink(
     private val items: DataItems,
     private val router: DataLayerRouter,
     private val clock: () -> Instant,
     private val onApplied: () -> Unit = {},
+    private val afterApplied: suspend () -> Unit = {},
 ) {
     suspend fun onChanges(changes: List<DataChange>) = handle(changes, ackDuplicates = true)
 
@@ -100,6 +102,7 @@ class DataLayerLink(
             // The ack and the delete stay in order and are not retried here: a failure leaves the
             // phone item to be applied again as a duplicate and acked.
             onApplied()
+            afterApplied()
         }
     }
 

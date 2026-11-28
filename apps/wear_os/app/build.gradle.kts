@@ -124,6 +124,13 @@ dependencies {
     implementation("com.google.android.gms:play-services-wearable:19.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+    // Workout recording (stage 3a): a Health Services exercise session in a foreground service.
+    implementation("androidx.health:health-services-client:1.0.0")
+    implementation("androidx.wear:wear-ongoing:1.0.0")
+    implementation("androidx.core:core-ktx:1.15.0")
+    // Ambient mode for the workout screens.
+    implementation("androidx.wear:wear:1.3.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.10.2")
 
     testImplementation(kotlin("test"))
     testImplementation("junit:junit:4.13.2")

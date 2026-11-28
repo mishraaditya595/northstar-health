@@ -46,7 +46,9 @@ class JournalException(message: String) : Exception(message)
  * phone's plans and today's health snapshot (port of WatchJournal.swift). One transaction per user
  * action writes state and the outbound message together, so after a crash both exist or neither
  * does. The schema is Swift's journal version 8 without the `links` table (Wear sends no
- * `workout_link`), created in one step as `user_version` 1.
+ * `workout_link`), plus `session_health` (stage 3b: the heart rate and calories of a finished
+ * workout, kept only until the phone's ack or 7 days); `user_version` 2. Every table is created
+ * with IF NOT EXISTS, so a stage 3a database (`user_version` 1) gains the new table and keeps its rows.
  */
 class WatchJournal(
     private val db: SqlDatabase,
@@ -65,7 +67,8 @@ class WatchJournal(
             db.execute("CREATE TABLE IF NOT EXISTS cleared(account_key TEXT PRIMARY KEY, sent_at_ms INTEGER NOT NULL)")
             db.execute("CREATE TABLE IF NOT EXISTS link_state(slot INTEGER PRIMARY KEY CHECK(slot = 1), last_received_ms INTEGER NOT NULL)")
             db.execute("CREATE TABLE IF NOT EXISTS follower(slot INTEGER PRIMARY KEY CHECK(slot = 1), session_id TEXT NOT NULL, account_key TEXT NOT NULL, joined_at_ms INTEGER NOT NULL, phase TEXT NOT NULL)")
-            db.execute("PRAGMA user_version = 1")
+            db.execute("CREATE TABLE IF NOT EXISTS session_health(session_id TEXT PRIMARY KEY, account_key TEXT NOT NULL, message_id TEXT NOT NULL, message_json TEXT NOT NULL, ended_at_ms INTEGER NOT NULL)")
+            db.execute("PRAGMA user_version = 2")
         }
     }
 
@@ -214,6 +217,13 @@ class WatchJournal(
     fun pendingCompleted(limit: Int): List<WatchMessage> =
         decodeAll(db.query("SELECT json FROM outbox WHERE type = 'completed_workout' ORDER BY rowid LIMIT ?", listOf(int(limit))))
 
+    /** Completed workouts of one account waiting for the phone, oldest first; the account is filtered in SQL, before [limit]. */
+    fun pendingCompleted(accountKey: String, limit: Int): List<WatchMessage> =
+        decodeAll(
+            db.query(
+                "SELECT json FROM outbox WHERE type = 'completed_workout' AND account_key = ? ORDER BY rowid LIMIT ?",
+                listOf(text(accountKey), int(limit))))
+
     /**
      * Queues the finished workout and marks the session `queued` in one transaction. A second call
      * for the same message changes nothing, and a session already delivered or rejected stays that way.
@@ -253,12 +263,20 @@ class WatchJournal(
             val id = ackedMessageId.lowercase()
             val rows = db.query(
                 "SELECT session_id FROM outbox WHERE message_id = ? AND type = 'completed_workout'", listOf(text(id)))
-            val sessionId = rows.firstOrNull()?.let { textAt(it, 0) } ?: return@transaction null
+            val sessionId = rows.firstOrNull()?.let { textAt(it, 0) }
+            if (sessionId == null) {
+                // The phone's answer to a workout_health, whatever it says: the series is done.
+                db.execute("DELETE FROM session_health WHERE message_id = ?", listOf(text(id)))
+                return@transaction null
+            }
             if (sessionId.isEmpty()) {
                 db.execute("DELETE FROM outbox WHERE message_id = ?", listOf(text(id)))
                 return@transaction null
             }
             val rejected = result == "rejected"
+            // A rejected workout is never written to the phone, so its series would only wait for the
+            // 7-day prune (the phone ignores a workout_health for a workout it does not hold).
+            if (rejected) db.execute("DELETE FROM session_health WHERE session_id = ?", listOf(text(sessionId)))
             db.execute("DELETE FROM outbox WHERE session_id = ?", listOf(text(sessionId)))
             db.execute("DELETE FROM events WHERE session_id = ?", listOf(text(sessionId)))
             db.execute("DELETE FROM applied_commands WHERE session_id = ?", listOf(text(sessionId)))
@@ -267,6 +285,31 @@ class WatchJournal(
                 listOf(text(if (rejected) "rejected" else "delivered"), text(sessionId)))
             if (rejected) AckEffect.Rejected(sessionId) else AckEffect.Delivered(sessionId)
         }
+
+    /**
+     * Keeps the heart rate and calories of a finished workout next to its session (stage 3b).
+     * `message` must be a `workout_health`; a second save for the session replaces the first.
+     * [endedAtMs] starts the 7-day retention.
+     */
+    fun saveWorkoutHealth(sessionId: String, accountKey: String, message: WatchMessage, endedAtMs: Long) {
+        if (message.body !is WatchMessageBody.WorkoutHealth) throw ContractException("invalid_value")
+        db.execute(
+            "INSERT OR REPLACE INTO session_health(session_id, account_key, message_id, message_json, ended_at_ms) VALUES(?,?,?,?,?)",
+            listOf(text(sessionId), text(accountKey), text(message.messageId.lowercase()), text(message.encode()), int(endedAtMs)))
+    }
+
+    /** `accountKey`'s series whose completed workout the phone has acked as stored or duplicate, oldest first. */
+    fun pendingWorkoutHealth(accountKey: String, limit: Int): List<WatchMessage> =
+        decodeAll(
+            db.query(
+                "SELECT h.message_json FROM session_health h JOIN sessions s ON s.session_id = h.session_id " +
+                    "WHERE h.account_key = ? AND s.delivery = 'delivered' ORDER BY h.rowid LIMIT ?",
+                listOf(text(accountKey), int(limit))))
+
+    /** The account a stored series belongs to, null when no series has that message id. */
+    fun queuedWorkoutHealthAccountKey(messageId: String): String? =
+        db.query("SELECT account_key FROM session_health WHERE message_id = ?", listOf(text(messageId.lowercase())))
+            .firstOrNull()?.let { textAt(it, 0) }
 
     /** `queued`, `delivered` or `rejected`; null before the workout is queued. */
     fun delivery(sessionId: String): String? =
@@ -296,6 +339,12 @@ class WatchJournal(
     fun allSessionsAwaitingQueue(): List<SessionAccount> =
         db.query(
             "SELECT session_id, account_key FROM sessions WHERE status = 'completed' AND delivery IS NULL ORDER BY rowid",
+        ).mapNotNull { row -> SessionAccount(textAt(row, 0) ?: return@mapNotNull null, textAt(row, 1) ?: return@mapNotNull null) }
+
+    /** Active or paused sessions of every account, oldest first: a launch abandons the ones no bound account owns. */
+    fun activeSessionAccounts(): List<SessionAccount> =
+        db.query(
+            "SELECT session_id, account_key FROM sessions WHERE status IN ('active','paused') ORDER BY rowid",
         ).mapNotNull { row -> SessionAccount(textAt(row, 0) ?: return@mapNotNull null, textAt(row, 1) ?: return@mapNotNull null) }
 
     /** Queued completed workouts, split by whether they belong to `boundKey`. */
@@ -415,6 +464,7 @@ class WatchJournal(
         db.transaction {
             db.execute("DELETE FROM plans WHERE account_key = ?", listOf(text(key)))
             db.execute("DELETE FROM health WHERE account_key = ?", listOf(text(key)))
+            db.execute("DELETE FROM session_health WHERE account_key = ?", listOf(text(key)))
             // The received time belongs to the bound account, so it goes with it.
             db.execute("DELETE FROM link_state WHERE EXISTS (SELECT 1 FROM binding WHERE account_key = ?)", listOf(text(key)))
             db.execute("DELETE FROM binding WHERE account_key = ?", listOf(text(key)))
@@ -428,15 +478,19 @@ class WatchJournal(
     }
 
     /**
-     * Drops a binding the phone has not refreshed for `maxSilenceDays`, and keeps only the newest
+     * Drops a binding the phone has not refreshed for `maxSilenceDays`, deletes heart rate series
+     * of workouts that ended more than [maxSeriesDays] ago, and keeps only the newest
      * `maxTombstones` clear tombstones. Returns true when the binding was dropped. Nothing is
      * dropped while a workout is active or paused, and unsent workouts are never dropped. The
      * binding's send time becomes the account's tombstone, so a replay of the old application
      * context is ignored and is never removed by the cap of the same call. Tombstones are capped
      * by count, never by age, because the watch replays the last application context on launch.
      */
-    fun pruneStale(nowMs: Long, maxSilenceDays: Int = 90, maxTombstones: Int = 20): Boolean =
+    fun pruneStale(nowMs: Long, maxSilenceDays: Int = 90, maxTombstones: Int = 20, maxSeriesDays: Int = 7): Boolean =
         db.transaction {
+            db.execute(
+                "DELETE FROM session_health WHERE ended_at_ms < ?",
+                listOf(int(nowMs - maxSeriesDays.toLong() * 86_400_000L)))
             var dropped = false
             var droppedKey = ""
             val binding = bindingState()

@@ -1,8 +1,10 @@
 """Guards the Health Connect write permissions declared by the Android app.
 
-BeyondRep writes only two kinds of records: the opt-in workout summary
-(WRITE_EXERCISE, ADR-0014) and the weights the user logs (WRITE_WEIGHT,
-ADR-0016). Any other health write permission needs a new ADR.
+BeyondRep writes only these records: the opt-in workout summary
+(WRITE_EXERCISE, ADR-0014), the heart rate and calories of a Wear OS watch
+workout (WRITE_HEART_RATE, WRITE_TOTAL_CALORIES_BURNED, ADR-0015) and the
+weights the user logs (WRITE_WEIGHT, ADR-0016). Any other health write
+permission needs a new ADR.
 """
 from pathlib import Path
 import re
@@ -25,13 +27,21 @@ class AndroidHealthPermissionsTest(unittest.TestCase):
     def test_write_weight_is_declared(self):
         self.assertIn(HEALTH + "WRITE_WEIGHT", self.declared)
 
-    def test_only_exercise_and_weight_writes(self):
+    def test_only_the_adr_approved_writes(self):
         writes = {
             name[len(HEALTH):]
             for name in self.declared
             if name.startswith(HEALTH + "WRITE_")
         }
-        self.assertEqual(writes, {"WRITE_EXERCISE", "WRITE_WEIGHT"})
+        self.assertEqual(
+            writes,
+            {
+                "WRITE_EXERCISE",
+                "WRITE_HEART_RATE",
+                "WRITE_TOTAL_CALORIES_BURNED",
+                "WRITE_WEIGHT",
+            },
+        )
 
 
 if __name__ == "__main__":

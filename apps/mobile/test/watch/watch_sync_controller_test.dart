@@ -7,11 +7,14 @@ import 'package:beyondrep/core/ids/uuid_factory.dart';
 import 'package:beyondrep/features/account/account_auth_controller.dart';
 import 'package:beyondrep/features/account/account_auth_provider.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
+import 'package:beyondrep/features/health/data/health_export_repository.dart';
+import 'package:beyondrep/features/health/data/watch_workout_lookup.dart';
 import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
 import 'package:beyondrep/features/progress/workout_history_state.dart';
 import 'package:beyondrep/features/programs/application/program_providers.dart';
 import 'package:beyondrep/features/train/train_library_state.dart';
 import 'package:beyondrep/features/watch/application/watch_sync_controller.dart';
+import 'package:beyondrep/features/watch/application/watch_workout_health_inbox.dart';
 import 'package:beyondrep/features/watch/application/watch_status_provider.dart';
 import 'package:beyondrep/features/watch/data/objectbox_watch_workout_importer.dart';
 import 'package:beyondrep/features/watch/data/watch_link.dart';
@@ -26,11 +29,13 @@ import 'package:beyondrep/features/workouts/domain/workout_library_models.dart';
 import 'package:beyondrep/objectbox.g.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_account_auth.dart';
 import '../support/fake_health_overview.dart';
+import '../support/fake_health_workout_writer.dart';
 import '../support/health_overview_fixtures.dart';
 
 class _Call {
@@ -142,6 +147,7 @@ class _Harness {
     bool reachable = true,
     bool signedIn = true,
     Store? store,
+    List<Override> extraOverrides = const [],
   }) {
     link = _FakeLink(reachable: reachable);
     api = FakeAuthApi()..sessionId = signedIn ? accountA : null;
@@ -171,6 +177,7 @@ class _Harness {
               activeAccountId: active,
             ),
           ),
+        ...extraOverrides,
       ],
     );
     addTearDown(() async {
@@ -980,6 +987,48 @@ void main() {
       final ack = h.link.transferred(before) as Ack;
       expect(ack.result, 'stored');
       expect(ack.ackedMessageId, '77777777-3333-4333-8333-000000000020');
+    });
+
+    testWidgets('a workout_health from the watch reaches the health inbox and '
+        'is acked', (tester) async {
+      final writer = FakeHealthWorkoutWriter(isIos: false);
+      final repository = ObjectBoxHealthExportRepository(store)
+        ..enable(accountA, DateTime.utc(2026, 10, 1));
+      final h = _Harness(
+        tester,
+        store: store,
+        extraOverrides: [
+          watchWorkoutHealthInboxProvider.overrideWith(
+            (ref) => WatchWorkoutHealthInbox(
+              link: ref.read(watchLinkProvider),
+              signedInUserId: () => accountA,
+              ids: _Ids(),
+              clock: () => DateTime.utc(2026, 11, 24, 8),
+              workout: (uuid) => watchWorkoutCandidate(store, uuid),
+              repository: repository,
+              writer: writer,
+            ),
+          ),
+        ],
+      );
+      await h.start();
+      await _elapse(tester, const Duration(seconds: 3));
+      h.link.stateChanges.add(null);
+      await _elapse(tester, const Duration(seconds: 3));
+      h.link.incoming.add(completedJson());
+      await _elapse(tester, const Duration(milliseconds: 50));
+      final before = h.link.calls.where((c) => c.kind == 'transfer').length;
+      final json = jsonDecode(
+        File('../../contracts/watch_link/v1/fixtures/valid/workout_health.json')
+            .readAsStringSync(),
+      ) as Map<String, Object?>;
+      json['account_key'] = watchAccountKey(accountA);
+      h.link.incoming.add(jsonEncode(json));
+      await _elapse(tester, const Duration(milliseconds: 50));
+      expect(writer.writes, hasLength(1));
+      final ack = h.link.transferred(before) as Ack;
+      expect(ack.result, 'stored');
+      expect(ack.ackedMessageId, '77777777-3333-4333-8333-000000000040');
     });
 
     testWidgets('an ack message is still handled as before', (tester) async {

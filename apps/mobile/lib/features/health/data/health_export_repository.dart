@@ -104,6 +104,19 @@ class ObjectBoxHealthExportRepository implements HealthExportRepository {
   }
 }
 
+/// The platform record id of a confirmed receipt, else null. Android reads a
+/// watch workout's heart rate and calories back through it.
+String? confirmedPlatformRecordId(
+  HealthExportRepository repository,
+  String workoutUuid,
+) {
+  final r = repository.receipt(workoutUuid);
+  final id = r?.platformRecordId;
+  return r != null && r.state == 'confirmed' && id != null && id.isNotEmpty
+      ? id
+      : null;
+}
+
 final healthExportRepositoryProvider = Provider<HealthExportRepository>(
   (ref) => ObjectBoxHealthExportRepository(ref.watch(objectBoxStoreProvider)),
 );

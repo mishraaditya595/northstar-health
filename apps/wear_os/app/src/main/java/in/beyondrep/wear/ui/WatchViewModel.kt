@@ -12,13 +12,31 @@ import `in`.beyondrep.wear.core.glance.PlanRow
 import `in`.beyondrep.wear.core.glance.SyncLine
 import `in`.beyondrep.wear.core.glance.WaitingWorkouts
 import `in`.beyondrep.wear.core.session.WorkoutTemplate
+import `in`.beyondrep.wear.core.contracts.SetValues
+import `in`.beyondrep.wear.ui.workout.RecentExercise
+import `in`.beyondrep.wear.ui.workout.StartTarget
+import `in`.beyondrep.wear.ui.workout.SummaryStatus
+import `in`.beyondrep.wear.ui.workout.WorkoutActions
+import `in`.beyondrep.wear.workout.RunnerState
+import `in`.beyondrep.wear.workout.WorkoutRunner
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Duration
@@ -45,6 +63,8 @@ sealed interface WatchUi {
         val details: Map<Metric, DetailModel>,
         /** Read-only plan previews by plan id; the key null is today's program workout. */
         val previews: Map<String?, WorkoutTemplate>,
+        /** Exercises the phone listed as recent, for "+ Add exercise". */
+        val recent: List<RecentExercise> = emptyList(),
     ) : WatchUi
 }
 
@@ -58,13 +78,64 @@ class WatchViewModel(
     private val clock: () -> Instant,
     private val zone: () -> ZoneId,
     private val locale: () -> Locale = { Locale.getDefault() },
-) : ViewModel() {
+    private val runner: WorkoutRunner = graph.runner,
+) : ViewModel(), WorkoutActions {
     private val midnight = MutableStateFlow(0L)
 
     val ui: StateFlow<WatchUi> = combine(graph.revision, midnight, graph.phoneReachable) { _, _, reachable -> reachable }
         .map { reachable -> compute(reachable) }
         .flowOn(graph.dispatcher)
         .stateIn(viewModelScope, SharingStarted.Eagerly, WatchUi.Loading)
+
+    /** The running workout, its summary or the "another app" message. */
+    val workout: StateFlow<RunnerState> = runner.state
+
+    /** The journal revision: the controller is mutable, so workout screens recompute on it. */
+    val revision: StateFlow<Long> = graph.revision
+
+    private val _ambient = MutableStateFlow(false)
+    val ambient: StateFlow<Boolean> = _ambient
+
+    fun setAmbient(value: Boolean) {
+        _ambient.value = value
+    }
+
+    private val _now = MutableStateFlow(clock())
+
+    /** The clock for the workout screens: every second, every minute in ambient mode, still when no workout shows. */
+    val now: StateFlow<Instant> = _now
+
+    /** Ambient mode redraws once a minute by the system's own call: the timer below may not run with the screen dimmed. */
+    fun onAmbientUpdate() {
+        _now.value = clock()
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val clockTicks = combine(runner.state, _ambient) { state, ambient ->
+        if (state is RunnerState.Running) (if (ambient) 60_000L else 1_000L) else 0L
+    }.distinctUntilChanged().flatMapLatest { period ->
+        flow {
+            while (true) {
+                emit(clock())
+                if (period == 0L) break
+                delay(period)
+            }
+        }
+    }.onEach { _now.value = it }.launchIn(viewModelScope)
+
+    /** The summary's status line, from the journal's delivery state and phone reachability. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val summaryStatus: StateFlow<String> =
+        combine(runner.state, graph.revision, graph.phoneReachable) { state, _, reachable -> state to reachable }
+            .map { (state, reachable) ->
+                if (state is RunnerState.Finished) {
+                    SummaryStatus.text(graph.journal.delivery(state.summary.sessionId), reachable)
+                } else {
+                    ""
+                }
+            }
+            .flowOn(graph.dispatcher)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, "")
 
     init {
         viewModelScope.launch {
@@ -77,6 +148,73 @@ class WatchViewModel(
             }
         }
     }
+
+    // --- Workout actions: each runs on the runner, which moves to the journal thread -----------
+
+    override fun start(target: StartTarget) {
+        viewModelScope.launch {
+            val template = withContext(graph.dispatcher) { freshTemplate(target) } ?: return@launch
+            runner.start(template)
+        }
+    }
+
+    /** A template with new exercise and set ids, so two workouts from one plan never share an id. */
+    private fun freshTemplate(target: StartTarget): WorkoutTemplate? {
+        if (target == StartTarget.Quick) return WorkoutTemplate.quick()
+        val key = graph.journal.binding()?.accountKey ?: return null
+        val raw = (graph.journal.plans(key)?.body as? WatchMessageBody.PlansSnapshot)?.raw ?: return null
+        val makeId = { UUID.randomUUID().toString().lowercase() }
+        return when (target) {
+            StartTarget.Today -> WorkoutTemplate.today(raw, makeId)
+            is StartTarget.Plan -> WorkoutTemplate.fromPlan(raw, target.planId, makeId)
+            StartTarget.Quick -> null
+        }
+    }
+
+    override fun log(values: SetValues, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch { onDone(runner.log(values)) }
+    }
+
+    override fun setRpe(setId: String, rpe: Double?) {
+        viewModelScope.launch { runner.setRpe(setId, rpe) }
+    }
+
+    override fun extendRest() {
+        viewModelScope.launch { runner.extendRest() }
+    }
+
+    override fun skipRest() {
+        viewModelScope.launch { runner.skipRest() }
+    }
+
+    override fun pauseOrResume() {
+        viewModelScope.launch {
+            val running = workout.value as? RunnerState.Running ?: return@launch
+            if (running.controller.status == "paused") runner.resume() else runner.pause()
+        }
+    }
+
+    override fun addSet(exerciseId: String) {
+        viewModelScope.launch { runner.addSet(exerciseId) }
+    }
+
+    override fun addExercise(name: String, kind: String) {
+        viewModelScope.launch { runner.addExercise(name, kind, null) }
+    }
+
+    override fun focus(exerciseId: String) {
+        viewModelScope.launch { runner.focus(exerciseId) }
+    }
+
+    override fun finish() {
+        viewModelScope.launch { runner.finish() }
+    }
+
+    override fun discard() {
+        viewModelScope.launch { runner.discard() }
+    }
+
+    override fun dismiss() = runner.dismiss()
 
     private fun compute(reachable: Boolean): WatchUi {
         val journal = graph.journal
@@ -105,6 +243,15 @@ class WatchViewModel(
             waiting = WaitingWorkouts.make(journal),
             details = details,
             previews = previews,
+            recent = recent(raw),
         )
     }
+
+    private fun recent(raw: JsonObject?): List<RecentExercise> =
+        (raw?.get("recent_exercises") as? JsonArray).orEmpty().mapNotNull { element ->
+            val item = element as? JsonObject ?: return@mapNotNull null
+            val name = (item["name"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
+            val kind = (item["kind"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
+            RecentExercise(name, kind)
+        }
 }

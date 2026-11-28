@@ -14,9 +14,9 @@ import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import `in`.beyondrep.wear.core.glance.PlanSummary
 import `in`.beyondrep.wear.core.session.WorkoutTemplate
 
-/** Exercise names with "sets × reps". Read-only: no Start button before Wear stage 3. */
+/** Exercise names with "sets × reps", and a Start button when a template exists. */
 @Composable
-fun PlanPreviewScreen(template: WorkoutTemplate?) {
+fun PlanPreviewScreen(template: WorkoutTemplate?, onStart: (() -> Unit)? = null) {
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -38,6 +38,9 @@ fun PlanPreviewScreen(template: WorkoutTemplate?) {
                     BrText(PlanSummary.of(exercise), color = Palette.secondary, size = 11)
                 }
             }
+        }
+        if (onStart != null) {
+            item { BrButton("Start", onStart, Modifier.fillMaxWidth(0.85f), prominent = true) }
         }
     }
 }

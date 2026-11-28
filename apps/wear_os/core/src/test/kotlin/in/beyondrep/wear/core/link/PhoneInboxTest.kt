@@ -2,10 +2,12 @@ package `in`.beyondrep.wear.core.link
 
 import `in`.beyondrep.wear.core.FixtureLoader
 import `in`.beyondrep.wear.core.TestMessages
+import `in`.beyondrep.wear.core.contracts.HeartRatePoint
 import `in`.beyondrep.wear.core.contracts.WatchMessage
 import `in`.beyondrep.wear.core.contracts.WatchMessageBody
 import `in`.beyondrep.wear.core.store.AckEffect
 import `in`.beyondrep.wear.core.store.JournalFiles
+import `in`.beyondrep.wear.core.store.SqlValue
 import `in`.beyondrep.wear.core.store.WatchJournal
 import kotlinx.serialization.json.JsonObject
 import org.junit.jupiter.api.AfterEach
@@ -352,6 +354,44 @@ class PhoneInboxTest {
             WatchMessageBody.CompletedWorkout("x", 0, null, JsonObject(emptyMap())))
         assertTrue(queued(ack(unknown, "stored")).isEmpty())
         assertTrue(inbox.lastAckEffects.isEmpty())
+    }
+
+    /** A completed workout the phone has already acked: its session row says `delivered`. */
+    private fun deliveredWorkout() {
+        files.db().execute(
+            "INSERT OR IGNORE INTO sessions(session_id, account_key, status, state_json) VALUES(?,?,?,?)",
+            listOf(SqlValue.Text(ackSession), SqlValue.Text(m.keyA), SqlValue.Text("completed"), SqlValue.Text("{}")))
+        queued(ack(queuedCompleted(), "stored"))
+    }
+
+    private fun queuedSeries(key: String = m.keyA): WatchMessage {
+        val message = WatchMessage(
+            m.id(), "2026-10-23T11:41:00Z", key,
+            WatchMessageBody.WorkoutHealth(
+                ackSession, "2026-10-23T11:00:00Z", "2026-10-23T11:40:00Z",
+                listOf(HeartRatePoint("2026-10-23T11:00:00Z", 173)), 987.0))
+        journal.saveWorkoutHealth(ackSession, key, message, 1_792_000_000_000)
+        return message
+    }
+
+    @Test
+    fun anyAckOfTheSeriesDeletesIt() {
+        for (result in listOf("stored", "duplicate", "rejected")) {
+            deliveredWorkout()
+            val series = queuedSeries()
+            assertEquals(1, journal.pendingWorkoutHealth(m.keyA, 10).size, result)
+            assertTrue(queued(ack(series, result)).isEmpty())
+            assertTrue(journal.pendingWorkoutHealth(m.keyA, 10).isEmpty(), result)
+        }
+    }
+
+    @Test
+    fun anAckOfTheSeriesFromAnotherAccountIsIgnored() {
+        deliveredWorkout()
+        val series = queuedSeries()
+        queued(ack(series, "stored", key = m.keyB))
+        assertEquals(1, journal.pendingWorkoutHealth(m.keyA, 10).size)
+        assertEquals(1, inbox.ignoredCount)
     }
 
     // From WatchJournalTests.swift: pruning drives the inbox

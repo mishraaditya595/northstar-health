@@ -128,6 +128,61 @@ void main() {
     expect(writer.writes, isEmpty);
   });
 
+  test('theExporterNeverWritesAWatchWorkout', () async {
+    writer = FakeHealthWorkoutWriter(isIos: false);
+    session(1, origin: 'beyondrep_watch');
+    final result = await exporter().runPass();
+    expect(writer.writes, isEmpty);
+    expect(writer.deletes, isEmpty);
+    expect(receipt(1), isNull);
+    expect((result.saved, result.waiting), (0, 0));
+  });
+
+  test('deleting a watch workout deletes its Health Connect copy', () async {
+    writer = FakeHealthWorkoutWriter(isIos: false);
+    final s = session(1, origin: 'beyondrep_watch', deleted: true);
+    putReceipt(1, HealthExportState.confirmed, version: 1000, id: _uuid(1));
+    await exporter().runPass();
+    expect(writer.deletes, [
+      (workoutUuid: _uuid(1), platformRecordId: _uuid(1)),
+    ]);
+    expect(
+      writer.deleteWindows.single.start?.millisecondsSinceEpoch,
+      s.startedAtMs,
+    );
+    expect(
+      writer.deleteWindows.single.end?.millisecondsSinceEpoch,
+      s.completedAtMs,
+    );
+    expect(receipt(1)!.state, 'deleted');
+  });
+
+  test('on iOS a deleted watch workout is never touched by the exporter '
+      '(the watch owns its HealthKit entry)', () async {
+    session(1, origin: 'beyondrep_watch', deleted: true);
+    putReceipt(1, HealthExportState.confirmed, version: 1000, id: 'hk-1');
+    await exporter().runPass();
+    expect(writer.deletes, isEmpty);
+    expect(receipt(1)!.state, 'confirmed');
+  });
+
+  test('a watch workout that is not deleted keeps its copy', () async {
+    writer = FakeHealthWorkoutWriter(isIos: false);
+    session(1, origin: 'beyondrep_watch');
+    putReceipt(1, HealthExportState.confirmed, version: 1000, id: _uuid(1));
+    await exporter().runPass();
+    expect(writer.deletes, isEmpty);
+    expect(receipt(1)!.state, 'confirmed');
+  });
+
+  test('a phone workout delete sends no window', () async {
+    writer = FakeHealthWorkoutWriter(isIos: false);
+    session(1, deleted: true);
+    putReceipt(1, HealthExportState.confirmed, version: 1000, id: _uuid(1));
+    await exporter().runPass();
+    expect(writer.deleteWindows.single.start, isNull);
+  });
+
   test('saves all past workouts in two passes when there are 60', () async {
     for (var i = 0; i < 60; i++) {
       session(i + 1, finishedAgo: Duration(days: i + 1));

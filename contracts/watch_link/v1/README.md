@@ -4,7 +4,7 @@
 
 Every message has `schema_version` 1 (other versions are rejected, never read as v1), `message_id`, `type`, `sent_at_utc`, the 64-hex `account_key` (an HMAC of the user id; the raw id and email never reach the watch) and a `body`. Unknown keys are rejected at every level.
 
-`health_snapshot` is the only message that may carry health values; the CI test checks that no other valid fixture mentions them. `completed_workout.workout` is the cloud workout payload with `origin` `beyondrep_watch`; its field rules follow `docs/SYNC_PROTOCOL.md` "Cloud workout payload". The codecs (Dart, Swift) check only `origin` and a string `workout_id` of that object. **The stage-4 phone import must run the existing cloud-payload validator, including the reps-or-duration rule, before anything enters the outbox.** A delivered message is not an acknowledgment: durability is the explicit `ack`.
+`health_snapshot` and `workout_health` are the only messages that may carry health values; the CI test checks that no other valid fixture mentions them. `completed_workout.workout` is the cloud workout payload with `origin` `beyondrep_watch`; its field rules follow `docs/SYNC_PROTOCOL.md` "Cloud workout payload". The codecs (Dart, Swift) check only `origin` and a string `workout_id` of that object. **The stage-4 phone import must run the existing cloud-payload validator, including the reps-or-duration rule, before anything enters the outbox.** A delivered message is not an acknowledgment: durability is the explicit `ack`.
 
 `completed_workout.healthkit_workout_uuid` is the receipt the phone stores to hide the watch's own HealthKit workout from outside workouts. `completed_workout.program_day` (optional, `plan_id`, `program_id`, `local_date`; the watch copies it from `plans_snapshot.today`) tells the phone which program day the workout fulfils: the phone records it only when that plan exists locally and belongs to that program, and imports the workout without it otherwise.
 
@@ -22,6 +22,15 @@ Fixtures are fictional and synthetic. `$id` values use the reserved `.invalid` d
 JSON Schema cannot express the duplicate-factor and week-order rules, so the Python test (`cross_field_errors`), Dart and Swift check them in code.
 
 **Old watch builds:** the watch decoder rejects unknown keys, so a watch still on a build from before these fields rejects the new snapshot and shows "—" until it updates. The phone and the watch ship in the same TestFlight build, which is acceptable for an internal build.
+
+## Workout heart rate and calories (Wear OS stage 3b)
+
+`workout_health` (watch to phone) carries the heart rate and total calories of one finished watch workout so the Android phone can write them to Health Connect (ADR-0015). Additive, `schema_version` stays 1. The watch sends it only after the phone acked the `completed_workout`. Fixtures: `valid/workout_health.json`, `valid/workout_health_minimal.json`, `invalid/workout_health_*`.
+
+- Body: `workout_id`, `start_utc`, `end_utc` (end after start), `heart_rate` (0 to 600 items `{at_utc, bpm}`, `bpm` an integer 25 to 250, `at_utc` inside start..end and strictly increasing) and optional `total_kcal` (above 0, at most 10000). Missing values are left out, never 0.
+- The watch reduces heart rate to one average per started minute of the workout (`at_utc` = the minute's start, `bpm` rounded half up); a minute without a valid sample is left out.
+- JSON Schema cannot express the end-after-start, samples-inside and strictly-increasing rules; the Python test (`workout_health_errors`), Kotlin and Dart check them in code.
+- `ack` gains reason `not_written`, allowed only with `rejected`: the phone will not write it (the save-workouts switch is off, the workout was deleted, Health Connect is missing or unsupported, or the phone is not Android). The watch deletes the series on any ack. A write failure, or a missing heart rate or calories permission while the switch is on, sends no ack, so the watch keeps the series (up to 7 days) and resends.
 
 ## Live session (stage 5a)
 
