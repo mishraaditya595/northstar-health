@@ -40,6 +40,9 @@ public enum WatchMessageBody {
     /// A follower is attached; `sessionId` is nil while the watch does not know
     /// the phone's session yet.
     case join(sessionId: String?)
+    /// Heart rate and calories of a finished Wear OS workout. The Apple Watch
+    /// never sends it; it is decoded so the shared fixtures stay valid here.
+    case workoutHealth(workoutId: String, raw: [String: Any])
 }
 
 /// One `watch_link/v1` message.
@@ -69,13 +72,14 @@ public struct WatchMessage {
         case .ack: return "ack"
         case .workoutLink: return "workout_link"
         case .join: return "join"
+        case .workoutHealth: return "workout_health"
         }
     }
 
     private static let types: Set<String> = [
         "account_binding", "account_cleared", "plans_snapshot", "health_snapshot",
         "workout_event", "session_state", "session_command", "completed_workout", "ack",
-        "workout_link", "join",
+        "workout_link", "join", "workout_health",
     ]
 
     public init(json data: Data) throws {
@@ -294,11 +298,40 @@ public struct WatchMessage {
         case "join":
             let b = try body([], ["session_id"])
             self.body = .join(sessionId: try b.has("session_id") ? b.uuid("session_id") : nil)
+        case "workout_health":
+            let b = try body(["workout_id", "start_utc", "end_utc", "heart_rate"], ["total_kcal"])
+            let workoutId = try b.uuid("workout_id")
+            let start = try b.dateTime("start_utc")
+            let end = try b.dateTime("end_utc")
+            guard let startMs = WatchTimestamp.milliseconds(start), let endMs = WatchTimestamp.milliseconds(end),
+                endMs > startMs
+            else { throw ContractError("invalid_value") }
+            var previous: Int64?
+            for item in try b.array("heart_rate", max: 600) {
+                let point = try StrictObject(item, required: ["at_utc", "bpm"])
+                let at = try point.dateTime("at_utc")
+                _ = try point.int("bpm", min: 25, max: 250)
+                guard let atMs = WatchTimestamp.milliseconds(at), atMs >= startMs, atMs <= endMs else {
+                    throw ContractError("invalid_value")
+                }
+                if let previous, atMs <= previous { throw ContractError("invalid_value") }
+                previous = atMs
+            }
+            if b.has("total_kcal") {
+                guard let kcal = b.dict["total_kcal"] as? NSNumber, !StrictObject.isBool(kcal),
+                    kcal.doubleValue > 0, kcal.doubleValue <= 10000
+                else { throw ContractError("invalid_value") }
+            }
+            self.body = .workoutHealth(workoutId: workoutId, raw: b.dict)
         default:
             let b = try body(["acked_message_id", "result"], ["reason"])
             let acked = try b.uuid("acked_message_id")
             let result = try b.oneOf("result", ["stored", "duplicate", "rejected"])
-            let reason = try b.has("reason") ? b.oneOf("reason", ["wrong_account", "invalid", "unsupported_version"]) : nil
+            let reason =
+                try b.has("reason")
+                ? b.oneOf("reason", ["wrong_account", "invalid", "unsupported_version", "not_written"]) : nil
+            // not_written only ever comes with a rejection.
+            if reason == "not_written", result != "rejected" { throw ContractError("invalid_value") }
             self.body = .ack(ackedMessageId: acked, result: result, reason: reason)
         }
     }
@@ -332,7 +365,7 @@ public struct WatchMessage {
         case .accountBinding(let unit): return ["unit": unit]
         case .accountCleared(let wipe): return ["wipe_unsent": wipe]
         case .plansSnapshot(let raw), .healthSnapshot(_, let raw), .sessionState(_, let raw),
-            .completedWorkout(_, _, _, let raw):
+            .completedWorkout(_, _, _, let raw), .workoutHealth(_, let raw):
             return raw
         case .workoutEvent(let event): return ["event": event.jsonObject]
         case .sessionCommand(let c):

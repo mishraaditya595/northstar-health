@@ -87,6 +87,27 @@ final class ContractFixtureTests: XCTestCase {
         }
     }
 
+    func testWorkoutHealthDecodesAndKeepsItsBody() throws {
+        let data = try FixtureLoader.json("contracts/watch_link/v1/fixtures/valid/workout_health.json")
+        let message = try WatchMessage(json: data)
+        XCTAssertEqual(message.type, "workout_health")
+        guard case .workoutHealth(let workoutId, let raw) = message.body else { return XCTFail("wrong body") }
+        XCTAssertEqual(workoutId, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+        XCTAssertEqual((raw["heart_rate"] as? [Any])?.count, 3)
+        XCTAssertEqual((raw["total_kcal"] as? NSNumber)?.doubleValue, 312.5)
+    }
+
+    func testNotWrittenAckDecodesOnlyWithRejected() throws {
+        let valid = try FixtureLoader.json("contracts/watch_link/v1/fixtures/valid/ack_not_written.json")
+        guard case .ack(_, let result, let reason) = try WatchMessage(json: valid).body else {
+            return XCTFail("wrong body")
+        }
+        XCTAssertEqual(result, "rejected")
+        XCTAssertEqual(reason, "not_written")
+        let invalid = try FixtureLoader.json("contracts/watch_link/v1/fixtures/invalid/ack_not_written_stored.json")
+        XCTAssertThrowsError(try WatchMessage(json: invalid))
+    }
+
     func testHealthSnapshotStillRejectsUnknownKey() throws {
         let data = try FixtureLoader.json("contracts/watch_link/v1/fixtures/valid/health_snapshot_full.json")
         var message = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
