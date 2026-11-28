@@ -1,0 +1,212 @@
+/* Scroll scenes on the home page. The resting rules (outside the media block)
+   are the finished, readable state and need no JS. Pinning and track heights
+   apply only under .scenes-ready, which scroll-scenes.mjs sets when motion is
+   allowed. Per-frame values arrive as custom properties and data attributes
+   on the [data-scene-track] element; only transforms, opacity and strokes
+   consume them. */
+
+/* Text left, demo right. On phones: heading, demo, then the points. */
+.scene-split { grid-template-areas: 'head' 'demo' 'points'; }
+.scene-split .copy { display: contents; }
+.scene-split .split-head { grid-area: head; }
+.scene-split .points { grid-area: points; margin: 0; }
+.scene-split .demo-track { grid-area: demo; }
+.scene-split .demo { align-self: stretch; }
+@media (min-width: 900px) {
+  .scene-split { grid-template-columns: 1fr 1fr; grid-template-areas: 'copy demo'; align-items: start; }
+  .scene-split.split-flip { grid-template-areas: 'demo copy'; }
+  .scene-split .copy { display: block; grid-area: copy; }
+  .scene-split .split-head, .scene-split .points { grid-area: auto; }
+  .scene-split .points { margin: 28px 0 0; }
+  .scene-split .demo-track { align-self: center; }
+}
+
+/* Offline demo, finished state: all sets saved, backed up. */
+.signal { display: inline-flex; align-items: flex-end; gap: 3px; height: 16px; }
+.signal i { width: 4px; border-radius: 1px; background: var(--performance); }
+.signal i:nth-child(1) { height: 5px; }
+.signal i:nth-child(2) { height: 8px; }
+.signal i:nth-child(3) { height: 12px; }
+.signal i:nth-child(4) { height: 16px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .scenes-ready [data-scene-track] { height: var(--track, 220vh); }
+  .scenes-ready [data-scene-stage] {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* A stage taller than a short window starts at its top instead of
+       spilling above the viewport. */
+    justify-content: safe center;
+  }
+
+  /* Offline */
+  .scenes-ready [data-scene-track="offline"] .signal i {
+    opacity: clamp(0.22, calc(var(--bars, 4) - var(--k) + 1), 1);
+    transition: opacity 0.2s ease, background-color 0.3s ease;
+  }
+  .scenes-ready [data-scene-track="offline"][data-online="no"] .signal i { background: var(--caution); }
+  .scenes-ready [data-scene-track="offline"] .chip-offline { transition: opacity 0.3s ease; }
+  .scenes-ready [data-scene-track="offline"][data-online="no"] .chip-offline { opacity: 1; }
+  .scenes-ready [data-scene-track="offline"] .chip-online { opacity: clamp(0, calc((var(--sync, 1) - 0.9) * 10), 1); }
+  .scenes-ready [data-scene-track="offline"] .set-row { transition: opacity 0.35s ease, transform 0.35s ease; }
+  .scenes-ready [data-scene-track="offline"] .set-row i,
+  .scenes-ready [data-scene-track="offline"] .set-row em { transition: opacity 0.3s ease, transform 0.3s ease; }
+  .scenes-ready [data-scene-track="offline"][data-saved="0"] .set-row,
+  .scenes-ready [data-scene-track="offline"][data-saved="1"] .set-row:is([data-n="2"], [data-n="3"]),
+  .scenes-ready [data-scene-track="offline"][data-saved="2"] .set-row[data-n="3"] { opacity: 0.3; transform: translateX(-8px); }
+  .scenes-ready [data-scene-track="offline"][data-saved="0"] .set-row :is(i, em),
+  .scenes-ready [data-scene-track="offline"][data-saved="1"] .set-row:is([data-n="2"], [data-n="3"]) :is(i, em),
+  .scenes-ready [data-scene-track="offline"][data-saved="2"] .set-row[data-n="3"] :is(i, em) { opacity: 0; }
+  .scenes-ready [data-scene-track="offline"][data-saved="0"] .set-row i,
+  .scenes-ready [data-scene-track="offline"][data-saved="1"] .set-row:is([data-n="2"], [data-n="3"]) i,
+  .scenes-ready [data-scene-track="offline"][data-saved="2"] .set-row[data-n="3"] i { transform: scale(0.4); }
+  .scenes-ready [data-scene-track="offline"] .sync-wait { opacity: clamp(0, calc(1 - (var(--sync, 1) - 0.9) * 10), 1); }
+  .scenes-ready [data-scene-track="offline"] .sync-done { opacity: clamp(0, calc((var(--sync, 1) - 0.9) * 10), 1); }
+  .scenes-ready [data-scene-track="offline"] .sync-bar i { transform: scaleX(var(--sync, 1)); }
+
+  /* Points light up in step: border and tag colour only, text stays full. */
+  .scenes-ready .scene-split:has([data-scene-track="offline"]) .points li { transition: border-color 0.3s ease; }
+  .scenes-ready .scene-split:has([data-scene-track="offline"]) .points .tag { color: var(--ink-2); transition: color 0.3s ease; }
+  .scenes-ready .scene-split:has([data-point="0"]) .points li:nth-child(1),
+  .scenes-ready .scene-split:has([data-point="1"]) .points li:nth-child(2),
+  .scenes-ready .scene-split:has([data-point="2"]) .points li:nth-child(3) { border-color: var(--performance); }
+  .scenes-ready .scene-split:has([data-point="0"]) .points li:nth-child(1) .tag,
+  .scenes-ready .scene-split:has([data-point="1"]) .points li:nth-child(2) .tag,
+  .scenes-ready .scene-split:has([data-point="2"]) .points li:nth-child(3) .tag { color: var(--performance); }
+}
+@media (prefers-reduced-motion: no-preference) and (min-width: 900px) {
+  .scenes-ready .scene-split .copy { position: sticky; top: clamp(24px, 7vh, 72px); }
+  .scenes-ready .scene-split .demo-track { align-self: stretch; }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 899px) {
+  .scenes-ready [data-scene-track] { --track: 175vh; }
+  .scenes-ready [data-scene-stage] { height: auto; top: 8vh; top: 8svh; }
+}
+
+/* Training. Phones: no pin; each tile's mini demo scrubs with --k as the tile
+   crosses the screen. Wide and tall windows: one pinned panel steps through
+   the five tiles. Anything else shows the finished tile grid. */
+@media (prefers-reduced-motion: no-preference) {
+  .scenes-ready [data-scene-track="training"],
+  .scenes-ready [data-scene-track^="tile-"] { --track: auto; }
+  .scenes-ready [data-scene-track="training"] [data-scene-stage] { position: static; height: auto; display: block; }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 899px) {
+  .scenes-ready .tile { --lib: var(--k, 1); --prog: var(--k, 1); --log: var(--k, 1); --ring: var(--k, 1); --bars: var(--k, 1); }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 899px), (prefers-reduced-motion: no-preference) and (min-width: 900px) and (min-height: 720px) {
+  .scenes-ready .result {
+    opacity: clamp(0, calc(var(--lib, 1) * 4 - var(--j)), 1);
+    transform: translateX(calc((1 - clamp(0, calc(var(--lib, 1) * 4 - var(--j)), 1)) * -14px));
+  }
+  .scenes-ready .chips span { transform: scale(clamp(0.4, calc(0.4 + var(--lib, 1) * 6), 1)); opacity: clamp(0, calc(var(--lib, 1) * 6), 1); }
+  .scenes-ready .week span { opacity: clamp(0.25, calc(var(--prog, 1) * 9 - var(--j)), 1); }
+  .scenes-ready .today-card {
+    opacity: clamp(0, calc(var(--prog, 1) * 3 - 1.4), 1);
+    transform: translateY(calc((1 - clamp(0, calc(var(--prog, 1) * 3 - 1.4), 1)) * 12px));
+  }
+  .scenes-ready .viz-timer .ring { stroke-dashoffset: calc(var(--ring, 0.62) * 100); }
+  .scenes-ready .bars i { transform: scaleY(clamp(0.02, calc(var(--bars, 1) * 9 - var(--j)), 1)); }
+  .scenes-ready .muscles span { opacity: clamp(0, calc(var(--bars, 1) * 9 - 5 - var(--j)), 1); transform: scale(clamp(0.5, calc(var(--bars, 1) * 9 - 5 - var(--j)), 1)); }
+}
+@media (prefers-reduced-motion: no-preference) and (min-width: 900px) and (min-height: 720px) {
+  .scenes-ready [data-scene-track="training"] { --track: 280vh; }
+  .scenes-ready [data-scene-track="training"] [data-scene-stage] {
+    position: sticky; top: 0; height: 100vh; height: 100svh;
+    display: grid; grid-template-columns: 1fr 1.1fr; column-gap: clamp(40px, 6vw, 88px);
+    grid-template-rows: auto repeat(10, auto) auto; align-content: center; align-content: safe center; padding: 24px 0;
+  }
+  .scenes-ready .train-head { grid-column: 1; grid-row: 1; margin-bottom: 20px; }
+  .scenes-ready .tiles, .scenes-ready .tile { display: contents; }
+  .scenes-ready .tile h3 {
+    grid-column: 1; grid-row: calc(var(--n) * 2); margin: 0; padding: 4px 0 0 18px;
+    border-left: 2px solid var(--border); font-size: 1.0625rem; transition: border-color 0.3s ease;
+  }
+  .scenes-ready .tile p {
+    grid-column: 1; grid-row: calc(var(--n) * 2 + 1); margin: 0; padding: 2px 0 14px 18px;
+    border-left: 2px solid var(--border); font-size: 0.9375rem; transition: border-color 0.3s ease;
+  }
+  .scenes-ready [data-step="0"] .tile:nth-child(1) :is(h3, p),
+  .scenes-ready [data-step="1"] .tile:nth-child(2) :is(h3, p),
+  .scenes-ready [data-step="2"] .tile:nth-child(3) :is(h3, p),
+  .scenes-ready [data-step="3"] .tile:nth-child(4) :is(h3, p),
+  .scenes-ready [data-step="4"] .tile:nth-child(5) :is(h3, p) { border-color: var(--performance); }
+  .scenes-ready .train-note { grid-column: 1; grid-row: 12; margin-top: 4px; }
+  .scenes-ready .tile .viz {
+    grid-column: 2; grid-row: 1 / span 11; align-self: center;
+    height: clamp(320px, 52vh, 440px); padding: 28px; opacity: 0; transition: opacity 0.4s ease;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card);
+    box-shadow: 0 30px 80px -40px rgb(0 0 0 / 0.45);
+  }
+  .scenes-ready .tile .viz > * { zoom: 1.65; }
+  .scenes-ready .tile .viz:not(.viz-timer) { display: flex; flex-direction: column; justify-content: center; }
+  .scenes-ready [data-step="0"] .tile:nth-child(1) .viz,
+  .scenes-ready [data-step="1"] .tile:nth-child(2) .viz,
+  .scenes-ready [data-step="2"] .tile:nth-child(3) .viz,
+  .scenes-ready [data-step="3"] .tile:nth-child(4) .viz,
+  .scenes-ready [data-step="4"] .tile:nth-child(5) .viz { opacity: 1; }
+}
+
+/* Recovery */
+@media (prefers-reduced-motion: no-preference) {
+  .scenes-ready [data-scene-track="recovery"] .wave i { transform: scaleY(clamp(0.08, calc(var(--wave, 1) * 13 - var(--j)), 1)); }
+  /* The arc follows the number: 41 at the start, the sample 74 when done. */
+  .scenes-ready [data-scene-track="recovery"] .gauge .arc { stroke-dashoffset: calc(59 - 33 * var(--energy, 1)); }
+  .scenes-ready [data-scene-track="recovery"] .energy-trend polyline { stroke-dashoffset: calc((1 - var(--trend, 1)) * 100); }
+}
+
+/* Privacy */
+[data-scene-stage] > .finale { width: 100%; }
+[data-scene-track="privacy"] .cards { position: relative; margin-top: 32px; }
+.phone-outline { display: none; }
+.vault-lock { position: absolute; top: 28px; right: 28px; width: 24px; height: 24px; fill: none; stroke: var(--performance); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+@media (prefers-reduced-motion: no-preference) {
+  .scenes-ready [data-scene-track="privacy"] { --track: 170vh; }
+  .scenes-ready [data-scene-track="privacy"] .vault { overflow: visible; isolation: auto; }
+  .scenes-ready [data-scene-track="privacy"] .vault::before { display: none; }
+  /* Card headings stay above the moving items, so they read at every step. */
+  .scenes-ready [data-scene-track="privacy"] .vault h3 { position: relative; z-index: 4; }
+  .scenes-ready [data-scene-track="privacy"] .vault li {
+    z-index: 3;
+    border-radius: 12px;
+    transform:
+      translate(calc(var(--fx, 0px) * (1 - var(--split, 1))), calc(var(--fy, 0px) * (1 - var(--split, 1))))
+      scale(calc(0.62 + 0.38 * var(--split, 1)));
+    background: color-mix(in srgb, var(--surface-soft) clamp(0%, calc((1 - var(--split, 1)) * 300%), 100%), transparent);
+    box-shadow: 0 0 0 calc((1 - var(--split, 1)) * 6px) color-mix(in srgb, var(--surface-soft) clamp(0%, calc((1 - var(--split, 1)) * 300%), 100%), transparent);
+  }
+  .scenes-ready [data-scene-track="privacy"] .phone-outline {
+    display: block; position: absolute; z-index: 2; left: 50%; top: var(--pile-y, 50%);
+    width: min(340px, 78%); height: var(--pile-h, 270px); translate: -50% -50%;
+    border: 2px solid var(--performance); border-radius: 36px; pointer-events: none;
+    background: color-mix(in srgb, var(--performance) 7%, transparent);
+    opacity: calc(1 - var(--split, 1));
+    transform: scale(calc(1 - 0.12 * var(--split, 1)));
+  }
+  .scenes-ready [data-scene-track="privacy"] .phone-outline::before {
+    content: ''; position: absolute; top: 10px; left: 50%; width: 44px; height: 4px; margin-left: -22px;
+    border-radius: 4px; background: var(--performance); opacity: 0.6;
+  }
+  .scenes-ready [data-scene-track="privacy"] .vault-lock { transition: opacity 0.35s ease, transform 0.35s ease; }
+  .scenes-ready [data-scene-track="privacy"][data-locked="no"] .vault-lock { opacity: 0; transform: scale(0.5); }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 899px) {
+  .scenes-ready [data-scene-track="privacy"] { --track: 150vh; }
+}
+
+/* Finale */
+@media (prefers-reduced-motion: no-preference) {
+  .scenes-ready [data-scene-track="finale"] { --track: 150vh; }
+  .scenes-ready [data-scene-track="finale"] .finale-rings {
+    transform: translateY(-50%) scale(calc(0.6 + 0.4 * var(--rings, 1))) rotate(calc((1 - var(--rings, 1)) * -50deg));
+    opacity: calc(0.25 + 0.75 * var(--rings, 1));
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 899px) {
+  .scenes-ready [data-scene-track="finale"] { --track: 135vh; }
+}
