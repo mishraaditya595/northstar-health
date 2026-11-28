@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The watch app looks for this capability to know a phone with BeyondRep is paired. -->
+    <string-array name="android_wear_capabilities">
+        <item>beyondrep_phone_app</item>
+    </string-array>
+</resources>

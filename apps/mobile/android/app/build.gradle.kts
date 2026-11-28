@@ -108,3 +108,11 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Wear Data Layer link to the watch app (WearLinkBridge). Must stay in step
+    // with apps/wear_os so both builds speak the same Data Layer version.
+    implementation("com.google.android.gms:play-services-wearable:19.0.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+}
