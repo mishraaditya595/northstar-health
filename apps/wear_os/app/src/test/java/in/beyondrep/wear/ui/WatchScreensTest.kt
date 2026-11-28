@@ -246,7 +246,8 @@ class WatchScreensTest {
         savePlans(listOf("Synthetic push day", "Synthetic pull day"), today = "Week 1 day 1")
         showRoot(initialPage = 1)
         waitForText("Synthetic pull day")
-        compose.onNodeWithContentDescription("Synthetic pull day", substring = true).performClick()
+        // Exact description: the plan's Start button also names "Synthetic pull day".
+        compose.onNodeWithContentDescription("Synthetic pull day, 2 exercises").performClick()
         waitForText("Move 0")
         compose.onNodeWithText("Move 1").assertIsDisplayed()
         compose.onAllNodesWithText("1 × 8").assertCountEquals(2)

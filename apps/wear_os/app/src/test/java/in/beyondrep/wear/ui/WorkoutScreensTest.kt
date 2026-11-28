@@ -6,6 +6,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.hasContentDescription
@@ -272,8 +273,8 @@ class WorkoutScreensTest {
         startQuickWorkout()
         showRoot(workoutPage = 2)
         waitForText("Exercises")
-        assertTrue(compose.onAllNodesWithContentDescription("Heart rate not available").fetchSemanticsNodes().isNotEmpty())
-        compose.onAllNodesWithText("\u2014").onFirst().assertExists()
+        // The dash itself is hidden from semantics (clearAndSetSemantics), so its description is what shows.
+        compose.onAllNodesWithContentDescription("Heart rate not available").assertCountEquals(1)
         assertEquals(0, compose.onAllNodesWithText("0").fetchSemanticsNodes().size)
     }
 
