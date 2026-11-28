@@ -7,16 +7,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
 import `in`.beyondrep.wear.app.WatchGraph
@@ -273,7 +273,9 @@ class WatchScreensTest {
         bind(); saveFullHealth()
         showRoot(fontScale = fontScale)
         waitForText("Ready to train")
-        repeat(3) { compose.onRoot().performTouchInput { swipeUp() } }
+        // The innermost scrollable is Home's list (the pager is outside it); scrolling to the node
+        // does not depend on swipe distances or fling timing.
+        compose.onAllNodes(hasScrollToNodeAction()).onLast().performScrollToNode(hasText("Steps"))
         compose.waitForIdle()
         compose.onNodeWithContentDescription("Steps", substring = true).assertIsDisplayed()
         compose.onNodeWithText("Steps").assertIsDisplayed()
