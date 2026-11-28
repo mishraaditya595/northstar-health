@@ -78,7 +78,7 @@ Opt-in write of one BeyondRep-owned workout summary, export receipts and platfor
 
 ## Later phase — Wear OS companion
 
-Wear OS recording (Health Services session, haptics, battery behaviour) is its own later phase, reusing the message format and the shared language-neutral test files from Phase 4, and built when a Wear OS watch is available for device testing. Validate Flutter UI on Wear OS vs Compose before committing; no production dependency on an experimental engine without real tests.
+Native Kotlin/Compose companion ([ADR-0015](adr/0015-wear-os-companion.md), design: [Wear OS companion](superpowers/specs/2026-11-27-wear-os-companion-design.md)), reusing the Phase 4 message contracts and golden files. Stages: (1) watch core: app ID `in.beyondrep.app`, JVM `:core` module with codecs, replay, session machine, command applier, builders, phone inbox and SQLite journal, all golden cases passing; (2) Data Layer link and glance, phone watch status; (3) workout recording with Health Services and Health Connect heart rate and calories; (4) live link both ways; (5) the watch's own health. **Stage 1 is implemented in source, not released or device-verified** (`:core:test` runs on CI; `:app:assembleDebug` is CI only). Stages 2 to 5 are not started.
 
 ## Diagnostics/privacy cross-cutting gate
 

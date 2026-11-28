@@ -57,3 +57,7 @@ The attached research is a feasibility study, not a built watch prototype. Its c
 - `apps/wear_os/app/`: Kotlin/Compose watch scaffold with watch manifest and independent Gradle build.
 - `contracts/workout_sync/v1/`: versioned language-neutral schema and fictional event fixtures; real serializers not implemented.
 - `experiments/`: evaluated only; no Flutter watch runtime committed into stable builds.
+
+## Wear OS companion
+
+The Wear OS app follows [ADR-0015](adr/0015-wear-os-companion.md): native Kotlin/Compose, the phone's app ID and signing key, the Wear Data Layer as transport, and the same ownership and backup rules as the Apple Watch. Stage 1 (the JVM watch core in `apps/wear_os/core`) is implemented in source and not device-verified; the Health Services recording described above remains unimplemented.
