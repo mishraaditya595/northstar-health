@@ -117,7 +117,7 @@ Workouts from other apps and the training-load readiness input are implemented i
 
 Energy on the Health tab hero, the detail Today view, Today, the Train strip, the pre-workout note, "Better fit today" and the watch is implemented in source, **not released or device-verified**. Every row is not run.
 
-**Release gate:** energy stages 1 and 2 ship together; stage 3 tuning is not started.
+**Release gate:** energy stages 1 and 2 ship together; stage 3 tuning is implemented in source and its rows below are not run.
 
 | Check | iOS | Android |
 | --- | --- | --- |
@@ -132,6 +132,9 @@ Energy on the Health tab hero, the detail Today view, Today, the Train strip, th
 | Stage 2: watch Home and detail show energy and `· still learning`, cleared at local midnight | n/a | not run |
 | Stage 2: VoiceOver and TalkBack read "Energy" on Today, Train and the watch, never "Readiness" | not run | not run |
 | Stage 2: 41 mm Apple Watch Home shows the whole reason line including `· still learning` | not run | n/a |
+| Stage 3: a late-night trainer (usual sessions 22:00-23:00) sees no awake dip at the usual hour and the dip at 15:00 | not run | not run |
+| Stage 3: the first Health open of the day on Android does not hit the Health Connect read quota on repeated resumes (the three extra reads happen once per local day) | n/a | not run |
+| Stage 3: an account switch drops the cached history and tuning | not run | not run |
 
 ## Phase 4 stage 3: watch link, glance and TestFlight embedding (owner actions, none done)
 
