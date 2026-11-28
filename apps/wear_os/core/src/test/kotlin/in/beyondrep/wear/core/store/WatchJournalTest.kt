@@ -475,6 +475,16 @@ class WatchJournalTest {
     }
 
     @Test
+    fun aRejectedWorkoutDeletesItsSeries() {
+        val journal = WatchJournal(JdbcSqlDatabase(dir.resolve("rejected-workout.sqlite")).also { opened.add(it) })
+        val completedId = queueFinished(journal)
+        journal.saveWorkoutHealth(session, key, healthMessage(), endedMs)
+        journal.applyAck(completedId, "rejected")
+        assertEquals(0, JdbcSqlDatabase(dir.resolve("rejected-workout.sqlite")).also { opened.add(it) }
+            .query("SELECT COUNT(*) FROM session_health").first().first().let { (it as SqlValue.Int64).v.toInt() })
+    }
+
+    @Test
     fun clearAccountDeletesTheSeries() {
         for (wipe in listOf(false, true)) {
             val journal = WatchJournal(JdbcSqlDatabase(dir.resolve("wipe$wipe.sqlite")).also { opened.add(it) })

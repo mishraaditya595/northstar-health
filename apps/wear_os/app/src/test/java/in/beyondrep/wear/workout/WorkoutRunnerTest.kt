@@ -285,7 +285,7 @@ class WorkoutRunnerTest {
     }
 
     @Test
-    fun finishWithoutReadingsSavesNoSeries() = runBlocking<Unit> {
+    fun finishWithoutReadingsStillSavesTheSessionWithAnEmptySeries() = runBlocking<Unit> {
         val runner = timedRunner(FakeSensors(startResult = SensorStart(false, false)))
         now = t0
         runner.start(template)
@@ -293,7 +293,9 @@ class WorkoutRunnerTest {
         now = t0.plusSeconds(600)
         runner.finish()
         ackCompleted()
-        assertTrue(pendingSeries().isEmpty())
+        val body = assertIs<WatchMessageBody.WorkoutHealth>(pendingSeries().single().body)
+        assertTrue(body.heartRate.isEmpty())
+        assertEquals(null, body.totalKcal)
     }
 
     @Test

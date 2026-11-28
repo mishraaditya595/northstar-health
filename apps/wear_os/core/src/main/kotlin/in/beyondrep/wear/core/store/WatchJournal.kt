@@ -274,6 +274,9 @@ class WatchJournal(
                 return@transaction null
             }
             val rejected = result == "rejected"
+            // A rejected workout is never written to the phone, so its series would only wait for the
+            // 7-day prune (the phone ignores a workout_health for a workout it does not hold).
+            if (rejected) db.execute("DELETE FROM session_health WHERE session_id = ?", listOf(text(sessionId)))
             db.execute("DELETE FROM outbox WHERE session_id = ?", listOf(text(sessionId)))
             db.execute("DELETE FROM events WHERE session_id = ?", listOf(text(sessionId)))
             db.execute("DELETE FROM applied_commands WHERE session_id = ?", listOf(text(sessionId)))

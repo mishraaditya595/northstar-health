@@ -40,9 +40,13 @@ class WorkoutHealthBuilderTest {
     }
 
     @Test
-    fun noHeartRateAndNoCaloriesBuildsNothing() {
-        assertNull(build())
-        assertNull(build(kcal = 0.0))
+    fun noHeartRateAndNoCaloriesStillBuildsTheSession() {
+        // The session itself must reach Health Connect even without a reading.
+        for (message in listOf(build(), build(kcal = 0.0))) {
+            val b = body(message)
+            assertEquals(emptyList(), b.heartRate)
+            assertNull(b.totalKcal)
+        }
     }
 
     @Test
@@ -60,7 +64,7 @@ class WorkoutHealthBuilderTest {
     @Test
     fun caloriesAboveTheCeilingAreLeftOut() {
         assertNull(body(build(listOf(start to 90), 10_001.0)).totalKcal)
-        assertNull(build(kcal = 10_001.0))
+        assertNull(body(build(kcal = 10_001.0)).totalKcal)
     }
 
     @Test

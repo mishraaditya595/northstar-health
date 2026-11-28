@@ -240,8 +240,8 @@ class WorkoutRunner(
 
     /**
      * Keeps the per-minute heart rate and the total calories next to the finished session (the
-     * journal's only health rows, ADR-0015). Runs on the journal dispatcher. Nothing is saved when
-     * the workout has neither.
+     * journal's only health rows, ADR-0015). Runs on the journal dispatcher. A workout with neither
+     * still saves the message (empty series, no total) so the session reaches Health Connect.
      */
     private fun saveWorkoutHealth(controller: WorkoutController, endedAt: Instant) {
         val start = controller.startedAt

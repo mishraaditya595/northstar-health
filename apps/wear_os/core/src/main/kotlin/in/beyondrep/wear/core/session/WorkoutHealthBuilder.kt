@@ -13,9 +13,10 @@ object WorkoutHealthBuilder {
 
     /**
      * [series] comes from `HeartRateTracker.minuteSeries`. Points outside the workout are dropped.
-     * Returns null when there is nothing to send: no heart rate and no valid calories, or an
-     * workout that does not end after it started (to the second). Values are only in the message
-     * the caller keeps in the journal's `session_health` row.
+     * Returns null only for a workout that does not end after it started (to the second). With no
+     * heart rate and no valid calories the message still goes, with an empty series and no total, so
+     * the session itself reaches Health Connect. Values are only in the message the caller keeps in
+     * the journal's `session_health` row.
      */
     fun message(
         workoutId: String,
@@ -35,7 +36,6 @@ object WorkoutHealthBuilder {
             .take(MAX_POINTS)
             .map { HeartRatePoint(WatchTimestamp.format(it.first), it.second) }
         val kcal = totalKcal?.takeIf { it > 0 && it <= MAX_KCAL }
-        if (points.isEmpty() && kcal == null) return null
         return WatchMessage(
             messageId, sentAtUtc, accountKey,
             WatchMessageBody.WorkoutHealth(workoutId, startText, endText, points, kcal))
