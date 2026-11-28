@@ -286,6 +286,24 @@ EnergyOverview? currentEnergy(HealthOverview o, DateTime now) {
   return current ? value : null;
 }
 
+/// The energy to show as "now": the current waking day's value, never the
+/// morning readiness when there is none.
+Energy? currentEnergyScore(HealthOverview o, DateTime now) =>
+    currentEnergy(o, now)?.energy;
+
+/// Days until the energy starts, while the current day's start is still being
+/// built; null when energy exists or no day count is known.
+({int days})? energyBuilding(HealthOverview o, DateTime now) {
+  final e = currentEnergy(o, now);
+  if (e == null || e.energy != null) return null;
+  final result = e.start.result;
+  if (result is ReadinessNotReady) {
+    final d = result.daysUntilBaseline;
+    if (d != null) return (days: d);
+  }
+  return null;
+}
+
 /// True when [o] still holds energy that has outlived its waking day, which
 /// must not be shown as current.
 bool hasStaleEnergy(HealthOverview o, DateTime now) =>

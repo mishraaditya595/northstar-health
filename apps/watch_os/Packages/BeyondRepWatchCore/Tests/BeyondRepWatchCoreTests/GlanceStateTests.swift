@@ -152,7 +152,7 @@ final class GlanceStateTests: XCTestCase {
         XCTAssertNil(g.tiles[1].status, "no usual value without the phone")
         XCTAssertEqual(g.tiles[1].unit, "bpm")
         XCTAssertEqual(g.tiles[3].status, "today")
-        XCTAssertEqual(g.caption, "From this watch. Open BeyondRep on your iPhone for readiness")
+        XCTAssertEqual(g.caption, "From this watch. Open BeyondRep on your iPhone for energy")
     }
 
     func testPhoneValuesWinAndStepsTakeTheLargerOne() throws {

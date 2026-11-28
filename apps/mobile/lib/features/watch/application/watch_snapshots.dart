@@ -5,6 +5,7 @@ import '../../health/application/health_overview.dart';
 import '../../health/domain/daily_series.dart';
 import '../../health/domain/health_types.dart';
 import '../../health/domain/readiness.dart';
+import '../../health/widgets/energy_text.dart';
 import '../../health/widgets/readiness_card.dart';
 import '../../programs/application/program_providers.dart';
 import '../../programs/domain/program_status.dart';
@@ -273,16 +274,26 @@ HealthSnapshot? buildHealthSnapshot({
   final today = dayOf(localNow);
   if (dayOf(overview.readAt) != today) return null;
 
+  // The wire key stays `readiness`; it carries energy now. Only for the
+  // waking day that began today: after local midnight the watch shows none.
   Map<String, Object?>? readiness;
-  final scored = todaysReadiness(overview, localNow);
-  if (scored != null && scored.result is ReadinessReady) {
-    final r = (scored.result as ReadinessReady).readiness;
-    final headline = readinessBandWords(r.band);
-    final reason = readinessReasons(overview, scored, r);
-    final factors = readinessFactors(overview, scored, r);
+  final energyToday = currentEnergy(overview, localNow);
+  final energyNow = energyToday?.energy;
+  final startResult = energyToday?.start.result;
+  if (energyToday != null &&
+      energyNow != null &&
+      startResult is ReadinessReady &&
+      dayOf(energyToday.day) == today) {
+    final headline = readinessBandWords(energyNow.band);
+    final reason = energyWatchReason(energyNow, energyToday.learning);
+    final factors = readinessFactors(
+      overview,
+      energyToday.start,
+      startResult.readiness,
+    );
     readiness = {
-      'score': r.value.clamp(0, 100),
-      'band': switch (r.band) {
+      'score': energyNow.value.clamp(0, 100),
+      'band': switch (energyNow.band) {
         ReadinessBand.good => 'good',
         ReadinessBand.fair => 'fair',
         ReadinessBand.low => 'low',
@@ -344,8 +355,11 @@ HealthSnapshot? buildHealthSnapshot({
     hrvKind: sdnn == null ? null : (sdnn ? 'sdnn' : 'rmssd'),
     steps: steps,
     activeEnergyKcal: energy,
-    restingHrUsualBpm: scored?.restingHrBaseline?.mean.round(),
-    hrvUsualMs: scored?.hrvBaseline?.mean.round(),
+    restingHrUsualBpm: todaysReadiness(
+      overview,
+      localNow,
+    )?.restingHrBaseline?.mean.round(),
+    hrvUsualMs: todaysReadiness(overview, localNow)?.hrvBaseline?.mean.round(),
     week: _week(overview, today),
   );
 }

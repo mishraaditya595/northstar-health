@@ -5,6 +5,7 @@ import 'package:beyondrep/features/catalog/domain/catalog_programs.dart';
 import 'package:beyondrep/features/catalog/domain/catalog_templates.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
+import 'package:beyondrep/features/health/domain/energy.dart';
 import 'package:beyondrep/features/health/domain/readiness.dart';
 import 'package:beyondrep/features/programs/data/objectbox_program_repository.dart';
 import 'package:beyondrep/features/train/active_workout_state.dart';
@@ -165,7 +166,7 @@ void main() {
       tester,
     ) async {
       await open(tester, health: _today(_ready(82)));
-      final strip = find.text('Good readiness. Good to train.');
+      final strip = find.text('Good energy. Good to train.');
       expect(strip, findsOneWidget);
       expect(
         tester.getTopLeft(strip).dy,
@@ -178,7 +179,7 @@ void main() {
     testWidgets('fair strip text', (tester) async {
       await open(tester, health: _today(_ready(64)));
       expect(
-        find.text('Fair readiness. Train as planned, watch effort.'),
+        find.text('Fair energy. Train as planned, watch effort.'),
         findsOneWidget,
       );
       expect(find.text('Your plans are not changed'), findsNothing);
@@ -188,30 +189,108 @@ void main() {
       tester,
     ) async {
       await open(tester, health: _today(_ready(41)));
-      expect(find.text('Low readiness. Recovery low.'), findsOneWidget);
+      expect(find.text('Low energy. Take it easier.'), findsOneWidget);
       expect(find.text('Your plans are not changed'), findsOneWidget);
       final score = tester.widget<Text>(find.text('41'));
       expect(score.style?.color, BeyondRepPalette.redLight);
     });
 
-    testWidgets('the strip is one button that opens the readiness detail', (
+    testWidgets('the strip is one button that opens the energy detail', (
       tester,
     ) async {
       final semantics = tester.ensureSemantics();
       await open(tester, health: _today(_ready(64)));
       expect(
         find.bySemanticsLabel(
-          'Readiness 64, Train as planned, watch effort. See why',
+          'Energy 64, Train as planned, watch effort. See why',
         ),
         findsOneWidget,
       );
       semantics.dispose();
     });
 
+    testWidgets('low strip shows the learning line and keeps the order', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      final start = _ready(45);
+      await open(
+        tester,
+        health: overview(
+          readiness: start,
+          readAt: DateTime(2026, 11, 25, 7),
+          energy: energySection(
+            start,
+            learning: const EnergyLearning(workoutsNeeded: 3),
+            wake: DateTime(2026, 11, 25, 6, 31),
+          ),
+        ),
+      );
+      const learning =
+          'Still learning your patterns: 3 more workouts for a calibrated score.';
+      expect(find.text('Low energy. Take it easier.'), findsOneWidget);
+      expect(find.text(learning), findsOneWidget);
+      expect(find.text('Your plans are not changed'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text(learning)).dy,
+        lessThan(tester.getTopLeft(find.text('Your plans are not changed')).dy),
+      );
+      expect(
+        find.bySemanticsLabel('Energy 45, Take it easier. $learning See why'),
+        findsOneWidget,
+      );
+      semantics.dispose();
+    });
+
+    testWidgets('text scale 2.0 at 320 dp low with learning has no overflow', (
+      tester,
+    ) async {
+      final start = _ready(45);
+      await open(
+        tester,
+        width: 320,
+        textScale: 2,
+        health: overview(
+          readiness: start,
+          readAt: DateTime(2026, 11, 25, 7),
+          energy: energySection(
+            start,
+            learning: const EnergyLearning(workoutsNeeded: 3),
+            wake: DateTime(2026, 11, 25, 6, 31),
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a ready start without a waking day shows no strip', (
+      tester,
+    ) async {
+      final start = _ready(82);
+      await open(
+        tester,
+        health: overview(
+          readiness: start,
+          readAt: DateTime(2026, 11, 25, 7),
+          energy: SectionData(
+            EnergyOverview(
+              day: DateTime(2026, 11, 25),
+              wake: null,
+              start: (start as SectionData<ReadinessOverview>).value,
+              energy: null,
+              learning: const EnergyLearning(),
+            ),
+          ),
+        ),
+      );
+      expect(find.textContaining('energy.'), findsNothing);
+      expect(find.text('82'), findsNothing);
+    });
+
     testWidgets('building baseline shows the N more days line', (tester) async {
       await open(tester, health: _today(_building));
       expect(
-        find.text('Readiness starts after 5 more days with data.'),
+        find.text('Energy starts after 5 more days with data.'),
         findsOneWidget,
       );
       expect(find.byIcon(Icons.chevron_right), findsNothing);
@@ -227,8 +306,8 @@ void main() {
         tester,
       ) async {
         await open(tester, health: health);
-        expect(find.textContaining('readiness.'), findsNothing);
-        expect(find.textContaining('Readiness starts'), findsNothing);
+        expect(find.textContaining('energy.'), findsNothing);
+        expect(find.textContaining('Energy starts'), findsNothing);
         expect(find.text('Build the work.'), findsOneWidget);
         expect(find.text('Quick workout'), findsOneWidget);
       });
@@ -239,7 +318,7 @@ void main() {
         tester,
         controller: FakeHealthOverviewController(null, pending: true),
       );
-      expect(find.textContaining('readiness.'), findsNothing);
+      expect(find.textContaining('energy.'), findsNothing);
       expect(find.text('Quick workout'), findsOneWidget);
     });
 
@@ -275,9 +354,7 @@ void main() {
     ) async {
       seedProgram();
       await open(tester, health: _today(_ready(82)));
-      final strip = tester.getTopLeft(
-        find.text('Good readiness. Good to train.'),
-      );
+      final strip = tester.getTopLeft(find.text('Good energy. Good to train.'));
       expect(
         strip.dy,
         lessThan(tester.getTopLeft(find.text('Start Synthetic push')).dy),
@@ -351,7 +428,7 @@ void main() {
       final visited = await open(tester, health: _today(_ready(41)));
       await tester.tap(find.text('Start Synthetic push'));
       await tester.pumpAndSettle();
-      expect(find.text('Recovery is low today'), findsOneWidget);
+      expect(find.text('Energy is low right now'), findsOneWidget);
       expect(store.box<WorkoutSessionEntity>().count(), 0);
       await tester.tap(find.text('Start workout'));
       await tester.pumpAndSettle();
@@ -429,7 +506,7 @@ void main() {
     await open(tester, health: _today(_ready(41)), textScale: 2, width: 320);
     expect(errors.map((e) => e.toString()), isEmpty);
     for (final text in [
-      'Low readiness. Recovery low.',
+      'Low energy. Take it easier.',
       'Start Synthetic push',
     ]) {
       final rect = tester.getRect(find.text(text));

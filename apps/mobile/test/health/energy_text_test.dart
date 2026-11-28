@@ -11,6 +11,7 @@ Energy _energy(int value, int start) => Energy(
 );
 
 void main() {
+  _watchReasonTests();
   group('energyChangeText', () {
     test('down since morning', () {
       expect(
@@ -153,5 +154,34 @@ void main() {
     expect(energyBuildingText(1), 'Energy starts after 1 more day with data.');
     expect(energyBuildingText(2), 'Energy starts after 2 more days with data.');
     expect(energyBuildingText(1), contains('1 more day with'));
+  });
+}
+
+void _watchReasonTests() {
+  group('energyWatchReason', () {
+    test('down, no change and up since morning', () {
+      expect(
+        energyWatchReason(_energy(62, 78), const EnergyLearning()),
+        'Started at 78 · down 16 since morning',
+      );
+      expect(
+        energyWatchReason(_energy(78, 78), const EnergyLearning()),
+        'Started at 78 · no change since morning',
+      );
+      expect(
+        energyWatchReason(_energy(81, 78), const EnergyLearning()),
+        'Started at 78 · up 3 since morning',
+      );
+    });
+
+    test('adds still learning while learning shows', () {
+      expect(
+        energyWatchReason(
+          _energy(62, 78),
+          const EnergyLearning(workoutsNeeded: 3),
+        ),
+        'Started at 78 · down 16 since morning · still learning',
+      );
+    });
   });
 }

@@ -137,7 +137,6 @@ struct ReadinessHero: View {
                     Text(reason)
                         .font(.caption2)
                         .foregroundStyle(Palette.secondary)
-                        .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -145,8 +144,8 @@ struct ReadinessHero: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "Readiness \(line.score) of 100, \(line.headline)" + (reason.map { ". \($0)" } ?? ""))
-        .accessibilityHint("Opens readiness details")
+            "Energy \(line.score) of 100, \(line.headline)" + (reason.map { ". \($0)" } ?? ""))
+        .accessibilityHint("Opens energy details")
     }
 }
 

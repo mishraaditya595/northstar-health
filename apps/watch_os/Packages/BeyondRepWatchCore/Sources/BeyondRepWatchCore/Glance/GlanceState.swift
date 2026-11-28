@@ -105,7 +105,7 @@ public enum GlanceState: Equatable {
 
     public static let missing = "—"
     public static let refreshCaption = "Open BeyondRep on your iPhone to refresh"
-    public static let watchCaption = "From this watch. Open BeyondRep on your iPhone for readiness"
+    public static let watchCaption = "From this watch. Open BeyondRep on your iPhone for energy"
 
     /// [watch] is what the watch read from its own HealthKit store (memory
     /// only); a value for another local date than [now]'s is ignored.

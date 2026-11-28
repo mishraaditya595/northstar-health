@@ -4,37 +4,42 @@ import '../../../core/design/beyondrep_theme.dart';
 import '../../../core/design/charts/score_ring.dart';
 import '../../../core/design/hero_frame.dart';
 import '../data/health_reader.dart';
+import '../domain/energy.dart';
 import '../domain/metric_explanations.dart';
-import '../domain/readiness.dart';
+import 'energy_text.dart';
 import 'metric_info_sheet.dart';
 import 'readiness_card.dart';
 
-/// Today's readiness on the dark green hero: ring in the band colour, band
-/// advice as the headline, the reasons, an explain button and a chevron.
-/// The whole hero opens the readiness detail through [onOpen].
+/// Energy now on the dark green hero: ring in the band colour, band advice as
+/// the headline, the change since morning, the learning note, an explain
+/// button and a chevron. The whole hero opens the energy detail through
+/// [onOpen].
 class ReadinessHero extends StatelessWidget {
   const ReadinessHero({
-    required this.readiness,
-    required this.reasons,
+    required this.energy,
+    required this.learning,
     required this.platform,
     required this.onOpen,
     super.key,
   });
 
-  final Readiness readiness;
-  final String reasons;
+  final Energy energy;
+  final EnergyLearning learning;
   final HealthPlatformKind platform;
   final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
-    final words = readinessBandWords(readiness.band);
+    final words = readinessBandWords(energy.band);
+    final change = energyChangeText(energy);
+    final learningText = energyLearningText(learning);
     // The hero is dark green in both themes, so its slots use dark colours.
     final heroTheme = BeyondRepTheme.build(Brightness.dark);
-    final band = readiness.band.name.toUpperCase();
+    final band = energy.band.name.toUpperCase();
     final label = [
-      'Readiness ${readiness.value}, $words.',
-      if (reasons.isNotEmpty) '$reasons.',
+      'Energy now ${energy.value} of 100, $words.',
+      '$change.',
+      ?learningText,
       'See why',
     ].join(' ');
     // At large text the explain button and chevron get their own strip under
@@ -53,19 +58,34 @@ class ReadinessHero extends StatelessWidget {
             child: GestureDetector(
               onTap: onOpen,
               child: NsHeroFrame(
-                eyebrow: 'READINESS · $band',
+                eyebrow: 'ENERGY NOW · $band',
                 title: words,
-                subtitle: reasons.isEmpty ? null : reasons,
+                subtitle: change,
                 leading: Theme(
                   data: heroTheme,
                   child: NsScoreRing(
-                    value: readiness.value,
+                    value: energy.value,
                     size: 64,
-                    color: readinessBandColor(heroTheme, readiness.band),
-                    caption: 'Readiness',
+                    color: readinessBandColor(heroTheme, energy.band),
+                    caption: 'Energy',
                   ),
                 ),
-                child: large ? const SizedBox(height: 48) : null,
+                child: learningText == null && !large
+                    ? null
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (learningText != null)
+                            Text(
+                              learningText,
+                              style: const TextStyle(
+                                color: NsHeroFrame.subtleColor,
+                                fontSize: 12,
+                              ),
+                            ),
+                          if (large) const SizedBox(height: 48),
+                        ],
+                      ),
               ),
             ),
           ),
