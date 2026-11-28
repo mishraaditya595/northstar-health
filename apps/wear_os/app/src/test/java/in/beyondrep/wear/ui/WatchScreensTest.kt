@@ -85,7 +85,7 @@ class WatchScreensTest {
     }
 
     private fun fixture(name: String): WatchMessage =
-        WatchMessage.decode(Files.readString(repoRoot().resolve("contracts/watch_link/v1/fixtures/valid/$name")))
+        WatchMessage.decode(String(Files.readAllBytes(repoRoot().resolve("contracts/watch_link/v1/fixtures/valid/$name")), Charsets.UTF_8))
 
     private fun bind() = onJournal {
         graph.journal.saveBinding(WatchMessage(UUID.randomUUID().toString(), "2026-10-23T01:00:00Z", keyA, WatchMessageBody.AccountBinding("kg")))
