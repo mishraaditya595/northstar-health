@@ -44,23 +44,27 @@ export function introCovers(scrollY, viewportH, introBottom) {
 }
 
 const VERT = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+// Soft aurora: two warped noise layers give a few separate glows over a
+// mostly empty canvas. In dark mode the canvas is also deepened a little
+// (alpha floor b), so the glows read as light rather than haze.
 const FRAG = `precision mediump float;
-uniform vec2 r,m;uniform vec3 c;uniform float t,s,k;
+uniform vec2 r,m;uniform vec3 c;uniform float t,s,k,b;
 float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
 return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
 float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<4;i++){v+=a*n(p);p=p*2.03+vec2(7.1,3.7);a*=.5;}return v;}
 void main(){
 vec2 u=gl_FragCoord.xy/r;
-vec2 p=u*vec2(r.x/r.y,1.)*1.5+vec2(0.,s*.0003)+m*.12;
-float q=fbm(p*.8+vec2(t*.03,-t*.02));
-float f=fbm(p+q*1.4+vec2(-t*.025,t*.018));
-float g=smoothstep(.38,.88,f);
-float v=.55+.45*smoothstep(0.,1.,1.-abs(u.x-.5)*1.3);
+vec2 p=u*vec2(r.x/r.y,1.)*1.1+vec2(0.,s*.00025)+m*.1;
+float q=fbm(p*.7+vec2(t*.03,-t*.02));
+float f=fbm(p+q*1.8+vec2(-t*.025,t*.018));
+float g=smoothstep(.5,.9,f);
+g*=g*(3.-2.*g);
+float v=.35+.65*smoothstep(0.,1.,1.-abs(u.x-.5)*1.4);
 float a=g*v*k;
-vec3 col=mix(c,c*.55+vec3(.06,.1,.12),q*.8);
+vec3 col=c*(.75+.5*q);
 float d=(h(gl_FragCoord.xy+t)-.5)/255.;
-gl_FragColor=vec4(col*a+d,a);
+gl_FragColor=vec4(col*a+d,a+b*(1.-a));
 }`;
 
 function parseHex(v, fallback) {
@@ -99,11 +103,15 @@ export function mountBackdrop(canvas, win) {
     const light = scheme.matches;
     const css = win.getComputedStyle(doc.documentElement);
     const tok = (n, f) => parseHex(css.getPropertyValue(n), f);
-    const lime = light ? tok('--performance', [0.19, 0.41, 0.27]) : tok('--lime', [0.84, 1, 0.38]);
-    const violet = tok('--sleep', [0.76, 0.66, 1]);
+    // Dark mode leans the lime toward green and saturates the violet: plain
+    // lime at low alpha over the dark canvas reads as olive haze.
+    const lime = light ? tok('--performance', [0.19, 0.41, 0.27])
+      : tok('--lime', [0.84, 1, 0.38]).map((c, i) => c * 0.45 + [0.1, 0.95, 0.42][i] * 0.55);
+    const sleep = tok('--sleep', [0.76, 0.66, 1]);
+    const violet = light ? sleep : sleep.map((c, i) => c * 0.5 + [0.42, 0.22, 1][i] * 0.5);
     const heroTo = tok('--hero-to', [0.05, 0.13, 0.15]);
     const teal = light ? heroTo.map((c, i) => c * 0.4 + [0.1, 0.45, 0.45][i] * 0.6)
-      : heroTo.map((c, i) => c * 0.3 + [0.18, 0.62, 0.6][i] * 0.7);
+      : heroTo.map((c, i) => c * 0.2 + [0.05, 0.85, 0.8][i] * 0.8);
     const colors = { lime, violet, teal };
     const found = [];
     for (const el of doc.querySelectorAll('[data-backdrop]')) {
@@ -139,7 +147,7 @@ export function mountBackdrop(canvas, win) {
       const a = gl.getAttribLocation(program, 'p');
       gl.enableVertexAttribArray(a);
       gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
-      for (const n of ['r', 'm', 'c', 't', 's', 'k']) loc[n] = gl.getUniformLocation(program, n);
+      for (const n of ['r', 'm', 'c', 't', 's', 'k', 'b']) loc[n] = gl.getUniformLocation(program, n);
       return true;
     } catch {
       gl = null;
@@ -173,7 +181,8 @@ export function mountBackdrop(canvas, win) {
     const light = scheme.matches;
     gl.uniform1f(loc.t, time);
     gl.uniform1f(loc.s, win.scrollY);
-    gl.uniform1f(loc.k, light ? 0.13 : 0.22);
+    gl.uniform1f(loc.k, light ? 0.18 : 0.48);
+    gl.uniform1f(loc.b, light ? 0 : 0.3);
     gl.uniform2f(loc.m, px, py);
     gl.uniform3fv(loc.c, paletteAt(stops, y));
     gl.drawArrays(gl.TRIANGLES, 0, 3);

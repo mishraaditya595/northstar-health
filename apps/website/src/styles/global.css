@@ -487,10 +487,25 @@ details p {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background:
-    radial-gradient(60% 45% at 85% 8%, color-mix(in srgb, var(--performance) 14%, transparent), transparent 70%),
-    radial-gradient(50% 40% at 8% 92%, color-mix(in srgb, var(--sleep) 10%, transparent), transparent 70%);
+  /* Dark mode leans the lime toward green: lime at low strength over the dark
+     canvas reads as olive haze. */
+  --glow-a: color-mix(in srgb, var(--lime) 45%, #1af26b);
+  --glow-b: color-mix(in srgb, var(--sleep) 50%, #6b38ff);
 }
+@media (prefers-color-scheme: light) {
+  .backdrop { --glow-a: var(--performance); --glow-b: var(--sleep); }
+}
+/* The static glow, faded out once the live canvas has drawn. */
+.backdrop::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(55% 40% at 85% 8%, color-mix(in srgb, var(--glow-a) 10%, transparent), transparent 70%),
+    radial-gradient(50% 40% at 8% 92%, color-mix(in srgb, var(--glow-b) 10%, transparent), transparent 70%);
+  transition: opacity 1.2s ease;
+}
+.backdrop.is-live::before { opacity: 0; }
 .backdrop canvas {
   position: absolute;
   inset: 0;
