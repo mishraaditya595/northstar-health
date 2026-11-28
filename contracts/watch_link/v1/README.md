@@ -30,7 +30,7 @@ JSON Schema cannot express the duplicate-factor and week-order rules, so the Pyt
 - Body: `workout_id`, `start_utc`, `end_utc` (end after start), `heart_rate` (0 to 600 items `{at_utc, bpm}`, `bpm` an integer 25 to 250, `at_utc` inside start..end and strictly increasing) and optional `total_kcal` (above 0, at most 10000). Missing values are left out, never 0.
 - The watch reduces heart rate to one average per started minute of the workout (`at_utc` = the minute's start, `bpm` rounded half up); a minute without a valid sample is left out.
 - JSON Schema cannot express the end-after-start, samples-inside and strictly-increasing rules; the Python test (`workout_health_errors`), Kotlin and Dart check them in code.
-- `ack` gains reason `not_written`, allowed only with `rejected`: the phone did not write it (the save-workouts switch is off, a permission is missing, Health Connect is missing, or the phone is not Android). The watch deletes the series on any ack. A write failure sends no ack, so the watch resends.
+- `ack` gains reason `not_written`, allowed only with `rejected`: the phone will not write it (the save-workouts switch is off, the workout was deleted, Health Connect is missing or unsupported, or the phone is not Android). The watch deletes the series on any ack. A write failure, or a missing heart rate or calories permission while the switch is on, sends no ack, so the watch keeps the series (up to 7 days) and resends.
 
 ## Live session (stage 5a)
 

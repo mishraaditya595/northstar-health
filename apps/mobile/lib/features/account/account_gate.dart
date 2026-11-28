@@ -59,6 +59,26 @@ class AccountGate extends StatelessWidget {
   );
 }
 
+/// The platform record of a watch workout for the signed-in account.
+/// iOS: the HKWorkout UUID in the import receipt. Android: the Health Connect
+/// record the phone wrote, found through its export receipt, so it is null
+/// until the watch health write confirms it; that write invalidates this
+/// family member (`watchWorkoutHealthInboxProvider` `onWritten`).
+String? resolveWatchWorkoutPlatformId(Ref ref, String workoutUuid) {
+  final auth = ref.watch(accountAuthControllerProvider);
+  final owner = auth?.userId;
+  if (owner == null) return null;
+  if (!ref.watch(healthWorkoutWriterProvider).isIos) {
+    return confirmedPlatformRecordId(
+      ref.watch(healthExportRepositoryProvider),
+      workoutUuid,
+    );
+  }
+  return ref
+      .watch(watchWorkoutImporterProvider)(owner, () => auth?.userId)
+      .platformWorkoutUuidFor(workoutUuid);
+}
+
 /// Native ObjectBox is not opened until AccountGate verified the account.
 /// Swapping account IDs disposes the previous ProviderScope and Store.
 class BoundAccountWorkoutApp extends StatefulWidget {
@@ -142,25 +162,9 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
                   )
                   .platformWorkoutUuids();
             }),
-            watchWorkoutPlatformIdProvider.overrideWith((ref, workoutUuid) {
-              final auth = ref.watch(accountAuthControllerProvider);
-              final owner = auth?.userId;
-              if (owner == null) return null;
-              // Android: the Health Connect copy the phone wrote for the
-              // watch workout, found through its export receipt.
-              if (!ref.watch(healthWorkoutWriterProvider).isIos) {
-                return confirmedPlatformRecordId(
-                  ref.watch(healthExportRepositoryProvider),
-                  workoutUuid,
-                );
-              }
-              return ref
-                  .watch(watchWorkoutImporterProvider)(
-                    owner,
-                    () => auth?.userId,
-                  )
-                  .platformWorkoutUuidFor(workoutUuid);
-            }),
+            watchWorkoutPlatformIdProvider.overrideWith(
+              resolveWatchWorkoutPlatformId,
+            ),
             workoutUploadKickProvider.overrideWith(
               (ref) => ref.read(workoutUploadCoordinatorProvider).kick,
             ),

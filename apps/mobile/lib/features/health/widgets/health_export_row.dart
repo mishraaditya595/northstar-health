@@ -16,18 +16,24 @@ class HealthExportRow extends ConsumerWidget {
 
   final HealthPlatformKind platform;
 
+  String _counts(int saved, int waiting) => saved > 0 && waiting > 0
+      ? 'On · $saved saved, $waiting waiting'
+      : saved > 0
+      ? 'On · $saved saved'
+      : waiting > 0
+      ? 'On · $waiting waiting'
+      : 'On';
+
   String _subtitle(HealthExportStatus status) => switch (status) {
     HealthExportOn(needsAccess: true) => 'Allow access in Settings',
-    HealthExportOn(offersWatchHealthAccess: true) =>
-      'Allow heart rate and calories for watch workouts',
-    HealthExportOn(:final saved, :final waiting) =>
-      saved > 0 && waiting > 0
-          ? 'On · $saved saved, $waiting waiting'
-          : saved > 0
-          ? 'On · $saved saved'
-          : waiting > 0
-          ? 'On · $waiting waiting'
-          : 'On',
+    HealthExportOn(
+      :final saved,
+      :final waiting,
+      offersWatchHealthAccess: true,
+    ) =>
+      '${_counts(saved, waiting)} · Allow heart rate and calories for watch '
+          'workouts',
+    HealthExportOn(:final saved, :final waiting) => _counts(saved, waiting),
     _ => 'Off',
   };
 
@@ -39,6 +45,18 @@ class HealthExportRow extends ConsumerWidget {
     }
     final name = healthPlatformName(platform);
     final notifier = ref.read(healthExportControllerProvider.notifier);
+
+    Future<void> confirmStop() async {
+      final stop = await showNsConfirm(
+        context,
+        title: 'Stop saving workouts?',
+        message:
+            'New workouts will no longer be saved to $name. Workouts '
+            'already saved stay there.',
+        confirmLabel: 'Stop saving',
+      );
+      if (stop) await notifier.turnOff();
+    }
 
     Future<void> tap() async {
       if (status is HealthExportOn) {
@@ -64,19 +82,11 @@ class HealthExportRow extends ConsumerWidget {
           if (action == _AccessAction.allowWatchHealth) {
             await notifier.allowWatchHealth();
           } else if (action == _AccessAction.stop) {
-            await notifier.turnOff();
+            await confirmStop();
           }
           return;
         }
-        final stop = await showNsConfirm(
-          context,
-          title: 'Stop saving workouts?',
-          message:
-              'New workouts will no longer be saved to $name. Workouts '
-              'already saved stay there.',
-          confirmLabel: 'Stop saving',
-        );
-        if (stop) await notifier.turnOff();
+        await confirmStop();
         return;
       }
       if (!context.mounted) return;
@@ -179,8 +189,7 @@ class _WatchHealthSheet extends StatelessWidget {
         Text(
           'Your watch measures heart rate and calories during a workout. '
           'Allow BeyondRep to save them to Health Connect with the workout. '
-          'Without this the workout is saved with its name, start and end '
-          'only.',
+          'Without this, watch workouts are not saved to Health Connect.',
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: 24),

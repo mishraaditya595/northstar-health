@@ -271,15 +271,62 @@ void main() {
       ),
       platform: HealthPlatformKind.healthConnect,
     );
+    // The saved count stays visible next to the allow action.
     expect(
-      find.text('Allow heart rate and calories for watch workouts'),
+      find.text(
+        'On · 2 saved · Allow heart rate and calories for watch workouts',
+      ),
       findsOneWidget,
     );
     await tester.tap(find.text('Save workouts to Health Connect'));
     await tester.pumpAndSettle();
+    expect(
+      find.textContaining(
+        'Without this, watch workouts are not saved to Health Connect.',
+      ),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Allow heart rate and calories'));
     await tester.pumpAndSettle();
     expect(fake.calls, ['allowWatchHealth']);
+  });
+
+  testWidgets('Stop saving in the watch sheet asks before turning off', (
+    tester,
+  ) async {
+    final fake = await pumpRow(
+      tester,
+      const HealthExportOn(
+        saved: 2,
+        waiting: 1,
+        needsAccess: false,
+        offersWatchHealthAccess: true,
+      ),
+      platform: HealthPlatformKind.healthConnect,
+    );
+    expect(
+      find.text(
+        'On · 2 saved, 1 waiting · Allow heart rate and calories for watch '
+        'workouts',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Save workouts to Health Connect'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Stop saving'));
+    await tester.pumpAndSettle();
+    expect(find.text('Stop saving workouts?'), findsOneWidget);
+    expect(fake.calls, isEmpty);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(fake.calls, isEmpty);
+    await tester.tap(find.text('Save workouts to Health Connect'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Stop saving'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Stop saving').last);
+    await tester.pumpAndSettle();
+    expect(fake.calls, ['turnOff']);
   });
 
   testWidgets('without the offer a tap on an On row still asks to stop', (

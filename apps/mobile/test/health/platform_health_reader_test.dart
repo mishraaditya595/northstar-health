@@ -1150,7 +1150,8 @@ void main() {
       // The requested bounds differ from the workout's own, so this proves
       // heart rate is read over the matched workout's bounds.
       expect(hrCall.start, workoutStart);
-      expect(hrCall.end, workoutEnd);
+      // End-inclusive: a sample stamped at the workout end still counts.
+      expect(hrCall.end, workoutEnd.add(const Duration(seconds: 1)));
     });
 
     test('ignores workouts with another uuid', () async {

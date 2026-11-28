@@ -38,7 +38,9 @@ final class HealthExportOn extends HealthExportStatus {
   final bool needsAccess;
 
   /// Android with a Wear watch paired: heart rate and calories write is not
-  /// granted yet, so watch workouts reach Health Connect without them.
+  /// granted yet, so watch workouts are not saved to Health Connect for now:
+  /// the watch keeps their heart rate and calories (up to 7 days) and they are
+  /// written once the user allows it.
   final bool offersWatchHealthAccess;
 }
 
@@ -106,9 +108,9 @@ class HealthExportController extends AsyncNotifier<HealthExportStatus> {
     await runPass();
   }
 
-  /// Android: shows the permission prompt for heart rate and calories write,
-  /// then refreshes the row. Watch workouts that waited are resent by the
-  /// watch.
+  /// Android: shows the permission prompt for heart rate and calories (read
+  /// and write), then refreshes the row. Nothing else is needed: the watch
+  /// resends the workouts it kept on its own triggers and they are written.
   Future<void> allowWatchHealth() async {
     await ref
         .read(healthWorkoutWriterProvider)

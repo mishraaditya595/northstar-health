@@ -177,6 +177,20 @@ void main() {
     expect(find.text('213 kcal'), findsOneWidget);
   });
 
+  testWidgets(
+    'on Android a phone workout is never read back, even with an export '
+    'receipt (a watch workout overlapping it would show its heart rate)',
+    (tester) async {
+      fake.ownWorkout = const SeriesData(
+        OwnWorkoutHealth(averageBpm: 128, maxBpm: 161, activeKcal: 212),
+      );
+      await show(tester, origin: WorkoutOrigin.phone, ios: false);
+      expect(find.text('From Health Connect'), findsNothing);
+      expect(find.text('Average heart rate'), findsNothing);
+      expect(fake.ownWorkoutCalls, isEmpty);
+    },
+  );
+
   testWidgets('shows no section while loading or when null', (tester) async {
     final gate = Completer<void>();
     fake.ownWorkout = const SeriesData(OwnWorkoutHealth(averageBpm: 128));

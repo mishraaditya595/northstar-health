@@ -372,7 +372,8 @@ class PlatformHealthReader implements HealthReader {
         for (final p in await _health.getHealthDataFromTypes(
           types: [HealthDataType.HEART_RATE],
           startTime: match.dateFrom,
-          endTime: match.dateTo,
+          // End-inclusive: a sample stamped at the workout end counts.
+          endTime: match.dateTo.add(const Duration(seconds: 1)),
         ))
           // Android: other apps' heart rate in the window is not this
           // workout's.

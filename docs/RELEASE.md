@@ -530,12 +530,17 @@ The phone writes a Wear OS workout's per-minute heart rate and total calories to
 | Health tab with a Wear watch paired and the export switch on shows "Allow heart rate and calories"; the sheet button opens the Health Connect prompt for heart rate and calories | not run |
 | A watch workout with permission: Health Connect shows one strength session with calories and heart rate, no second copy | not run |
 | Samsung Health and Google Fit show the session and heart rate once (or note the duplicate) | not run |
-| Permission missing or switch off: the workout reaches phone history, nothing is written, the watch stops resending (`not_written`) | not run |
+| Switch off: the workout reaches phone history, nothing is written, the watch stops resending (`not_written`) | not run |
+| Switch on but heart rate and calories not allowed: nothing is written, the watch keeps the series; after "Allow heart rate and calories" the watch resends and the session, calories and heart rate appear in Health Connect | not run |
+| Phone history detail shows heart rate and calories only with Phase 3 health connected and `READ_HEART_RATE` granted (otherwise no rows, by design) | not run |
+| Retry after a failed write (airplane mode off, Health Connect killed mid-write): the retry is accepted and replaces the record (client record version `workout version * 1000 + attempt`; check Health Connect does not ignore it and returns the record id) | not run |
+| `adb logcat` during a watch workout write shows no bpm or calorie value from BeyondRep or the health plugin | not run |
+| A phone-origin workout overlapping a watch workout shows no heart rate rows in its history detail on Android | not run |
 | Phone off or out of range at Finish: the series arrives after the workout, written once | not run |
 | Phone history detail of a watch workout shows average heart rate, max heart rate and Calories ("From Health Connect") | not run |
 | Deleting the watch workout on the phone removes the Health Connect session, calories and heart rate | not run |
 | Android 13 and lower: Health Connect app installed and permissions work as on 14 | not run |
-| A 90 minute workout writes 90 heart rate records within Health Connect rate limits | not run |
+| A 90 minute workout writes one heart rate record with 90 samples within Health Connect limits | not run |
 | Sign out on the phone: the unsent series on the watch is dropped | not run |
 
 ## Phase 5: save phone workouts to Apple Health / Health Connect (ADR-0014, device checks, none run)

@@ -157,6 +157,15 @@ void main() {
     expect(receipt(1)!.state, 'deleted');
   });
 
+  test('on iOS a deleted watch workout is never touched by the exporter '
+      '(the watch owns its HealthKit entry)', () async {
+    session(1, origin: 'beyondrep_watch', deleted: true);
+    putReceipt(1, HealthExportState.confirmed, version: 1000, id: 'hk-1');
+    await exporter().runPass();
+    expect(writer.deletes, isEmpty);
+    expect(receipt(1)!.state, 'confirmed');
+  });
+
   test('a watch workout that is not deleted keeps its copy', () async {
     writer = FakeHealthWorkoutWriter(isIos: false);
     session(1, origin: 'beyondrep_watch');

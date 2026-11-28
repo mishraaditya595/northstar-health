@@ -80,6 +80,7 @@ void main() {
   late FakeHealthWorkoutWriter writer;
   late ObjectBoxHealthExportRepository repository;
   late int written;
+  late DateTime now;
   late WatchWorkoutHealthInbox inbox;
 
   WorkoutSessionEntity workout() => store
@@ -114,11 +115,11 @@ void main() {
         link: link,
         signedInUserId: () => user,
         ids: _Ids(),
-        clock: () => DateTime.utc(2026, 10, 23, 12),
+        clock: () => now,
         workout: lookup ?? (uuid) => watchWorkoutCandidate(store, uuid),
         repository: repository,
         writer: writer,
-        onWritten: () => written++,
+        onWritten: (_) => written++,
       );
 
   setUp(() async {
@@ -130,6 +131,7 @@ void main() {
     repository = ObjectBoxHealthExportRepository(store);
     repository.enable(accountA, DateTime.utc(2026, 10, 1));
     written = 0;
+    now = DateTime.utc(2026, 10, 23, 12);
     inbox = build();
     await importWorkout();
   });
@@ -154,7 +156,9 @@ void main() {
     expect(record.name, 'Synthetic push day');
     expect(record.start, DateTime.utc(2026, 10, 23, 11));
     expect(record.end, DateTime.utc(2026, 10, 23, 11, 40));
-    expect(record.version, workout().updatedAtMs);
+    // The Health Connect version is the workout version times 1000 plus the
+    // attempt, so a retry is never ignored as not newer.
+    expect(record.version, workout().updatedAtMs * 1000 + 1);
     expect(record.totalKcal, 312.5);
     expect(record.heartRate.map((p) => p.bpm), [71, 84, 96]);
     expect(record.heartRate.first.at, DateTime.utc(2026, 10, 23, 11));
@@ -270,16 +274,26 @@ void main() {
       repository.disable(accountA);
       await expectNotWritten();
     });
+  });
 
-    test('the heart rate or calories permission is missing', () async {
+  group('switch on but access missing: no ack, the watch keeps the series', () {
+    test('heart rate or calories write access is missing', () async {
       writer.watchHealthAccess = false;
-      await expectNotWritten();
+      expect(await inbox.handle(_health()), isNull);
+      expect(link.sent, isEmpty);
+      expect(writer.writes, isEmpty);
+      expect(repository.receipt(_workoutUuid), isNull);
+      expect(written, 0);
+      // The user allows access; the watch resends and it is written.
+      writer.watchHealthAccess = true;
+      expect((await inbox.handle(_health()))?.result, 'stored');
+      expect(writer.writes, hasLength(1));
     });
 
-    test('the exercise permission is missing', () async {
-      writer.watchHealthAccess = false;
-      writer.writeAccess = false;
-      await expectNotWritten();
+    test('Health Connect reports unavailable during the write', () async {
+      writer.writeResults.add(const HealthWriteUnavailable());
+      expect(await inbox.handle(_health()), isNull);
+      expect(link.sent, isEmpty);
     });
   });
 
@@ -314,7 +328,11 @@ void main() {
     final ack = await inbox.handle(_health());
     expect(ack?.result, 'stored');
     expect(writer.writes, hasLength(2));
-    expect(writer.writes.last.version, row.updatedAtMs);
+    expect(writer.writes.last.version, row.updatedAtMs * 1000 + 1);
+    expect(
+      writer.writes.last.version,
+      greaterThan(writer.writes.first.version),
+    );
   });
 
   test('a failed write sends no ack and leaves a retryable receipt', () async {
@@ -327,13 +345,76 @@ void main() {
     );
     expect(written, 0);
     // The watch resends and this time it works.
+    now = now.add(const Duration(minutes: 2));
     expect((await inbox.handle(_health()))?.result, 'stored');
   });
 
-  test('a denied write also sends no ack', () async {
+  test(
+    'a retry after a failure uses a greater Health Connect version',
+    () async {
+      final base = workout().updatedAtMs * 1000;
+      writer.writeResults.add(const HealthWriteFailed());
+      await inbox.handle(_health());
+      now = now.add(const Duration(minutes: 2));
+      writer.writeResults.add(const HealthWriteFailed());
+      await inbox.handle(_health());
+      now = now.add(const Duration(minutes: 10));
+      await inbox.handle(_health());
+      expect(writer.writes.map((w) => w.version), [
+        base + 1,
+        base + 2,
+        base + 3,
+      ]);
+      // Confirmed: the attempt counter starts again for the next edit.
+      expect(repository.receipt(_workoutUuid)!.attempts, 0);
+    },
+  );
+
+  test('a resend inside the receipt backoff is not written again', () async {
+    writer.writeResults.add(const HealthWriteFailed());
+    expect(await inbox.handle(_health()), isNull);
+    now = now.add(const Duration(seconds: 30));
+    expect(await inbox.handle(_health()), isNull);
+    expect(writer.writes, hasLength(1));
+    expect(link.sent, isEmpty);
+    now = now.add(const Duration(seconds: 31));
+    expect((await inbox.handle(_health()))?.result, 'stored');
+    expect(writer.writes, hasLength(2));
+  });
+
+  test('a denied write sends no ack, blocks the receipt and is retried at '
+      'once when the watch resends', () async {
     writer.writeResults.add(const HealthWriteDenied());
     expect(await inbox.handle(_health()), isNull);
     expect(link.sent, isEmpty);
+    expect(
+      repository.receipt(_workoutUuid)!.state,
+      HealthExportState.blocked.wire,
+    );
+    expect((await inbox.handle(_health()))?.result, 'stored');
+  });
+
+  test('a message whose times differ from the workout by more than two '
+      'seconds is ignored: no ack, no write', () async {
+    Future<Ack?> withStart(String start, {String? end}) {
+      final json = _fixtureJson('workout_health');
+      json['account_key'] = watchAccountKey(accountA);
+      final body = json['body']! as Map<String, Object?>;
+      body['start_utc'] = start;
+      body['heart_rate'] = <Object?>[];
+      if (end != null) body['end_utc'] = end;
+      return inbox.handle(WatchMessage.fromJson(json) as WorkoutHealth);
+    }
+
+    expect(await withStart('2026-10-23T11:00:03Z'), isNull);
+    expect(
+      await withStart('2026-10-23T11:00:00Z', end: '2026-10-23T11:41:00Z'),
+      isNull,
+    );
+    expect(link.sent, isEmpty);
+    expect(writer.writes, isEmpty);
+    expect(repository.receipt(_workoutUuid), isNull);
+    expect((await withStart('2026-10-23T11:00:02Z'))?.result, 'stored');
   });
 
   test('the receipt says writing while the platform call runs', () async {

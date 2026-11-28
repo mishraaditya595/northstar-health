@@ -184,20 +184,26 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
             ),
           ],
         ),
-        // Any workout with a receipt holds an HKWorkout the watch saved: its
-        // own, or the one it saved while following this phone workout.
+        // iOS: any workout with a receipt holds an HKWorkout the watch saved:
+        // its own, or the one it saved while following this phone workout.
+        // Android: only a watch workout has heart rate and calories in Health
+        // Connect; a phone workout's entry has none and an overlapping watch
+        // workout's values must not show on it.
         ..._healthSection(
           theme,
           ref.watch(healthWorkoutWriterProvider).isIos,
-          ref
-              .watch(
-                ownWorkoutHealthProvider((
-                  workoutUuid: session.uuid,
-                  start: session.startedAtUtc,
-                  end: finished,
-                )),
-              )
-              .value,
+          !ref.watch(healthWorkoutWriterProvider).isIos &&
+                  session.origin != WorkoutOrigin.watch
+              ? null
+              : ref
+                    .watch(
+                      ownWorkoutHealthProvider((
+                        workoutUuid: session.uuid,
+                        start: session.startedAtUtc,
+                        end: finished,
+                      )),
+                    )
+                    .value,
         ),
         const SizedBox(height: 24),
         SectionHeading(
