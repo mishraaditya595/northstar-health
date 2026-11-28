@@ -121,6 +121,8 @@ class PlatformHealthWeightWriter implements HealthWeightWriter {
         endTime: at,
         recordingMethod: RecordingMethod.manual,
         clientRecordId: clientRecordId,
+        // Android only stores the client id when a version comes with it.
+        clientRecordVersion: 1,
       );
       // The plugin turns native failures into an empty result, so only a
       // non-empty record id is a success.

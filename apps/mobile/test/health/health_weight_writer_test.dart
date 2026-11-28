@@ -68,6 +68,7 @@ class _FakeHealth extends Fake implements Health {
       'startTime': startTime,
       'endTime': endTime,
       'clientRecordId': clientRecordId,
+      'clientRecordVersion': clientRecordVersion,
       'recordingMethod': recordingMethod,
     });
     return writeResult;
@@ -124,6 +125,7 @@ void main() {
     expect(args['startTime'], at);
     expect(args['endTime'], at);
     expect(args['clientRecordId'], ok.clientRecordId);
+    expect(args['clientRecordVersion'], 1);
   });
 
   test('the injected UuidFactory supplies the clientRecordId', () async {
@@ -195,6 +197,8 @@ void main() {
     expect(await writer(ios).hasWriteAccess(), isTrue);
     expect(ios.checkedTypes, [HealthDataType.WEIGHT]);
     expect(ios.checkedAccess, [HealthDataAccess.WRITE]);
+    final denied = _FakeHealth()..permitted = false;
+    expect(await writer(denied).hasWriteAccess(), isFalse);
     final android = _FakeHealth()..permitted = null;
     expect(await writer(android, ios: false).hasWriteAccess(), isFalse);
     expect(android.checkedAccess, [HealthDataAccess.READ_WRITE]);
