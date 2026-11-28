@@ -33,6 +33,13 @@ abstract interface class WatchLink {
 
   /// JSON strings the watch sent (acknowledgments), as they arrive.
   Stream<String> get messages;
+
+  /// Asks the bridge to hand over watch messages that arrived before Dart was
+  /// ready (Android keeps them as Data Layer items). Call it once, after every
+  /// listener that needs them has subscribed to [messages]: the stream is
+  /// broadcast, so a message delivered earlier would reach nobody and be
+  /// deleted. iOS delivers as messages arrive and ignores it.
+  Future<void> startMessages();
 }
 
 /// Platform bridge (`ios/Runner/WatchLinkBridge.swift`, Android
@@ -86,18 +93,16 @@ class MethodChannelWatchLink implements WatchLink {
       }
       return null;
     });
-    if (which == 'messages') unawaited(_startMessages());
   }
 
-  /// Android keeps watch messages as Data Layer items until Dart listens;
-  /// this asks the bridge to hand over what is pending. iOS ignores it.
-  Future<void> _startMessages() async {
+  @override
+  Future<void> startMessages() async {
     try {
       await channel.invokeMethod<void>('startMessages');
     } on MissingPluginException {
       // No bridge on this platform.
     } on PlatformException {
-      // Not user actionable; the next listener start asks again.
+      // Not user actionable; the next explicit start asks again.
     }
   }
 
@@ -193,6 +198,9 @@ class NoopWatchLink implements WatchLink {
 
   @override
   Stream<String> get messages => const Stream<String>.empty();
+
+  @override
+  Future<void> startMessages() async {}
 }
 
 final watchLinkProvider = Provider<WatchLink>(

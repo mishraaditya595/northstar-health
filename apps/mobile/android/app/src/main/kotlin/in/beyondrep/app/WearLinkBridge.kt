@@ -32,9 +32,14 @@ import org.json.JSONObject
  * - phone to watch, queued: `/beyondrep/queue/phone/<message_id>`
  * - watch to phone, queued: `/beyondrep/queue/watch/<message_id>`
  *
- * Watch messages stay Data Layer items until Dart listens (`startMessages`),
- * and an item is deleted only after Dart accepted it. It carries no health
- * value of its own and nothing is logged.
+ * Watch messages stay Data Layer items until Dart calls `startMessages`, which it does after
+ * every listener has subscribed, and an item is deleted only after Dart accepted it
+ * (`success`). A Dart `error` or `notImplemented` reply drops the item from memory only: it
+ * stays in the Data Layer and is handed over again by the next `startMessages` (after
+ * `notImplemented` the bridge also waits for that call; after `error` it keeps delivering new
+ * items). Redelivery is safe because Dart handles every message idempotently by `message_id`.
+ * A second `startMessages` while started does nothing. It carries no health value of its own
+ * and nothing is logged.
  */
 class WearLinkBridge(
     private val context: Context,
@@ -164,6 +169,10 @@ class WearLinkBridge(
                 }
             }
             "startMessages" -> {
+                if (started) {
+                    result.success(null)
+                    return
+                }
                 started = true
                 scope.launch {
                     try {

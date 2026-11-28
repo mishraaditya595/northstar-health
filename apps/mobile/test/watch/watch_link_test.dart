@@ -52,14 +52,16 @@ void main() {
   });
 
   test(
-    'pendingQueuedItemsAreDeliveredWhenDartStartsListening: the first '
-    'messages listener calls startMessages, then watchMessage reaches it',
+    'listening alone does not call startMessages; an explicit start does and '
+    'watchMessage then reaches the listener',
     () async {
       handle(null);
       final link = MethodChannelWatchLink();
       final received = <String>[];
       final sub = link.messages.listen(received.add);
       await Future<void>.delayed(Duration.zero);
+      expect(calls.map((c) => c.method), isNot(contains('startMessages')));
+      await link.startMessages();
       expect(calls.map((c) => c.method), contains('startMessages'));
       await messenger.handlePlatformMessage(
         _channel.name,
@@ -73,20 +75,50 @@ void main() {
     },
   );
 
+  test('a message queued natively is flushed only on startMessages, so a '
+      'listener added before the start receives it', () async {
+    final queued = ['{"queued":1}'];
+    handle((call) async {
+      if (call.method == 'startMessages') {
+        // The bridge flushes what it holds while handling the call.
+        for (final json in queued) {
+          await messenger.handlePlatformMessage(
+            _channel.name,
+            _channel.codec.encodeMethodCall(MethodCall('watchMessage', json)),
+            (_) {},
+          );
+        }
+      }
+      return null;
+    });
+    final link = MethodChannelWatchLink();
+    final wipeRetrier = <String>[];
+    final controller = <String>[];
+    final a = link.messages.listen(wipeRetrier.add);
+    final b = link.messages.listen(controller.add);
+    await Future<void>.delayed(Duration.zero);
+    expect(wipeRetrier, isEmpty);
+    expect(controller, isEmpty);
+    await link.startMessages();
+    expect(wipeRetrier, ['{"queued":1}']);
+    expect(controller, ['{"queued":1}']);
+    await a.cancel();
+    await b.cancel();
+  });
+
   test(
     'startMessages tolerates a missing plugin or a platform error',
     () async {
       messenger.setMockMethodCallHandler(_channel, null);
-      final link = MethodChannelWatchLink();
-      final sub = link.messages.listen((_) {});
-      await Future<void>.delayed(Duration.zero);
-      await sub.cancel();
+      await MethodChannelWatchLink().startMessages();
       handle((_) async => throw PlatformException(code: 'x'));
-      final sub2 = MethodChannelWatchLink().messages.listen((_) {});
-      await Future<void>.delayed(Duration.zero);
-      await sub2.cancel();
+      await MethodChannelWatchLink().startMessages();
     },
   );
+
+  test('NoopWatchLink startMessages does nothing', () async {
+    await const NoopWatchLink().startMessages();
+  });
 
   test('watchLinkProvider elsewhere is the no-op link', () {
     debugDefaultTargetPlatformOverride = TargetPlatform.windows;

@@ -33,6 +33,9 @@ class _Link implements WatchLink {
   Future<WatchDeviceStatus> status() async => WatchDeviceStatus.unsupported;
   @override
   Stream<String> get messages => const Stream.empty();
+
+  @override
+  Future<void> startMessages() async {}
 }
 
 class _Ids implements UuidFactory {

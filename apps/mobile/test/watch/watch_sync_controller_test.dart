@@ -65,6 +65,13 @@ class _FakeLink implements WatchLink {
   @override
   Stream<String> get messages => incoming.stream;
 
+  /// `startMessages` calls, and whether a listener was subscribed at each.
+  final startedWithListener = <bool>[];
+
+  @override
+  Future<void> startMessages() async =>
+      startedWithListener.add(incoming.hasListener);
+
   /// Replaces the status derived from [reachable].
   WatchDeviceStatus? deviceOverride;
 
@@ -862,6 +869,25 @@ void main() {
       h.link.stateChanges.add(null);
       await _elapse(tester, const Duration(seconds: 3));
       expect(h.link.messageListens, 1);
+    });
+
+    testWidgets('startMessages runs once, after the controller subscribes', (
+      tester,
+    ) async {
+      final h = _Harness(tester);
+      await h.start();
+      await _elapse(tester, const Duration(seconds: 3));
+      h.link.stateChanges.add(null);
+      await _elapse(tester, const Duration(seconds: 3));
+      expect(h.link.startedWithListener, [true]);
+    });
+
+    testWidgets('no startMessages for an unsupported device', (tester) async {
+      final h = _Harness(tester);
+      h.link.deviceOverride = WatchDeviceStatus.unsupported;
+      await h.start();
+      await _elapse(tester, const Duration(seconds: 5));
+      expect(h.link.startedWithListener, isEmpty);
     });
   });
 

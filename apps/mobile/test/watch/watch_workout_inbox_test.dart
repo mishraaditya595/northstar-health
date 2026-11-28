@@ -40,6 +40,9 @@ class _Link implements WatchLink {
   @override
   Stream<String> get messages => const Stream.empty();
 
+  @override
+  Future<void> startMessages() async {}
+
   Ack ackAt(int i) =>
       WatchMessage.fromJson(jsonDecode(sent[i]) as Map<String, Object?>) as Ack;
 }

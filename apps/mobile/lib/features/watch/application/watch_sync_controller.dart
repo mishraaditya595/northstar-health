@@ -314,7 +314,12 @@ class WatchSyncController {
       if (_disposed || _auth?.userId != user) return;
       _device = device;
       // Acknowledgments come only from a watch that is there to send them.
-      if (device.supported) _messages ??= _link.messages.listen(_onMessage);
+      if (device.supported && _messages == null) {
+        _messages = _link.messages.listen(_onMessage);
+        // Every other listener (the wipe retrier) subscribed at startup, so
+        // the bridge may now hand over what the watch queued while closed.
+        unawaited(_link.startMessages());
+      }
       _publish();
       // iPad, Android and no paired watch: nothing is sent or shown.
       if (!device.supported) return;
