@@ -49,6 +49,11 @@ test('training scene steps through library, programs, log, rest and progress', (
     text: { '[data-kg]': '70', '[data-reps]': '6', '.timer-text b': '00:00' },
   });
   assert.equal(desk(0.1).attrs.step, '0');
+  // Each step looks populated early: the library has results from the start.
+  assert.ok(desk(0).vars.lib >= 0.5);
+  assert.equal(desk(0.1).vars.lib, 1);
+  assert.equal(desk(0.3).vars.prog, 1);
+  assert.equal(desk(0.9).vars.bars, 1);
   assert.equal(desk(0).text['[data-kg]'], '65');
   assert.equal(desk(0).text['[data-reps]'], '8');
   const mid = desk(0.5);
@@ -76,17 +81,21 @@ test('tiles scrub on phones and sit finished elsewhere', () => {
 test('recovery scene draws the wave, sweeps the gauge, then counts up', () => {
   assertSceneContract(recoveryFrame, {
     vars: { wave: 1, energy: 1, trend: 1 },
-    text: { '[data-energy-value]': '74', '[data-steps]': '6,240', '[data-rhr]': '58' },
+    text: { '[data-energy-value]': '74', '[data-steps]': '6,240' },
   });
   const start = recoveryFrame(0);
-  assert.deepEqual(start.text, { '[data-energy-value]': '0', '[data-steps]': '0', '[data-rhr]': '0' });
   assert.deepEqual(start.vars, { wave: 0, energy: 0, trend: 0 });
+  // A reader who stops early never sees a sample reading of zero.
   for (let i = 0; i <= 100; i++) {
     const t = recoveryFrame(i / 100).text;
-    assert.ok(Number(t['[data-energy-value]']) <= 74);
-    assert.ok(Number(t['[data-steps]'].replace(',', '')) <= 6240);
-    assert.ok(Number(t['[data-rhr]']) <= 58);
+    const energy = Number(t['[data-energy-value]']);
+    const steps = Number(t['[data-steps]'].replace(',', ''));
+    assert.ok(energy >= 40 && energy <= 74, `energy ${energy}`);
+    assert.ok(steps >= 4000 && steps <= 6240, `steps ${steps}`);
+    assert.equal(t['[data-rhr]'], undefined);
   }
+  // Mid-scroll the trend has started drawing.
+  assert.ok(recoveryFrame(0.5).vars.trend > 0.5);
 });
 
 test('privacy scene splits the data, then locks the phone card', () => {

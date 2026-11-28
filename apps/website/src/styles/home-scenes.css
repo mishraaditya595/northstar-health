@@ -39,6 +39,9 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+    /* A stage taller than a short window starts at its top instead of
+       spilling above the viewport. */
+    justify-content: safe center;
   }
 
   /* Offline */
@@ -116,7 +119,7 @@
   .scenes-ready [data-scene-track="training"] [data-scene-stage] {
     position: sticky; top: 0; height: 100vh; height: 100svh;
     display: grid; grid-template-columns: 1fr 1.1fr; column-gap: clamp(40px, 6vw, 88px);
-    grid-template-rows: auto repeat(10, auto) auto; align-content: center; padding: 24px 0;
+    grid-template-rows: auto repeat(10, auto) auto; align-content: center; align-content: safe center; padding: 24px 0;
   }
   .scenes-ready .train-head { grid-column: 1; grid-row: 1; margin-bottom: 20px; }
   .scenes-ready .tiles, .scenes-ready .tile { display: contents; }
@@ -152,7 +155,8 @@
 /* Recovery */
 @media (prefers-reduced-motion: no-preference) {
   .scenes-ready [data-scene-track="recovery"] .wave i { transform: scaleY(clamp(0.08, calc(var(--wave, 1) * 13 - var(--j)), 1)); }
-  .scenes-ready [data-scene-track="recovery"] .gauge .arc { stroke-dashoffset: calc(100 - 74 * var(--energy, 1)); }
+  /* The arc follows the number: 41 at the start, the sample 74 when done. */
+  .scenes-ready [data-scene-track="recovery"] .gauge .arc { stroke-dashoffset: calc(59 - 33 * var(--energy, 1)); }
   .scenes-ready [data-scene-track="recovery"] .energy-trend polyline { stroke-dashoffset: calc((1 - var(--trend, 1)) * 100); }
 }
 
@@ -165,6 +169,8 @@
   .scenes-ready [data-scene-track="privacy"] { --track: 170vh; }
   .scenes-ready [data-scene-track="privacy"] .vault { overflow: visible; isolation: auto; }
   .scenes-ready [data-scene-track="privacy"] .vault::before { display: none; }
+  /* Card headings stay above the moving items, so they read at every step. */
+  .scenes-ready [data-scene-track="privacy"] .vault h3 { position: relative; z-index: 4; }
   .scenes-ready [data-scene-track="privacy"] .vault li {
     z-index: 3;
     border-radius: 12px;
@@ -175,8 +181,8 @@
     box-shadow: 0 0 0 calc((1 - var(--split, 1)) * 6px) color-mix(in srgb, var(--surface-soft) clamp(0%, calc((1 - var(--split, 1)) * 300%), 100%), transparent);
   }
   .scenes-ready [data-scene-track="privacy"] .phone-outline {
-    display: block; position: absolute; z-index: 2; left: 50%; top: 50%;
-    width: min(340px, 78%); height: 270px; translate: -50% -50%;
+    display: block; position: absolute; z-index: 2; left: 50%; top: var(--pile-y, 50%);
+    width: min(340px, 78%); height: var(--pile-h, 270px); translate: -50% -50%;
     border: 2px solid var(--performance); border-radius: 36px; pointer-events: none;
     background: color-mix(in srgb, var(--performance) 7%, transparent);
     opacity: calc(1 - var(--split, 1));

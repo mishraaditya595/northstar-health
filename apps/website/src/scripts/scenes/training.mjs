@@ -12,15 +12,19 @@ const logText = t => ({
 });
 
 // Desktop: one pinned panel steps through library, programs, set logging,
-// rest timer and progress, each in a fifth of the scroll. Phones and short
-// windows show the tiles instead (see tileFrame).
+// rest timer and progress, each in a fifth of the scroll. Each step builds
+// early in its fifth so a reader who stops sees a populated panel; the
+// library already shows chips and results when the panel pins. Phones and
+// short windows show the tiles instead (see tileFrame).
 export function trainingFrame(p, ctx = { mobile: false }) {
   if (ctx.mobile || ctx.short) return { attrs: { mode: 'tiles' } };
   const ring = seg(p, 0.6, 0.8);
   return {
-    vars: { lib: seg(p, 0, 0.2), prog: seg(p, 0.2, 0.4), log: seg(p, 0.4, 0.6), ring, bars: seg(p, 0.8, 1) },
+    vars: {
+      lib: 0.5 + 0.5 * seg(p, 0, 0.08), prog: seg(p, 0.2, 0.28), log: seg(p, 0.4, 0.5), ring, bars: seg(p, 0.8, 0.9),
+    },
     attrs: { step: String(Math.min(4, Math.floor(p * 5))), mode: 'pinned' },
-    text: { ...logText(seg(p, 0.4, 0.6)), '.timer-text b': restClock(ring) },
+    text: { ...logText(seg(p, 0.4, 0.5)), '.timer-text b': restClock(ring) },
   };
 }
 

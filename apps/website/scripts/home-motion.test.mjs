@@ -179,6 +179,8 @@ test('a band too small for the phones gives a size below the minimum', () => {
 test('count-up text starts at zero, ends on the exact value and keeps its format', () => {
   assert.equal(countUpText('6,240', 0), '0');
   assert.equal(countUpText('6,240', 1), '6,240');
+  assert.equal(countUpText('6,240', 0, 4180), '4,180');
+  assert.equal(countUpText('6,240', 0.5, 4180), '5,210');
   assert.equal(countUpText('6,240', .5), '3,120');
   assert.equal(countUpText('74.2', 1), '74.2');
   assert.equal(countUpText('74.2', .5), '37.1');

@@ -3,18 +3,22 @@ import { countUpText } from '../home-reveal.mjs';
 
 const ease = t => 1 - Math.pow(1 - t, 3);
 
-// Sleep wave draws, the energy gauge sweeps to a sample value, the 7-day
-// trend draws, then steps and resting heart rate count up. The weight tile
-// stays "No reading" in the markup and is never touched.
+// The sample energy score sweeps up from this value, so no step of the scene
+// shows a reading of zero (missing is never shown as zero on this site).
+export const ENERGY_FROM = 41;
+
+// Sleep wave draws, the energy gauge sweeps up to a sample value, the 7-day
+// trend draws, and today's steps climb to their sample total. Resting heart
+// rate stays at its sample value and the weight tile stays "No reading": they
+// are in the markup and never touched.
 export function recoveryFrame(p) {
-  const energy = ease(seg(p, 0.3, 0.65));
-  const count = ease(seg(p, 0.6, 1));
+  const energy = ease(seg(p, 0.15, 0.5));
+  const count = ease(seg(p, 0.45, 0.85));
   return {
-    vars: { wave: seg(p, 0, 0.35), energy, trend: seg(p, 0.5, 0.85) },
+    vars: { wave: seg(p, 0, 0.3), energy, trend: seg(p, 0.25, 0.6) },
     text: {
-      '[data-energy-value]': String(Math.round(74 * energy)),
-      '[data-steps]': countUpText('6,240', count),
-      '[data-rhr]': countUpText('58', count),
+      '[data-energy-value]': String(Math.round(ENERGY_FROM + (74 - ENERGY_FROM) * energy)),
+      '[data-steps]': countUpText('6,240', count, 4180),
     },
   };
 }

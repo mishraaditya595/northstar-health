@@ -2,11 +2,12 @@
 // state is the plain HTML: without JS, or with reduced motion, nothing hides.
 
 // Text for a number partway through counting up. Keeps thousands separators
-// and decimals; text that is not a plain number is returned unchanged.
-export function countUpText(text, t) {
+// and decimals; text that is not a plain number is returned unchanged. The
+// count starts at `from` (0 unless given).
+export function countUpText(text, t, from = 0) {
   if (!/^\d[\d,]*(\.\d+)?$/.test(text)) return text;
   const decimals = (text.split('.')[1] || '').length;
-  const value = Number(text.replace(/,/g, '')) * Math.max(0, Math.min(1, t));
+  const value = from + (Number(text.replace(/,/g, '')) - from) * Math.max(0, Math.min(1, t));
   const out = value.toFixed(decimals);
   if (!text.includes(',')) return out;
   const [int, frac] = out.split('.');
@@ -65,12 +66,14 @@ export function mountWords(doc, win) {
 export function mountMagnets(doc, win, selector = '.finale .button') {
   const fine = win.matchMedia?.('(hover: hover) and (pointer: fine)');
   const motion = win.matchMedia?.('(prefers-reduced-motion: no-preference)');
-  if (!fine?.matches || !motion?.matches) return;
+  if (!fine?.matches) return;
   const buttons = [...doc.querySelectorAll(selector)];
   if (!buttons.length) return;
   let pointer = null, raf = 0;
   const apply = () => {
     raf = 0;
+    // Reduced motion may be turned on after load: buttons then stay put.
+    if (!motion?.matches) pointer = null;
     const rects = buttons.map(b => b.getBoundingClientRect());
     buttons.forEach((b, i) => {
       const r = rects[i];
@@ -89,6 +92,7 @@ export function mountMagnets(doc, win, selector = '.finale .button') {
     pointer = null;
     if (!raf) raf = win.requestAnimationFrame(apply);
   });
+  motion?.addEventListener?.('change', () => { if (!raf) raf = win.requestAnimationFrame(apply); });
 }
 
 export function mountReveals(doc, win) {

@@ -36,11 +36,20 @@ export function mountPrivacyOffsets(doc, win) {
   let raf = 0;
   function measure() {
     raf = 0;
-    const offs = startOffsets(items.map(place), { x: 0, y: 0, w: area.offsetWidth, h: area.offsetHeight }, 62);
+    // The pile sits below the lower card heading, so neither heading is
+    // covered when the scene starts (on phones the cards stack).
+    const heads = [...area.querySelectorAll('.vault h3')].map(place);
+    const below = Math.max(0, ...heads.map(h => h.y + h.h)) + 8;
+    const gap = 44;
+    const span = items.length * gap;
+    const box = { x: 0, y: below, w: area.offsetWidth, h: Math.max(span, area.offsetHeight - below) };
+    const offs = startOffsets(items.map(place), box, gap);
     items.forEach((el, i) => {
       el.style.setProperty('--fx', `${Math.round(offs[i].fx)}px`);
       el.style.setProperty('--fy', `${Math.round(offs[i].fy)}px`);
     });
+    area.style.setProperty('--pile-y', `${Math.round(box.y + box.h / 2)}px`);
+    area.style.setProperty('--pile-h', `${span + 36}px`);
   }
   const schedule = () => { if (!raf) raf = win.requestAnimationFrame(measure); };
   win.addEventListener('resize', schedule);
