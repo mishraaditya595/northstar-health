@@ -27,6 +27,7 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private var wearLink: WearLinkBridge? = null
+    private var weightWriter: WeightWriter? = null
     private var pendingExport: MethodChannel.Result? = null
     private var writeInProgress = false
     private var pendingFile: File? = null
@@ -126,6 +127,9 @@ class MainActivity : FlutterFragmentActivity() {
         super.configureFlutterEngine(flutterEngine)
         wearLink?.dispose()
         wearLink = WearLinkBridge(this, flutterEngine.dartExecutor.binaryMessenger)
+            .also { it.register() }
+        weightWriter?.dispose()
+        weightWriter = WeightWriter(this, flutterEngine.dartExecutor.binaryMessenger)
             .also { it.register() }
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -277,6 +281,8 @@ class MainActivity : FlutterFragmentActivity() {
     override fun onDestroy() {
         wearLink?.dispose()
         wearLink = null
+        weightWriter?.dispose()
+        weightWriter = null
         pendingFile = null
         if (!writeInProgress) {
             // A picker that hasn't returned cannot complete after teardown.
