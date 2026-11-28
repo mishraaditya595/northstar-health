@@ -15,13 +15,18 @@ import `in`.beyondrep.wear.exercise.ExerciseOwner
 import `in`.beyondrep.wear.exercise.SensorReading
 import `in`.beyondrep.wear.exercise.SensorStart
 import `in`.beyondrep.wear.link.RecordingItems
+import `in`.beyondrep.wear.testing.OTHER_TEST_KEY
 import `in`.beyondrep.wear.testing.TEST_KEY
 import `in`.beyondrep.wear.testing.bindForTest
 import `in`.beyondrep.wear.testing.syntheticTemplate
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -53,8 +58,14 @@ class WorkoutRunnerTest {
         template = syntheticTemplate()
     }
 
-    private fun runner(sensors: FakeSensors, service: FakeServiceControl) = WorkoutRunner(
-        graph, sensors, service, Instant::now, "watch-test", { "UTC" }, CoroutineScope(Dispatchers.Unconfined))
+    private fun runner(sensors: FakeSensors, service: FakeServiceControl, haptics: RestHaptics? = null) = WorkoutRunner(
+        graph, sensors, service, Instant::now, "watch-test", { "UTC" }, CoroutineScope(Dispatchers.Unconfined), haptics)
+
+    private suspend fun activeSessions() = withContext(graph.dispatcher) { graph.journal.activeSessionAccounts() }
+
+    private suspend fun untilIdle(runner: WorkoutRunner) = withTimeout(5_000) {
+        while (runner.state.value !is RunnerState.Idle) delay(10)
+    }
 
     private fun running(runner: WorkoutRunner) = assertIs<RunnerState.Running>(runner.state.value)
 
@@ -224,14 +235,18 @@ class WorkoutRunnerTest {
     }
 
     @Test
-    fun healthValuesNeverReachTheJournal() = runBlocking<Unit> {
+    fun healthValuesNeverReachTheJournalOrTheDataLayer() = runBlocking<Unit> {
+        // Sentinels that show up nowhere else: a leak of either would be a bug.
         val sensors = FakeSensors(
-            scripted = listOf(SensorReading.HeartRate(70.0, Instant.now()), SensorReading.Calories(250.0)),
+            scripted = listOf(SensorReading.HeartRate(173.0, Instant.now()), SensorReading.Calories(987.0)),
         )
         val runner = runner(sensors, FakeServiceControl())
         runner.start(template)
+        assertEquals(173, running(runner).heartRate)
+        assertEquals(987, running(runner).calories)
         runner.log(values())
         runner.finish()
+        val sentinel = Regex("""\b(173|987)\b""")
         val db = SQLiteDatabase.openDatabase(
             context.getDatabasePath(dbName).path, null, SQLiteDatabase.OPEN_READONLY)
         try {
@@ -256,11 +271,201 @@ class WorkoutRunnerTest {
                 }
             }
             val text = dump.toString().lowercase()
+            assertFalse(sentinel.containsMatchIn(text), "journal rows contain a health sentinel")
             for (forbidden in listOf("bpm", "heart", "calor")) {
                 assertFalse(text.contains(forbidden), "journal rows contain \"$forbidden\"")
             }
         } finally {
             db.close()
         }
+        assertTrue(items.puts.isNotEmpty())
+        for ((path, json) in items.puts) {
+            assertFalse(sentinel.containsMatchIn(json), "Data Layer item $path contains a health sentinel")
+            for (forbidden in listOf("bpm", "heart", "calor")) {
+                assertFalse(json.lowercase().contains(forbidden), "Data Layer item $path contains \"$forbidden\"")
+            }
+        }
+    }
+
+    // --- Restore, account changes and concurrency ------------------------------------------------
+
+    @Test
+    fun restoreUnboundWithOursEndsTheSensors() = runBlocking<Unit> {
+        runner(FakeSensors(), FakeServiceControl()).also { it.start(template); it.log(values()) }
+        // The phone signed out while the process was dead: the binding is gone, the session rows stay.
+        withContext(graph.dispatcher) { graph.journal.clearAccount(TEST_KEY, wipeUnsent = false) }
+        val sensors = FakeSensors(owner = ExerciseOwner.OURS)
+        val service = FakeServiceControl()
+        val restored = runner(sensors, service)
+        restored.restore()
+        assertIs<RunnerState.Idle>(restored.state.value)
+        assertEquals(1, sensors.ended, "a platform session no bound workout explains is ended")
+        assertFalse(service.started)
+        assertTrue(activeSessions().isEmpty(), "the unowned session is abandoned, not left active")
+    }
+
+    @Test
+    fun aClearedAccountsActiveSessionIsAbandonedAtRestore() = runBlocking<Unit> {
+        runner(FakeSensors(), FakeServiceControl()).also { it.start(template); it.log(values()) }
+        // Another account is bound now and the first one has a clear tombstone.
+        withContext(graph.dispatcher) {
+            graph.journal.recordCleared(TEST_KEY, Instant.parse("2026-10-24T00:00:00Z").toEpochMilli())
+            graph.journal.bindForTest(OTHER_TEST_KEY)
+        }
+        val sensors = FakeSensors(owner = ExerciseOwner.OURS)
+        val restored = runner(sensors, FakeServiceControl())
+        restored.restore()
+        assertIs<RunnerState.Idle>(restored.state.value)
+        assertTrue(activeSessions().isEmpty())
+        assertEquals(1, sensors.ended)
+        assertTrue(items.puts.none { it.second.contains("completed_workout") })
+    }
+
+    @Test
+    fun aClearNewerThanTheBindingAbandonsEvenTheBoundAccountsSession() = runBlocking<Unit> {
+        runner(FakeSensors(), FakeServiceControl()).also { it.start(template); it.log(values()) }
+        // bindForTest sends at 2026-10-23T01:00:00Z; the phone cleared the account after that.
+        withContext(graph.dispatcher) {
+            graph.journal.recordCleared(TEST_KEY, Instant.parse("2026-10-24T00:00:00Z").toEpochMilli())
+        }
+        val restored = runner(FakeSensors(owner = ExerciseOwner.OURS), FakeServiceControl())
+        restored.restore()
+        assertIs<RunnerState.Idle>(restored.state.value)
+        assertTrue(activeSessions().isEmpty())
+    }
+
+    @Test
+    fun startDuringARestoreCannotCreateASecondSession() = runBlocking<Unit> {
+        runner(FakeSensors(), FakeServiceControl()).also { it.start(template); it.log(values()) }
+        val sensors = FakeSensors(owner = ExerciseOwner.OURS)
+        val gate = CompletableDeferred<Unit>()
+        sensors.ownerGate = gate
+        val restored = runner(sensors, FakeServiceControl())
+        val restoring = async(Dispatchers.Default) { restored.restore() }
+        // Restore is now suspended on a Health Services answer; the person taps Start meanwhile.
+        sensors.ownerEntered.await()
+        val starting = async(Dispatchers.Default) { restored.start(syntheticTemplate("Second")) }
+        delay(200)
+        gate.complete(Unit)
+        restoring.await()
+        starting.await()
+        assertEquals(1, activeSessions().size)
+        assertEquals(0, sensors.started, "Start found the restored workout and did nothing")
+        assertEquals(1, sensors.attached)
+        assertEquals("Synthetic push", running(restored).controller.template.name)
+    }
+
+    @Test
+    fun restoredPausedWorkoutPausesTheNewSensorSession() = runBlocking<Unit> {
+        val first = runner(FakeSensors(), FakeServiceControl())
+        first.start(template)
+        first.log(values())
+        first.pause()
+        val sensors = FakeSensors(owner = ExerciseOwner.NONE)
+        val restored = runner(sensors, FakeServiceControl())
+        restored.restore()
+        assertEquals("paused", running(restored).controller.status)
+        assertEquals(1, sensors.started)
+        assertEquals(1, sensors.paused, "a new platform session must not run while the workout is paused")
+    }
+
+    @Test
+    fun observeIsIdempotent() {
+        val runner = runner(FakeSensors(), FakeServiceControl())
+        val first = runner.observe()
+        assertTrue(first.isActive)
+        assertEquals(first, runner.observe())
+    }
+
+    @Test
+    fun signOutThroughObserveDiscardsTheWorkout() = runBlocking<Unit> {
+        val sensors = FakeSensors()
+        val service = FakeServiceControl()
+        val runner = runner(sensors, service)
+        runner.observe()
+        runner.start(template)
+        runner.log(values())
+        val cleared = WatchMessage(
+            UUID.randomUUID().toString(), "2026-10-23T02:00:00Z", TEST_KEY, WatchMessageBody.AccountCleared(false))
+        // Only the link delivers the change; nothing calls syncAccount directly.
+        withContext(graph.dispatcher) {
+            graph.link.onChanges(
+                listOf(DataChange(DataLayerPaths.context("account_cleared"), cleared.encode(), deleted = false)))
+        }
+        untilIdle(runner)
+        assertTrue(service.stopped)
+        assertEquals(1, sensors.ended)
+        assertTrue(activeSessions().isEmpty())
+        assertTrue(items.puts.none { it.second.contains("completed_workout") })
+    }
+
+    @Test
+    fun anAccountSwitchThroughObserveDiscardsTheWorkoutOfTheFirstAccount() = runBlocking<Unit> {
+        val sensors = FakeSensors()
+        val runner = runner(sensors, FakeServiceControl())
+        runner.observe()
+        runner.start(template)
+        runner.log(values())
+        withContext(graph.dispatcher) { graph.journal.bindForTest(OTHER_TEST_KEY) }
+        graph.bump()
+        untilIdle(runner)
+        assertEquals(1, sensors.ended)
+        assertTrue(activeSessions().isEmpty())
+        assertTrue(withContext(graph.dispatcher) { graph.journal.pendingCompleted(5) }.isEmpty())
+    }
+
+    @Test
+    fun aFailedJournalCommitLeavesTheSetUnsaved() = runBlocking<Unit> {
+        val runner = runner(FakeSensors(), FakeServiceControl())
+        runner.start(template)
+        // Break the events table behind the journal's back: the next commit throws.
+        val db = SQLiteDatabase.openDatabase(context.getDatabasePath(dbName).path, null, SQLiteDatabase.OPEN_READWRITE)
+        try {
+            db.execSQL("ALTER TABLE events RENAME TO events_broken")
+        } finally {
+            db.close()
+        }
+        val stored = runner.log(values())
+        assertFalse(stored, "the commit failed, so the set must not be reported as saved")
+        assertEquals(0, running(runner).controller.state.completedSets)
+    }
+
+    @Test
+    fun heartRateStaysHiddenAfterUnavailableEvenWhenCaloriesArrive() = runBlocking<Unit> {
+        val sensors = FakeSensors(
+            scripted = listOf(
+                SensorReading.HeartRate(70.0, Instant.now()),
+                SensorReading.Unavailable,
+                SensorReading.Calories(100.0),
+            ),
+        )
+        val runner = runner(sensors, FakeServiceControl())
+        runner.start(template)
+        assertNull(running(runner).heartRate)
+        assertEquals(100, running(runner).calories)
+    }
+
+    @Test
+    fun theServiceStartsBeforeTheSensors() = runBlocking<Unit> {
+        val trace = mutableListOf<String>()
+        runner(FakeSensors(trace = trace), FakeServiceControl(trace)).start(template)
+        assertEquals(listOf("service.start", "sensors.start"), trace)
+    }
+
+    @Test
+    fun restDeadlinesReachTheHapticsAndHoldTheWakeLock() = runBlocking<Unit> {
+        val lock = FakeWakeLock()
+        var pulses = 0
+        val haptics = RestHaptics(CoroutineScope(Dispatchers.Unconfined), Instant::now, lock) { pulses += 1 }
+        val runner = runner(FakeSensors(), FakeServiceControl(), haptics)
+        runner.start(template)
+        assertTrue(lock.acquired.isEmpty())
+        runner.log(values())
+        assertEquals(1, lock.acquired.size, "logging a set with a 60 s rest holds the lock for that rest")
+        assertTrue(lock.acquired.single() in 60_000L..65_000L)
+        assertTrue(lock.held)
+        runner.skipRest()
+        assertFalse(lock.held, "skipping the rest releases it")
+        assertEquals(0, pulses)
     }
 }

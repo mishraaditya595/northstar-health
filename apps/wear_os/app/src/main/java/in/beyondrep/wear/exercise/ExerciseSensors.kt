@@ -96,6 +96,11 @@ class HealthServicesSensors(private val context: Context) : ExerciseSensors {
         if (callback != null) return
         val created = object : ExerciseUpdateCallback {
             override fun onExerciseUpdateReceived(update: ExerciseUpdate) {
+                if (update.exerciseStateInfo.state.isEnded) {
+                    // The platform ended the session (another app, the system): nothing live is measured any more.
+                    flow.tryEmit(SensorReading.Unavailable)
+                    return
+                }
                 val now = Instant.now()
                 update.latestMetrics.getData(DataType.HEART_RATE_BPM).lastOrNull()?.let {
                     flow.tryEmit(SensorReading.HeartRate(it.value, now))

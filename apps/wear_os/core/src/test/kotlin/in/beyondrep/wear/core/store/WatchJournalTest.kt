@@ -212,6 +212,18 @@ class WatchJournalTest {
     }
 
     @Test
+    fun activeSessionsOfEveryAccountAreListedUntilTheyEnd() {
+        val journal = open()
+        assertTrue(journal.activeSessionAccounts().isEmpty())
+        val m = machine()
+        val events = m.start("Synthetic push day").toMutableList()
+        journal.record(events, WorkoutReplay.replay(events))
+        assertEquals(listOf(SessionAccount(session, key)), journal.activeSessionAccounts())
+        journal.record(listOf(m.abandon()), m.state)
+        assertTrue(journal.activeSessionAccounts().isEmpty())
+    }
+
+    @Test
     fun restoredMachineContinuesTheSequenceWithoutReuse() {
         recordSession(open(), 1)
         val reopened = open()

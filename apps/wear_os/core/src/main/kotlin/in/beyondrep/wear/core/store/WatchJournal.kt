@@ -305,6 +305,12 @@ class WatchJournal(
             "SELECT session_id, account_key FROM sessions WHERE status = 'completed' AND delivery IS NULL ORDER BY rowid",
         ).mapNotNull { row -> SessionAccount(textAt(row, 0) ?: return@mapNotNull null, textAt(row, 1) ?: return@mapNotNull null) }
 
+    /** Active or paused sessions of every account, oldest first: a launch abandons the ones no bound account owns. */
+    fun activeSessionAccounts(): List<SessionAccount> =
+        db.query(
+            "SELECT session_id, account_key FROM sessions WHERE status IN ('active','paused') ORDER BY rowid",
+        ).mapNotNull { row -> SessionAccount(textAt(row, 0) ?: return@mapNotNull null, textAt(row, 1) ?: return@mapNotNull null) }
+
     /** Queued completed workouts, split by whether they belong to `boundKey`. */
     fun waitingCounts(boundKey: String?): WaitingCounts {
         var mine = 0
