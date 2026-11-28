@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/watch_status.dart';
 
-/// The phone's side of the Apple Watch link. It carries opaque JSON strings
+/// The phone's side of the watch link (Apple Watch or Wear OS). It carries opaque JSON strings
 /// built by `watch_snapshots.dart`; all decisions stay in Dart.
 abstract interface class WatchLink {
   /// True only when a watch is paired and has the BeyondRep app installed.
@@ -35,7 +35,8 @@ abstract interface class WatchLink {
   Stream<String> get messages;
 }
 
-/// iOS bridge (`ios/Runner/WatchLinkBridge.swift`). A missing plugin or a
+/// Platform bridge (`ios/Runner/WatchLinkBridge.swift`, Android
+/// `WearLinkBridge.kt`). A missing plugin or a
 /// platform error never reaches the UI: it means "no watch" and nothing is
 /// sent.
 class MethodChannelWatchLink implements WatchLink {
@@ -85,6 +86,19 @@ class MethodChannelWatchLink implements WatchLink {
       }
       return null;
     });
+    if (which == 'messages') unawaited(_startMessages());
+  }
+
+  /// Android keeps watch messages as Data Layer items until Dart listens;
+  /// this asks the bridge to hand over what is pending. iOS ignores it.
+  Future<void> _startMessages() async {
+    try {
+      await channel.invokeMethod<void>('startMessages');
+    } on MissingPluginException {
+      // No bridge on this platform.
+    } on PlatformException {
+      // Not user actionable; the next listener start asks again.
+    }
   }
 
   void _detach(String which) {
@@ -155,7 +169,7 @@ class MethodChannelWatchLink implements WatchLink {
   }
 }
 
-/// Android and tests: nothing to send to.
+/// Other platforms and tests: nothing to send to.
 class NoopWatchLink implements WatchLink {
   const NoopWatchLink();
 
@@ -182,7 +196,9 @@ class NoopWatchLink implements WatchLink {
 }
 
 final watchLinkProvider = Provider<WatchLink>(
-  (ref) => defaultTargetPlatform == TargetPlatform.iOS
+  (ref) =>
+      defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.android
       ? MethodChannelWatchLink.shared
       : const NoopWatchLink(),
 );

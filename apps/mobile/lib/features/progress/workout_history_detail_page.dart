@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/design/page_header.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design/stats.dart';
 import '../../core/design/section.dart';
 import '../../core/design/beyondrep_theme.dart';
+import '../watch/domain/watch_platform.dart';
 import '../health/application/own_workout_health.dart';
 import '../health/domain/own_workout_health.dart';
 import 'domain/progress_overview.dart';
@@ -126,7 +128,7 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
               '${started.minute.toString().padLeft(2, '0')}',
             ),
             if (session.origin == WorkoutOrigin.watch)
-              const NsTag('Apple Watch'),
+              NsTag(watchName(defaultTargetPlatform)),
             if (syncFlag != null) NsTag(syncFlag.label, warning: true),
           ],
         ),

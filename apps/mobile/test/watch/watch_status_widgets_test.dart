@@ -104,10 +104,22 @@ Future<void> _pump(
   await tester.pumpAndSettle();
 }
 
+void iosWidgets(String name, WidgetTesterCallback body) => testWidgets(
+  name,
+  body,
+  variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+);
+
+void androidWidgets(String name, WidgetTesterCallback body) => testWidgets(
+  name,
+  body,
+  variant: TargetPlatformVariant.only(TargetPlatform.android),
+);
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  testWidgets('hidden shows nothing on Today or Account', (tester) async {
+  iosWidgets('hidden shows nothing on Today or Account', (tester) async {
     await _pump(tester, _state(const WatchHidden()), section: true);
     expect(find.byType(InsightCard), findsNothing);
     expect(find.byType(NsStatusLine), findsNothing);
@@ -115,7 +127,7 @@ void main() {
     expect(find.textContaining('watch'), findsNothing);
   });
 
-  testWidgets('not installed shows banner first with the exact copy', (
+  iosWidgets('not installed shows banner first with the exact copy', (
     tester,
   ) async {
     await _pump(
@@ -146,7 +158,7 @@ void main() {
     expect(find.byType(NsStatusLine), findsNothing);
   });
 
-  testWidgets('Not now hides the banner and persists', (tester) async {
+  iosWidgets('Not now hides the banner and persists', (tester) async {
     await _pump(
       tester,
       _state(const WatchNotInstalled(), device: _notInstalled),
@@ -157,7 +169,7 @@ void main() {
     expect((await WatchStatusStore.open()).installHintDismissed, isTrue);
   });
 
-  testWidgets('a dismissed install banner stays hidden', (tester) async {
+  iosWidgets('a dismissed install banner stays hidden', (tester) async {
     await _pump(
       tester,
       _state(const WatchNotInstalled(), device: _notInstalled, dismissed: true),
@@ -165,7 +177,7 @@ void main() {
     expect(find.byType(InsightCard), findsNothing);
   });
 
-  testWidgets('Show me how opens three steps', (tester) async {
+  iosWidgets('Show me how opens three steps', (tester) async {
     await _pump(
       tester,
       _state(const WatchNotInstalled(), device: _notInstalled),
@@ -180,7 +192,7 @@ void main() {
     expect(find.text('Tap Install next to BeyondRep.'), findsOneWidget);
   });
 
-  testWidgets('stale shows banner with last time', (tester) async {
+  iosWidgets('stale shows banner with last time', (tester) async {
     await _pump(tester, _state(WatchStale(_tuesday)));
     expect(
       find.textContaining(
@@ -202,7 +214,7 @@ void main() {
     expect(find.text('Account page'), findsOneWidget);
   });
 
-  testWidgets('synced shows footer last and no banner', (tester) async {
+  iosWidgets('synced shows footer last and no banner', (tester) async {
     await _pump(tester, _state(WatchSynced(_todayAt)));
     expect(find.byType(InsightCard), findsNothing);
     expect(find.text('Apple Watch · synced Today 10:43 AM'), findsOneWidget);
@@ -212,14 +224,14 @@ void main() {
     );
   });
 
-  testWidgets('footer names the day when the sync was not today', (
+  iosWidgets('footer names the day when the sync was not today', (
     tester,
   ) async {
     await _pump(tester, _state(WatchSynced(_tuesday)));
     expect(find.text('Apple Watch · synced Tue 10:43 AM'), findsOneWidget);
   });
 
-  testWidgets('tapping the install banner text opens Account and sync', (
+  iosWidgets('tapping the install banner text opens Account and sync', (
     tester,
   ) async {
     await _pump(
@@ -233,13 +245,13 @@ void main() {
     expect(find.text('Account page'), findsOneWidget);
   });
 
-  testWidgets('waiting shows nothing on Today', (tester) async {
+  iosWidgets('waiting shows nothing on Today', (tester) async {
     await _pump(tester, _state(const WatchWaiting()));
     expect(find.byType(InsightCard), findsNothing);
     expect(find.byType(NsStatusLine), findsNothing);
   });
 
-  testWidgets('footer opens Account and sync', (tester) async {
+  iosWidgets('footer opens Account and sync', (tester) async {
     await _pump(tester, _state(WatchSynced(_todayAt)));
     await tester.tap(find.byType(NsStatusLine));
     await tester.pumpAndSettle();
@@ -247,7 +259,7 @@ void main() {
   });
 
   for (final brightness in Brightness.values) {
-    testWidgets('banner and footer fit at text scale 2.0 in $brightness', (
+    iosWidgets('banner and footer fit at text scale 2.0 in $brightness', (
       tester,
     ) async {
       for (final state in [
@@ -262,7 +274,7 @@ void main() {
   }
 
   group('account section rows per state', () {
-    testWidgets('synced', (tester) async {
+    iosWidgets('synced', (tester) async {
       await _pump(
         tester,
         _state(WatchSynced(_todayAt), summary: 'Readiness, health, 3 plans'),
@@ -279,7 +291,7 @@ void main() {
       expect(find.text('Readiness, health, 3 plans'), findsOneWidget);
     });
 
-    testWidgets('not installed', (tester) async {
+    iosWidgets('not installed', (tester) async {
       await _pump(
         tester,
         _state(const WatchNotInstalled(), device: _notInstalled),
@@ -289,14 +301,14 @@ void main() {
       expect(find.text('Not synced yet'), findsOneWidget);
     });
 
-    testWidgets('waiting', (tester) async {
+    iosWidgets('waiting', (tester) async {
       await _pump(tester, _state(const WatchWaiting()), section: true);
       expect(find.text('Waiting for the watch'), findsOneWidget);
       expect(find.text('Installed'), findsOneWidget);
       expect(find.text('Not synced yet'), findsOneWidget);
     });
 
-    testWidgets('stale uses the caution colour for the last time', (
+    iosWidgets('stale uses the caution colour for the last time', (
       tester,
     ) async {
       await _pump(tester, _state(WatchStale(_tuesday)), section: true);
@@ -305,7 +317,7 @@ void main() {
       expect(find.byIcon(Icons.error_outline), findsOneWidget);
     });
 
-    testWidgets('a confirmation more than 6 days old shows a date', (
+    iosWidgets('a confirmation more than 6 days old shows a date', (
       tester,
     ) async {
       await _pump(
@@ -316,7 +328,7 @@ void main() {
       expect(find.text('20 Nov 10:43 AM'), findsOneWidget);
     });
 
-    testWidgets('exactly 6 days old still shows the weekday', (tester) async {
+    iosWidgets('exactly 6 days old still shows the weekday', (tester) async {
       await _pump(
         tester,
         _state(WatchSynced(DateTime(2026, 11, 21, 10, 43))),
@@ -325,11 +337,56 @@ void main() {
       expect(find.text('Sat 10:43 AM'), findsOneWidget);
     });
 
-    testWidgets('sent summary row only when something was sent', (
-      tester,
-    ) async {
+    iosWidgets('sent summary row only when something was sent', (tester) async {
       await _pump(tester, _state(const WatchWaiting()), section: true);
       expect(find.text('Sent to watch'), findsNothing);
+    });
+  });
+
+  group('on Android', () {
+    androidWidgets('unsupportedAndroidShowsNothing', (tester) async {
+      await _pump(
+        tester,
+        _state(const WatchHidden(), device: WatchDeviceStatus.unsupported),
+        section: true,
+      );
+      expect(find.byType(InsightCard), findsNothing);
+      expect(find.byType(NsStatusLine), findsNothing);
+      expect(find.text('WATCH'), findsNothing);
+      expect(find.text('BeyondRep on watch'), findsNothing);
+    });
+
+    androidWidgets('footer reads Watch · synced', (tester) async {
+      await _pump(tester, _state(WatchSynced(_todayAt)));
+      expect(find.text('Watch · synced Today 10:43 AM'), findsOneWidget);
+    });
+
+    androidWidgets('banner and install sheet use the Android copy', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        _state(const WatchNotInstalled(), device: _notInstalled),
+      );
+      expect(
+        find.textContaining(
+          'On your watch, open the Play Store, find BeyondRep under Apps on '
+          'your phone and tap Install.',
+          findRichText: true,
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Show me how'));
+      await tester.pumpAndSettle();
+      expect(find.text('On your watch, open the Play Store.'), findsOneWidget);
+      expect(find.text('Scroll to Apps on your phone.'), findsOneWidget);
+      expect(find.text('Tap Install next to BeyondRep.'), findsOneWidget);
+    });
+
+    androidWidgets('account section header says WATCH', (tester) async {
+      await _pump(tester, _state(WatchSynced(_todayAt)), section: true);
+      expect(find.text('WATCH'), findsOneWidget);
+      expect(find.text('APPLE WATCH'), findsNothing);
     });
   });
 }

@@ -309,6 +309,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Workout details'), findsOneWidget);
     expect(find.text('Apple Watch'), findsOneWidget);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+  testWidgets('on Android a watch workout shows the Watch tag', (tester) async {
+    tallView(tester);
+    writeWorkout('wk', startedAtUtc: DateTime.utc(2026, 10, 22, 10));
+    markWatch('wk');
+    await showProgressAt(tester, DateTime.utc(2026, 10, 24, 12));
+    expect(find.text('Watch'), findsOneWidget);
+    expect(find.text('Apple Watch'), findsNothing);
+    await tester.ensureVisible(find.text('View details'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('View details'));
+    await tester.pumpAndSettle();
+    expect(find.text('Watch'), findsOneWidget);
   });
 
   testWidgets('a phone workout shows no Apple Watch tag', (tester) async {
@@ -340,7 +354,7 @@ void main() {
     );
     expect(find.text('Apple Watch'), findsOneWidget);
     expect(tester.takeException(), isNull);
-  });
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
   testWidgets('the month arrows browse history and stop at this month', (
     tester,

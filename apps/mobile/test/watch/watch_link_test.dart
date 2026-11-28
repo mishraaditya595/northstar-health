@@ -37,8 +37,59 @@ void main() {
     );
   });
 
-  test('watchLinkProvider elsewhere is the no-op link', () {
+  test('watchLinkProvider on Android returns the shared instance', () {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    expect(
+      identical(
+        container.read(watchLinkProvider),
+        MethodChannelWatchLink.shared,
+      ),
+      isTrue,
+    );
+  });
+
+  test(
+    'pendingQueuedItemsAreDeliveredWhenDartStartsListening: the first '
+    'messages listener calls startMessages, then watchMessage reaches it',
+    () async {
+      handle(null);
+      final link = MethodChannelWatchLink();
+      final received = <String>[];
+      final sub = link.messages.listen(received.add);
+      await Future<void>.delayed(Duration.zero);
+      expect(calls.map((c) => c.method), contains('startMessages'));
+      await messenger.handlePlatformMessage(
+        _channel.name,
+        _channel.codec.encodeMethodCall(
+          const MethodCall('watchMessage', '{"a":1}'),
+        ),
+        (_) {},
+      );
+      expect(received, ['{"a":1}']);
+      await sub.cancel();
+    },
+  );
+
+  test(
+    'startMessages tolerates a missing plugin or a platform error',
+    () async {
+      messenger.setMockMethodCallHandler(_channel, null);
+      final link = MethodChannelWatchLink();
+      final sub = link.messages.listen((_) {});
+      await Future<void>.delayed(Duration.zero);
+      await sub.cancel();
+      handle((_) async => throw PlatformException(code: 'x'));
+      final sub2 = MethodChannelWatchLink().messages.listen((_) {});
+      await Future<void>.delayed(Duration.zero);
+      await sub2.cancel();
+    },
+  );
+
+  test('watchLinkProvider elsewhere is the no-op link', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     final container = ProviderContainer();
     addTearDown(container.dispose);

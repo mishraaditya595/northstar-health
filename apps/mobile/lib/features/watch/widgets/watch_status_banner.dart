@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,20 +20,23 @@ class WatchStatusBanner extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(watchLinkStateProvider);
     final status = state.status;
+    final isIos = defaultTargetPlatform == TargetPlatform.iOS;
     if (status is WatchNotInstalled && !state.installHintDismissed) {
       return _padded(
         InsightCard(
           icon: Icons.watch_outlined,
-          text: const TextSpan(
+          text: TextSpan(
             children: [
-              TextSpan(
+              const TextSpan(
                 text: "BeyondRep isn't on your watch yet",
                 style: TextStyle(fontWeight: FontWeight.w800),
               ),
               TextSpan(
-                text:
-                    '\nOpen the Watch app on this iPhone, find BeyondRep under '
-                    'Available Apps and tap Install.',
+                text: isIos
+                    ? '\nOpen the Watch app on this iPhone, find BeyondRep '
+                          'under Available Apps and tap Install.'
+                    : '\nOn your watch, open the Play Store, find BeyondRep '
+                          'under Apps on your phone and tap Install.',
               ),
             ],
           ),

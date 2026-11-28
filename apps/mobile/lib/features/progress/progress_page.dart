@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +11,7 @@ import '../../core/design/section.dart';
 import '../../core/units/load_units.dart';
 
 import '../../core/design/stats.dart';
+import '../watch/domain/watch_platform.dart';
 import '../health/application/health_overview.dart';
 import '../health/application/health_summary_controller.dart';
 import '../health/application/workout_heart_rate.dart';
@@ -745,7 +747,7 @@ class _SessionSummaryCard extends StatelessWidget {
                     ),
                   ),
                   if (session.origin == WorkoutOrigin.watch)
-                    const NsTag('Apple Watch'),
+                    NsTag(watchName(defaultTargetPlatform)),
                   if (syncFlag != null) NsTag(syncFlag!.label, warning: true),
                 ],
               ),

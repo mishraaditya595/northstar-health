@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/design/dialogs.dart';
+import '../domain/watch_platform.dart';
 
 /// Three steps to put BeyondRep on a paired watch that does not have it.
 Future<void> showWatchInstallSteps(BuildContext context) => showNsSheet<void>(
@@ -9,18 +11,13 @@ Future<void> showWatchInstallSteps(BuildContext context) => showNsSheet<void>(
   builder: (sheetContext) => const _InstallSteps(),
 );
 
-const _steps = [
-  'Open the Watch app on this iPhone.',
-  'Scroll down to Available Apps.',
-  'Tap Install next to BeyondRep.',
-];
-
 class _InstallSteps extends StatelessWidget {
   const _InstallSteps();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final steps = watchInstallSteps(defaultTargetPlatform);
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: [
@@ -31,7 +28,7 @@ class _InstallSteps extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        for (var i = 0; i < _steps.length; i++)
+        for (var i = 0; i < steps.length; i++)
           Padding(
             padding: const EdgeInsets.only(bottom: 14),
             child: Row(
@@ -57,7 +54,7 @@ class _InstallSteps extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: Text(_steps[i], style: theme.textTheme.bodyMedium),
+                    child: Text(steps[i], style: theme.textTheme.bodyMedium),
                   ),
                 ),
               ],

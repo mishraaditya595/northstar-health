@@ -76,7 +76,7 @@ void main() {
       tester.getTopLeft(find.text('APPLE WATCH')).dy,
       lessThan(tester.getTopLeft(find.text('Cloud session ready')).dy),
     );
-  });
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
   testWidgets(
     'shows account-local counts, paused cursor and does not claim synced',

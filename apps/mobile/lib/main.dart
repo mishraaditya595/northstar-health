@@ -84,7 +84,9 @@ class _AuthBootstrapState extends State<_AuthBootstrap> {
     );
     await controller.restore();
     _controller = controller;
-    if (defaultTargetPlatform == TargetPlatform.iOS && _wipeRetrier == null) {
+    if ((defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.android) &&
+        _wipeRetrier == null) {
       // One per process: a deletion wipe the watch has not confirmed yet is
       // resent until it acks, whichever account is signed in.
       _wipeRetrier = WatchWipeRetrier(
