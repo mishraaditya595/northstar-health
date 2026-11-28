@@ -11,8 +11,11 @@ data class DataChange(val path: String, val json: String?, val deleted: Boolean)
 
 /**
  * Turns a batch of Data Layer changes into [PhoneInbox] calls. Context items and phone-queued
- * items arrive in one unordered batch, so they are applied in the order the phone sent them
- * (`sent_at_utc`), the binding before plans at equal times, like Swift's inbox. A deletion
+ * items arrive in one unordered batch, so they are applied by type first (binding, clear, plans,
+ * health, like Swift's `PhoneInbox.receive`), then in the order the phone sent them
+ * (`sent_at_utc`). A health snapshot's send time can be older than the binding's, so type must
+ * win or health would be dropped as having no binding. The inbox itself compares send times
+ * for binding versus clear. A deletion
  * changes nothing: the phone clears the watch with a queued `account_cleared`, exactly as an
  * empty application context does nothing on iOS.
  */
@@ -23,7 +26,7 @@ class DataLayerRouter(private val inbox: PhoneInbox) {
 
     fun apply(changes: List<DataChange>, now: Instant): List<AckOutcome> {
         val entries = changes.mapIndexedNotNull { index, change -> entry(index, change) }
-            .sortedWith(compareBy<Entry>({ it.sentAtMs }, { it.rank }, { it.index }))
+            .sortedWith(compareBy<Entry>({ it.rank }, { it.sentAtMs }, { it.index }))
         val outcomes = mutableListOf<AckOutcome>()
         for (entry in entries) {
             when (val route = entry.route) {

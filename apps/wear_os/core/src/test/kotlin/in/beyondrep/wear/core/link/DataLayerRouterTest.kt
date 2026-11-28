@@ -64,6 +64,18 @@ class DataLayerRouterTest {
     }
 
     @Test
+    fun healthSentBeforeTheBindingIsStillApplied() {
+        // health sent 01:45, binding 01:50: type rank decides first, like Swift's receive loop.
+        val binding = m.binding(at = "2026-10-23T01:50:00Z")
+        val health = m.health()
+        val outcomes = router.apply(
+            listOf(context("health_snapshot", health.encode()), context("account_binding", binding.encode())), now)
+        assertEquals(listOf(binding.messageId, health.messageId), outcomes.map { it.messageId })
+        assertEquals(listOf("stored", "stored"), outcomes.map { it.result })
+        assertNotNull(journal.health(m.keyA, "2026-10-23"))
+    }
+
+    @Test
     fun equalSendTimesStillApplyBindingFirst() {
         val binding = m.binding(at = "2026-10-23T01:00:00Z")
         val plans = m.plans(names = listOf("Push")) // sent 2026-10-23T01:00:00Z too
