@@ -11,6 +11,7 @@ import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
 import 'package:beyondrep/features/progress/workout_history_detail_page.dart';
 import 'package:beyondrep/features/workouts/data/objectbox_workout_outbox.dart';
 import 'package:beyondrep/features/workouts/domain/workout_models.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -140,6 +141,24 @@ void main() {
     expect(find.text('From Apple Health'), findsNothing);
     expect(fake.ownWorkoutCalls, isEmpty);
   });
+
+  testWidgets(
+    'on Android a watch workout shows the Watch tag and no heart rate row',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      try {
+        fake.ownWorkout = const SeriesData(OwnWorkoutHealth(averageBpm: 128));
+        await show(tester, receipt: false);
+        expect(find.text('Watch'), findsOneWidget);
+        expect(find.text('Apple Watch'), findsNothing);
+        expect(find.text('Average heart rate'), findsNothing);
+        expect(find.text('From Apple Health'), findsNothing);
+        expect(fake.ownWorkoutCalls, isEmpty);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    },
+  );
 
   testWidgets('shows no section while loading or when null', (tester) async {
     final gate = Completer<void>();
