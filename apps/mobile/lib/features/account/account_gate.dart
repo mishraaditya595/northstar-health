@@ -17,7 +17,9 @@ import 'account_auth_controller.dart';
 import '../health/application/health_export_host.dart';
 import '../health/application/health_overview.dart';
 import '../health/application/own_workout_health.dart';
+import '../health/data/health_export_repository.dart';
 import '../health/data/health_reader.dart';
+import '../health/data/health_workout_writer.dart';
 import '../health/data/platform_health_reader.dart';
 import '../sync/workout_upload_coordinator.dart';
 import '../watch/application/watch_sync_controller.dart';
@@ -144,6 +146,14 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
               final auth = ref.watch(accountAuthControllerProvider);
               final owner = auth?.userId;
               if (owner == null) return null;
+              // Android: the Health Connect copy the phone wrote for the
+              // watch workout, found through its export receipt.
+              if (!ref.watch(healthWorkoutWriterProvider).isIos) {
+                return confirmedPlatformRecordId(
+                  ref.watch(healthExportRepositoryProvider),
+                  workoutUuid,
+                );
+              }
               return ref
                   .watch(watchWorkoutImporterProvider)(
                     owner,

@@ -31,6 +31,7 @@ class FakeHealthWorkoutWriter implements HealthWorkoutWriter {
 
   final writes = <HealthWorkoutRecord>[];
   final deletes = <({String workoutUuid, String? platformRecordId})>[];
+  final deleteWindows = <({DateTime? start, DateTime? end})>[];
   final lookups = <({DateTime start, DateTime end})>[];
   int requestAccessCalls = 0;
   int watchHealthRequests = 0;
@@ -88,8 +89,11 @@ class FakeHealthWorkoutWriter implements HealthWorkoutWriter {
   @override
   Future<HealthWriteResult> delete(
     String workoutUuid,
-    String? platformRecordId,
-  ) async {
+    String? platformRecordId, {
+    DateTime? start,
+    DateTime? end,
+  }) async {
+    deleteWindows.add((start: start, end: end));
     deletes.add((workoutUuid: workoutUuid, platformRecordId: platformRecordId));
     if (deleteResult is HealthWriteOk) {
       store.removeWhere((s) => s.platformRecordId == platformRecordId);

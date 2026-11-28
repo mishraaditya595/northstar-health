@@ -106,13 +106,24 @@ List<ExportAction> planHealthExport({
 
   for (final w in workouts) {
     final completedAt = w.completedAt;
-    if (w.origin != 'northstar_phone' ||
-        w.status != 'completed' ||
-        completedAt == null) {
-      continue;
-    }
+    if (w.status != 'completed' || completedAt == null) continue;
     final receipt = receipts[w.uuid];
     final state = receipt?.state;
+    // A watch workout is written by the watch health inbox, never here; this
+    // pass only removes its copy once the workout is deleted (Wear OS 3b).
+    if (w.origin == 'beyondrep_watch') {
+      if (w.deleted &&
+          receipt != null &&
+          state != HealthExportState.deleted &&
+          !(state == HealthExportState.deleting &&
+              receipt.attempts > 0 &&
+              now.difference(receipt.lastAttemptAt) <
+                  _backoff(receipt.attempts))) {
+        removals.add(DeleteOwnCopy(w.uuid, receipt.platformRecordId));
+      }
+      continue;
+    }
+    if (w.origin != 'northstar_phone') continue;
     // Any receipt other than the final states may stand for a copy in the
     // health store (a failed or blocked rewrite keeps the earlier one).
     final mayHaveCopy =

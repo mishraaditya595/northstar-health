@@ -18,6 +18,8 @@ class HealthExportRow extends ConsumerWidget {
 
   String _subtitle(HealthExportStatus status) => switch (status) {
     HealthExportOn(needsAccess: true) => 'Allow access in Settings',
+    HealthExportOn(offersWatchHealthAccess: true) =>
+      'Allow heart rate and calories for watch workouts',
     HealthExportOn(:final saved, :final waiting) =>
       saved > 0 && waiting > 0
           ? 'On · $saved saved, $waiting waiting'
@@ -48,6 +50,19 @@ class HealthExportRow extends ConsumerWidget {
           );
           if (action == _AccessAction.openSettings) {
             await notifier.openSettings();
+          } else if (action == _AccessAction.stop) {
+            await notifier.turnOff();
+          }
+          return;
+        }
+        if (status.offersWatchHealthAccess) {
+          final action = await showNsSheet<_AccessAction>(
+            context,
+            heightFactor: 0.4,
+            builder: (_) => const _WatchHealthSheet(),
+          );
+          if (action == _AccessAction.allowWatchHealth) {
+            await notifier.allowWatchHealth();
           } else if (action == _AccessAction.stop) {
             await notifier.turnOff();
           }
@@ -88,7 +103,7 @@ class HealthExportRow extends ConsumerWidget {
   }
 }
 
-enum _AccessAction { openSettings, stop }
+enum _AccessAction { openSettings, allowWatchHealth, stop }
 
 class _AccessSheet extends StatelessWidget {
   const _AccessSheet({required this.name});
@@ -126,6 +141,53 @@ class _AccessSheet extends StatelessWidget {
           onPressed: () =>
               Navigator.of(context).pop(_AccessAction.openSettings),
           child: const Text('Open Settings'),
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_AccessAction.stop),
+          child: Text('Stop saving', style: TextStyle(color: theme.mutedColor)),
+        ),
+      ],
+    );
+  }
+}
+
+class _WatchHealthSheet extends StatelessWidget {
+  const _WatchHealthSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        8,
+        20,
+        24 + MediaQuery.paddingOf(context).bottom,
+      ),
+      children: [
+        Semantics(
+          header: true,
+          child: Text(
+            'Watch heart rate and calories',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Your watch measures heart rate and calories during a workout. '
+          'Allow BeyondRep to save them to Health Connect with the workout. '
+          'Without this the workout is saved with its name, start and end '
+          'only.',
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 24),
+        FilledButton(
+          onPressed: () =>
+              Navigator.of(context).pop(_AccessAction.allowWatchHealth),
+          child: const Text('Allow heart rate and calories'),
         ),
         const SizedBox(height: 8),
         TextButton(

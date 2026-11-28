@@ -32,6 +32,40 @@ void main() {
         updatedAtMs: 1,
       );
 
+  test('confirmedPlatformRecordId is the id of a confirmed receipt only', () {
+    expect(confirmedPlatformRecordId(repo, _uuid), isNull);
+    repo.putReceipt(
+      HealthExportReceiptEntity(
+        workoutUuid: _uuid,
+        platform: 'health_connect',
+        state: 'writing',
+        platformRecordId: 'rec-1',
+        updatedAtMs: 1,
+      ),
+    );
+    expect(confirmedPlatformRecordId(repo, _uuid), isNull);
+    repo.putReceipt(
+      HealthExportReceiptEntity(
+        workoutUuid: _uuid,
+        platform: 'health_connect',
+        state: 'confirmed',
+        platformRecordId: 'rec-1',
+        updatedAtMs: 2,
+      ),
+    );
+    expect(confirmedPlatformRecordId(repo, _uuid.toUpperCase()), 'rec-1');
+    repo.putReceipt(
+      HealthExportReceiptEntity(
+        workoutUuid: _uuid,
+        platform: 'health_connect',
+        state: 'confirmed',
+        platformRecordId: '',
+        updatedAtMs: 3,
+      ),
+    );
+    expect(confirmedPlatformRecordId(repo, _uuid), isNull);
+  });
+
   test('enable then isEnabled is true; disable removes the row', () {
     expect(repo.isEnabled(_owner), isFalse);
     repo.enable(_owner, DateTime.fromMillisecondsSinceEpoch(5));

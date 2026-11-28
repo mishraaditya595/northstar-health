@@ -5,18 +5,19 @@ import 'package:beyondrep/features/health/application/health_summary_controller.
 import 'package:beyondrep/features/health/application/own_workout_health.dart';
 import 'package:beyondrep/features/health/data/health_connection_repository.dart';
 import 'package:beyondrep/features/health/data/health_reader.dart';
+import 'package:beyondrep/features/health/data/health_workout_writer.dart';
 import 'package:beyondrep/features/health/domain/own_workout_health.dart';
 import 'package:beyondrep/features/progress/data/objectbox_workout_history_repository.dart';
 import 'package:beyondrep/features/progress/domain/workout_history_models.dart';
 import 'package:beyondrep/features/progress/workout_history_detail_page.dart';
 import 'package:beyondrep/features/workouts/data/objectbox_workout_outbox.dart';
 import 'package:beyondrep/features/workouts/domain/workout_models.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fake_health_reader.dart';
+import '../support/fake_health_workout_writer.dart';
 
 class _History implements WorkoutHistoryRepository {
   _History(this.sessions);
@@ -65,6 +66,7 @@ void main() {
     double width = 800,
     double textScale = 1,
     bool receipt = true,
+    bool ios = true,
   }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = Size(width, 2400);
@@ -78,6 +80,9 @@ void main() {
           ),
           workoutSyncFlagsProvider.overrideWithValue(const {}),
           healthReaderProvider.overrideWithValue(fake),
+          healthWorkoutWriterProvider.overrideWithValue(
+            FakeHealthWorkoutWriter(isIos: ios),
+          ),
           healthConnectionRepositoryProvider.overrideWithValue(_Connected()),
           healthOwnerIdProvider.overrideWithValue('owner-a'),
           watchWorkoutPlatformIdProvider.overrideWith(
@@ -143,22 +148,34 @@ void main() {
   });
 
   testWidgets(
-    'on Android a watch workout shows the Watch tag and no heart rate row',
+    'on Android a watch workout without a receipt shows the Watch tag and '
+    'no heart rate row',
     (tester) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.android;
-      try {
-        fake.ownWorkout = const SeriesData(OwnWorkoutHealth(averageBpm: 128));
-        await show(tester, receipt: false);
-        expect(find.text('Watch'), findsOneWidget);
-        expect(find.text('Apple Watch'), findsNothing);
-        expect(find.text('Average heart rate'), findsNothing);
-        expect(find.text('From Apple Health'), findsNothing);
-        expect(fake.ownWorkoutCalls, isEmpty);
-      } finally {
-        debugDefaultTargetPlatformOverride = null;
-      }
+      fake.ownWorkout = const SeriesData(OwnWorkoutHealth(averageBpm: 128));
+      await show(tester, receipt: false, ios: false);
+      expect(find.text('Watch'), findsOneWidget);
+      expect(find.text('Apple Watch'), findsNothing);
+      expect(find.text('Average heart rate'), findsNothing);
+      expect(find.text('From Health Connect'), findsNothing);
+      expect(fake.ownWorkoutCalls, isEmpty);
     },
   );
+
+  testWidgets('historyDetailShowsWatchHeartRateOnAndroid', (tester) async {
+    fake.ownWorkout = const SeriesData(
+      OwnWorkoutHealth(averageBpm: 128, maxBpm: 161, activeKcal: 212.6),
+    );
+    await show(tester, ios: false);
+    expect(find.text('From Health Connect'), findsOneWidget);
+    expect(find.text('From Apple Health'), findsNothing);
+    expect(find.text('Average heart rate'), findsOneWidget);
+    expect(find.text('128 bpm'), findsOneWidget);
+    expect(find.text('Max heart rate'), findsOneWidget);
+    expect(find.text('161 bpm'), findsOneWidget);
+    expect(find.text('Calories'), findsOneWidget);
+    expect(find.text('Active energy'), findsNothing);
+    expect(find.text('213 kcal'), findsOneWidget);
+  });
 
   testWidgets('shows no section while loading or when null', (tester) async {
     final gate = Completer<void>();
@@ -177,6 +194,9 @@ void main() {
           ),
           workoutSyncFlagsProvider.overrideWithValue(const {}),
           healthReaderProvider.overrideWithValue(fake),
+          healthWorkoutWriterProvider.overrideWithValue(
+            FakeHealthWorkoutWriter(),
+          ),
           healthConnectionRepositoryProvider.overrideWithValue(_Connected()),
           healthOwnerIdProvider.overrideWithValue('owner-a'),
           watchWorkoutPlatformIdProvider.overrideWith((ref, uuid) => 'hk-1'),

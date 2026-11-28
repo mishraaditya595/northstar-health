@@ -12,6 +12,7 @@ import '../../core/design/beyondrep_theme.dart';
 import '../watch/domain/watch_platform.dart';
 import '../health/application/own_workout_health.dart';
 import '../health/application/workout_health_export_controller.dart';
+import '../health/data/health_workout_writer.dart';
 import '../health/domain/own_workout_health.dart';
 import 'domain/progress_overview.dart';
 import '../../core/units/load_units.dart';
@@ -185,8 +186,9 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
         ),
         // Any workout with a receipt holds an HKWorkout the watch saved: its
         // own, or the one it saved while following this phone workout.
-        ..._appleHealthSection(
+        ..._healthSection(
           theme,
+          ref.watch(healthWorkoutWriterProvider).isIos,
           ref
               .watch(
                 ownWorkoutHealthProvider((
@@ -303,18 +305,25 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
   }
 
   /// Optional detail: nothing while loading, on failure or without a value.
-  List<Widget> _appleHealthSection(ThemeData theme, OwnWorkoutHealth? health) {
+  List<Widget> _healthSection(
+    ThemeData theme,
+    bool ios,
+    OwnWorkoutHealth? health,
+  ) {
     if (health == null) return const [];
     final rows = [
       if (health.averageBpm != null)
         ('Average heart rate', '${health.averageBpm} bpm'),
       if (health.maxBpm != null) ('Max heart rate', '${health.maxBpm} bpm'),
       if (health.activeKcal != null)
-        ('Active energy', '${health.activeKcal!.round()} kcal'),
+        (
+          ios ? 'Active energy' : 'Calories',
+          '${health.activeKcal!.round()} kcal',
+        ),
     ];
     return [
       const SizedBox(height: 24),
-      const SectionHeading('From Apple Health'),
+      SectionHeading(ios ? 'From Apple Health' : 'From Health Connect'),
       Card(
         child: Padding(
           padding: const EdgeInsets.all(16),

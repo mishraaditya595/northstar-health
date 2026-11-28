@@ -24,6 +24,9 @@ class FakeHealthExportController extends HealthExportController {
 
   @override
   Future<void> openSettings() async => calls.add('openSettings');
+
+  @override
+  Future<void> allowWatchHealth() async => calls.add('allowWatchHealth');
 }
 
 Future<FakeHealthExportController> pumpRow(
@@ -254,4 +257,45 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('exportRowOffersHeartRateAccessWhenAWearWatchIsPaired', (
+    tester,
+  ) async {
+    final fake = await pumpRow(
+      tester,
+      const HealthExportOn(
+        saved: 2,
+        waiting: 0,
+        needsAccess: false,
+        offersWatchHealthAccess: true,
+      ),
+      platform: HealthPlatformKind.healthConnect,
+    );
+    expect(
+      find.text('Allow heart rate and calories for watch workouts'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Save workouts to Health Connect'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Allow heart rate and calories'));
+    await tester.pumpAndSettle();
+    expect(fake.calls, ['allowWatchHealth']);
+  });
+
+  testWidgets('without the offer a tap on an On row still asks to stop', (
+    tester,
+  ) async {
+    await pumpRow(
+      tester,
+      const HealthExportOn(saved: 2, waiting: 0, needsAccess: false),
+      platform: HealthPlatformKind.healthConnect,
+    );
+    expect(
+      find.text('Allow heart rate and calories for watch workouts'),
+      findsNothing,
+    );
+    await tester.tap(find.text('Save workouts to Health Connect'));
+    await tester.pumpAndSettle();
+    expect(find.text('Stop saving workouts?'), findsOneWidget);
+  });
 }

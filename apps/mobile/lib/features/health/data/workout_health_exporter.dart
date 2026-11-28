@@ -388,7 +388,13 @@ class WorkoutHealthExporter {
     String? recordId,
   ) async {
     if (!_go()) return const HealthWriteFailed();
-    final result = await writer.delete(c.uuid, recordId);
+    final watch = c.origin == 'beyondrep_watch';
+    final result = await writer.delete(
+      c.uuid,
+      recordId,
+      start: watch ? c.startedAt : null,
+      end: watch ? c.completedAt : null,
+    );
     if (result is! HealthWriteFailed || !writer.isIos) return result;
     final own = await _ownCopies(c);
     if (own == null) return result;

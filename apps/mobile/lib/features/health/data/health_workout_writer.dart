@@ -98,10 +98,15 @@ abstract interface class HealthWorkoutWriter {
   /// False on iOS, where the Apple Watch saves its own workout.
   Future<bool> hasWatchHealthWriteAccess();
   Future<HealthWriteResult> write(HealthWorkoutRecord record);
+
+  /// Deletes the workout. With [start] and [end] (a watch workout on Android)
+  /// it also deletes the calories and heart rate that went with it.
   Future<HealthWriteResult> delete(
     String workoutUuid,
-    String? platformRecordId,
-  );
+    String? platformRecordId, {
+    DateTime? start,
+    DateTime? end,
+  });
 
   /// Workouts from `in.beyondrep.app` or a child source (the watch app)
   /// overlapping the window; null when the read failed.
@@ -159,13 +164,30 @@ class PlatformHealthWorkoutWriter implements HealthWorkoutWriter {
     try {
       await _configure();
       return await _health.requestAuthorization(
-        [HealthDataType.WORKOUT],
-        permissions: [HealthDataAccess.READ_WRITE],
+        _types(watchHealth),
+        permissions: _access(watchHealth),
       );
     } catch (_) {
       return false;
     }
   }
+
+  List<HealthDataType> _types(bool watchHealth) => [
+    HealthDataType.WORKOUT,
+    if (watchHealth && !isIos) ...[
+      HealthDataType.HEART_RATE,
+      HealthDataType.TOTAL_CALORIES_BURNED,
+    ],
+  ];
+
+  List<HealthDataAccess> _access(bool watchHealth) => [
+    HealthDataAccess.READ_WRITE,
+    if (watchHealth && !isIos) ...[
+      HealthDataAccess.WRITE,
+      // Read too, so the history page can show the calories it saved.
+      HealthDataAccess.READ_WRITE,
+    ],
+  ];
 
   @override
   Future<bool> hasWriteAccess() async {
@@ -185,7 +207,19 @@ class PlatformHealthWorkoutWriter implements HealthWorkoutWriter {
   }
 
   @override
-  Future<bool> hasWatchHealthWriteAccess() async => false;
+  Future<bool> hasWatchHealthWriteAccess() async {
+    if (isIos) return false;
+    try {
+      await _configure();
+      final granted = await _health.hasPermissions(
+        _types(true),
+        permissions: _access(true),
+      );
+      return granted == true;
+    } catch (_) {
+      return false;
+    }
+  }
 
   HealthWriteResult _failure(Object error) {
     if (error is HealthException &&
@@ -201,6 +235,9 @@ class PlatformHealthWorkoutWriter implements HealthWorkoutWriter {
     try {
       await _configure();
       final offset = Duration(minutes: record.offsetMinutes);
+      final kcal = (isIos || record.totalKcal == null)
+          ? null
+          : record.totalKcal!.round();
       final id = await _health.writeWorkoutDataUUID(
         activityType: isIos
             ? HealthWorkoutActivityType.TRADITIONAL_STRENGTH_TRAINING
@@ -220,13 +257,26 @@ class PlatformHealthWorkoutWriter implements HealthWorkoutWriter {
         clientRecordVersion: isIos ? null : record.version.toDouble(),
         startZoneOffset: isIos ? null : offset,
         endZoneOffset: isIos ? null : offset,
+        totalEnergyBurned: kcal,
       );
       final returned = (id == null || id == 'null') ? '' : id;
       // The plugin turns every native failure into an empty result (Android
       // catches all exceptions), so only a non-empty record id is a success.
-      return returned.isNotEmpty
-          ? HealthWriteOk(returned)
-          : const HealthWriteFailed();
+      if (returned.isEmpty) return const HealthWriteFailed();
+      if (!isIos) {
+        for (var i = 0; i < record.heartRate.length; i++) {
+          final minute = record.heartRate[i];
+          final ok = await _health.writeHealthData(
+            value: minute.bpm.toDouble(),
+            type: HealthDataType.HEART_RATE,
+            startTime: minute.at,
+            clientRecordId: '${record.workoutUuid}-hr-$i',
+            clientRecordVersion: record.version.toDouble(),
+          );
+          if (!ok) return const HealthWriteFailed();
+        }
+      }
+      return HealthWriteOk(returned);
     } catch (e) {
       return _failure(e);
     }
@@ -235,8 +285,10 @@ class PlatformHealthWorkoutWriter implements HealthWorkoutWriter {
   @override
   Future<HealthWriteResult> delete(
     String workoutUuid,
-    String? platformRecordId,
-  ) async {
+    String? platformRecordId, {
+    DateTime? start,
+    DateTime? end,
+  }) async {
     try {
       await _configure();
       final bool deleted;
@@ -253,6 +305,18 @@ class PlatformHealthWorkoutWriter implements HealthWorkoutWriter {
           dataTypeKey: HealthDataType.WORKOUT,
           clientRecordId: workoutUuid,
         );
+        if (deleted && start != null && end != null) {
+          final calories = await _health.deleteByClientRecordId(
+            dataTypeKey: HealthDataType.TOTAL_CALORIES_BURNED,
+            clientRecordId: '$workoutUuid:calories',
+          );
+          final heartRate = await _health.delete(
+            type: HealthDataType.HEART_RATE,
+            startTime: start,
+            endTime: end.add(const Duration(seconds: 1)),
+          );
+          if (!calories || !heartRate) return const HealthWriteFailed();
+        }
       }
       // false is a failed delete (Android) or a failed or not-found delete
       // (iOS); the caller checks the store before treating it as gone.
