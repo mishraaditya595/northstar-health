@@ -46,13 +46,13 @@ class WorkoutSummaryTest {
         assertEquals(controller.sessionId, summary.sessionId)
         assertEquals(controller.template.name, summary.name)
         assertEquals(71, summary.averageHeartRate)
-        assertEquals(120, summary.activeCalories)
+        assertEquals(120, summary.totalCalories)
     }
 
     @Test
     fun keepsMissingHealthNull() {
         val summary = WorkoutSummary.of(controller, base.plusSeconds(60), null, null)
         assertNull(summary.averageHeartRate)
-        assertNull(summary.activeCalories)
+        assertNull(summary.totalCalories)
     }
 }

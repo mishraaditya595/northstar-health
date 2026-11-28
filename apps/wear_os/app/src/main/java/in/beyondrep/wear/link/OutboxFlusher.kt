@@ -23,7 +23,7 @@ class OutboxFlusher(
             // A workout of another account stays queued: it is never sent under this account and never deleted.
             val pending = withContext(dispatcher) {
                 val bound = journal.binding()?.accountKey ?: return@withContext emptyList()
-                journal.pendingCompleted(LIMIT).filter { it.accountKey == bound }
+                journal.pendingCompleted(bound, LIMIT)
             }
             if (pending.isEmpty()) return
             val present = items.all(DataLayerPaths.WATCH_QUEUE_PREFIX).map { it.path }.toSet()

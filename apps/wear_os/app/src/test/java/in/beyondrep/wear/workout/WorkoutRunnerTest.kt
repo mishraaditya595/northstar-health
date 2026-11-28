@@ -117,7 +117,7 @@ class WorkoutRunnerTest {
         val finished = assertIs<RunnerState.Finished>(runner.state.value)
         assertEquals(1, finished.summary.sets)
         assertEquals(71, finished.summary.averageHeartRate)
-        assertEquals(100, finished.summary.activeCalories)
+        assertEquals(100, finished.summary.totalCalories)
         assertEquals(1, items.puts.size)
         assertTrue(items.puts.single().second.contains("completed_workout"))
         assertTrue(service.stopped)
@@ -132,7 +132,7 @@ class WorkoutRunnerTest {
         runner.finish()
         val finished = assertIs<RunnerState.Finished>(runner.state.value)
         assertNull(finished.summary.averageHeartRate)
-        assertNull(finished.summary.activeCalories)
+        assertNull(finished.summary.totalCalories)
     }
 
     @Test

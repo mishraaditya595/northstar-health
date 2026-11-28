@@ -13,10 +13,10 @@ data class WorkoutSummary(
     val elapsed: Duration,
     val sets: Int,
     val averageHeartRate: Int?,
-    val activeCalories: Int?,
+    val totalCalories: Int?,
 ) {
     companion object {
-        fun of(controller: WorkoutController, endedAt: Instant, averageHeartRate: Int?, activeCalories: Int?): WorkoutSummary {
+        fun of(controller: WorkoutController, endedAt: Instant, averageHeartRate: Int?, totalCalories: Int?): WorkoutSummary {
             val elapsed = Duration.between(controller.startedAt, endedAt)
             return WorkoutSummary(
                 sessionId = controller.sessionId,
@@ -24,7 +24,7 @@ data class WorkoutSummary(
                 elapsed = if (elapsed.isNegative) Duration.ZERO else elapsed,
                 sets = controller.state.completedSets,
                 averageHeartRate = averageHeartRate,
-                activeCalories = activeCalories,
+                totalCalories = totalCalories,
             )
         }
     }

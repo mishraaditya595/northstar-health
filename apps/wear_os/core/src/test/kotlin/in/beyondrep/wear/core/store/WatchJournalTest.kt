@@ -572,6 +572,19 @@ class WatchJournalTest {
     }
 
     @Test
+    fun pendingCompletedForOneAccountFiltersInSqlBeforeTheLimit() {
+        val journal = open()
+        val other = "b".repeat(64)
+        // Three workouts of another account first: a limit applied before the filter would hide ours.
+        repeat(3) { journal.queueCompleted(completedMessage(other), "other-session-$it") }
+        val mine = completedMessage()
+        journal.queueCompleted(mine, session)
+        assertEquals(listOf(mine.messageId), journal.pendingCompleted(key, 1).map { it.messageId })
+        assertEquals(3, journal.pendingCompleted(other, 10).size)
+        assertTrue(journal.pendingCompleted("c".repeat(64), 10).isEmpty())
+    }
+
+    @Test
     fun storedAckClearsSessionOutboxAndEvents() {
         val journal = open()
         recordSession(journal, 1)

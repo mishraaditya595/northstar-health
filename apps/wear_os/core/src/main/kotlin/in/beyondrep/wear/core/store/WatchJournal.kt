@@ -214,6 +214,13 @@ class WatchJournal(
     fun pendingCompleted(limit: Int): List<WatchMessage> =
         decodeAll(db.query("SELECT json FROM outbox WHERE type = 'completed_workout' ORDER BY rowid LIMIT ?", listOf(int(limit))))
 
+    /** Completed workouts of one account waiting for the phone, oldest first; the account is filtered in SQL, before [limit]. */
+    fun pendingCompleted(accountKey: String, limit: Int): List<WatchMessage> =
+        decodeAll(
+            db.query(
+                "SELECT json FROM outbox WHERE type = 'completed_workout' AND account_key = ? ORDER BY rowid LIMIT ?",
+                listOf(text(accountKey), int(limit))))
+
     /**
      * Queues the finished workout and marks the session `queued` in one transaction. A second call
      * for the same message changes nothing, and a session already delivered or rejected stays that way.
