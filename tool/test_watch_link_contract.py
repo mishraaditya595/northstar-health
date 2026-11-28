@@ -197,8 +197,24 @@ def reference_session_state(case):
     }
 
 
+def workout_health_errors(body):
+    """workout_health: end after start, samples inside it, strictly increasing."""
+    errors = []
+    start, end = _parse_utc(body["start_utc"]), _parse_utc(body["end_utc"])
+    if end <= start:
+        errors.append("end_utc not after start_utc")
+    times = [_parse_utc(s["at_utc"]) for s in body.get("heart_rate", [])]
+    if any(t < start or t > end for t in times):
+        errors.append("heart rate sample outside the workout")
+    if any(a >= b for a, b in zip(times, times[1:])):
+        errors.append("heart rate samples not strictly increasing")
+    return errors
+
+
 def cross_field_errors(message):
     """Rules JSON Schema cannot express (see the contract README)."""
+    if message.get("type") == "workout_health":
+        return workout_health_errors(message["body"])
     if message.get("type") != "health_snapshot":
         return []
     body, errors = message["body"], []
@@ -261,6 +277,11 @@ class WatchLinkContractTest(unittest.TestCase):
             "workout_link_extra_field",
             "workout_link_bad_uuid",
             "join_extra_field",
+            "workout_health_bpm_zero",
+            "workout_health_sample_outside",
+            "workout_health_unsorted",
+            "workout_health_extra_field",
+            "ack_not_written_stored",
         ):
             self.assertIn(expected, names)
         for path in fixtures:
@@ -287,13 +308,63 @@ class WatchLinkContractTest(unittest.TestCase):
         self.assertEqual(phone["body"]["owner"], "phone")
         self.assertEqual(list(self.validator.iter_errors(phone)), [])
 
-    def test_health_values_only_in_health_snapshot(self):
-        words = ("sleep", "hrv", "steps", "heart_rate", "resting_hr")
+    def test_health_values_only_in_two_messages(self):
+        words = ("sleep", "hrv", "steps", "heart_rate", "resting_hr", "kcal")
         for path in (LINK / "fixtures/valid").glob("*.json"):
             text = json.dumps(load(path)).lower()
             has = any(w in text for w in words)
+            allowed = path.stem.startswith(("health_snapshot", "workout_health"))
             with self.subTest(file=path.name):
-                self.assertEqual(has, path.stem.startswith("health_snapshot"))
+                self.assertEqual(has, allowed)
+
+    def test_workout_health_invalid_fixtures_fail_for_their_reason(self):
+        invalid = LINK / "fixtures/invalid"
+        schema_failures = (
+            "workout_health_bpm_zero",
+            "workout_health_extra_field",
+            "ack_not_written_stored",
+        )
+        for name in schema_failures:
+            with self.subTest(file=name):
+                data = load(invalid / (name + ".json"))
+                self.assertTrue(list(self.validator.iter_errors(data)))
+        for name, reason in (
+            ("workout_health_sample_outside", "heart rate sample outside the workout"),
+            ("workout_health_unsorted", "heart rate samples not strictly increasing"),
+        ):
+            with self.subTest(file=name):
+                data = load(invalid / (name + ".json"))
+                # Schema-valid: only the cross-field rule catches them.
+                self.assertEqual(list(self.validator.iter_errors(data)), [])
+                self.assertEqual(cross_field_errors(data), [reason])
+
+    def test_not_written_only_with_rejected(self):
+        data = load(LINK / "fixtures/valid/ack_not_written.json")
+        self.assertEqual(list(self.validator.iter_errors(data)), [])
+        for result in ("stored", "duplicate"):
+            data["body"]["result"] = result
+            self.assertTrue(list(self.validator.iter_errors(data)), result)
+
+    def test_workout_health_bounds(self):
+        base = load(LINK / "fixtures/valid/workout_health.json")
+        for key, value in (("total_kcal", 0), ("total_kcal", 10001)):
+            data = json.loads(json.dumps(base))
+            data["body"][key] = value
+            with self.subTest(key=key, value=value):
+                self.assertTrue(list(self.validator.iter_errors(data)))
+        for bpm in (24, 251, 70.5):
+            data = json.loads(json.dumps(base))
+            data["body"]["heart_rate"][0]["bpm"] = bpm
+            with self.subTest(bpm=bpm):
+                self.assertTrue(list(self.validator.iter_errors(data)))
+        data = json.loads(json.dumps(base))
+        data["body"]["heart_rate"] = [
+            {"at_utc": "2026-10-23T11:00:00Z", "bpm": 70}
+        ] * 601
+        self.assertTrue(list(self.validator.iter_errors(data)))
+        data = json.loads(json.dumps(base))
+        data["body"]["end_utc"] = data["body"]["start_utc"]
+        self.assertEqual(cross_field_errors(data)[0], "end_utc not after start_utc")
 
     def test_replay_cases(self):
         cases = sorted((LINK / "cases/replay").glob("*.json"))

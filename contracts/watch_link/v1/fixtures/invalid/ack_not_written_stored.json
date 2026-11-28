@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "message_id": "77777777-3333-4333-8333-000000000047",
+  "type": "ack",
+  "sent_at_utc": "2026-10-23T11:41:00Z",
+  "account_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "body": {
+    "acked_message_id": "77777777-3333-4333-8333-000000000040",
+    "result": "stored",
+    "reason": "not_written"
+  }
+}

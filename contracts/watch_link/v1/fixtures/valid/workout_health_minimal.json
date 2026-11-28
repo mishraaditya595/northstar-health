@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "message_id": "77777777-3333-4333-8333-000000000041",
+  "type": "workout_health",
+  "sent_at_utc": "2026-10-23T11:41:00Z",
+  "account_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "body": {
+    "workout_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "start_utc": "2026-10-23T11:00:00Z",
+    "end_utc": "2026-10-23T11:40:00Z",
+    "heart_rate": []
+  }
+}
