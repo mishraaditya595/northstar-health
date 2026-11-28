@@ -95,7 +95,7 @@ abstract interface class HealthReader {
   /// Average and maximum heart rate and active energy of the workout whose
   /// platform record id is [platformWorkoutId] (compared ignoring case), read
   /// fresh for [from]..[to]. Data holds null when the record is not found.
-  /// iOS only: Android gives [SeriesUnsupported].
+  /// Android: only a record BeyondRep wrote itself, with its own heart rate.
   Future<SeriesResult<OwnWorkoutHealth?>> readOwnWorkout(
     String platformWorkoutId,
     DateTime from,

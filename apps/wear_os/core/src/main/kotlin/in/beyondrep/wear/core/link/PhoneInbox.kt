@@ -130,8 +130,9 @@ class PhoneInbox(private val journal: WatchJournal) {
                 return outcome("stored")
             }
             is WatchMessageBody.Ack -> {
-                // An ack is never acked. It counts only for the account the workout was queued under.
-                val queuedKey = journal.queuedCompletedAccountKey(body.ackedMessageId) ?: return null
+                // An ack is never acked. It counts only for the account the workout (or its heart rate series) was queued under.
+                val queuedKey = journal.queuedCompletedAccountKey(body.ackedMessageId)
+                    ?: journal.queuedWorkoutHealthAccountKey(body.ackedMessageId) ?: return null
                 if (queuedKey != message.accountKey) {
                     ignoredCount += 1
                     return null

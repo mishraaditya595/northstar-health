@@ -90,6 +90,80 @@ void main() {
       }
     });
 
+    test('workout_health decodes into a typed message', () {
+      WatchMessage read(String name) => WatchMessage.fromJson(
+        _read(File('../../contracts/watch_link/v1/fixtures/valid/$name.json')),
+      );
+      final full = read('workout_health') as WorkoutHealth;
+      expect(full.type, 'workout_health');
+      expect(full.workoutId, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+      expect(full.heartRate.map((p) => p.bpm), [71, 84, 96]);
+      expect(full.heartRate.first.atUtc, '2026-10-23T11:00:00Z');
+      expect(full.totalKcal, 312.5);
+      final minimal = read('workout_health_minimal') as WorkoutHealth;
+      expect(minimal.heartRate, isEmpty);
+      expect(minimal.totalKcal, isNull);
+      expect(minimal.bodyJson.containsKey('total_kcal'), isFalse);
+      final ack = read('ack_not_written') as Ack;
+      expect(ack.reason, 'not_written');
+    });
+
+    test('workout_health invalid fixtures fail for their reason', () {
+      void rejects(String name, String code) => expect(
+        () => WatchMessage.fromJson(
+          _read(
+            File('../../contracts/watch_link/v1/fixtures/invalid/$name.json'),
+          ),
+        ),
+        throwsA(
+          isA<WatchContractException>().having((e) => e.code, 'code', code),
+        ),
+        reason: name,
+      );
+      rejects('workout_health_bpm_zero', 'invalid_value');
+      rejects('workout_health_sample_outside', 'invalid_value');
+      rejects('workout_health_unsorted', 'invalid_value');
+      rejects('workout_health_extra_field', 'unknown_key');
+      rejects('ack_not_written_stored', 'invalid_value');
+    });
+
+    test('workout_health bounds follow the schema', () {
+      Map<String, Object?> base() => _read(
+        File(
+          '../../contracts/watch_link/v1/fixtures/valid/workout_health.json',
+        ),
+      );
+      void rejects(void Function(Map<String, Object?> body) edit, String why) {
+        final json = base();
+        edit(json['body']! as Map<String, Object?>);
+        expect(
+          () => WatchMessage.fromJson(json),
+          throwsA(isA<WatchContractException>()),
+          reason: why,
+        );
+      }
+
+      rejects((b) => b['total_kcal'] = 0, 'zero kcal');
+      rejects((b) => b['total_kcal'] = 10001, 'kcal above the ceiling');
+      rejects((b) {
+        ((b['heart_rate']! as List).first as Map)['bpm'] = 24;
+      }, 'bpm below 25');
+      rejects((b) {
+        ((b['heart_rate']! as List).first as Map)['bpm'] = 251;
+      }, 'bpm above 250');
+      rejects((b) {
+        ((b['heart_rate']! as List).first as Map)['bpm'] = 70.5;
+      }, 'fractional bpm');
+      rejects(
+        (b) => b['heart_rate'] = List.generate(
+          601,
+          (_) => {'at_utc': '2026-10-23T11:00:00Z', 'bpm': 70},
+        ),
+        '601 samples',
+      );
+      rejects((b) => b['end_utc'] = b['start_utc'], 'end not after start');
+    });
+
     test('session_state live fields decode into typed values', () {
       SessionState read(String name) => WatchMessage.fromJson(
         _read(File('../../contracts/watch_link/v1/fixtures/valid/$name.json')),

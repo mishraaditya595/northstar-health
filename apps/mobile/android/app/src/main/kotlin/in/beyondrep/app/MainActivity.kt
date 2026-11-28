@@ -27,6 +27,7 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private var wearLink: WearLinkBridge? = null
+    private var heartRateWriter: HeartRateWriter? = null
     private var weightWriter: WeightWriter? = null
     private var pendingExport: MethodChannel.Result? = null
     private var writeInProgress = false
@@ -127,6 +128,9 @@ class MainActivity : FlutterFragmentActivity() {
         super.configureFlutterEngine(flutterEngine)
         wearLink?.dispose()
         wearLink = WearLinkBridge(this, flutterEngine.dartExecutor.binaryMessenger)
+            .also { it.register() }
+        heartRateWriter?.dispose()
+        heartRateWriter = HeartRateWriter(this, flutterEngine.dartExecutor.binaryMessenger)
             .also { it.register() }
         weightWriter?.dispose()
         weightWriter = WeightWriter(this, flutterEngine.dartExecutor.binaryMessenger)
@@ -281,6 +285,8 @@ class MainActivity : FlutterFragmentActivity() {
     override fun onDestroy() {
         wearLink?.dispose()
         wearLink = null
+        heartRateWriter?.dispose()
+        heartRateWriter = null
         weightWriter?.dispose()
         weightWriter = null
         pendingFile = null

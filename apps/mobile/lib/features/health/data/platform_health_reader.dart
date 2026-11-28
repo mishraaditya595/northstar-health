@@ -340,7 +340,6 @@ class PlatformHealthReader implements HealthReader {
     DateTime from,
     DateTime to,
   ) => _guard(() async {
-    if (_isAndroid) return const SeriesUnsupported();
     if (!await _allowed(HealthDataType.WORKOUT)) {
       return const SeriesNotAllowed();
     }
@@ -353,7 +352,13 @@ class PlatformHealthReader implements HealthReader {
     final wanted = platformWorkoutId.toLowerCase();
     HealthDataPoint? match;
     for (final p in points) {
-      if (p.uuid.toLowerCase() == wanted && p.value is WorkoutHealthValue) {
+      // On Android the uuid is a Health Connect record id other apps can
+      // see, so only a record BeyondRep itself wrote counts.
+      if (p.uuid.toLowerCase() == wanted &&
+          p.value is WorkoutHealthValue &&
+          (!_isAndroid ||
+              _isOwnSource(p.sourceId) ||
+              _isOwnSource(p.sourceName))) {
         match = p;
         break;
       }
@@ -367,10 +372,16 @@ class PlatformHealthReader implements HealthReader {
         for (final p in await _health.getHealthDataFromTypes(
           types: [HealthDataType.HEART_RATE],
           startTime: match.dateFrom,
-          endTime: match.dateTo,
+          // End-inclusive: a sample stamped at the workout end counts.
+          endTime: match.dateTo.add(const Duration(seconds: 1)),
         ))
-          if (p.value case NumericHealthValue(:final numericValue))
-            numericValue.toDouble(),
+          // Android: other apps' heart rate in the window is not this
+          // workout's.
+          if (!_isAndroid ||
+              _isOwnSource(p.sourceId) ||
+              _isOwnSource(p.sourceName))
+            if (p.value case NumericHealthValue(:final numericValue))
+              numericValue.toDouble(),
       ];
       if (beats.isNotEmpty) {
         average = (beats.reduce((a, b) => a + b) / beats.length).round();

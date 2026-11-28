@@ -1,4 +1,7 @@
 import 'package:beyondrep/features/health/data/health_workout_writer.dart';
+
+import '../support/fake_heart_rate_native_writer.dart';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:health/health.dart';
@@ -18,12 +21,20 @@ class _FakeHealth extends Fake implements Health {
   Object? deleteError;
   String? writeResult = 'new-uuid';
   bool deleteResult = true;
+  final failingClientDeletes = <HealthDataType>{};
   bool? permitted = true;
   HealthConnectSdkStatus? sdk = HealthConnectSdkStatus.sdkAvailable;
   List<HealthDataType>? requestedTypes;
   List<HealthDataAccess>? requestedAccess;
   final reads = <({DateTime start, DateTime end})>[];
   Object? readError;
+  final healthWrites = <Map<String, Object?>>[];
+  bool healthWriteResult = true;
+  Object? healthWriteError;
+  final rangeDeletes =
+      <({HealthDataType type, DateTime start, DateTime? end})>[];
+  bool rangeDeleteResult = true;
+  final order = <String>[];
 
   @override
   Future<void> configure() async {}
@@ -71,6 +82,7 @@ class _FakeHealth extends Fake implements Health {
     int? totalSwimmingStrokeCount,
   }) async {
     if (writeError != null) throw writeError!;
+    order.add('workout');
     writeCalls.add(
       _WriteCall({
         'activityType': activityType,
@@ -87,6 +99,41 @@ class _FakeHealth extends Fake implements Health {
       }),
     );
     return writeResult;
+  }
+
+  @override
+  Future<bool> writeHealthData({
+    required double value,
+    HealthDataUnit? unit,
+    required HealthDataType type,
+    required DateTime startTime,
+    String? clientRecordId,
+    double? clientRecordVersion,
+    DateTime? endTime,
+    RecordingMethod recordingMethod = RecordingMethod.automatic,
+  }) async {
+    if (healthWriteError != null) throw healthWriteError!;
+    order.add('hr');
+    healthWrites.add({
+      'value': value,
+      'type': type,
+      'startTime': startTime,
+      'endTime': endTime,
+      'clientRecordId': clientRecordId,
+      'clientRecordVersion': clientRecordVersion,
+    });
+    return healthWriteResult;
+  }
+
+  @override
+  Future<bool> delete({
+    required HealthDataType type,
+    required DateTime startTime,
+    DateTime? endTime,
+  }) async {
+    if (deleteError != null) throw deleteError!;
+    rangeDeletes.add((type: type, start: startTime, end: endTime));
+    return rangeDeleteResult;
   }
 
   @override
@@ -107,7 +154,7 @@ class _FakeHealth extends Fake implements Health {
   }) async {
     if (deleteError != null) throw deleteError!;
     deleteClientCalls.add((type: dataTypeKey, clientRecordId: clientRecordId));
-    return deleteResult;
+    return deleteResult && !failingClientDeletes.contains(dataTypeKey);
   }
 
   @override
@@ -162,12 +209,16 @@ HealthWorkoutRecord _record({int offset = 330}) => HealthWorkoutRecord(
 
 void main() {
   late _FakeHealth health;
-  setUp(() => health = _FakeHealth());
+  late FakeHeartRateNativeWriter heartRate;
+  setUp(() {
+    health = _FakeHealth();
+    heartRate = FakeHeartRateNativeWriter();
+  });
 
   PlatformHealthWorkoutWriter ios() =>
-      PlatformHealthWorkoutWriter(health, isIos: true);
+      PlatformHealthWorkoutWriter(health, isIos: true, heartRate: heartRate);
   PlatformHealthWorkoutWriter android() =>
-      PlatformHealthWorkoutWriter(health, isIos: false);
+      PlatformHealthWorkoutWriter(health, isIos: false, heartRate: heartRate);
 
   test('write sends strength training, brand BeyondRep, syncIdentifier and syncVersion on iOS', () async {
     final result = await ios().write(_record());
@@ -328,5 +379,164 @@ void main() {
   test('PlatformException from the channel maps like a failure', () async {
     health.writeError = PlatformException(code: 'x', message: 'private');
     expect(await ios().write(_record()), isA<HealthWriteFailed>());
+  });
+
+  group('watch workout on Android', () {
+    HealthWorkoutRecord watchRecord({
+      double? kcal = 987.4,
+      List<HeartRateMinute>? heartRate,
+    }) => HealthWorkoutRecord(
+      workoutUuid: 'abcdef00-0000-4000-8000-000000000001',
+      name: 'Push day',
+      start: _start,
+      end: _end,
+      offsetMinutes: 330,
+      version: 1700000000000,
+      totalKcal: kcal,
+      heartRate:
+          heartRate ??
+          [
+            HeartRateMinute(at: _start, bpm: 71),
+            HeartRateMinute(
+              at: _start.add(const Duration(minutes: 2)),
+              bpm: 80,
+            ),
+          ],
+    );
+
+    test('androidWriteSendsCaloriesAndOneNativeHeartRateRecord', () async {
+      final result = await android().write(watchRecord());
+      expect(result, isA<HealthWriteOk>());
+      expect(health.writeCalls.single.args['totalEnergyBurned'], 987);
+      // The plugin logs every value it writes, so heart rate never goes
+      // through writeHealthData: one native record with all samples.
+      expect(health.healthWrites, isEmpty);
+      final w = heartRate.writes.single;
+      expect(
+        w.clientRecordId,
+        'abcdef00-0000-4000-8000-000000000001:heart_rate',
+      );
+      expect(w.version, 1700000000000);
+      expect(w.start, _start);
+      expect(w.end, _end);
+      expect(w.offsetMinutes, 330);
+      expect(w.samples.map((s) => s.bpm), [71, 80]);
+      expect(w.samples[1].at, _start.add(const Duration(minutes: 2)));
+    });
+
+    test('a workout without calories or heart rate sends neither', () async {
+      await android().write(watchRecord(kcal: null, heartRate: const []));
+      expect(health.writeCalls.single.args['totalEnergyBurned'], isNull);
+      expect(heartRate.writes, isEmpty);
+    });
+
+    test('iOS never sends heart rate or calories', () async {
+      await ios().write(watchRecord());
+      expect(health.writeCalls.single.args['totalEnergyBurned'], isNull);
+      expect(heartRate.writes, isEmpty);
+    });
+
+    test('aFailedHeartRateWriteIsAFailedWrite', () async {
+      heartRate.writeResult = const HealthWriteFailed();
+      expect(await android().write(watchRecord()), isA<HealthWriteFailed>());
+      heartRate.writeResult = const HealthWriteDenied();
+      expect(await android().write(watchRecord()), isA<HealthWriteDenied>());
+      heartRate.writeResult = const HealthWriteUnavailable();
+      expect(
+        await android().write(watchRecord()),
+        isA<HealthWriteUnavailable>(),
+      );
+    });
+
+    test('a failed workout write sends no heart rate', () async {
+      health.writeResult = '';
+      expect(await android().write(watchRecord()), isA<HealthWriteFailed>());
+      expect(heartRate.writes, isEmpty);
+    });
+
+    test('deletingAWatchWorkoutDeletesItsHealthConnectCopy', () async {
+      final result = await android().delete(
+        'wk',
+        'wk',
+        start: _start,
+        end: _end,
+      );
+      expect(result, isA<HealthWriteOk>());
+      expect(health.deleteClientCalls, [
+        (type: HealthDataType.WORKOUT, clientRecordId: 'wk'),
+        (
+          type: HealthDataType.TOTAL_CALORIES_BURNED,
+          clientRecordId: 'wk:calories',
+        ),
+      ]);
+      // The one heart rate record, by id; never a range delete that could
+      // hit another workout's overlapping samples.
+      expect(heartRate.deletes, ['wk:heart_rate']);
+      expect(health.rangeDeletes, isEmpty);
+    });
+
+    test('once the session is deleted a failed calories or heart rate delete still counts as deleted', () async {
+      heartRate.deleteResult = const HealthWriteDenied();
+      health.failingClientDeletes.add(HealthDataType.TOTAL_CALORIES_BURNED);
+      expect(
+        await android().delete('wk', 'wk', start: _start, end: _end),
+        isA<HealthWriteOk>(),
+      );
+    });
+
+    test(
+      'a failed session delete is a failed delete and keeps the rest',
+      () async {
+        health.deleteResult = false;
+        expect(
+          await android().delete('wk', 'wk', start: _start, end: _end),
+          isA<HealthWriteFailed>(),
+        );
+        expect(heartRate.deletes, isEmpty);
+      },
+    );
+
+    test(
+      'hasWatchHealthWriteAccess needs exercise, heart rate and calories',
+      () async {
+        expect(await android().hasWatchHealthWriteAccess(), isTrue);
+        expect(health.requestedTypes, [
+          HealthDataType.WORKOUT,
+          HealthDataType.HEART_RATE,
+          HealthDataType.TOTAL_CALORIES_BURNED,
+        ]);
+        expect(health.requestedAccess, [
+          HealthDataAccess.READ_WRITE,
+          HealthDataAccess.READ_WRITE,
+          HealthDataAccess.READ_WRITE,
+        ]);
+        health.permitted = false;
+        expect(await android().hasWatchHealthWriteAccess(), isFalse);
+        health.requestedTypes = null;
+        expect(await ios().hasWatchHealthWriteAccess(), isFalse);
+        expect(health.requestedTypes, isNull);
+      },
+    );
+
+    test(
+      'requestAccess asks for heart rate and calories write only on request',
+      () async {
+        await android().requestAccess();
+        expect(health.requestedTypes, [HealthDataType.WORKOUT]);
+        await android().requestAccess(watchHealth: true);
+        expect(health.requestedTypes, [
+          HealthDataType.WORKOUT,
+          HealthDataType.HEART_RATE,
+          HealthDataType.TOTAL_CALORIES_BURNED,
+        ]);
+        expect(health.requestedAccess, [
+          HealthDataAccess.READ_WRITE,
+          HealthDataAccess.READ_WRITE,
+          HealthDataAccess.READ_WRITE,
+        ]);
+        await ios().requestAccess(watchHealth: true);
+        expect(health.requestedTypes, [HealthDataType.WORKOUT]);
+      },
+    );
   });
 }

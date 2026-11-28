@@ -110,8 +110,9 @@ flutter {
 }
 
 dependencies {
-    // WeightWriter writes the logged weight without the plugin's value log. Same
-    // version as the `health` plugin 14.0.0 (its android/build.gradle); keep in step.
+    // HeartRateWriter and WeightWriter write to Health Connect without the plugin's
+    // value log. Same version as the `health` plugin 14.0.0 (its android/build.gradle);
+    // keep in step.
     implementation("androidx.health.connect:connect-client:1.2.0-alpha06")
     // Wear Data Layer link to the watch app (WearLinkBridge). Must stay in step
     // with apps/wear_os so both builds speak the same Data Layer version.

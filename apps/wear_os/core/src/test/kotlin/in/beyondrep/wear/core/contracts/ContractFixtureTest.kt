@@ -62,6 +62,35 @@ class ContractFixtureTest {
         rejects("contracts/watch_link/v1/fixtures/invalid", 25) { WatchMessage.decode(it) }
 
     @Test
+    fun workoutHealthDecodesIntoATypedBody() {
+        val full = WatchMessage.decode(
+            FixtureLoader.text("contracts/watch_link/v1/fixtures/valid/workout_health.json"))
+        val body = assertIs<WatchMessageBody.WorkoutHealth>(full.body)
+        assertEquals("workout_health", full.type)
+        assertEquals("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", body.workoutId)
+        assertEquals(listOf(71, 84, 96), body.heartRate.map { it.bpm })
+        assertEquals(312.5, body.totalKcal)
+        val minimal = WatchMessage.decode(
+            FixtureLoader.text("contracts/watch_link/v1/fixtures/valid/workout_health_minimal.json"))
+        val minimalBody = assertIs<WatchMessageBody.WorkoutHealth>(minimal.body)
+        assertTrue(minimalBody.heartRate.isEmpty())
+        assertNull(minimalBody.totalKcal)
+        val ack = WatchMessage.decode(
+            FixtureLoader.text("contracts/watch_link/v1/fixtures/valid/ack_not_written.json"))
+        assertEquals("not_written", assertIs<WatchMessageBody.Ack>(ack.body).reason)
+    }
+
+    @Test
+    fun notWrittenIsOnlyAllowedWithRejected() {
+        val text = FixtureLoader.text("contracts/watch_link/v1/fixtures/valid/ack_not_written.json")
+        for (result in listOf("stored", "duplicate")) {
+            assertFailsWith<ContractException>(result) {
+                WatchMessage.decode(text.replace("\"rejected\"", "\"$result\""))
+            }
+        }
+    }
+
+    @Test
     fun workoutLinkAndJoinDecodeIntoTypedBodies() {
         val link = WatchMessage.decode(FixtureLoader.text("contracts/watch_link/v1/fixtures/valid/workout_link.json"))
         val linkBody = assertIs<WatchMessageBody.WorkoutLink>(link.body)

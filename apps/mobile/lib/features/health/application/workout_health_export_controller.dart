@@ -30,11 +30,18 @@ final class HealthExportOn extends HealthExportStatus {
     required this.saved,
     required this.waiting,
     required this.needsAccess,
+    this.offersWatchHealthAccess = false,
   });
 
   final int saved;
   final int waiting;
   final bool needsAccess;
+
+  /// Android with a Wear watch paired: heart rate and calories write is not
+  /// granted yet, so watch workouts are not saved to Health Connect for now:
+  /// the watch keeps their heart rate and calories (up to 7 days) and they are
+  /// written once the user allows it.
+  final bool offersWatchHealthAccess;
 }
 
 class HealthExportController extends AsyncNotifier<HealthExportStatus> {
@@ -54,8 +61,18 @@ class HealthExportController extends AsyncNotifier<HealthExportStatus> {
     if (!await writer.isAvailable()) return const HealthExportUnavailable();
     if (!repository.isEnabled(owner)) return const HealthExportOff();
     final exporter = _exporterFor(owner);
-    return _on(exporter.summary());
+    return _on(exporter.summary(), await _offersWatchHealth(writer));
   }
+
+  bool _watchPaired() => switch (ref.read(watchStatusProvider)) {
+    WatchHidden() || WatchNotInstalled() => false,
+    _ => true,
+  };
+
+  Future<bool> _offersWatchHealth(HealthWorkoutWriter writer) async =>
+      !writer.isIos &&
+      _watchPaired() &&
+      !await writer.hasWatchHealthWriteAccess();
 
   WorkoutHealthExporter _exporterFor(String owner) =>
       _exporter ??= ref.read(workoutHealthExporterFactoryProvider)(
@@ -63,18 +80,17 @@ class HealthExportController extends AsyncNotifier<HealthExportStatus> {
         stillCurrent: () =>
             ref.mounted &&
             ref.read(accountAuthControllerProvider)?.userId == owner,
-        watchPaired: () => switch (ref.read(watchStatusProvider)) {
-          WatchHidden() || WatchNotInstalled() => false,
-          _ => true,
-        },
+        watchPaired: _watchPaired,
         clock: ref.read(healthClockProvider),
       );
 
-  HealthExportOn _on(ExportPassResult r) => HealthExportOn(
-    saved: r.saved,
-    waiting: r.waiting,
-    needsAccess: r.blocked,
-  );
+  HealthExportOn _on(ExportPassResult r, bool offersWatchHealth) =>
+      HealthExportOn(
+        saved: r.saved,
+        waiting: r.waiting,
+        needsAccess: r.blocked,
+        offersWatchHealthAccess: offersWatchHealth,
+      );
 
   /// Enables saving, shows the platform permission prompt once and saves the
   /// workouts. A denied prompt keeps the switch on and shows "Allow access".
@@ -90,6 +106,18 @@ class HealthExportController extends AsyncNotifier<HealthExportStatus> {
     ref.invalidateSelf();
     await future;
     await runPass();
+  }
+
+  /// Android: shows the permission prompt for heart rate and calories (read
+  /// and write), then refreshes the row. Nothing else is needed: the watch
+  /// resends the workouts it kept on its own triggers and they are written.
+  Future<void> allowWatchHealth() async {
+    await ref
+        .read(healthWorkoutWriterProvider)
+        .requestAccess(watchHealth: true);
+    if (!ref.mounted) return;
+    ref.invalidateSelf();
+    await future;
   }
 
   Future<void> turnOff() async {
@@ -110,7 +138,11 @@ class HealthExportController extends AsyncNotifier<HealthExportStatus> {
       final result = await exporter.runPass();
       if (!ref.mounted || ref.read(healthOwnerIdProvider) != owner) return;
       if (!ref.read(healthExportRepositoryProvider).isEnabled(owner)) return;
-      state = AsyncData(_on(result));
+      final offers = await _offersWatchHealth(
+        ref.read(healthWorkoutWriterProvider),
+      );
+      if (!ref.mounted) return;
+      state = AsyncData(_on(result, offers));
     } catch (_) {
       // The next trigger retries; receipts hold the durable state.
     }

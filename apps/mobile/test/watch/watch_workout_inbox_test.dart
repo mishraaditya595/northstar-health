@@ -126,6 +126,22 @@ void main() {
     dir.deleteSync(recursive: true);
   });
 
+  test('a Wear completed_workout without healthkit_workout_uuid imports and acks stored', () async {
+    final json = jsonDecode(
+      File(
+        '../../contracts/watch_link/v1/fixtures/valid/completed_workout.json',
+      ).readAsStringSync(),
+    ) as Map<String, Object?>;
+    json['account_key'] = watchAccountKey(accountA);
+    (json['body']! as Map<String, Object?>).remove('healthkit_workout_uuid');
+    final message = WatchMessage.fromJson(json) as CompletedWorkout;
+    expect(message.healthkitWorkoutUuid, isNull);
+    expect(await inbox.handle(message), WatchImportResult.stored);
+    expect(store.box<WorkoutSessionEntity>().count(), 1);
+    expect(link.ackAt(0).result, 'stored');
+    expect(link.ackAt(0).ackedMessageId, message.messageId);
+  });
+
   test(
     'stores and acks stored with the signed-in key and the message id',
     () async {

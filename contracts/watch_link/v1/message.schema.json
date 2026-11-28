@@ -33,7 +33,8 @@
         "completed_workout",
         "ack",
         "workout_link",
-        "join"
+        "join",
+        "workout_health"
       ]
     },
     "sent_at_utc": {
@@ -254,6 +255,25 @@
         "properties": {
           "body": {
             "$ref": "#/$defs/body_join"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "workout_health"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "$ref": "#/$defs/body_workout_health"
           }
         }
       }
@@ -1126,10 +1146,32 @@
           "enum": [
             "wrong_account",
             "invalid",
-            "unsupported_version"
+            "unsupported_version",
+            "not_written"
           ]
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "reason"
+            ],
+            "properties": {
+              "reason": {
+                "const": "not_written"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "result": {
+                "const": "rejected"
+              }
+            }
+          }
+        }
+      ]
     },
     "cloud_workout": {
       "type": "object",
@@ -1426,6 +1468,58 @@
         "session_id": {
           "type": "string",
           "format": "uuid"
+        }
+      }
+    },
+    "body_workout_health": {
+      "type": "object",
+      "required": [
+        "workout_id",
+        "start_utc",
+        "end_utc",
+        "heart_rate"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "workout_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "start_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "heart_rate": {
+          "type": "array",
+          "maxItems": 600,
+          "items": {
+            "type": "object",
+            "required": [
+              "at_utc",
+              "bpm"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "at_utc": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "bpm": {
+                "type": "integer",
+                "minimum": 25,
+                "maximum": 250
+              }
+            }
+          }
+        },
+        "total_kcal": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 10000
         }
       }
     }
