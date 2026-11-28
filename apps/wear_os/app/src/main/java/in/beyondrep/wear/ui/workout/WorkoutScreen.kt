@@ -133,9 +133,9 @@ private fun Pages(
         when (page) {
             0 -> SetPage(
                 controller, unit, running.heartRate, ui,
-                onLog = {
-                    actions.log(it)
-                    onLogged(it.setId)
+                onLog = { values ->
+                    // The RPE question only follows a set the journal stored; a failed commit asks nothing.
+                    actions.log(values) { stored -> if (stored) onLogged(values.setId) }
                 },
                 onAddSet = actions::addSet,
                 onShowExercises = onExercises,

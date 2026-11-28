@@ -7,6 +7,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -21,6 +23,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
 import `in`.beyondrep.wear.app.WatchGraph
+import `in`.beyondrep.wear.core.contracts.SetValues
 import `in`.beyondrep.wear.core.contracts.WatchMessage
 import `in`.beyondrep.wear.core.contracts.WatchMessageBody
 import `in`.beyondrep.wear.exercise.ExerciseOwner
@@ -209,6 +212,42 @@ class WorkoutScreensTest {
             rotateToScrollVertically(30f)
         }
         waitForText("2.5")
+    }
+
+    @Test
+    fun valueBoxesOfferIncreaseAndDecreaseToAccessibilityServices() {
+        startQuickWorkout()
+        showRoot()
+        waitForText("Log set")
+        val box = compose.onNode(hasContentDescription("Weight 0 kilograms", substring = true))
+        val actions = box.fetchSemanticsNode().config[SemanticsActions.CustomActions]
+        assertEquals(listOf("Increase", "Decrease"), actions.map { it.label })
+        compose.runOnUiThread { actions.first { it.label == "Increase" }.action() }
+        // One step is 2.5 kg, the same as one crown detent.
+        waitForText("2.5")
+    }
+
+    @Test
+    fun aFailedLogAsksNoRpeQuestion() {
+        startQuickWorkout()
+        showRoot(
+            actions = object : WorkoutActions by viewModel {
+                override fun log(values: SetValues, onDone: (Boolean) -> Unit) = onDone(false)
+            })
+        waitForText("Log set")
+        compose.onNodeWithText("Log set").performClick()
+        compose.waitForIdle()
+        assertEquals(0, compose.onAllNodesWithText("How hard was it?").fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun ambientUpdateRefreshesTheClock() {
+        var time = Instant.parse("2026-10-23T01:00:00Z")
+        val model = WatchViewModel(graph, { time }, { kolkata }, { Locale.US }, runner)
+        assertEquals(time, model.now.value)
+        time = time.plusSeconds(60)
+        model.onAmbientUpdate()
+        assertEquals(time, model.now.value)
     }
 
     @Test

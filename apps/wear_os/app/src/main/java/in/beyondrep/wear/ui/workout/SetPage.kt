@@ -18,7 +18,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.rotary.onRotaryScrollEvent
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -64,6 +66,11 @@ fun SetPage(
     var focus by remember(setId) {
         mutableStateOf(if (timed) SetInput.Field.SECONDS else SetInput.Field.WEIGHT)
     }
+    fun adjust(field: SetInput.Field, steps: Int) {
+        val current = values ?: return
+        val next = SetInput.value(field, current) + steps * SetInput.step(field, unit)
+        values = SetInput.applying(next, field, current)
+    }
     val stepper = remember { RotaryStepper() }
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
@@ -73,11 +80,7 @@ fun SetPage(
             .fillMaxSize()
             .onRotaryScrollEvent { event ->
                 val steps = stepper.consume(event.verticalScrollPixels)
-                val current = values
-                if (steps != 0 && current != null) {
-                    val next = SetInput.value(focus, current) + steps * SetInput.step(focus, unit)
-                    values = SetInput.applying(next, focus, current)
-                }
+                if (steps != 0) adjust(focus, steps)
                 true
             }
             .focusRequester(focusRequester)
@@ -126,17 +129,19 @@ fun SetPage(
                     ValueBox(
                         weight, unit, focus == SetInput.Field.WEIGHT,
                         "Weight $weight ${if (unit == "lb") "pounds" else "kilograms"}",
-                        Modifier.weight(1f),
+                        Modifier.weight(1f), { adjust(SetInput.Field.WEIGHT, it) },
                     ) { focus = SetInput.Field.WEIGHT }
                     val reps = SetInput.value(SetInput.Field.REPS, shown).toInt()
-                    ValueBox("$reps", "reps", focus == SetInput.Field.REPS, "$reps reps", Modifier.weight(1f)) {
-                        focus = SetInput.Field.REPS
-                    }
+                    ValueBox(
+                        "$reps", "reps", focus == SetInput.Field.REPS, "$reps reps", Modifier.weight(1f),
+                        { adjust(SetInput.Field.REPS, it) },
+                    ) { focus = SetInput.Field.REPS }
                 } else {
                     val seconds = SetInput.value(SetInput.Field.SECONDS, shown).toInt()
-                    ValueBox("$seconds", "sec", true, "$seconds seconds", Modifier.weight(1f)) {
-                        focus = SetInput.Field.SECONDS
-                    }
+                    ValueBox(
+                        "$seconds", "sec", true, "$seconds seconds", Modifier.weight(1f),
+                        { adjust(SetInput.Field.SECONDS, it) },
+                    ) { focus = SetInput.Field.SECONDS }
                 }
             }
         }
@@ -157,10 +162,24 @@ private fun ValueBox(
     focused: Boolean,
     description: String,
     modifier: Modifier,
+    onAdjust: (Int) -> Unit,
     onClick: () -> Unit,
 ) {
+    // TalkBack and switch users cannot turn the crown: the box offers the same step as actions.
+    val adjustable = modifier.semantics {
+        customActions = listOf(
+            CustomAccessibilityAction("Increase") {
+                onAdjust(1)
+                true
+            },
+            CustomAccessibilityAction("Decrease") {
+                onAdjust(-1)
+                true
+            },
+        )
+    }
     Surface(
-        modifier, description = if (focused) "$description, selected" else description, onClick = onClick,
+        adjustable, description = if (focused) "$description, selected" else description, onClick = onClick,
         borderColor = if (focused) Palette.performance else null,
     ) {
         androidx.compose.foundation.layout.Column(

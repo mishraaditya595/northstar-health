@@ -19,7 +19,8 @@ sealed interface StartTarget {
 interface WorkoutActions {
     fun start(target: StartTarget)
 
-    fun log(values: SetValues)
+    /** [onDone] gets true once the journal stored the set, false when the commit failed. */
+    fun log(values: SetValues, onDone: (Boolean) -> Unit = {})
 
     fun setRpe(setId: String, rpe: Double?)
 
@@ -45,7 +46,7 @@ interface WorkoutActions {
     /** Does nothing: for screens that never act. */
     object None : WorkoutActions {
         override fun start(target: StartTarget) = Unit
-        override fun log(values: SetValues) = Unit
+        override fun log(values: SetValues, onDone: (Boolean) -> Unit) = Unit
         override fun setRpe(setId: String, rpe: Double?) = Unit
         override fun extendRest() = Unit
         override fun skipRest() = Unit

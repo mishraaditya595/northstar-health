@@ -34,7 +34,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Duration
@@ -98,9 +100,18 @@ class WatchViewModel(
         _ambient.value = value
     }
 
+    private val _now = MutableStateFlow(clock())
+
     /** The clock for the workout screens: every second, every minute in ambient mode, still when no workout shows. */
+    val now: StateFlow<Instant> = _now
+
+    /** Ambient mode redraws once a minute by the system's own call: the timer below may not run with the screen dimmed. */
+    fun onAmbientUpdate() {
+        _now.value = clock()
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
-    val now: StateFlow<Instant> = combine(runner.state, _ambient) { state, ambient ->
+    private val clockTicks = combine(runner.state, _ambient) { state, ambient ->
         if (state is RunnerState.Running) (if (ambient) 60_000L else 1_000L) else 0L
     }.distinctUntilChanged().flatMapLatest { period ->
         flow {
@@ -110,7 +121,7 @@ class WatchViewModel(
                 delay(period)
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, clock())
+    }.onEach { _now.value = it }.launchIn(viewModelScope)
 
     /** The summary's status line, from the journal's delivery state and phone reachability. */
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -160,8 +171,8 @@ class WatchViewModel(
         }
     }
 
-    override fun log(values: SetValues) {
-        viewModelScope.launch { runner.log(values) }
+    override fun log(values: SetValues, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch { onDone(runner.log(values)) }
     }
 
     override fun setRpe(setId: String, rpe: Double?) {

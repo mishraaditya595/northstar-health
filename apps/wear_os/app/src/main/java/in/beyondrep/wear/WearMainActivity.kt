@@ -44,7 +44,7 @@ class WearMainActivity : ComponentActivity() {
 
                 override fun onExitAmbient() = viewModel.setAmbient(false)
 
-                override fun onUpdateAmbient() = Unit
+                override fun onUpdateAmbient() = viewModel.onAmbientUpdate()
             },
         )
     }
@@ -53,7 +53,14 @@ class WearMainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         lifecycle.addObserver(ambientObserver)
         setContent { RootScreen(viewModel) }
+        // Idempotent: the runner follows account changes once per process, not once per activity.
         graph.runner.observe()
+        lifecycleScope.launch {
+            // The phone coming within reach: put what is waiting for it.
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                graph.phoneReachable.collect { if (it) graph.outbox.flush() }
+            }
+        }
         lifecycleScope.launch {
             // A workout the system interrupted comes back from the journal.
             try {
@@ -80,16 +87,6 @@ class WearMainActivity : ComponentActivity() {
             }
             reachability.refresh()
             graph.outbox.flush()
-        }
-    }
-
-    override fun onStart() {
-        super.onStart()
-        lifecycleScope.launch {
-            // The phone coming within reach: put what is waiting for it.
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                graph.phoneReachable.collect { if (it) graph.outbox.flush() }
-            }
         }
     }
 
