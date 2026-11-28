@@ -265,5 +265,57 @@ void main() {
       expect(kp(other), [(EnergyItemKind.awake, -4)]);
       expect(other.awakeWaived, isFalse);
     });
+
+    test('the awake dip fades in over the first hour of usual hours', () {
+      const night = EnergyTuning(
+        usualHours: {22, 23},
+        drainMultiplier: 1.0,
+        calibrated: false,
+      );
+      Energy at(DateTime now) => energyNow(
+        start: startOf(78),
+        day: (day: DateTime(2026, 11, 27), wake: DateTime(2026, 11, 27, 6)),
+        now: now,
+        sessions: const [],
+        hourlyActiveEnergy: const [],
+        sleepSegments: const [],
+        tuning: night,
+      );
+      // About 16 h awake: a 4 point dip outside usual hours.
+      final before = at(DateTime(2026, 11, 27, 21, 59));
+      expect(kp(before), [(EnergyItemKind.awake, -4)]);
+      expect(before.awakeWaiver, 0);
+      // Half way into the first usual hour, half of the dip is waived.
+      final half = at(DateTime(2026, 11, 27, 22, 30));
+      expect(half.awakeWaiver, closeTo(0.5, 1e-9));
+      expect(kp(half), [(EnergyItemKind.awake, -2)]);
+      expect(half.awakeWaived, isTrue);
+      // A full hour in, none of it applies.
+      final full = at(DateTime(2026, 11, 27, 23));
+      expect(full.awakeWaiver, closeTo(1, 1e-9));
+      expect(full.items, isEmpty);
+      // It fades back out over the hour after the last usual hour.
+      final after = at(DateTime(2026, 11, 28, 0, 15));
+      expect(after.awakeWaiver, closeTo(0.75, 1e-9));
+    });
+
+    test(
+      'usualHourShare counts the minutes of the last hour in usual hours',
+      () {
+        expect(usualHourShare(const {}, DateTime(2026, 11, 27, 22, 30)), 0);
+        expect(
+          usualHourShare(const {22}, DateTime(2026, 11, 27, 22, 15)),
+          closeTo(0.25, 1e-9),
+        );
+        expect(
+          usualHourShare(const {21}, DateTime(2026, 11, 27, 22, 15)),
+          closeTo(0.75, 1e-9),
+        );
+        expect(
+          usualHourShare(const {23}, DateTime(2026, 11, 28, 0, 30)),
+          closeTo(0.5, 1e-9),
+        );
+      },
+    );
   });
 }

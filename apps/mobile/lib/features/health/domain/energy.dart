@@ -54,7 +54,7 @@ class Energy {
     required this.band,
     required this.start,
     required this.items,
-    this.awakeWaived = false,
+    this.awakeWaiver = 0,
     this.tuned = false,
   });
 
@@ -63,8 +63,11 @@ class Energy {
   final int start;
   final List<EnergyItem> items;
 
-  /// The awake dip would have applied but this is a usual training hour.
-  final bool awakeWaived;
+  /// How much (0 to 1) of an awake dip that would have applied is waived
+  /// because the last hour was in usual training hours.
+  final double awakeWaiver;
+
+  bool get awakeWaived => awakeWaiver > 0;
 
   /// The personal drain multiplier is calibrated and not 1.0.
   final bool tuned;
@@ -151,10 +154,10 @@ Energy energyNow({
 
   final awake = now.difference(day.wake);
   final dip = awakeDipPoints(awake);
-  final waived = dip > 0 && tuning.usualHours.contains(now.hour);
+  final waiver = dip > 0 ? usualHourShare(tuning.usualHours, now) : 0.0;
   raws.add((
     kind: EnergyItemKind.awake,
-    points: waived ? 0 : -dip,
+    points: -dip * (1 - waiver),
     at: null,
     awakeHours: awake.inHours,
     capped: false,
@@ -204,7 +207,7 @@ Energy energyNow({
     band: readinessBandOf(value),
     start: start.value,
     items: items,
-    awakeWaived: waived,
+    awakeWaiver: waiver,
     tuned: tuning.calibrated && multiplier != 1.0,
   );
 }

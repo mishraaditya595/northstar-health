@@ -292,3 +292,16 @@ EnergyTuning energyTuningOf({
     calibrated: calibrated,
   );
 }
+
+/// The share (0 to 1) of the hour up to [now] that falls in [usualHours]
+/// (local clock hours), so the awake dip fades out over the first usual hour
+/// and back in over the hour after the last one.
+double usualHourShare(Set<int> usualHours, DateTime now) {
+  if (usualHours.isEmpty) return 0;
+  final into = (now.minute + now.second / 60) / 60;
+  final previous = (now.hour + 23) % 24;
+  var share = 0.0;
+  if (usualHours.contains(now.hour)) share += into;
+  if (usualHours.contains(previous)) share += 1 - into;
+  return share;
+}

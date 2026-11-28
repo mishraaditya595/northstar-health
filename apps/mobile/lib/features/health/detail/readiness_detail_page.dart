@@ -210,10 +210,15 @@ class _Today extends StatelessWidget {
             'Naps add back up to 10 points, and never more than the day has '
             'used.',
           ),
-        if (e.awakeWaived)
+        if (e.awakeWaiver >= 1)
           const HealthCaption(
             'You usually train around now, so time awake costs nothing '
             'today.',
+          )
+        else if (e.awakeWaived)
+          const HealthCaption(
+            'You usually train around now, so time awake costs less right '
+            'now.',
           ),
         if (e.items.isEmpty)
           const HealthCaption(

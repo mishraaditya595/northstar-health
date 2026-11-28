@@ -481,12 +481,34 @@ void main() {
             band: ReadinessBand.fair,
             start: 78,
             items: [],
-            awakeWaived: true,
+            awakeWaiver: 1,
           ),
         ),
         FakeHealthReader(),
       );
       expect(find.text(waived), findsOneWidget);
+    });
+
+    testWidgets('a partly waived awake dip says it costs less', (tester) async {
+      await _pump(
+        tester,
+        _todayOverview(
+          energy: const Energy(
+            value: 70,
+            band: ReadinessBand.fair,
+            start: 78,
+            items: [],
+            awakeWaiver: 0.5,
+          ),
+        ),
+        FakeHealthReader(),
+      );
+      expect(
+        find.text(
+          'You usually train around now, so time awake costs less right now.',
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('no waived caption without a waived dip', (tester) async {
