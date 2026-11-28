@@ -1,0 +1,23 @@
+/* Scroll scenes on the home page. The resting rules (outside the media block)
+   are the finished, readable state and need no JS. Pinning and track heights
+   apply only under .scenes-ready, which scroll-scenes.mjs sets when motion is
+   allowed. Per-frame values arrive as custom properties and data attributes. */
+
+[data-scene-stage] { width: 100%; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .scenes-ready [data-scene-track] { height: var(--track, 220vh); }
+  .scenes-ready [data-scene-stage] {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding-top: clamp(24px, 7vh, 72px);
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 899px) {
+  .scenes-ready [data-scene-track] { --track: 150vh; }
+}
