@@ -19,11 +19,11 @@ import java.util.concurrent.Executors
  * owner: everything that touches it runs on [dispatcher]. [revision] changes after every journal
  * write, so screens recompute what they show.
  */
-class WatchGraph private constructor(context: Context) {
+class WatchGraph(context: Context, databaseName: String = "beyondrep_watch.db") {
     val dispatcher: CoroutineDispatcher =
         Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "beyondrep-journal") }.asCoroutineDispatcher()
 
-    val journal = WatchJournal(AndroidSqlDatabase(context))
+    val journal = WatchJournal(AndroidSqlDatabase(context, databaseName))
     val inbox = PhoneInbox(journal)
     val router = DataLayerRouter(inbox)
 
@@ -32,6 +32,15 @@ class WatchGraph private constructor(context: Context) {
 
     fun bump() {
         _revision.value += 1
+    }
+
+    private val _phoneReachable = MutableStateFlow(false)
+
+    /** Whether a phone with BeyondRep is nearby right now (the sync line says "Phone not nearby" when not). */
+    val phoneReachable: StateFlow<Boolean> = _phoneReachable
+
+    fun setPhoneReachable(reachable: Boolean) {
+        _phoneReachable.value = reachable
     }
 
     val link = DataLayerLink(WearDataItems(context.applicationContext), router, Instant::now, ::bump)
