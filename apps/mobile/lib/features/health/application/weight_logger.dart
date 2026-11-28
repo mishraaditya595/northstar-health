@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/clock.dart';
@@ -37,6 +39,7 @@ class WeightLogger {
 
   final Ref _ref;
   final _undone = <String>{};
+  final _owners = <String, String>{};
   final _undoing = <String, Future<bool>>{};
 
   HealthWeightWriter get _writer => _ref.read(healthWeightWriterProvider);
@@ -49,6 +52,7 @@ class WeightLogger {
     final kg = parseWeightKg(input);
     if (kg == null) return const WeightInvalid();
     final writer = _writer;
+    if (!await writer.isAvailable()) return const WeightSaveFailed();
     if (!await writer.hasWriteAccess()) {
       await writer.requestAccess();
       if (!await writer.hasWriteAccess()) return const WeightDenied();
@@ -59,7 +63,8 @@ class WeightLogger {
     final result = await writer.write(kg, _ref.read(wallClockProvider)());
     switch (result) {
       case HealthWeightWriteOk():
-        await _refresh();
+        _owners[result.clientRecordId] = owner;
+        unawaited(_refresh());
         return WeightSaved(
           SavedWeight(
             platformRecordId: result.platformRecordId,
@@ -87,10 +92,18 @@ class WeightLogger {
   }
 
   Future<bool> _undo(SavedWeight saved) async {
-    if (!await _writer.delete(saved)) return false;
-    _undone.add(saved.clientRecordId);
-    await _refresh();
-    return true;
+    try {
+      // A weight belongs to the account that saved it.
+      if (_owners[saved.clientRecordId] != _ref.read(healthOwnerIdProvider)) {
+        return false;
+      }
+      if (!await _writer.delete(saved)) return false;
+      _undone.add(saved.clientRecordId);
+      await _refresh();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> openSettings() => _ref.read(healthReaderProvider).openSettings();

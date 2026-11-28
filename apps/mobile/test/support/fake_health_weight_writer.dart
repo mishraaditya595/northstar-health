@@ -9,6 +9,7 @@ class FakeHealthWeightWriter implements HealthWeightWriter {
   @override
   final bool isIos;
 
+  bool available = true;
   bool writeAccess = true;
   bool accessGrantedByRequest = true;
 
@@ -16,6 +17,7 @@ class FakeHealthWeightWriter implements HealthWeightWriter {
   /// succeeds with a generated id.
   final List<HealthWriteResult> writeResults = [];
   bool deleteResult = true;
+  Object? deleteError;
 
   final writes = <({double kg, DateTime at})>[];
   final deletes = <SavedWeight>[];
@@ -25,6 +27,9 @@ class FakeHealthWeightWriter implements HealthWeightWriter {
   void Function()? onRequestAccess;
 
   var _next = 0;
+
+  @override
+  Future<bool> isAvailable() async => available;
 
   @override
   Future<bool> hasWriteAccess() async => writeAccess;
@@ -48,6 +53,7 @@ class FakeHealthWeightWriter implements HealthWeightWriter {
   @override
   Future<bool> delete(SavedWeight saved) async {
     deletes.add(saved);
+    if (deleteError != null) throw deleteError!;
     return deleteResult;
   }
 }

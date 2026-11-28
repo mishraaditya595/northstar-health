@@ -132,6 +132,18 @@ void main() {
     expect(_fieldText(tester), '72.4');
   });
 
+  testWidgets('the prefilled weight is selected so typing replaces it', (
+    tester,
+  ) async {
+    await _pump(tester, latestKg: 72.4);
+    await _open(tester);
+    final sel = tester
+        .widget<TextField>(find.byType(TextField))
+        .controller!
+        .selection;
+    expect((sel.start, sel.end), (0, 4));
+  });
+
   testWidgets('sheet opens with an empty field when there is no weight', (
     tester,
   ) async {
@@ -185,7 +197,7 @@ void main() {
     tester,
   ) async {
     final reader = FakeHealthReader();
-    final writer = FakeHealthWeightWriter()
+    final writer = FakeHealthWeightWriter(isIos: false)
       ..writeAccess = false
       ..accessGrantedByRequest = false;
     await _pump(tester, writer: writer, reader: reader);
@@ -199,6 +211,25 @@ void main() {
     await tester.tap(find.widgetWithText(OutlinedButton, 'Open Settings'));
     await tester.pumpAndSettle();
     expect(reader.openSettingsCalls, 1);
+  });
+
+  testWidgets('denied on iOS points to Sharing in Health, no button', (
+    tester,
+  ) async {
+    final writer = FakeHealthWeightWriter()
+      ..writeAccess = false
+      ..accessGrantedByRequest = false;
+    await _pump(tester, writer: writer);
+    await _open(tester);
+    await _save(tester);
+    expect(
+      find.text(
+        'Allow BeyondRep to write weight in the Health app: '
+        'Sharing > Apps > BeyondRep.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Open Settings'), findsNothing);
   });
 
   testWidgets('failed write shows the retry text and keeps the sheet open', (
@@ -251,7 +282,7 @@ void main() {
       tester,
       textScale: 2,
       brightness: Brightness.dark,
-      writer: FakeHealthWeightWriter()
+      writer: FakeHealthWeightWriter(isIos: false)
         ..writeAccess = false
         ..accessGrantedByRequest = false,
     );

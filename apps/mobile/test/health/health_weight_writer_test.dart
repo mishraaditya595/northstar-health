@@ -185,14 +185,14 @@ void main() {
     },
   );
 
-  test('requestAccess asks WEIGHT with READ_WRITE', () async {
+  test('requestAccess asks WEIGHT with WRITE only', () async {
     final h = _FakeHealth();
     expect(await writer(h).requestAccess(), isTrue);
     expect(h.requestedTypes, [HealthDataType.WEIGHT]);
-    expect(h.requestedAccess, [HealthDataAccess.READ_WRITE]);
+    expect(h.requestedAccess, [HealthDataAccess.WRITE]);
   });
 
-  test('hasWriteAccess checks WRITE on iOS, READ_WRITE on Android', () async {
+  test('hasWriteAccess checks WRITE on both platforms', () async {
     final ios = _FakeHealth();
     expect(await writer(ios).hasWriteAccess(), isTrue);
     expect(ios.checkedTypes, [HealthDataType.WEIGHT]);
@@ -201,8 +201,21 @@ void main() {
     expect(await writer(denied).hasWriteAccess(), isFalse);
     final android = _FakeHealth()..permitted = null;
     expect(await writer(android, ios: false).hasWriteAccess(), isFalse);
-    expect(android.checkedAccess, [HealthDataAccess.READ_WRITE]);
+    expect(android.checkedAccess, [HealthDataAccess.WRITE]);
   });
+
+  test(
+    'Android hasWriteAccess is false when Health Connect is missing',
+    () async {
+      final h = _FakeHealth()..sdk = HealthConnectSdkStatus.sdkUnavailable;
+      final w = writer(h, ios: false);
+      expect(await w.isAvailable(), isFalse);
+      expect(await w.hasWriteAccess(), isFalse);
+      expect(h.checkedTypes, isNull);
+      expect(await writer(_FakeHealth(), ios: false).isAvailable(), isTrue);
+      expect(await writer(h).isAvailable(), isTrue);
+    },
+  );
 
   const saved = SavedWeight(platformRecordId: 'p-1', clientRecordId: 'c-1');
 

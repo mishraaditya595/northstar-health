@@ -28,9 +28,12 @@ class HealthWeightWriteOk extends HealthWriteOk {
 abstract interface class HealthWeightWriter {
   bool get isIos;
 
+  /// False on Android when Health Connect is missing or needs an update.
+  Future<bool> isAvailable();
+
   Future<bool> hasWriteAccess();
 
-  /// Shows the platform permission prompt for weight read and write.
+  /// Shows the platform permission prompt for weight write.
   Future<bool> requestAccess();
 
   /// Writes one manual weight sample at [at]; [HealthWeightWriteOk] on success.
@@ -70,8 +73,20 @@ class PlatformHealthWeightWriter implements HealthWeightWriter {
       await _configure();
       return await _health.requestAuthorization(
         [HealthDataType.WEIGHT],
-        permissions: [HealthDataAccess.READ_WRITE],
+        permissions: [HealthDataAccess.WRITE],
       );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> isAvailable() async {
+    if (isIos) return true;
+    try {
+      await _configure();
+      return await _health.getHealthConnectSdkStatus() ==
+          HealthConnectSdkStatus.sdkAvailable;
     } catch (_) {
       return false;
     }
@@ -80,13 +95,11 @@ class PlatformHealthWeightWriter implements HealthWeightWriter {
   @override
   Future<bool> hasWriteAccess() async {
     try {
+      if (!await isAvailable()) return false;
       await _configure();
-      // HealthKit reports write status truthfully but never read status.
       final granted = await _health.hasPermissions(
         [HealthDataType.WEIGHT],
-        permissions: [
-          isIos ? HealthDataAccess.WRITE : HealthDataAccess.READ_WRITE,
-        ],
+        permissions: [HealthDataAccess.WRITE],
       );
       return granted == true;
     } catch (_) {

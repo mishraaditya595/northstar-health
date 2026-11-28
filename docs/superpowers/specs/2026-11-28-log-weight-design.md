@@ -42,11 +42,11 @@ Adi: "I want people to edit their weight from the app and that reflects in Apple
 
 ## 5. Design
 
-**Data flow.** Sheet → `WeightLogController.save(kg)` → checks range (20.0 to 400.0 kg, one decimal; comma accepted as decimal point) → if write access is missing, requests it (platform prompt) → `HealthWeightWriter.write(kg, at: now)` → on success refreshes the health overview and returns a `LoggedWeight(recordId, clientRecordId)` kept in memory only for the snackbar's Undo → Undo calls `HealthWeightWriter.delete(...)` and refreshes again.
+**Data flow.** Sheet → `WeightLogger.save(kg)` → checks range (20.0 to 400.0 kg, one decimal; comma accepted as decimal point) → if write access is missing, requests it (platform prompt) → `HealthWeightWriter.write(kg, at: now)` → on success refreshes the health overview and returns a `SavedWeight(recordId, clientRecordId)` kept in memory only for the snackbar's Undo → Undo calls `HealthWeightWriter.delete(...)` and refreshes again.
 
 **Identity.** Each entry gets a fresh random UUID as `clientRecordId` on Android (delete by client record id); iOS deletes by the returned HealthKit UUID with `type: WEIGHT`. Recording method `manual` on both.
 
-**Results shown.** Saved → snackbar with Undo. Denied → the sheet stays open with "Allow BeyondRep to write weight in Settings" and an Open Settings button (reusing the reader's `openSettings`). Failed or unavailable → "Couldn't save to Apple Health. Try again." and nothing changes. Undo failed → "Couldn't remove it. Delete it in the Health app."
+**Results shown.** Saved → snackbar with Undo. Denied → the sheet stays open with "Allow BeyondRep to write weight in Settings" and an Open Settings button (reusing the reader's `openSettings`). On iOS there is no deep link, so the button is hidden and the text is "Allow BeyondRep to write weight in the Health app: Sharing > Apps > BeyondRep." Permission is requested and checked with `HealthDataAccess.WRITE` on both platforms (no read access is asked). Failed or unavailable → "Couldn't save to Apple Health. Try again." and nothing changes. Undo failed → "Couldn't remove it. Delete it in the Health app."
 
 **Account boundary.** Nothing account-scoped is stored. The button appears only when the current account's health connection is on.
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
 import 'package:beyondrep/features/health/application/weight_logger.dart';
@@ -14,6 +16,14 @@ class _ThrowingRefreshOverview extends FakeHealthOverviewController {
 
   @override
   Future<void> refresh() async => throw StateError('refresh failed');
+}
+
+class _GatedRefreshOverview extends FakeHealthOverviewController {
+  _GatedRefreshOverview(this.gate) : super(null);
+  final Completer<void> gate;
+
+  @override
+  Future<void> refresh() => gate.future;
 }
 
 class _Owner extends Notifier<String?> {
@@ -58,8 +68,51 @@ void main() {
     expect((result as WeightSaved).saved.platformRecordId, 'hk-0');
     expect(result.saved.clientRecordId, 'client-0');
     expect(writer.writes, [(kg: 72.4, at: fixedNow)]);
+    await Future<void>.delayed(Duration.zero);
     expect(overview.refreshCalls, 1);
     expect(writer.requestAccessCalls, 0);
+  });
+
+  test('save does not wait for the overview refresh', () async {
+    container.dispose();
+    final gate = Completer<void>();
+    container = ProviderContainer(
+      overrides: [
+        healthWeightWriterProvider.overrideWithValue(writer),
+        healthOwnerIdProvider.overrideWith((ref) => ref.watch(_ownerProvider)),
+        wallClockProvider.overrideWithValue(() => fixedNow),
+        fakeHealthOverview(_GatedRefreshOverview(gate)),
+      ],
+    );
+    addTearDown(container.dispose);
+    expect(await logger().save('70'), isA<WeightSaved>());
+    gate.complete();
+  });
+
+  test('Health Connect missing gives WeightSaveFailed, no prompt', () async {
+    writer.available = false;
+    writer.writeAccess = false;
+    expect(await logger().save('70'), isA<WeightSaveFailed>());
+    expect(writer.requestAccessCalls, 0);
+    expect(writer.writes, isEmpty);
+  });
+
+  test('undo after the account changed does not delete', () async {
+    final saved = (await logger().save('70') as WeightSaved).saved;
+    container.read(_ownerProvider.notifier).set('user-2');
+    expect(await logger().undo(saved), isFalse);
+    expect(writer.deletes, isEmpty);
+    container.read(_ownerProvider.notifier).set(null);
+    expect(await logger().undo(saved), isFalse);
+    expect(writer.deletes, isEmpty);
+  });
+
+  test('undo returns false when delete throws', () async {
+    final saved = (await logger().save('70') as WeightSaved).saved;
+    writer.deleteError = StateError('x');
+    expect(await logger().undo(saved), isFalse);
+    writer.deleteError = null;
+    expect(await logger().undo(saved), isTrue);
   });
 
   test('without access: requests, then writes when granted', () async {
@@ -112,6 +165,7 @@ void main() {
   test('undo deletes once and refreshes', () async {
     final saved = (await logger().save('70') as WeightSaved).saved;
     expect(await logger().undo(saved), isTrue);
+    await Future<void>.delayed(Duration.zero);
     expect(writer.deletes, [saved]);
     expect(overview.refreshCalls, 2);
   });

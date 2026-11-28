@@ -58,7 +58,15 @@ class _LogWeightSheet extends StatefulWidget {
 }
 
 class _LogWeightSheetState extends State<_LogWeightSheet> {
-  late final _controller = TextEditingController(text: widget.initial);
+  late final _controller = TextEditingController.fromValue(
+    TextEditingValue(
+      text: widget.initial,
+      selection: TextSelection(
+        baseOffset: 0,
+        extentOffset: widget.initial.length,
+      ),
+    ),
+  );
   bool _saving = false;
   String? _error;
   bool _denied = false;
@@ -86,8 +94,11 @@ class _LogWeightSheetState extends State<_LogWeightSheet> {
       case WeightInvalid():
         _error = 'Enter a weight between 20 and 400 kg';
       case WeightDenied():
-        _error = 'Allow BeyondRep to write weight in Settings';
-        _denied = true;
+        _error = widget.logger.isIos
+            ? 'Allow BeyondRep to write weight in the Health app: '
+                  'Sharing > Apps > BeyondRep.'
+            : 'Allow BeyondRep to write weight in Settings';
+        _denied = !widget.logger.isIos;
       case WeightSaveFailed():
         _error = "Couldn't save to $store. Try again.";
     }
