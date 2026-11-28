@@ -1,18 +1,18 @@
 # BeyondRep Wear OS
 
-A **native Kotlin/Jetpack Compose watch application foundation**. The current activity displays a clearly labelled non-recording preview. No Health Services session, offline workout logger, wearable pairing or physiological data collection exists yet.
+A **native Kotlin/Jetpack Compose watch application**. Stage 2 shows what the paired Android phone sends over the Wear Data Layer: Home (energy ring, four health tiles, sync line) and Train (today's program workout and plans, read-only previews), with detail screens. No Health Services session, workout recording, Start button or physiological data collection exists yet (stage 3).
 
 Build requirements: JDK 17, Android SDK 35, Gradle 8.11.1, Android Gradle Plugin 8.9.2.
 
 ```sh
 cd apps/wear_os
-./gradlew :core:test :app:assembleDebug
+./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug
 ```
 
 Layout:
 
 - `core/` is a pure Kotlin/JVM library (no `android.*`) that ports `apps/watch_os/Packages/BeyondRepWatchCore`: wire codecs, workout replay, journal, session machine and command applier. Its JUnit tests read `contracts/**` from disk and run every shared fixture and golden case.
-- `app/` is the Wear OS application (Compose UI, Android SQLite adapter). It depends on `core`.
+- `app/` is the Wear OS application (Compose UI in `ui/`, the Data Layer link in `link/`, Android SQLite adapter). It depends on `core`. Its unit tests (Robolectric and Compose UI tests) need the Android SDK and run on CI.
 
 On a machine without an Android SDK run only the core tests: `./gradlew :core:test -Pbeyondrep.coreOnly=true` (the switch leaves `:app` out of the build).
 

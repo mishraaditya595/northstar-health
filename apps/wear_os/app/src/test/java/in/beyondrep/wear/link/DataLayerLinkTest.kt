@@ -70,7 +70,7 @@ class DataLayerLinkTest {
         WatchMessage.decode(json).body as WatchMessageBody.Ack
 
     @Test
-    fun aQueuedBindingIsAckedAndTheItemDeleted() = runBlocking {
+    fun aQueuedBindingIsAckedAndTheItemDeleted() = runBlocking<Unit> {
         val message = binding()
         val path = DataLayerPaths.phoneQueue(message.messageId)
         items.store[path] = message.encode()
@@ -88,7 +88,7 @@ class DataLayerLinkTest {
     }
 
     @Test
-    fun aContextItemIsAckedButNotDeleted() = runBlocking {
+    fun aContextItemIsAckedButNotDeleted() = runBlocking<Unit> {
         val message = binding()
         val path = DataLayerPaths.context("account_binding")
         link.onChanges(listOf(DataChange(path, message.encode(), deleted = false)))
@@ -98,7 +98,7 @@ class DataLayerLinkTest {
     }
 
     @Test
-    fun catchUpAppliesItemsPresentBeforeTheAppStarted() = runBlocking {
+    fun catchUpAppliesItemsPresentBeforeTheAppStarted() = runBlocking<Unit> {
         val message = binding()
         items.store[DataLayerPaths.context("account_binding")] = message.encode()
         link.catchUp()
@@ -110,7 +110,7 @@ class DataLayerLinkTest {
     }
 
     @Test
-    fun aMalformedQueuedItemIsDeletedWithoutAnAck() = runBlocking {
+    fun aMalformedQueuedItemIsDeletedWithoutAnAck() = runBlocking<Unit> {
         val path = DataLayerPaths.phoneQueue("bad")
         items.store[path] = "{nope"
         link.onChanges(listOf(DataChange(path, "{nope", deleted = false)))
@@ -120,7 +120,7 @@ class DataLayerLinkTest {
     }
 
     @Test
-    fun deletionsAloneChangeNothing() = runBlocking {
+    fun deletionsAloneChangeNothing() = runBlocking<Unit> {
         link.onChanges(listOf(DataChange(DataLayerPaths.context("plans_snapshot"), null, deleted = true)))
         assertTrue(items.puts.isEmpty())
         assertTrue(items.deletes.isEmpty())
@@ -128,7 +128,7 @@ class DataLayerLinkTest {
     }
 
     @Test
-    fun aFailedAckKeepsThePhoneItemForTheNextTry() = runBlocking {
+    fun aFailedAckKeepsThePhoneItemForTheNextTry() = runBlocking<Unit> {
         val message = binding()
         val path = DataLayerPaths.phoneQueue(message.messageId)
         items.store[path] = message.encode()
