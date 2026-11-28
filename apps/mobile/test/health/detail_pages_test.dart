@@ -723,6 +723,41 @@ void main() {
       expect(find.textContaining('Your daily average 9,'), findsOneWidget);
     });
 
+    testWidgets('Log weight shows in the weight panel', (tester) async {
+      await _pump(tester, const BodyDetailPage(), overview());
+      expect(find.text('Log weight'), findsOneWidget);
+    });
+
+    testWidgets('Log weight shows when the whole body section is a gap', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const BodyDetailPage(),
+        overview(body: const SectionGap(MetricGap.noData)),
+      );
+      expect(find.text('Log weight'), findsOneWidget);
+    });
+
+    testWidgets('Log weight shows in the weight gap panel', (tester) async {
+      await _pump(
+        tester,
+        const BodyDetailPage(),
+        overview(
+          body: SectionData(
+            BodyOverview(
+              weight: null,
+              weightDaily: const [],
+              bodyFat: null,
+              weightVsMonth: null,
+              weightGap: MetricGap.noData,
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Log weight'), findsOneWidget);
+    });
+
     testWidgets('Body weight panel and body fat tile have About buttons', (
       tester,
     ) async {

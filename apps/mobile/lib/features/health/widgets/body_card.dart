@@ -23,6 +23,7 @@ class BodyCard extends StatelessWidget {
     required this.today,
     this.onTap,
     this.onAllowMore,
+    this.onLogWeight,
     super.key,
   });
 
@@ -34,6 +35,17 @@ class BodyCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onAllowMore;
 
+  /// Shows the Log weight button under the card when set.
+  final VoidCallback? onLogWeight;
+
+  Widget? get _logWeight => onLogWeight == null
+      ? null
+      : TextButton.icon(
+          onPressed: onLogWeight,
+          icon: const Icon(Icons.add),
+          label: const Text('Log weight'),
+        );
+
   @override
   Widget build(BuildContext context) {
     final section = this.section;
@@ -42,6 +54,7 @@ class BodyCard extends StatelessWidget {
         title: _title,
         icon: _icon,
         onTap: onTap,
+        footer: _logWeight,
         children: [
           MetricUnavailable(
             gap: section.gap,
@@ -82,6 +95,7 @@ class BodyCard extends StatelessWidget {
       title: _title,
       icon: _icon,
       onTap: onTap,
+      footer: _logWeight,
       semanticsLabel: label,
       bodyInfos: [
         metricInfoButton(
