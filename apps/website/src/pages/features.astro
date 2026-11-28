@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import GetApp from '../components/GetApp.astro';
+import Backdrop from '../components/Backdrop.astro';
 import { SITE } from '../site';
 
 const groups = [
@@ -71,13 +72,14 @@ const later = [
     },
   ]}
 >
-  <div class="wrap prose">
+  <Backdrop />
+  <div class="wrap prose" data-backdrop="lime">
     <h1>Features</h1>
     <p class="section-lede">Everything below is in the app today. Things we are still building are listed at the end.</p>
   </div>
 
   {groups.map((g) => (
-    <section aria-labelledby={g.id}>
+    <section data-backdrop="lime" aria-labelledby={g.id}>
       <div class="wrap">
         <h2 class="section-title" id={g.id}>{g.title}</h2>
         <div class="cards">
@@ -92,7 +94,7 @@ const later = [
     </section>
   ))}
 
-  <section aria-labelledby="later">
+  <section data-backdrop="lime" aria-labelledby="later">
     <div class="wrap">
       <h2 class="section-title" id="later">Coming later</h2>
       <div class="panel">

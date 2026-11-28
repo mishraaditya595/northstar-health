@@ -1,0 +1,10 @@
+---
+// Decorative live background. The div's own gradient is the fallback and the
+// canvas fades in only after the first successful frame (.is-live).
+---
+<div class="backdrop" aria-hidden="true"><canvas data-backdrop-canvas></canvas></div>
+<script>
+  import { mountBackdrop } from '../scripts/backdrop.mjs';
+  const canvas = document.querySelector<HTMLCanvasElement>('[data-backdrop-canvas]');
+  if (canvas) mountBackdrop(canvas, window);
+</script>

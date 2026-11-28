@@ -3,6 +3,7 @@ import Base from '../layouts/Base.astro';
 import GetApp from '../components/GetApp.astro';
 import { SITE } from '../site';
 import CinematicIntro from '../components/CinematicIntro.astro';
+import Backdrop from '../components/Backdrop.astro';
 import '../styles/home-sections.css';
 
 const faqs = [
@@ -55,9 +56,10 @@ const jsonLd = [
   cinematic
 >
   <CinematicIntro />
+  <Backdrop />
   <div class="seam" aria-hidden="true"></div>
 
-  <section id="details" class="feature" aria-labelledby="offline">
+  <section id="details" class="feature" data-backdrop="lime" aria-labelledby="offline">
     <div class="wrap split">
       <div class="split-head" data-reveal>
         <p class="kicker">Offline first</p>
@@ -90,7 +92,7 @@ const jsonLd = [
     </div>
   </section>
 
-  <section class="feature" aria-labelledby="train">
+  <section class="feature" data-backdrop="lime" aria-labelledby="train">
     <div class="wrap">
       <div data-reveal>
         <p class="kicker">Training</p>
@@ -138,7 +140,7 @@ const jsonLd = [
     </div>
   </section>
 
-  <section class="feature" aria-labelledby="health">
+  <section class="feature" data-backdrop="violet" aria-labelledby="health">
     <div class="wrap split split-flip">
       <div class="split-head" data-reveal>
         <p class="kicker kicker-sleep">Recovery</p>
@@ -168,7 +170,7 @@ const jsonLd = [
     </div>
   </section>
 
-  <section class="feature" aria-labelledby="privacy">
+  <section class="feature" data-backdrop="teal" aria-labelledby="privacy">
     <div class="wrap">
       <div data-reveal>
         <p class="kicker">Privacy</p>
@@ -200,7 +202,7 @@ const jsonLd = [
     </div>
   </section>
 
-  <section class="feature" aria-labelledby="faq">
+  <section class="feature" data-backdrop="teal" aria-labelledby="faq">
     <div class="wrap narrow">
       <h2 class="display" id="faq" data-reveal>Questions</h2>
       <div class="faq">
@@ -214,7 +216,7 @@ const jsonLd = [
     </div>
   </section>
 
-  <section class="feature" aria-labelledby="cta">
+  <section class="feature" data-backdrop="lime" aria-labelledby="cta">
     <div class="wrap">
       <div class="hero finale" data-reveal>
         <div class="finale-rings" aria-hidden="true"><i></i><i></i><i></i></div>

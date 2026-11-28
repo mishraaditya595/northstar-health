@@ -8,7 +8,7 @@
 .seam {
   height: clamp(96px, 16vw, 200px);
   /* Starts on the intro's pinned dark canvas token (--cine-canvas). */
-  background: linear-gradient(#0b0f13, var(--canvas));
+  background: linear-gradient(#0b0f13, transparent);
 }
 
 .feature { padding-top: clamp(64px, 10vw, 128px); }
