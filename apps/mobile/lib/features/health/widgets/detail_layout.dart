@@ -171,11 +171,15 @@ class DetailGapPanel extends StatelessWidget {
     required this.platform,
     required this.onRetry,
     this.trailing,
+    this.footer,
     super.key,
   });
 
   final String title;
   final String? trailing;
+
+  /// Optional action shown under the unavailable text.
+  final Widget? footer;
   final MetricGap gap;
   final String metricName;
   final HealthPlatformKind platform;
@@ -192,6 +196,7 @@ class DetailGapPanel extends StatelessWidget {
         platform: platform,
         onRetry: onRetry,
       ),
+      ?footer,
     ],
   );
 }

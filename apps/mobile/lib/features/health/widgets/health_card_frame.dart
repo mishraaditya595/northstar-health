@@ -22,6 +22,7 @@ class HealthCardFrame extends StatefulWidget {
     this.onTap,
     this.info,
     this.bodyInfos = const [],
+    this.footer,
     super.key,
   });
 
@@ -36,6 +37,10 @@ class HealthCardFrame extends StatefulWidget {
   /// Explain button right of the title, before any chevron.
   final Widget? info;
   final List<Widget> bodyInfos;
+
+  /// Action row under the content. It sits outside the card's tap target and
+  /// outside [semanticsLabel], so it stays its own button for screen readers.
+  final Widget? footer;
 
   @override
   State<HealthCardFrame> createState() => _HealthCardFrameState();
@@ -113,7 +118,9 @@ class _HealthCardFrameState extends State<HealthCardFrame> {
       ),
     );
     final label = widget.semanticsLabel;
-    final hasInfo = widget.info != null || widget.bodyInfos.isNotEmpty;
+    final footer = widget.footer;
+    final hasInfo =
+        widget.info != null || widget.bodyInfos.isNotEmpty || footer != null;
     final tappable = onTap == null
         ? content
         : InkWell(onTap: onTap, child: content);
@@ -146,9 +153,23 @@ class _HealthCardFrameState extends State<HealthCardFrame> {
                 children: [
                   _InfoLinks(
                     body: _body,
-                    child: ExcludeSemantics(
-                      excluding: label != null,
-                      child: tappable,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ExcludeSemantics(
+                          excluding: label != null,
+                          child: tappable,
+                        ),
+                        if (footer != null)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                            child: Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: footer,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   if (widget.info != null) follower(_header, widget.info!),
