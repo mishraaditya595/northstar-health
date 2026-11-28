@@ -478,6 +478,7 @@ The Android phone sends account binding, plans and today's health to the BeyondR
 | Sign in on the phone: within a minute the watch Home shows the sync line, energy ring and four tiles with "vs usual" lines, and Train lists today's program workout first, then plans | not run |
 | Tap a plan on Train: a read-only preview with exercises and sets x reps, no Start button; tap tiles and the ring: the detail screens open and swipe back works | not run |
 | Rotary (bezel or crown) scrolls the lists; two dots at the right edge show Home or Train | not run |
+| Crown or rotary scrolling works on a real watch on the Home and Train pages, including a flick past the last tile and moving between the two pages: the app uses neither `ScreenScaffold` nor `TimeText` and pages with the foundation `VerticalPager`, so rotary input is not wired by a scaffold | not run |
 | Round 192 dp and 240 dp watches at font scale 1.3 (and the largest system font size): no clipped text, the last tile is reachable | not run |
 | TalkBack on the watch reads the ring, each tile ("Resting heart rate 54 beats per minute, 2 below your usual") and the plan rows | not run |
 | Missing health shows "—", never 0; after midnight Home shows the refresh caption and dashes until the phone sends again | not run |
