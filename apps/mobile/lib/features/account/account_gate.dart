@@ -14,6 +14,7 @@ import '../catalog/application/catalog_definition_sync.dart';
 import '../catalog/application/catalog_refresh_host.dart';
 import '../catalog/data/catalog_file_store.dart';
 import 'account_auth_controller.dart';
+import '../health/application/health_export_host.dart';
 import '../health/application/health_overview.dart';
 import '../health/application/own_workout_health.dart';
 import '../health/data/health_reader.dart';
@@ -174,7 +175,9 @@ class _BoundAccountWorkoutAppState extends State<BoundAccountWorkoutApp> {
           child: const AccountWorkoutUploadHost(
             child: WatchSyncHost(
               child: CatalogDefinitionSyncHost(
-                child: CatalogRefreshHost(child: BeyondRepApp()),
+                child: HealthExportHost(
+                  child: CatalogRefreshHost(child: BeyondRepApp()),
+                ),
               ),
             ),
           ),

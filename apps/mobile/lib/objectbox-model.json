@@ -885,10 +885,92 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "16:8805967432340579143",
+      "lastPropertyId": "9:8267525750629898330",
+      "name": "HealthExportReceiptEntity",
+      "properties": [
+        {
+          "id": "1:5610984124188730296",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:1416931419283681844",
+          "name": "workoutUuid",
+          "indexId": "25:2575806862405464224",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:902936095526209544",
+          "name": "platform",
+          "type": 9
+        },
+        {
+          "id": "4:7831154574927576114",
+          "name": "state",
+          "type": 9
+        },
+        {
+          "id": "5:4355189182139659840",
+          "name": "exportedVersion",
+          "type": 6
+        },
+        {
+          "id": "6:4721442126377354331",
+          "name": "platformRecordId",
+          "type": 9
+        },
+        {
+          "id": "7:7169464552837186706",
+          "name": "attempts",
+          "type": 6
+        },
+        {
+          "id": "8:8012871985625696441",
+          "name": "lastAttemptAtMs",
+          "type": 6
+        },
+        {
+          "id": "9:8267525750629898330",
+          "name": "updatedAtMs",
+          "type": 6
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "17:6720957768684527144",
+      "lastPropertyId": "3:3687181931119667675",
+      "name": "HealthExportSettingEntity",
+      "properties": [
+        {
+          "id": "1:3251208287378270584",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:5978785788426739441",
+          "name": "ownerAccountId",
+          "indexId": "26:8144494775830105733",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:3687181931119667675",
+          "name": "enabledAtMs",
+          "type": 6
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "15:5448564801117840993",
-  "lastIndexId": "24:6056147980862212468",
+  "lastEntityId": "17:6720957768684527144",
+  "lastIndexId": "26:8144494775830105733",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

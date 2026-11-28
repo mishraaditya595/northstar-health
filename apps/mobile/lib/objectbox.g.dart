@@ -15,6 +15,7 @@ import 'package:objectbox/objectbox.dart' as obx;
 import 'package:objectbox_flutter_libs/objectbox_flutter_libs.dart';
 
 import 'features/health/data/health_connection_entity.dart';
+import 'features/health/data/health_export_entities.dart';
 import 'features/watch/data/watch_workout_receipt_entity.dart';
 import 'features/workouts/data/workout_entities.dart';
 
@@ -1035,6 +1036,100 @@ final _entities = <obx_int.ModelEntity>[
     relations: <obx_int.ModelRelation>[],
     backlinks: <obx_int.ModelBacklink>[],
   ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(16, 8805967432340579143),
+    name: 'HealthExportReceiptEntity',
+    lastPropertyId: const obx_int.IdUid(9, 8267525750629898330),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 5610984124188730296),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 1416931419283681844),
+        name: 'workoutUuid',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(25, 2575806862405464224),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 902936095526209544),
+        name: 'platform',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 7831154574927576114),
+        name: 'state',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 4355189182139659840),
+        name: 'exportedVersion',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 4721442126377354331),
+        name: 'platformRecordId',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(7, 7169464552837186706),
+        name: 'attempts',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(8, 8012871985625696441),
+        name: 'lastAttemptAtMs',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(9, 8267525750629898330),
+        name: 'updatedAtMs',
+        type: 6,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(17, 6720957768684527144),
+    name: 'HealthExportSettingEntity',
+    lastPropertyId: const obx_int.IdUid(3, 3687181931119667675),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 3251208287378270584),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 5978785788426739441),
+        name: 'ownerAccountId',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(26, 8144494775830105733),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 3687181931119667675),
+        name: 'enabledAtMs',
+        type: 6,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
 ];
 
 /// Shortcut for [obx.Store.new] that passes [getObjectBoxModel] and for Flutter
@@ -1080,8 +1175,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
     // Typically, this is done with `dart run build_runner build`.
     generatorVersion: obx_int.GeneratorVersion.v2025_12_16,
     entities: _entities,
-    lastEntityId: const obx_int.IdUid(15, 5448564801117840993),
-    lastIndexId: const obx_int.IdUid(24, 6056147980862212468),
+    lastEntityId: const obx_int.IdUid(17, 6720957768684527144),
+    lastIndexId: const obx_int.IdUid(26, 8144494775830105733),
     lastRelationId: const obx_int.IdUid(0, 0),
     lastSequenceId: const obx_int.IdUid(0, 0),
     retiredEntityUids: const [],
@@ -2401,6 +2496,138 @@ obx_int.ModelDefinition getObjectBoxModel() {
             return object;
           },
         ),
+    HealthExportReceiptEntity:
+        obx_int.EntityDefinition<HealthExportReceiptEntity>(
+          model: _entities[15],
+          toOneRelations: (HealthExportReceiptEntity object) => [],
+          toManyRelations: (HealthExportReceiptEntity object) => {},
+          getId: (HealthExportReceiptEntity object) => object.id,
+          setId: (HealthExportReceiptEntity object, int id) {
+            object.id = id;
+          },
+          objectToFB: (HealthExportReceiptEntity object, fb.Builder fbb) {
+            final workoutUuidOffset = fbb.writeString(object.workoutUuid);
+            final platformOffset = fbb.writeString(object.platform);
+            final stateOffset = fbb.writeString(object.state);
+            final platformRecordIdOffset = object.platformRecordId == null
+                ? null
+                : fbb.writeString(object.platformRecordId!);
+            fbb.startTable(10);
+            fbb.addInt64(0, object.id);
+            fbb.addOffset(1, workoutUuidOffset);
+            fbb.addOffset(2, platformOffset);
+            fbb.addOffset(3, stateOffset);
+            fbb.addInt64(4, object.exportedVersion);
+            fbb.addOffset(5, platformRecordIdOffset);
+            fbb.addInt64(6, object.attempts);
+            fbb.addInt64(7, object.lastAttemptAtMs);
+            fbb.addInt64(8, object.updatedAtMs);
+            fbb.finish(fbb.endTable());
+            return object.id;
+          },
+          objectFromFB: (obx.Store store, ByteData fbData) {
+            final buffer = fb.BufferContext(fbData);
+            final rootOffset = buffer.derefObject(0);
+            final idParam = const fb.Int64Reader().vTableGet(
+              buffer,
+              rootOffset,
+              4,
+              0,
+            );
+            final workoutUuidParam = const fb.StringReader(
+              asciiOptimization: true,
+            ).vTableGet(buffer, rootOffset, 6, '');
+            final platformParam = const fb.StringReader(asciiOptimization: true)
+                .vTableGet(buffer, rootOffset, 8, '');
+            final stateParam = const fb.StringReader(asciiOptimization: true)
+                .vTableGet(buffer, rootOffset, 10, '');
+            final exportedVersionParam = const fb.Int64Reader().vTableGet(
+              buffer,
+              rootOffset,
+              12,
+              0,
+            );
+            final platformRecordIdParam = const fb.StringReader(
+              asciiOptimization: true,
+            ).vTableGetNullable(buffer, rootOffset, 14);
+            final attemptsParam = const fb.Int64Reader().vTableGet(
+              buffer,
+              rootOffset,
+              16,
+              0,
+            );
+            final lastAttemptAtMsParam = const fb.Int64Reader().vTableGet(
+              buffer,
+              rootOffset,
+              18,
+              0,
+            );
+            final updatedAtMsParam = const fb.Int64Reader().vTableGet(
+              buffer,
+              rootOffset,
+              20,
+              0,
+            );
+            final object = HealthExportReceiptEntity(
+              id: idParam,
+              workoutUuid: workoutUuidParam,
+              platform: platformParam,
+              state: stateParam,
+              exportedVersion: exportedVersionParam,
+              platformRecordId: platformRecordIdParam,
+              attempts: attemptsParam,
+              lastAttemptAtMs: lastAttemptAtMsParam,
+              updatedAtMs: updatedAtMsParam,
+            );
+
+            return object;
+          },
+        ),
+    HealthExportSettingEntity:
+        obx_int.EntityDefinition<HealthExportSettingEntity>(
+          model: _entities[16],
+          toOneRelations: (HealthExportSettingEntity object) => [],
+          toManyRelations: (HealthExportSettingEntity object) => {},
+          getId: (HealthExportSettingEntity object) => object.id,
+          setId: (HealthExportSettingEntity object, int id) {
+            object.id = id;
+          },
+          objectToFB: (HealthExportSettingEntity object, fb.Builder fbb) {
+            final ownerAccountIdOffset = fbb.writeString(object.ownerAccountId);
+            fbb.startTable(4);
+            fbb.addInt64(0, object.id);
+            fbb.addOffset(1, ownerAccountIdOffset);
+            fbb.addInt64(2, object.enabledAtMs);
+            fbb.finish(fbb.endTable());
+            return object.id;
+          },
+          objectFromFB: (obx.Store store, ByteData fbData) {
+            final buffer = fb.BufferContext(fbData);
+            final rootOffset = buffer.derefObject(0);
+            final idParam = const fb.Int64Reader().vTableGet(
+              buffer,
+              rootOffset,
+              4,
+              0,
+            );
+            final ownerAccountIdParam = const fb.StringReader(
+              asciiOptimization: true,
+            ).vTableGet(buffer, rootOffset, 6, '');
+            final enabledAtMsParam = const fb.Int64Reader().vTableGet(
+              buffer,
+              rootOffset,
+              8,
+              0,
+            );
+            final object = HealthExportSettingEntity(
+              id: idParam,
+              ownerAccountId: ownerAccountIdParam,
+              enabledAtMs: enabledAtMsParam,
+            );
+
+            return object;
+          },
+        ),
   };
 
   return obx_int.ModelDefinition(model, bindings);
@@ -3181,5 +3408,77 @@ class WatchWorkoutReceiptEntity_ {
   static final receivedAtMs =
       obx.QueryIntegerProperty<WatchWorkoutReceiptEntity>(
         _entities[14].properties[4],
+      );
+}
+
+/// [HealthExportReceiptEntity] entity fields to define ObjectBox queries.
+class HealthExportReceiptEntity_ {
+  /// See [HealthExportReceiptEntity.id].
+  static final id = obx.QueryIntegerProperty<HealthExportReceiptEntity>(
+    _entities[15].properties[0],
+  );
+
+  /// See [HealthExportReceiptEntity.workoutUuid].
+  static final workoutUuid = obx.QueryStringProperty<HealthExportReceiptEntity>(
+    _entities[15].properties[1],
+  );
+
+  /// See [HealthExportReceiptEntity.platform].
+  static final platform = obx.QueryStringProperty<HealthExportReceiptEntity>(
+    _entities[15].properties[2],
+  );
+
+  /// See [HealthExportReceiptEntity.state].
+  static final state = obx.QueryStringProperty<HealthExportReceiptEntity>(
+    _entities[15].properties[3],
+  );
+
+  /// See [HealthExportReceiptEntity.exportedVersion].
+  static final exportedVersion =
+      obx.QueryIntegerProperty<HealthExportReceiptEntity>(
+        _entities[15].properties[4],
+      );
+
+  /// See [HealthExportReceiptEntity.platformRecordId].
+  static final platformRecordId =
+      obx.QueryStringProperty<HealthExportReceiptEntity>(
+        _entities[15].properties[5],
+      );
+
+  /// See [HealthExportReceiptEntity.attempts].
+  static final attempts = obx.QueryIntegerProperty<HealthExportReceiptEntity>(
+    _entities[15].properties[6],
+  );
+
+  /// See [HealthExportReceiptEntity.lastAttemptAtMs].
+  static final lastAttemptAtMs =
+      obx.QueryIntegerProperty<HealthExportReceiptEntity>(
+        _entities[15].properties[7],
+      );
+
+  /// See [HealthExportReceiptEntity.updatedAtMs].
+  static final updatedAtMs =
+      obx.QueryIntegerProperty<HealthExportReceiptEntity>(
+        _entities[15].properties[8],
+      );
+}
+
+/// [HealthExportSettingEntity] entity fields to define ObjectBox queries.
+class HealthExportSettingEntity_ {
+  /// See [HealthExportSettingEntity.id].
+  static final id = obx.QueryIntegerProperty<HealthExportSettingEntity>(
+    _entities[16].properties[0],
+  );
+
+  /// See [HealthExportSettingEntity.ownerAccountId].
+  static final ownerAccountId =
+      obx.QueryStringProperty<HealthExportSettingEntity>(
+        _entities[16].properties[1],
+      );
+
+  /// See [HealthExportSettingEntity.enabledAtMs].
+  static final enabledAtMs =
+      obx.QueryIntegerProperty<HealthExportSettingEntity>(
+        _entities[16].properties[2],
       );
 }

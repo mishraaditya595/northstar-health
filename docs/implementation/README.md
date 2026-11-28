@@ -26,4 +26,8 @@ The [roadmap](../ROADMAP.md) tracks milestone state. These notes describe source
 
 - [P3-01 Daily health summary](phase-3/p3-01-daily-health-summary.md) — read-only sleep, steps, resting heart rate and weight (ADR-0008). Implemented in source; device QA and store gates **not run**, see [RELEASE.md](../RELEASE.md).
 
+## Phase 5 — save phone workouts to the health store
+
+- [P5-01 Save workouts to Apple Health / Health Connect](phase-5/p5-01-workout-health-export.md) — opt-in per-account write of completed phone workouts, receipts, retry, delete-follows and no duplicate of the Apple Watch workout (ADR-0014). Implemented in source; device QA **not run**, see [RELEASE.md](../RELEASE.md).
+
 **Policy and operational guides:** [ADR-0003](../adr/0003-data-cloud-health.md) (superseded for auth/cloud scope by [ADR-0005](../adr/0005-mandatory-auth-and-workout-sync.md)), [ObjectBox](../OBJECTBOX.md), [Cloud Sync](../CLOUD_SYNC.md), [account deletion runbook](../../supabase/ACCOUNT_DELETION_RUNBOOK.md), and [Supabase restore runbook](../../supabase/RESTORE_RUNBOOK.md). "Merged" does not imply hosted deployment, real-device verification or store release.

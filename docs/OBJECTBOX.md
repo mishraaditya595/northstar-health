@@ -21,7 +21,8 @@ Phase 3 platform permissions and measurements are implemented. **ObjectBox's own
 | `WorkoutRestoreCursorEntity` / `WorkoutRemoteStateEntity` | Account-scoped durable restore epoch/cursor, remote revisions and tombstones (P2-06 merged #20) | No — local protocol metadata only |
 | `WorkoutRestoreSkipEntity` | Remote change deliberately not imported because this phone has a conflicted/blocked upload for that workout; local copy kept (ADR-0006, PR #22) | No — local protocol metadata only |
 | `WatchWorkoutReceipt` | Until the account store is deleted | Never — local dedup and platform record reference only |
-| `HealthExportReceipt` | As long as corresponding workout relevant | Local platform-record references only |
+| `HealthExportReceiptEntity` | Until the account store is deleted; removed when the workout's copy is deleted from the health store (ADR-0014) | Never — local platform-record references, export state and version only |
+| `HealthExportSettingEntity` | One row per account while saving workouts to the health store is on | Never |
 | `HealthCache` | Expiring, permission-scoped summaries | **Never** |
 | `HealthQueryCheckpoint` | Per-device until invalidated | **Never** |
 
