@@ -39,7 +39,13 @@ export function mountScenes(doc, win, frames) {
   };
   const written = new Map();
   // What each track has had written to it, so it can be undone.
-  const touched = new Map(tracks.map(t => [t, { vars: new Set(), attrs: new Set(), texts: new Map() }]));
+  const touched = new Map(tracks.map(t => [t, { vars: new Set(), attrs: new Set() }]));
+  // Text is shared: the desktop training panel and a phone tile write the
+  // same element. Each track claims elements; an element shows the first
+  // claim, or its original text once nobody claims it.
+  const originals = new Map();
+  const claims = new Map(tracks.map(t => [t, new Map()]));
+  const targets = new Map(tracks.map(t => [t, new Map()]));
   const visible = new Set();
   // Height the stage covers while pinned (its own height plus its sticky top),
   // measured again after a resize. A stage as tall as the screen gives vh.
@@ -74,25 +80,33 @@ export function mountScenes(doc, win, frames) {
     const forget = key => { delete seen[key]; };
     for (const k of [...mine.vars]) if (!(k in (state.vars ?? {}))) { track.style.removeProperty('--' + k); mine.vars.delete(k); forget('v:' + k); }
     for (const k of [...mine.attrs]) if (!(k in (state.attrs ?? {}))) { delete track.dataset[k]; mine.attrs.delete(k); forget('a:' + k); }
-    for (const [sel, rec] of [...mine.texts]) if (!(sel in (state.text ?? {}))) { rec.target.textContent = rec.original; mine.texts.delete(sel); forget('t:' + sel); }
+    const found = targets.get(track);
+    const next = new Map();
     for (const [sel, text] of Object.entries(state.text ?? {})) {
-      let rec = mine.texts.get(sel);
-      if (!rec) {
-        const target = track.querySelector(sel);
-        if (!target) continue;
-        rec = { target, original: target.textContent };
-        mine.texts.set(sel, rec);
-      }
-      put('t:' + sel, text, s => { rec.target.textContent = s; });
+      if (!found.has(sel)) found.set(sel, track.querySelector(sel));
+      const target = found.get(sel);
+      if (!target) continue;
+      if (!originals.has(target)) originals.set(target, target.textContent);
+      next.set(target, text);
     }
+    const before = claims.get(track);
+    claims.set(track, next);
+    for (const target of new Set([...before.keys(), ...next.keys()])) settle(target);
+  }
+  function settle(target) {
+    let text = originals.get(target);
+    for (const mine of claims.values()) if (mine.has(target)) { text = mine.get(target); break; }
+    setIfChanged(written, target, 't', text, s => { target.textContent = s; });
   }
   function undo() {
     for (const [track, mine] of touched) {
       mine.vars.forEach(k => track.style.removeProperty('--' + k));
       mine.attrs.forEach(k => { delete track.dataset[k]; });
-      mine.texts.forEach(rec => { rec.target.textContent = rec.original; });
-      mine.vars.clear(); mine.attrs.clear(); mine.texts.clear();
+      mine.vars.clear(); mine.attrs.clear();
     }
+    originals.forEach((text, target) => { target.textContent = text; });
+    originals.clear();
+    claims.forEach(mine => mine.clear());
     written.clear();
   }
 

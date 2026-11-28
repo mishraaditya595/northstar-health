@@ -191,3 +191,30 @@ test('scene CSS only sticks and sizes tracks under .scenes-ready in the motion m
     }
   }
 });
+
+test('two tracks that write the same element hand it over without a stale value', () => {
+  // The desktop training panel and a phone tile both write the same number.
+  const h = setup({ name: 'outer' });
+  const inner = el({ getBoundingClientRect: () => ({ top: -600, height: 2200, bottom: 1600 }) });
+  inner.dataset.sceneTrack = 'inner';
+  inner.children['.label'] = h.label;
+  h.doc.querySelectorAll = () => [h.track, inner];
+  let wide = false;
+  mountScenes(h.doc, h.win, {
+    outer: () => (wide ? { text: { '.label': '65' } } : {}),
+    inner: () => (wide ? {} : { text: { '.label': '67' } }),
+  });
+  h.tick();
+  assert.equal(h.label.textContent, '67');
+  wide = true;
+  h.listeners.resize.forEach(f => f()); h.tick();
+  assert.equal(h.label.textContent, '65');
+  h.listeners.scroll.forEach(f => f()); h.tick();
+  assert.equal(h.label.textContent, '65');
+  wide = false;
+  h.listeners.resize.forEach(f => f()); h.tick();
+  assert.equal(h.label.textContent, '67');
+  h.mq.matches = false;
+  h.mq.listeners.forEach(f => f({ matches: false }));
+  assert.equal(h.label.textContent, 'orig');
+});
