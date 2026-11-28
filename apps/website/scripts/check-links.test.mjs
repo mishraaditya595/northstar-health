@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { checkPage, isMain } from './check-links.mjs';
+import { gzipSync } from 'node:zlib';
+import { mkdirSync } from 'node:fs';
+import { checkPage, isMain, jsBudget, checkBudget } from './check-links.mjs';
 import { pathToFileURL } from 'node:url';
 
 const head =
@@ -57,4 +59,23 @@ test('runs as a script even when its path contains a space', () => {
   const path = '/tmp/my site/scripts/check-links.mjs';
   assert.equal(isMain(pathToFileURL(path).href, path), true);
   assert.equal(isMain(pathToFileURL(path).href, '/tmp/other.mjs'), false);
+});
+
+test('jsBudget adds up gzipped module scripts, their imports and inline modules', () => {
+  const dist = mkdtempSync(join(tmpdir(), 'budget-'));
+  mkdirSync(join(dist, '_astro'));
+  const shared = 'export const a = "' + 'x'.repeat(2000) + '";';
+  const entry = 'import { a } from "./shared.js"; console.log(a);';
+  const inline = 'console.log("' + 'y'.repeat(500) + '")';
+  writeFileSync(join(dist, '_astro', 'shared.js'), shared);
+  writeFileSync(join(dist, '_astro', 'entry.js'), entry);
+  writeFileSync(join(dist, 'index.html'),
+    `<script type="module" src="/_astro/entry.js"></script><script type="module">${inline}</script>` +
+    '<script type="application/ld+json">{"a":1}</script><script type="module" src="/_astro/entry.js"></script>');
+  const expected = [shared, entry, inline].reduce((n, t) => n + gzipSync(t).length, 0);
+  assert.equal(jsBudget(dist, 'index.html'), expected);
+});
+test('checkBudget reports only when the total is over the limit', () => {
+  assert.equal(checkBudget(100, 100, 'index.html'), null);
+  assert.match(checkBudget(101, 100, 'index.html'), /index\.html: .*101.*100/);
 });

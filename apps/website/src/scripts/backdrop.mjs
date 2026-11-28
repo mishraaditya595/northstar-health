@@ -173,7 +173,7 @@ export function mountBackdrop(canvas, win) {
     const light = scheme.matches;
     gl.uniform1f(loc.t, time);
     gl.uniform1f(loc.s, win.scrollY);
-    gl.uniform1f(loc.k, light ? 0.13 : 0.3);
+    gl.uniform1f(loc.k, light ? 0.13 : 0.22);
     gl.uniform2f(loc.m, px, py);
     gl.uniform3fv(loc.c, paletteAt(stops, y));
     gl.drawArrays(gl.TRIANGLES, 0, 3);
