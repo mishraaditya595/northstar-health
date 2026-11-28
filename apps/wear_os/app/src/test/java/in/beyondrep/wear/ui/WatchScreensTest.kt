@@ -241,7 +241,7 @@ class WatchScreensTest {
     }
 
     @Test
-    fun tappingAPlanOpensItsPreviewWithoutAStartButton() {
+    fun tappingAPlanOpensItsPreviewWithAStartButton() {
         bind(); saveFullHealth()
         savePlans(listOf("Synthetic push day", "Synthetic pull day"), today = "Week 1 day 1")
         showRoot(initialPage = 1)
@@ -250,17 +250,7 @@ class WatchScreensTest {
         waitForText("Move 0")
         compose.onNodeWithText("Move 1").assertIsDisplayed()
         compose.onAllNodesWithText("1 × 8").assertCountEquals(2)
-        compose.onAllNodes(hasText("Start", substring = true)).assertCountEquals(0)
-    }
-
-    @Test
-    fun trainHasNoStartButtonOrQuickWorkout() {
-        bind(); saveFullHealth()
-        savePlans(listOf("Synthetic push day"), today = null)
-        showRoot(initialPage = 1)
-        waitForText("Synthetic push day")
-        compose.onAllNodes(hasText("Start", substring = true)).assertCountEquals(0)
-        compose.onAllNodes(hasText("Quick", substring = true)).assertCountEquals(0)
+        assertTrue(compose.onAllNodesWithText("Start").fetchSemanticsNodes().isNotEmpty())
     }
 
     @Test

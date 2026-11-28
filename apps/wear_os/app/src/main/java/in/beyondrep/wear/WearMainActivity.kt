@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.wear.ambient.AmbientLifecycleObserver
 import `in`.beyondrep.wear.app.WatchGraph
 import `in`.beyondrep.wear.link.PhoneReachability
 import `in`.beyondrep.wear.ui.RootScreen
@@ -19,8 +20,8 @@ import java.time.Instant
 import java.time.ZoneId
 
 /**
- * Home and Train glance over what the phone sent. Read-only: nothing here records a workout
- * (Wear stage 3) and no health permission is asked.
+ * Home and Train over what the phone sent, and the workout screens. Starting a workout asks for
+ * the sensor permissions once; a denial still records.
  */
 class WearMainActivity : ComponentActivity() {
     private val graph by lazy { WatchGraph.get(this) }
@@ -34,9 +35,35 @@ class WearMainActivity : ComponentActivity() {
         }
     }
 
+    private val ambientObserver by lazy {
+        AmbientLifecycleObserver(
+            this,
+            object : AmbientLifecycleObserver.AmbientLifecycleCallback {
+                override fun onEnterAmbient(ambientDetails: AmbientLifecycleObserver.AmbientDetails) =
+                    viewModel.setAmbient(true)
+
+                override fun onExitAmbient() = viewModel.setAmbient(false)
+
+                override fun onUpdateAmbient() = Unit
+            },
+        )
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        lifecycle.addObserver(ambientObserver)
         setContent { RootScreen(viewModel) }
+        graph.runner.observe()
+        lifecycleScope.launch {
+            // A workout the system interrupted comes back from the journal.
+            try {
+                graph.runner.restore()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Not user actionable; the next launch tries again.
+            }
+        }
     }
 
     override fun onResume() {

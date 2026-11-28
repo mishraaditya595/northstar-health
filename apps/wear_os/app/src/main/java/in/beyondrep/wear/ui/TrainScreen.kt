@@ -10,13 +10,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import `in`.beyondrep.wear.ui.workout.StartTarget
 
 /**
- * Today's program workout first, then the plans. A tap opens a read-only plan preview. There is
- * no Start button in this stage: recording arrives with Wear stage 3.
+ * Today's program workout first, then the plans, each with a Start button, then a quick workout.
+ * A tap on the card opens the plan preview.
  */
 @Composable
-fun TrainScreen(ui: WatchUi.Ready, onOpenToday: () -> Unit, onOpenPlan: (String) -> Unit) {
+fun TrainScreen(
+    ui: WatchUi.Ready,
+    onOpenToday: () -> Unit,
+    onOpenPlan: (String) -> Unit,
+    onStart: (StartTarget) -> Unit = {},
+) {
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -36,6 +42,12 @@ fun TrainScreen(ui: WatchUi.Ready, onOpenToday: () -> Unit, onOpenPlan: (String)
                         today.subtitle?.let { BrText(it, color = Palette.secondary, size = 11) }
                     }
                 }
+            }
+            item {
+                BrButton(
+                    "Start", { onStart(StartTarget.Today) }, Modifier.fillMaxWidth(0.9f), prominent = true,
+                    description = "Start today, ${today.name}",
+                )
             }
         }
         if (ui.plans.isEmpty() && ui.today == null) {
@@ -64,6 +76,13 @@ fun TrainScreen(ui: WatchUi.Ready, onOpenToday: () -> Unit, onOpenPlan: (String)
                     }
                 }
             }
+            item {
+                BrButton(
+                    "Start", { onStart(StartTarget.Plan(plan.id)) }, Modifier.fillMaxWidth(0.9f),
+                    description = "Start ${plan.name}",
+                )
+            }
         }
+        item { BrButton("+ Quick workout", { onStart(StartTarget.Quick) }, Modifier.fillMaxWidth(0.9f)) }
     }
 }

@@ -36,6 +36,8 @@ sealed interface RunnerState {
         val heartRate: Int?,
         val calories: Int?,
         val hrAvailable: Boolean,
+        /** The unit weights are entered in: the phone's unit (the binding). */
+        val unit: String = "kg",
     ) : RunnerState
 
     data class Finished(val summary: WorkoutSummary) : RunnerState
@@ -116,7 +118,7 @@ class WorkoutRunner(
         }
         val controller = WorkoutController.start(
             template, graph.journal, binding.accountKey, binding.unit, deviceId, clock, timeZone(), makeId)
-        _state.value = RunnerState.Running(controller, null, null, hrAvailable = false)
+        _state.value = RunnerState.Running(controller, null, null, hrAvailable = false, unit = binding.unit)
         val started = safe(SensorStart(heartRate = false, calories = false)) { sensors.start() }
         beginReadings(started)
         safe(Unit) { service.startForeground() }
@@ -260,7 +262,7 @@ class WorkoutRunner(
                 }
             }
             if (restored != null) {
-                _state.value = RunnerState.Running(restored, null, null, hrAvailable = false)
+                _state.value = RunnerState.Running(restored, null, null, hrAvailable = false, unit = binding?.unit ?: "kg")
                 when (owner) {
                     ExerciseOwner.OURS -> beginReadings(safe(SensorStart(false, false)) { sensors.attach() })
                     ExerciseOwner.NONE -> beginReadings(safe(SensorStart(false, false)) { sensors.start() })

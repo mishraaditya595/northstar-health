@@ -6,12 +6,14 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -71,6 +73,34 @@ fun Surface(
         }
     }
     Box(m.padding(8.dp)) { content() }
+}
+
+/** A full-width button with a 44 dp minimum height. [prominent] is the accent fill; [destructive] draws the text in red. */
+@Composable
+fun BrButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    prominent: Boolean = false,
+    destructive: Boolean = false,
+    description: String? = null,
+) {
+    val fill = if (prominent) Palette.performance else Palette.surface
+    val ink = when {
+        prominent -> Palette.canvas
+        destructive -> Palette.destructive
+        else -> Palette.ink
+    }
+    var m = modifier
+        .heightIn(min = 44.dp)
+        .alpha(if (enabled) 1f else 0.4f)
+        .background(fill, RoundedCornerShape(22.dp))
+        .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+    if (description != null) m = m.semantics { contentDescription = description }
+    Box(m.padding(horizontal = 12.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+        BrText(text, color = ink, size = 13, weight = FontWeight.Bold, align = TextAlign.Center)
+    }
 }
 
 /** The readiness ring: [score] of 100 around a number. Drawn, so it needs no component library. */
