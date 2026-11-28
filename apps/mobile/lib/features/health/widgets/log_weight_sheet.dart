@@ -13,6 +13,7 @@ String _storeName(bool ios) => ios ? 'Apple Health' : 'Health Connect';
 /// on the page's messenger, so the message outlives the sheet.
 Future<void> showLogWeightSheet(BuildContext context, WidgetRef ref) async {
   final logger = ref.read(weightLoggerProvider);
+  final messenger = nsMessengerOf(context);
   final section = ref.read(healthOverviewProvider).value?.body;
   final latest = switch (section) {
     SectionData(:final value) => value.weight?.value,
@@ -21,22 +22,24 @@ Future<void> showLogWeightSheet(BuildContext context, WidgetRef ref) async {
   final saved = await showNsSheet<SavedWeight>(
     context,
     heightFactor: 0.5,
+    // Dragging down would close the sheet and lose Undo while a save runs.
+    enableDrag: false,
     builder: (_) => _LogWeightSheet(
       logger: logger,
       initial: latest?.toStringAsFixed(1) ?? '',
     ),
   );
-  if (saved == null || !context.mounted) return;
+  if (saved == null) return;
   final store = _storeName(logger.isIos);
-  showNsMessage(
-    context,
+  showNsMessageOn(
+    messenger,
     'Saved to $store',
     actionLabel: 'Undo',
     onAction: () async {
       final removed = await logger.undo(saved);
-      if (removed || !context.mounted) return;
-      showNsMessage(
-        context,
+      if (removed) return;
+      showNsMessageOn(
+        messenger,
         "Couldn't remove it. Delete it in "
         '${logger.isIos ? 'the Health app' : 'Health Connect'}.',
       );
@@ -95,59 +98,61 @@ class _LogWeightSheetState extends State<_LogWeightSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final error = _error;
-    return ListView(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        8,
-        20,
-        24 +
-            MediaQuery.paddingOf(context).bottom +
-            MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      children: [
-        Semantics(
-          header: true,
-          child: Text(
-            'Log weight',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
-          ),
+    return PopScope(
+      canPop: !_saving,
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          8,
+          20,
+          24 +
+              MediaQuery.paddingOf(context).bottom +
+              MediaQuery.viewInsetsOf(context).bottom,
         ),
-        const SizedBox(height: 16),
-        NsTextField(
-          controller: _controller,
-          label: 'Weight (kg)',
-          autofocus: true,
-          enabled: !_saving,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          onSubmitted: (_) => _save(),
-        ),
-        if (error != null) ...[
-          const SizedBox(height: 8),
+        children: [
           Semantics(
-            liveRegion: true,
+            header: true,
             child: Text(
-              error,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.error,
+              'Log weight',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
-        ],
-        if (_denied) ...[
-          const SizedBox(height: 8),
-          OutlinedButton(
-            onPressed: widget.logger.openSettings,
-            child: const Text('Open Settings'),
+          const SizedBox(height: 16),
+          NsTextField(
+            controller: _controller,
+            label: 'Weight (kg)',
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            onSubmitted: (_) => _save(),
+          ),
+          if (error != null) ...[
+            const SizedBox(height: 8),
+            Semantics(
+              liveRegion: true,
+              child: Text(
+                error,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
+              ),
+            ),
+          ],
+          if (_denied) ...[
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: widget.logger.openSettings,
+              child: const Text('Open Settings'),
+            ),
+          ],
+          const SizedBox(height: 20),
+          FilledButton(
+            onPressed: _saving ? null : _save,
+            child: const Text('Save'),
           ),
         ],
-        const SizedBox(height: 20),
-        FilledButton(
-          onPressed: _saving ? null : _save,
-          child: const Text('Save'),
-        ),
-      ],
+      ),
     );
   }
 }

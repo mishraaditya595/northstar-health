@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:beyondrep/core/design/beyondrep_theme.dart';
 import 'package:beyondrep/features/health/application/health_overview.dart';
 import 'package:beyondrep/features/health/application/health_summary_controller.dart';
@@ -13,6 +15,20 @@ import '../support/fake_health_overview.dart';
 import '../support/fake_health_reader.dart';
 import '../support/fake_health_weight_writer.dart';
 import '../support/health_overview_fixtures.dart';
+
+class _GatedWriter extends FakeHealthWeightWriter {
+  final gate = Completer<void>();
+
+  @override
+  Future<HealthWriteResult> write(double kg, DateTime at) async {
+    final result = super.write(kg, at);
+    await gate.future;
+    return result;
+  }
+}
+
+/// Lets a test remove the opener widget while the sheet is open.
+final _showOpener = ValueNotifier<bool>(true);
 
 BodyOverview _bodyAt(double kg) => BodyOverview(
   weight: (day: DateTime(2026, 11, 24), value: kg),
@@ -31,6 +47,7 @@ Future<FakeHealthWeightWriter> _pump(
   FakeHealthReader? reader,
 }) async {
   final fake = writer ?? FakeHealthWeightWriter();
+  _showOpener.value = true;
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -61,17 +78,22 @@ Future<FakeHealthWeightWriter> _pump(
           child: child!,
         ),
         home: Scaffold(
-          body: Consumer(
-            builder: (context, ref, _) {
-              // The pages that open the sheet already watch the overview.
-              ref.watch(healthOverviewProvider);
-              return Center(
-                child: TextButton(
-                  onPressed: () => showLogWeightSheet(context, ref),
-                  child: const Text('open'),
-                ),
-              );
-            },
+          body: ValueListenableBuilder<bool>(
+            valueListenable: _showOpener,
+            builder: (context, show, _) => !show
+                ? const SizedBox()
+                : Consumer(
+                    builder: (context, ref, _) {
+                      // The pages that open the sheet already watch the overview.
+                      ref.watch(healthOverviewProvider);
+                      return Center(
+                        child: TextButton(
+                          onPressed: () => showLogWeightSheet(context, ref),
+                          child: const Text('open'),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ),
       ),
@@ -237,5 +259,77 @@ void main() {
     await _save(tester);
     expect(tester.takeException(), isNull);
     expect(find.text('Open Settings'), findsOneWidget);
+  });
+
+  testWidgets('sheet cannot be dismissed while saving; Save is disabled', (
+    tester,
+  ) async {
+    final writer = _GatedWriter();
+    await _pump(tester, writer: writer);
+    await _open(tester);
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pump();
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Save'))
+          .onPressed,
+      isNull,
+    );
+    // Back, barrier tap and drag down all leave the sheet open.
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    await tester.tapAt(const Offset(195, 20));
+    await tester.pump();
+    await tester.fling(find.text('Log weight'), const Offset(0, 600), 2000);
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(FilledButton, 'Save'), findsOneWidget);
+    writer.gate.complete();
+    await tester.pumpAndSettle();
+    expect(find.byType(FilledButton), findsNothing);
+    expect(find.text('Saved to Apple Health'), findsOneWidget);
+    expect(find.text('Undo'), findsOneWidget);
+  });
+
+  testWidgets('snackbar shows although the opener left the tree', (
+    tester,
+  ) async {
+    final writer = _GatedWriter();
+    await _pump(tester, writer: writer);
+    await _open(tester);
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pump();
+    _showOpener.value = false;
+    await tester.pump();
+    writer.gate.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('Saved to Apple Health'), findsOneWidget);
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+    expect(writer.deletes, hasLength(1));
+  });
+
+  testWidgets('failed undo message shows although the opener left', (
+    tester,
+  ) async {
+    final writer = FakeHealthWeightWriter()..deleteResult = false;
+    await _pump(tester, writer: writer);
+    await _open(tester);
+    await _save(tester);
+    _showOpener.value = false;
+    await tester.pump();
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining("Couldn't remove it"), findsOneWidget);
+  });
+
+  testWidgets('the field stays enabled while saving', (tester) async {
+    final writer = _GatedWriter();
+    await _pump(tester, writer: writer);
+    await _open(tester);
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pump();
+    expect(tester.widget<TextField>(find.byType(TextField)).enabled, isTrue);
+    writer.gate.complete();
+    await tester.pumpAndSettle();
   });
 }

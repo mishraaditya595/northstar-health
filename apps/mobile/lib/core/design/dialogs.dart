@@ -62,10 +62,12 @@ Future<T?> showNsSheet<T>(
   BuildContext context, {
   required WidgetBuilder builder,
   double heightFactor = 0.78,
+  bool enableDrag = true,
 }) => showModalBottomSheet<T>(
   context: context,
   isScrollControlled: true,
   useSafeArea: true,
+  enableDrag: enableDrag,
   builder: (sheetContext) => FractionallySizedBox(
     heightFactor: heightFactor,
     child: builder(sheetContext),
@@ -82,8 +84,28 @@ ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showNsMessage(
   String? actionLabel,
   VoidCallback? onAction,
 }) {
+  return showNsMessageOn(
+    ScaffoldMessenger.of(context),
+    message,
+    actionLabel: actionLabel,
+    onAction: onAction,
+  );
+}
+
+/// The messenger to capture for [showNsMessageOn].
+ScaffoldMessengerState nsMessengerOf(BuildContext context) =>
+    ScaffoldMessenger.of(context);
+
+/// [showNsMessage] on a messenger captured earlier, for messages that must
+/// outlive the widget that asked for them.
+ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showNsMessageOn(
+  ScaffoldMessengerState messenger,
+  String message, {
+  String? actionLabel,
+  VoidCallback? onAction,
+}) {
   final hasAction = actionLabel != null && onAction != null;
-  return ScaffoldMessenger.of(context).showSnackBar(
+  return messenger.showSnackBar(
     SnackBar(
       content: Text(message),
       // Flutter keeps a snackbar with an action until dismissed; ours time out.
