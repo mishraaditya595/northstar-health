@@ -16,6 +16,7 @@
         <meta-data android:name="com.google.android.wearable.standalone" android:value="false" />
         <activity
             android:name=".WearMainActivity"
+            android:launchMode="singleTask"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
