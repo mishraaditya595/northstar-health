@@ -1,6 +1,6 @@
 # Android Google Play release on Codemagic
 
-**Status:** source configuration only. The `mobile-android-release` workflow has **not** run on hosted Codemagic, no release AAB has been built with the upload key, and nothing has been uploaded to Google Play. A draft on a testing track is not a release: every gate in [RELEASE.md](RELEASE.md) still applies.
+**Status:** source configuration only. The `mobile-android-release` workflow (phone and Wear OS bundles) has **not** run on hosted Codemagic, no release AAB has been built with the upload key, and nothing has been uploaded to Google Play. A draft on a testing track is not a release: every gate in [RELEASE.md](RELEASE.md) still applies.
 
 ## What the job does
 
@@ -11,9 +11,26 @@
 3. Runs `flutter pub get --enforce-lockfile`.
 4. Builds a release AAB with `--build-name`, `--build-number` and the two public Supabase values through a temporary `--dart-define-from-file`. `BEYONDREP_REQUIRE_RELEASE_SIGNING=true` makes Gradle fail if the upload key is missing, so the job can never fall back to the debug key.
 5. Refuses the AAB if `keytool -printcert -jarfile` shows it unsigned or signed by `CN=Android Debug`.
-6. If the `play_track` input is `internal` or `alpha` (closed testing), uploads the AAB to that track as a **draft** release with `google-play bundles publish --draft`. Nothing reaches testers until you roll the draft out in Play Console. `none` keeps the AAB as a build artifact only. Production is not an option.
+6. Builds the Wear OS bundle from `apps/wear_os` with Gradle (`:app:bundleRelease`, Java 17), versionCode = the phone's + 1 and the same version name, signed with the same upload key, and refuses it if it is unsigned or debug-signed (see [Wear OS bundle](#wear-os-bundle)).
+7. If the `play_track` input is `internal` or `alpha` (closed testing), uploads the phone AAB to that track and the Wear OS AAB to the Wear OS form-factor track of the same name (`wear:internal` or `wear:alpha`), both as **draft** releases with `google-play bundles publish --draft` and the same release name. Nothing reaches testers until you roll the drafts out in Play Console. `none` keeps the AABs as build artifacts only. Production is not an option.
 
-The AAB and the R8 `mapping.txt` are kept as build artifacts.
+The phone AAB, the R8 `mapping.txt` and the Wear OS AAB are kept as build artifacts.
+
+## Wear OS bundle
+
+The watch app (`apps/wear_os`) has the same application ID as the phone app, `in.beyondrep.app`, so Google Play shows one listing with a phone and a watch build, and the Wear Data Layer connects them (it only links apps with the same package name and signing certificate).
+
+- **Signing:** `apps/wear_os/app/build.gradle.kts` signs `release` with the same upload key as the phone, from `apps/wear_os/key.properties` (gitignored) or the Codemagic `CM_KEYSTORE_*` variables, and fails when `BEYONDREP_REQUIRE_RELEASE_SIGNING=true` and none is set. Both builds use the same upload key, so Play App Signing gives them the same app signing key, which the Data Layer needs.
+- **Version codes:** the phone build gets `N` and the watch build `N + 1` (`BEYONDREP_WATCH_BUILD_NUMBER`, passed to Gradle as `-Pbeyondrep.versionCode`; `-Pbeyondrep.versionName` is the shared version name). Play requires distinct codes in one listing. The next `AUTO` build is above the highest bundle Play has, phone or watch.
+- **Java 17 for both builds:** `java: 17` in the `mobile-android-release` environment (Gradle for `apps/wear_os` needs it) now also applies to the phone build, which was previously built with the Codemagic default JDK. Flutter 3.47.7 and the Android Gradle Plugin of the phone project should accept 17, but this has not run on hosted Codemagic; if the phone build fails on the JDK, that is the first thing to check.
+- **Partial upload:** the phone draft is uploaded first and the watch draft second, in one script. If the phone upload succeeds and the watch upload fails (for example Play rejects `wear:internal`), the job fails with the phone draft already on its track and the watch draft missing. Do not roll out the phone draft expecting a watch build; either fix the cause (Play Console form factor, track name, tester opt-in) and re-run the job (the phone build gets a new versionCode, because `AUTO` is above the highest bundle Play has, and a new phone draft replaces the old draft on that track), or discard the phone draft in Play Console. The Wear OS AAB is kept as a build artifact and can be uploaded by hand to the Wear OS track in Play Console. Nothing reaches testers while both are drafts.
+- **Tracks:** the watch bundle goes to `wear:<play_track>`. The Codemagic `google-play` CLI passes the track name to the Play API unchanged; whether Play accepts `wear:internal` for this app has **not** been exercised and is checked on the first run.
+
+Owner steps in Play Console, outside Git:
+
+1. Add the **Wear OS** form factor to the app (**Test and release → Advanced settings → Form factors**) and accept the Wear OS requirements.
+2. Opt in to Wear OS testing tracks and add the testers (the watch's Google account) to the internal or closed track.
+3. Roll out the phone draft and the Wear OS draft, then install the phone app from the Play Store and the watch app from the Play Store on the watch (or from the phone's Play Store listing, **Install on watch**).
 
 ## Release signing in Gradle
 
@@ -77,7 +94,7 @@ The job uses the existing `Codemagic Signing` App Store Connect integration to r
 
 The Play release name is now the version, such as `0.6.2`. The upload step passes it with `--release-name`. Release names that are not a version are ignored when the current version is worked out.
 
-The step prints one line, such as `Release type Fix or optimisation: 0.6.1 -> 0.6.2, build number 42`.
+The step prints one line, such as `Release type Fix or optimisation: 0.6.1 -> 0.6.2, build number 42, watch build number 43`.
 
 The step fails before the build starts when:
 

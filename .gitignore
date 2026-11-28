@@ -11,6 +11,7 @@ coverage/
 *.iml
 android/local.properties
 android/key.properties
+apps/wear_os/key.properties
 android/.gradle/
 ios/Pods/
 ios/Flutter/Generated.xcconfig

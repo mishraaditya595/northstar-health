@@ -26,6 +26,7 @@ class MainActivity : FlutterFragmentActivity() {
         private var tempPurged = false
     }
 
+    private var wearLink: WearLinkBridge? = null
     private var pendingExport: MethodChannel.Result? = null
     private var writeInProgress = false
     private var pendingFile: File? = null
@@ -123,6 +124,9 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        wearLink?.dispose()
+        wearLink = WearLinkBridge(this, flutterEngine.dartExecutor.binaryMessenger)
+            .also { it.register() }
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "northstar/health_settings",
@@ -271,6 +275,8 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     override fun onDestroy() {
+        wearLink?.dispose()
+        wearLink = null
         pendingFile = null
         if (!writeInProgress) {
             // A picker that hasn't returned cannot complete after teardown.

@@ -111,6 +111,8 @@ workflows:
         default: none
     environment:
       flutter: "3.47.7"
+      # The Wear OS bundle is built with Gradle from apps/wear_os in the same job.
+      java: 17
       android_signing:
         - beyondrep_upload
       groups:
@@ -160,11 +162,29 @@ workflows:
             echo "The AAB is unsigned or signed with the debug key; check the beyondrep_upload keystore."
             exit 1
           fi
+      - name: "Build signed Wear OS AAB"
+        script: |
+          set -euo pipefail
+          # Same package and upload key as the phone; versionCode is the phone's + 1.
+          cd ../wear_os
+          ./gradlew :app:bundleRelease --no-daemon \
+            -Pbeyondrep.versionCode="$BEYONDREP_WATCH_BUILD_NUMBER" \
+            -Pbeyondrep.versionName="$BEYONDREP_VERSION_NAME"
+      - name: "Refuse a debug-signed Wear OS AAB"
+        script: |
+          set -euo pipefail
+          aab=../wear_os/app/build/outputs/bundle/release/app-release.aab
+          certs="$(keytool -printcert -jarfile "$aab" 2>&1 || true)"
+          if ! printf '%s\n' "$certs" | grep -q "^Owner:" ||
+             printf '%s\n' "$certs" | grep -q "CN=Android Debug"; then
+            echo "The Wear OS AAB is unsigned or signed with the debug key; check the beyondrep_upload keystore."
+            exit 1
+          fi
       - name: "Upload draft release to Google Play"
         script: |
           set -euo pipefail
           case "$NS_PLAY_TRACK" in
-            none) echo "play_track is none: AAB kept as a build artifact only."; exit 0 ;;
+            none) echo "play_track is none: AABs kept as build artifacts only."; exit 0 ;;
             internal|alpha) ;;
             *) echo "Unknown play_track $NS_PLAY_TRACK"; exit 1 ;;
           esac
@@ -174,9 +194,17 @@ workflows:
             --track "$NS_PLAY_TRACK" \
             --release-name "$BEYONDREP_VERSION_NAME" \
             --draft
+          # The watch bundle goes to the Wear OS form-factor track of the same name.
+          google-play bundles publish \
+            --credentials @env:GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS \
+            --bundle ../wear_os/app/build/outputs/bundle/release/app-release.aab \
+            --track "wear:$NS_PLAY_TRACK" \
+            --release-name "$BEYONDREP_VERSION_NAME" \
+            --draft
     artifacts:
       - build/app/outputs/bundle/release/*.aab
       - build/app/outputs/mapping/release/mapping.txt
+      - $CM_BUILD_DIR/apps/wear_os/app/build/outputs/bundle/release/*.aab
 
   mobile-ios-simulator:
     name: "TEMPLATE - Mobile iOS - Simulator Debug"

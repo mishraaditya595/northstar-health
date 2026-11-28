@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/clock.dart';
 import '../../../core/design/status_line.dart';
 import '../application/watch_status_provider.dart';
+import '../domain/watch_platform.dart';
 import '../domain/watch_status.dart';
 import 'watch_time_format.dart';
 
@@ -21,7 +23,8 @@ class WatchStatusFooter extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 16),
       child: NsStatusLine(
-        'Apple Watch · synced ${watchDayTime(context, status.at, now)}',
+        '${watchName(defaultTargetPlatform)} · synced '
+        '${watchDayTime(context, status.at, now)}',
         onTap: () => context.push('/today/account'),
       ),
     );

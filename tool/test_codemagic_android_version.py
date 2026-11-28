@@ -130,7 +130,11 @@ class AndroidVersionResolverTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.exported(),
-            {"BEYONDREP_VERSION_NAME": "0.3.2", "BEYONDREP_BUILD_NUMBER": "42"},
+            {
+                "BEYONDREP_VERSION_NAME": "0.3.2",
+                "BEYONDREP_BUILD_NUMBER": "42",
+                "BEYONDREP_WATCH_BUILD_NUMBER": "43",
+            },
         )
         self.assertIn(
             "Release type Fix or optimisation: 0.3.1 -> 0.3.2, build number 42",
@@ -142,6 +146,40 @@ class AndroidVersionResolverTest(unittest.TestCase):
         # The credentials are passed by reference, never on the command line.
         self.assertIn("@env:GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS", call)
         self.assertNotIn(FAKE_CREDENTIALS, result.stdout + result.stderr)
+
+    def test_watch_build_follows_the_phone_build_and_counts_in_the_next_one(self):
+        # Play lists internal 40 and wear:internal 41; the highest uploaded
+        # bundle, whichever form factor, decides: the phone gets 42, the watch 43.
+        result = self.run_resolver(
+            NS_FAKE_LATEST="41", NS_FAKE_TRACKS=json.dumps([
+                {"track": {"track": "internal", "releases": [
+                    {"name": "0.3.0", "versionCodes": ["40"]}]}},
+                {"track": {"track": "wear:internal", "releases": [
+                    {"name": "0.3.0", "versionCodes": ["41"]}]}},
+            ]),
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.exported(),
+            {
+                "BEYONDREP_VERSION_NAME": "0.3.2",
+                "BEYONDREP_BUILD_NUMBER": "42",
+                "BEYONDREP_WATCH_BUILD_NUMBER": "43",
+            },
+        )
+        call = [c for c in self.calls() if c[0] == "get-latest-build-number"][0]
+        self.assertIn("--include-uploaded-builds", call)
+        self.assertNotIn("--tracks", call)
+
+    def test_manual_build_leaves_room_for_the_watch_build(self):
+        result = self.run_resolver(build="2099999999")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.exported()["BEYONDREP_WATCH_BUILD_NUMBER"], "2100000000")
+        self.cm_env.write_text("", encoding="utf-8")
+        result = self.run_resolver(build="2100000000")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("watch build", result.stderr)
+        self.assertEqual(self.exported(), {})
 
     def test_no_previous_build_starts_at_one(self):
         result = self.run_resolver(NS_FAKE_LATEST="")
@@ -169,7 +207,11 @@ class AndroidVersionResolverTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.exported(),
-            {"BEYONDREP_VERSION_NAME": "0.3.2", "BEYONDREP_BUILD_NUMBER": "1"},
+            {
+                "BEYONDREP_VERSION_NAME": "0.3.2",
+                "BEYONDREP_BUILD_NUMBER": "1",
+                "BEYONDREP_WATCH_BUILD_NUMBER": "2",
+            },
         )
 
     def test_auto_build_play_failure_stops(self):
@@ -201,7 +243,11 @@ class AndroidVersionResolverTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.exported(),
-            {"BEYONDREP_VERSION_NAME": "1.2.0", "BEYONDREP_BUILD_NUMBER": "50"},
+            {
+                "BEYONDREP_VERSION_NAME": "1.2.0",
+                "BEYONDREP_BUILD_NUMBER": "50",
+                "BEYONDREP_WATCH_BUILD_NUMBER": "51",
+            },
         )
 
     def test_manual_build_not_above_latest_fails(self):

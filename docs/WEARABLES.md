@@ -60,4 +60,4 @@ The attached research is a feasibility study, not a built watch prototype. Its c
 
 ## Wear OS companion
 
-The Wear OS app follows [ADR-0015](adr/0015-wear-os-companion.md): native Kotlin/Compose, the phone's app ID and signing key, the Wear Data Layer as transport, and the same ownership and backup rules as the Apple Watch. Stage 1 (the JVM watch core in `apps/wear_os/core`) is implemented in source and not device-verified; the Health Services recording described above remains unimplemented.
+The Wear OS app follows [ADR-0015](adr/0015-wear-os-companion.md): native Kotlin/Compose, the phone's app ID and signing key, the Wear Data Layer as transport, and the same ownership and backup rules as the Apple Watch. Stage 1 (the JVM watch core in `apps/wear_os/core`) and stage 2 (the Data Layer link with the Android phone, the Home and Train glance and the Play job that drafts both bundles) are implemented in source and not device-verified; the Health Services recording described above remains unimplemented.

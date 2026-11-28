@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,10 +6,11 @@ import '../../../core/clock.dart';
 import '../../../core/design/beyondrep_theme.dart';
 import '../../../core/design/page_header.dart';
 import '../application/watch_status_provider.dart';
+import '../domain/watch_platform.dart';
 import '../domain/watch_status.dart';
 import 'watch_time_format.dart';
 
-/// The Apple Watch section of Account & sync. Hidden unless iOS reports a
+/// The watch section of Account & sync. Hidden unless the platform reports a
 /// paired watch, so people without one see nothing.
 class WatchAccountSection extends ConsumerWidget {
   const WatchAccountSection({super.key});
@@ -32,7 +34,10 @@ class WatchAccountSection extends ConsumerWidget {
       children: [
         Semantics(
           header: true,
-          child: Text('APPLE WATCH', style: theme.textTheme.labelSmall),
+          child: Text(
+            watchName(defaultTargetPlatform).toUpperCase(),
+            style: theme.textTheme.labelSmall,
+          ),
         ),
         const SizedBox(height: 18),
         NsListCard(

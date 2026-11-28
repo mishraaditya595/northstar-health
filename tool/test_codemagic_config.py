@@ -306,6 +306,47 @@ class CodemagicTemplateTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, str(workflow))
 
+    def test_android_release_also_builds_and_drafts_the_wear_os_bundle(self):
+        workflow = yaml.safe_load(FILE.read_text(encoding="utf-8"))["workflows"][
+            "mobile-android-release"
+        ]
+        self.assertEqual(workflow["environment"]["java"], 17)
+        steps = {step["name"]: step["script"] for step in workflow["scripts"]}
+        names = [step["name"] for step in workflow["scripts"]]
+        build = steps["Build signed Wear OS AAB"]
+        self.assertIn("cd ../wear_os", build)
+        self.assertIn('-Pbeyondrep.versionCode="$BEYONDREP_WATCH_BUILD_NUMBER"', build)
+        self.assertIn('-Pbeyondrep.versionName="$BEYONDREP_VERSION_NAME"', build)
+        self.assertIn(":app:bundleRelease", build)
+        self.assertIn("./gradlew", build)
+        self.assertLess(
+            names.index("Build signed AAB"), names.index("Build signed Wear OS AAB")
+        )
+        refuse = steps["Refuse a debug-signed Wear OS AAB"]
+        self.assertIn("CN=Android Debug", refuse)
+        self.assertIn("wear_os/app/build/outputs/bundle/release/app-release.aab", refuse)
+        self.assertLess(
+            names.index("Refuse a debug-signed Wear OS AAB"),
+            names.index("Upload draft release to Google Play"),
+        )
+        upload = steps["Upload draft release to Google Play"]
+        # The phone bundle goes to the chosen track, the watch bundle to the
+        # Wear OS form-factor track of the same name, both as drafts with one
+        # release name.
+        self.assertIn('--track "$NS_PLAY_TRACK"', upload)
+        self.assertIn('--track "wear:$NS_PLAY_TRACK"', upload)
+        self.assertEqual(upload.count("--draft"), 2)
+        self.assertEqual(upload.count('--release-name "$BEYONDREP_VERSION_NAME"'), 2)
+        self.assertIn("../wear_os/app/build/outputs/bundle/release/app-release.aab", upload)
+        self.assertLess(upload.index('--track "$NS_PLAY_TRACK"'), upload.index('--track "wear:'))
+        self.assertIn(
+            "$CM_BUILD_DIR/apps/wear_os/app/build/outputs/bundle/release/*.aab",
+            workflow["artifacts"],
+        )
+        self.assertEqual(
+            workflow["environment"]["vars"]["BEYONDREP_REQUIRE_RELEASE_SIGNING"], "true"
+        )
+
     def test_watchos_companion_is_explicitly_blocked(self):
         workflow = yaml.safe_load(FILE.read_text(encoding="utf-8"))["workflows"][
             "watchos-companion-release"

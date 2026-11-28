@@ -290,7 +290,7 @@ void main() {
       tester.getTopLeft(footer).dy,
       greaterThan(tester.getTopLeft(find.text('This week')).dy),
     );
-  });
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
   testWidgets('header shows the real date and no demo label', (tester) async {
     await show(tester);

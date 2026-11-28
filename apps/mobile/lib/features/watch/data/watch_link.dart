@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/watch_status.dart';
 
-/// The phone's side of the Apple Watch link. It carries opaque JSON strings
+/// The phone's side of the watch link (Apple Watch or Wear OS). It carries opaque JSON strings
 /// built by `watch_snapshots.dart`; all decisions stay in Dart.
 abstract interface class WatchLink {
   /// True only when a watch is paired and has the BeyondRep app installed.
@@ -33,9 +33,17 @@ abstract interface class WatchLink {
 
   /// JSON strings the watch sent (acknowledgments), as they arrive.
   Stream<String> get messages;
+
+  /// Asks the bridge to hand over watch messages that arrived before Dart was
+  /// ready (Android keeps them as Data Layer items). Call it once, after every
+  /// listener that needs them has subscribed to [messages]: the stream is
+  /// broadcast, so a message delivered earlier would reach nobody and be
+  /// deleted. iOS delivers as messages arrive and ignores it.
+  Future<void> startMessages();
 }
 
-/// iOS bridge (`ios/Runner/WatchLinkBridge.swift`). A missing plugin or a
+/// Platform bridge (`ios/Runner/WatchLinkBridge.swift`, Android
+/// `WearLinkBridge.kt`). A missing plugin or a
 /// platform error never reaches the UI: it means "no watch" and nothing is
 /// sent.
 class MethodChannelWatchLink implements WatchLink {
@@ -85,6 +93,17 @@ class MethodChannelWatchLink implements WatchLink {
       }
       return null;
     });
+  }
+
+  @override
+  Future<void> startMessages() async {
+    try {
+      await channel.invokeMethod<void>('startMessages');
+    } on MissingPluginException {
+      // No bridge on this platform.
+    } on PlatformException {
+      // Not user actionable; the next explicit start asks again.
+    }
   }
 
   void _detach(String which) {
@@ -155,7 +174,7 @@ class MethodChannelWatchLink implements WatchLink {
   }
 }
 
-/// Android and tests: nothing to send to.
+/// Other platforms and tests: nothing to send to.
 class NoopWatchLink implements WatchLink {
   const NoopWatchLink();
 
@@ -179,10 +198,15 @@ class NoopWatchLink implements WatchLink {
 
   @override
   Stream<String> get messages => const Stream<String>.empty();
+
+  @override
+  Future<void> startMessages() async {}
 }
 
 final watchLinkProvider = Provider<WatchLink>(
-  (ref) => defaultTargetPlatform == TargetPlatform.iOS
+  (ref) =>
+      defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.android
       ? MethodChannelWatchLink.shared
       : const NoopWatchLink(),
 );

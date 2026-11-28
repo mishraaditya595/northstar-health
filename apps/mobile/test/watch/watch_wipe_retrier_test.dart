@@ -49,6 +49,9 @@ class _Link implements WatchLink {
   Future<WatchDeviceStatus> status() async => device;
   @override
   Stream<String> get messages => incoming.stream;
+
+  @override
+  Future<void> startMessages() async {}
 }
 
 class _Ids implements UuidFactory {
