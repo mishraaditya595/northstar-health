@@ -149,7 +149,12 @@ class _Today extends StatelessWidget {
               'runs from waking to your next main sleep, so a late session '
               'counts for the day you are still awake in. The 7 and 30 day '
               'comparison scores the days before the period without sleep '
-              'heart rate. Energy is a suggestion for planning your '
+              'heart rate. Once you have 20 workouts and 14 days of data, '
+              'BeyondRep tunes how much workouts and active calories lower '
+              'your energy from how you trained at different energy levels, '
+              'and learns the hours you usually train, when time awake costs '
+              'nothing. This is worked out on your phone each time and never '
+              'saved. Energy is a suggestion for planning your '
               'training, not medical advice.',
             ),
           ],
@@ -184,6 +189,7 @@ class _Today extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         HealthCaption(energyChangeText(e)),
+        if (e.tuned) const HealthCaption('Tuned to your last 90 days.'),
         if (learning != null) HealthCaption(learning),
       ],
     );
@@ -203,6 +209,16 @@ class _Today extends StatelessWidget {
           const HealthCaption(
             'Naps add back up to 10 points, and never more than the day has '
             'used.',
+          ),
+        if (e.awakeWaiver >= 1)
+          const HealthCaption(
+            'You usually train around now, so time awake costs nothing '
+            'today.',
+          )
+        else if (e.awakeWaived)
+          const HealthCaption(
+            'You usually train around now, so time awake costs less right '
+            'now.',
           ),
         if (e.items.isEmpty)
           const HealthCaption(

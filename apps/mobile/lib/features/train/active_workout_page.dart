@@ -23,6 +23,7 @@ import '../watch/application/watch_status_provider.dart';
 import '../workouts/domain/workout_repository.dart';
 import '../workouts/data/objectbox_workout_outbox.dart';
 import '../sync/workout_upload_coordinator.dart';
+import '../health/application/workout_health_export_controller.dart';
 import 'previous_sets.dart';
 import 'timed_sets.dart';
 import 'train_library_state.dart';
@@ -68,6 +69,7 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
         ref.invalidate(blockedWorkoutCountProvider);
         // Wake foreground uploader after the local ObjectBox commit.
         ref.read(workoutUploadKickProvider)?.call();
+        ref.read(healthExportKickProvider)();
       }
       if (completedWorkoutUuid != null &&
           mounted &&

@@ -287,6 +287,7 @@ class ReadinessCard extends StatelessWidget {
     final label = [
       'Energy now ${energy.value} of 100, $words.',
       '$change.',
+      if (energy.tuned) 'Tuned to your last 90 days.',
       if (sentence.isNotEmpty) '$sentence.',
       if (basedOn != null) '$basedOn.',
       ?learning,
@@ -313,6 +314,7 @@ class ReadinessCard extends StatelessWidget {
                 title: words,
                 subtitle: [
                   change,
+                  if (energy.tuned) 'Tuned to your last 90 days.',
                   if (sentence.isNotEmpty) sentence,
                   ?basedOn,
                 ].join('\n'),

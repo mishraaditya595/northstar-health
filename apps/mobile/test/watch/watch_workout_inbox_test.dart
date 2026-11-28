@@ -2,8 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:beyondrep/core/clock.dart';
 import 'package:beyondrep/core/ids/uuid_factory.dart';
+import 'package:beyondrep/core/storage/objectbox_store_provider.dart';
+import 'package:beyondrep/features/account/account_auth_controller.dart';
+import 'package:beyondrep/features/account/account_auth_provider.dart';
+import 'package:beyondrep/features/health/application/workout_health_export_controller.dart';
 import 'package:beyondrep/features/watch/application/watch_workout_inbox.dart';
+import 'package:beyondrep/features/watch/application/watch_sync_controller.dart';
 import 'package:beyondrep/features/watch/data/objectbox_watch_workout_importer.dart';
 import 'package:beyondrep/features/watch/data/watch_link.dart';
 import 'package:beyondrep/features/watch/data/watch_workout_receipt_entity.dart';
@@ -12,7 +18,10 @@ import 'package:beyondrep/features/watch/domain/watch_message.dart';
 import 'package:beyondrep/features/watch/domain/watch_status.dart';
 import 'package:beyondrep/features/workouts/data/workout_entities.dart';
 import 'package:beyondrep/objectbox.g.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../support/fake_account_auth.dart';
 
 const accountA = '00000000-0000-4000-8000-0000000000a1';
 const accountB = '00000000-0000-4000-8000-0000000000b2';
@@ -260,6 +269,55 @@ void main() {
       );
     },
   );
+
+  group('health export kick (provider wiring)', () {
+    late FakeAuthApi api;
+    late AccountAuthController auth;
+    late ProviderContainer container;
+    late int kicks;
+
+    setUp(() async {
+      api = FakeAuthApi()..sessionId = accountA;
+      auth = controller(api, FakeBoundAccountStore()..saved = accountA);
+      await auth.restore();
+      kicks = 0;
+      container = ProviderContainer(
+        overrides: [
+          accountAuthControllerProvider.overrideWithValue(auth),
+          objectBoxStoreProvider.overrideWithValue(store),
+          watchLinkProvider.overrideWithValue(link),
+          watchMessageIdsProvider.overrideWithValue(_Ids()),
+          wallClockProvider.overrideWithValue(
+            () => DateTime.utc(2026, 10, 23, 12),
+          ),
+          healthExportKickProvider.overrideWithValue(() => kicks++),
+        ],
+      );
+    });
+
+    tearDown(() async {
+      container.dispose();
+      auth.dispose();
+      await api.dispose();
+    });
+
+    test('a stored watch workout kicks the export', () async {
+      final result = await container
+          .read(watchWorkoutInboxProvider)
+          .handle(_fixture(accountKey: watchAccountKey(accountA)));
+      expect(result, WatchImportResult.stored);
+      expect(kicks, 1);
+    });
+
+    test('onLinked kicks the export', () async {
+      _putPhoneWorkout(store);
+      final result = await container
+          .read(watchWorkoutInboxProvider)
+          .handleLink(_link(accountKey: watchAccountKey(accountA)));
+      expect(result, WatchLinkResult.stored);
+      expect(kicks, 1);
+    });
+  });
 
   group('workout_link', () {
     test('a completed phone workout gets a receipt, then an ack', () async {

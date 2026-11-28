@@ -253,6 +253,31 @@ void main() {
     );
   });
 
+  testWidgets('a tuned energy says so below the change line', (tester) async {
+    await pump(
+      tester,
+      overview(
+        energy: energySection(
+          ready(value: 78),
+          energy: const Energy(
+            value: 62,
+            band: ReadinessBand.fair,
+            start: 78,
+            items: [],
+            tuned: true,
+          ),
+        ),
+        readiness: ready(value: 78),
+      ),
+    );
+    expect(find.textContaining('Tuned to your last 90 days.'), findsOneWidget);
+  });
+
+  testWidgets('an untuned energy has no tuned line', (tester) async {
+    await pump(tester, overview(readiness: ready()));
+    expect(find.textContaining('Tuned to your last 90 days.'), findsNothing);
+  });
+
   testWidgets('no learning note when calibrated', (tester) async {
     await pump(tester, overview(readiness: ready()));
     expect(find.textContaining('Still learning'), findsNothing);

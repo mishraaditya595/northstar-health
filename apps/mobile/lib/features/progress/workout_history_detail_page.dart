@@ -11,6 +11,7 @@ import '../../core/design/section.dart';
 import '../../core/design/beyondrep_theme.dart';
 import '../watch/domain/watch_platform.dart';
 import '../health/application/own_workout_health.dart';
+import '../health/application/workout_health_export_controller.dart';
 import '../health/domain/own_workout_health.dart';
 import 'domain/progress_overview.dart';
 import '../../core/units/load_units.dart';
@@ -383,6 +384,7 @@ class WorkoutHistoryDetailPage extends ConsumerWidget {
     // error cannot make the UI claim the workout is still present.
     ref.invalidate(completedWorkoutHistoryProvider);
     ref.invalidate(workoutSyncFlagsProvider);
+    ref.read(healthExportKickProvider)();
     if (outcome == CompletedWorkoutDeleteResult.cloudDeleteQueued) {
       try {
         ref.read(workoutUploadCoordinatorProvider).kick();

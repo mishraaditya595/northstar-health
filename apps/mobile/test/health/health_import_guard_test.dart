@@ -57,12 +57,15 @@ import 'sibling.dart'
     );
   });
 
-  test('only platform_health_reader.dart imports package:health', () {
+  test('only the platform reader and writer import package:health', () {
     final offenders = dart
         .map(norm)
         .where((p) => importsOf(p).any((i) => i.startsWith('package:health/')))
         .toSet();
-    expect(offenders, {'lib/features/health/data/platform_health_reader.dart'});
+    expect(offenders, {
+      'lib/features/health/data/platform_health_reader.dart',
+      'lib/features/health/data/health_workout_writer.dart',
+    });
   });
 
   test('sync, storage and workouts never import features/health', () {

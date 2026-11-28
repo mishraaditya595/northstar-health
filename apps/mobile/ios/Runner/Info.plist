@@ -5,7 +5,7 @@
 	<key>NSHealthShareUsageDescription</key>
 	<string>BeyondRep reads your sleep, heart, activity, workouts and body measurements to show your daily summary, trends and training history. This data stays on your phone.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>BeyondRep only reads health data for your daily summary. It does not write or change anything in Apple Health.</string>
+	<string>BeyondRep writes the workouts you finish on this phone to Apple Health when you turn on saving in the Health tab.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

@@ -117,7 +117,7 @@ Workouts from other apps and the training-load readiness input are implemented i
 
 Energy on the Health tab hero, the detail Today view, Today, the Train strip, the pre-workout note, "Better fit today" and the watch is implemented in source, **not released or device-verified**. Every row is not run.
 
-**Release gate:** energy stages 1 and 2 ship together; stage 3 tuning is not started.
+**Release gate:** energy stages 1 and 2 ship together; stage 3 tuning is implemented in source and its rows below are not run.
 
 | Check | iOS | Android |
 | --- | --- | --- |
@@ -132,6 +132,9 @@ Energy on the Health tab hero, the detail Today view, Today, the Train strip, th
 | Stage 2: watch Home and detail show energy and `· still learning`, cleared at local midnight | n/a | not run |
 | Stage 2: VoiceOver and TalkBack read "Energy" on Today, Train and the watch, never "Readiness" | not run | not run |
 | Stage 2: 41 mm Apple Watch Home shows the whole reason line including `· still learning` | not run | n/a |
+| Stage 3: a late-night trainer (usual sessions 22:00-23:00) sees no awake dip at the usual hour and the dip at 15:00 | not run | not run |
+| Stage 3: the first Health open of the day on Android does not hit the Health Connect read quota on repeated resumes (the three extra reads happen once per local day) | n/a | not run |
+| Stage 3: an account switch drops the cached history and tuning | not run | not run |
 
 ## Phase 4 stage 3: watch link, glance and TestFlight embedding (owner actions, none done)
 
@@ -491,3 +494,24 @@ The Android phone sends account binding, plans and today's health to the BeyondR
 | After a sync the phone shows "Watch · synced ..." at the bottom of Today and a "WATCH" section in Account & sync | not run |
 | Watch app or phone app updated alone: the link still works (same Data Layer version) | not run |
 
+## Phase 5: save phone workouts to Apple Health / Health Connect (ADR-0014, device checks, none run)
+
+Opt-in per-account write of completed phone workouts. Implemented in source, **not released or device-verified**. Every row is not run.
+
+| Check | Result |
+|---|---|
+| iPhone first use: Health tab, switch, sheet "Turn on" shows the HealthKit workout prompt once; "Not now" shows no prompt | not run |
+| Android first use: the Health Connect permission sheet lists exercise write and read; "Not now" shows none | not run |
+| Backfill of a real history (more than 50 workouts): all appear in Apple Health / Health Connect after a few passes, one entry each, none twice | not run |
+| Finish a workout on the phone: one Strength training entry with the workout name's start and end, no heart rate or calories, appears within a pass | not run |
+| Delete a workout in BeyondRep: the entry is gone from Apple Health / Health Connect | not run |
+| Edit-free rewrite: restore the account on a second phone (same Apple ID or a Health Connect device): no second entry appears for existing workouts | not run |
+| The Apple Watch joined a phone workout (stage 5b): exactly one entry in Apple Health, ours is removed or never written | not run |
+| iPhone with a paired watch: a workout finished on the phone is not written for 10 minutes | not run |
+| Our own saved workouts do not show up under "From other apps" or add to training load | not run |
+| Health Connect not installed or needs update: the row is hidden or says so, nothing crashes, no write | not run |
+| Revoke write access in Settings, resume the app: the row says "Allow access in Settings", tapping opens a sheet whose "Open Settings" opens settings; after allowing it and resuming, waiting workouts are saved | not run |
+| Switch off: no new writes, no deletes, entries already saved stay; switching on again does not rewrite them | not run |
+| Airplane mode and low-power: a workout finished offline is saved locally and exported without needing the network | not run |
+| Account A on, sign out, account B: B shows Off and writes nothing | not run |
+| Store disclosures: App Privacy answers, App Store review notes, Play Health apps declaration and the privacy policy mention the write permission before release | not run |
