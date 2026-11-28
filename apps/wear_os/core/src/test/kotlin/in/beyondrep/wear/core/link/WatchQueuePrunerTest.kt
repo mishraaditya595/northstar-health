@@ -46,4 +46,21 @@ class WatchQueuePrunerTest {
         val items = (1..3).map { item("a$it", "2026-10-23T01:0$it:00Z") }
         assertTrue(WatchQueuePruner.stalePaths(items, now, keep = 20).isEmpty())
     }
+
+    @Test
+    fun neverPrunesACompletedWorkout() {
+        val acks = (1..22).map { item("ack${"%02d".format(it)}", "2026-10-23T01:%02d:00Z".format(it)) }
+        fun workout(id: String, at: String) =
+            DataChange(DataLayerPaths.watchQueue(id), """{"type":"completed_workout","sent_at_utc":"$at"}""", deleted = false)
+        val workouts = listOf(
+            workout("w1", "2026-09-23T01:00:00Z"),
+            workout("w2", "2026-10-23T01:30:00Z"),
+            workout("w3", "2026-10-23T01:31:00Z"),
+        )
+        val stale = WatchQueuePruner.stalePaths(acks + workouts, now, keep = 20)
+        assertEquals(
+            setOf(DataLayerPaths.watchQueue("ack01"), DataLayerPaths.watchQueue("ack02")),
+            stale.toSet(),
+        )
+    }
 }
