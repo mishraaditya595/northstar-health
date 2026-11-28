@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { offlineFrame } from '../src/scripts/scenes/offline.mjs';
+import { recoveryFrame } from '../src/scripts/scenes/recovery.mjs';
 import { trainingFrame, tileFrame, restClock } from '../src/scripts/scenes/training.mjs';
 
 // Every scene: p=1 is the finished state, the output depends only on p
@@ -68,4 +69,20 @@ test('tiles scrub on phones and sit finished elsewhere', () => {
   assert.equal(tileFrame(0.25, { mobile: false }).vars.k, 1);
   assert.equal(tileFrame(0, { mobile: true }).text['[data-kg]'], '65');
   assert.equal(tileFrame(1, { mobile: true }).text['[data-kg]'], '70');
+});
+
+test('recovery scene draws the wave, sweeps the gauge, then counts up', () => {
+  assertSceneContract(recoveryFrame, {
+    vars: { wave: 1, energy: 1, trend: 1 },
+    text: { '[data-energy-value]': '74', '[data-steps]': '6,240', '[data-rhr]': '58' },
+  });
+  const start = recoveryFrame(0);
+  assert.deepEqual(start.text, { '[data-energy-value]': '0', '[data-steps]': '0', '[data-rhr]': '0' });
+  assert.deepEqual(start.vars, { wave: 0, energy: 0, trend: 0 });
+  for (let i = 0; i <= 100; i++) {
+    const t = recoveryFrame(i / 100).text;
+    assert.ok(Number(t['[data-energy-value]']) <= 74);
+    assert.ok(Number(t['[data-steps]'].replace(',', '')) <= 6240);
+    assert.ok(Number(t['[data-rhr]']) <= 58);
+  }
 });

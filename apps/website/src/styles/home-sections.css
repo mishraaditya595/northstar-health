@@ -141,6 +141,16 @@
 .sleep b { display: block; margin-top: 6px; font-size: 2.75rem; font-weight: 900; letter-spacing: -0.04em; color: var(--sleep); }
 .wave { display: flex; align-items: center; gap: 5px; height: 56px; margin-top: 10px; }
 .wave i { flex: 1; border-radius: 6px; background: var(--sleep); opacity: 0.8; }
+.energy { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; padding: 14px 18px; border-radius: 18px; background: var(--surface-soft); }
+.gauge { position: relative; width: 84px; height: 84px; display: grid; place-items: center; }
+.gauge svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.gauge circle { fill: none; stroke-width: 9; stroke-linecap: round; }
+.gauge .track { stroke: var(--border); }
+.gauge .arc { stroke: var(--sleep); stroke-dasharray: 100; stroke-dashoffset: 26; }
+.gauge b { position: relative; font-size: 1.75rem; font-weight: 900; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.energy-trend svg { display: block; width: 100%; height: auto; max-height: 52px; margin: 6px 0 2px; overflow: visible; }
+.energy-trend polyline { fill: none; stroke: var(--sleep); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 100; stroke-dashoffset: 0; }
+.energy-trend small { font-size: 0.75rem; color: var(--ink-2); }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .stats > div { padding: 14px 12px; border-radius: 16px; background: var(--surface-soft); min-width: 0; }
 .stats b { display: block; margin: 4px 0 2px; font-size: 1.375rem; font-weight: 900; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
@@ -192,7 +202,6 @@
   }
   .reveal-ready [data-reveal].is-in { opacity: 1; transform: none; }
 
-  .is-in .wave i { animation: grow-y 0.6s calc(0.2s + var(--j) * 0.06s) cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .is-in .checklist li { animation: row-in 0.45s calc(0.35s + var(--j) * 0.15s) both; }
   .is-in .finale-rings i { animation: turn 2.4s 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
   .is-in .finale-rings i:nth-child(2) { animation-name: turn-back; }

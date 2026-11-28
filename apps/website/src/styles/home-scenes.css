@@ -148,3 +148,10 @@
   .scenes-ready [data-step="3"] .tile:nth-child(4) .viz,
   .scenes-ready [data-step="4"] .tile:nth-child(5) .viz { opacity: 1; }
 }
+
+/* Recovery */
+@media (prefers-reduced-motion: no-preference) {
+  .scenes-ready [data-scene-track="recovery"] .wave i { transform: scaleY(clamp(0.08, calc(var(--wave, 1) * 13 - var(--j)), 1)); }
+  .scenes-ready [data-scene-track="recovery"] .gauge .arc { stroke-dashoffset: calc(100 - 74 * var(--energy, 1)); }
+  .scenes-ready [data-scene-track="recovery"] .energy-trend polyline { stroke-dashoffset: calc((1 - var(--trend, 1)) * 100); }
+}

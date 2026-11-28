@@ -34,6 +34,12 @@ const faqs = [
   },
 ];
 
+// Seven sample daily energy scores, drawn as a sparkline (viewBox 140 x 48).
+const energyTrend = [62, 68, 59, 71, 66, 79, 74];
+const trendPoints = energyTrend
+  .map((v, i) => `${((i / (energyTrend.length - 1)) * 140).toFixed(1)},${(44 - ((v - 55) / 28) * 38).toFixed(1)}`)
+  .join(' ');
+
 const jsonLd = [
   {
     '@type': 'WebSite',
@@ -162,31 +168,49 @@ const jsonLd = [
   </section>
 
   <section class="feature" data-backdrop="violet" aria-labelledby="health">
-    <div class="wrap split split-flip">
-      <div class="split-head" data-reveal>
-        <p class="kicker kicker-sleep">Recovery</p>
-        <h2 class="display" id="health">Your recovery, next to your training</h2>
-        <p class="section-lede">
-          Connect Apple Health or Health Connect and BeyondRep shows a daily summary on your phone. It reads; it never
-          writes or uploads.
-        </p>
-      </div>
-      <ul class="points" data-reveal>
+    <div class="wrap split split-flip scene-split">
+      <div class="copy">
+        <div class="split-head" data-reveal>
+          <p class="kicker kicker-sleep">Recovery</p>
+          <h2 class="display" id="health" data-words>Your recovery, next to your training</h2>
+          <p class="section-lede">
+            Connect Apple Health or Health Connect and BeyondRep shows your sleep, an energy score and 7 and 30-day
+            trends beside your training. It reads; it never uploads your health data.
+          </p>
+        </div>
+        <ul class="points" data-reveal>
           <li><span class="tag tag-sleep">Sleep</span><h3>Last night’s sleep</h3><p>How long you slept, so you can decide whether to push or hold back today.</p></li>
+          <li><span class="tag tag-sleep">Energy</span><h3>An energy score for right now</h3><p>Worked out on your phone from your sleep, heart and recent training, so you can decide whether to push or hold back. It is never stored or sent anywhere.</p></li>
           <li><span class="tag">Daily signals</span><h3>Steps, resting heart rate and weight</h3><p>Today’s steps, your latest resting heart rate and your latest weight, each with its date. Missing data is shown as missing, never as zero.</p></li>
-      </ul>
-      <div class="demo demo-health" data-reveal data-glow aria-hidden="true">
-        <div class="sleep">
-          <span class="demo-label">Last night’s sleep</span>
-          <b>7h 24m</b>
-          <div class="wave">{[40, 72, 55, 95, 35, 62, 88, 46, 70, 38, 58, 30].map((h, j) => <i style={`height:${h}%;--j:${j}`}></i>)}</div>
+        </ul>
+      </div>
+      <div class="demo-track" data-scene-track="recovery">
+        <div data-scene-stage>
+          <div class="demo demo-health" data-reveal data-glow aria-hidden="true">
+            <div class="sleep">
+              <span class="demo-label">Last night’s sleep</span>
+              <b>7h 24m</b>
+              <div class="wave">{[40, 72, 55, 95, 35, 62, 88, 46, 70, 38, 58, 30].map((h, j) => <i style={`height:${h}%;--j:${j}`}></i>)}</div>
+            </div>
+            <div class="energy">
+              <div class="gauge">
+                <svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="42" /><circle class="arc" cx="50" cy="50" r="42" pathLength="100" /></svg>
+                <b data-energy-value>74</b>
+              </div>
+              <div class="energy-trend">
+                <span class="demo-label">Energy · sample</span>
+                <svg viewBox="0 0 140 48"><polyline pathLength="100" points={trendPoints} /></svg>
+                <small>Last 7 days</small>
+              </div>
+            </div>
+            <div class="stats">
+              <div><span class="demo-label">Steps</span><b data-steps>6,240</b><small>Today</small></div>
+              <div><span class="demo-label">Resting HR</span><b><span data-rhr>58</span> bpm</b><small>Today</small></div>
+              <div><span class="demo-label">Weight</span><b class="missing">No reading</b><small>Shown as missing, not zero</small></div>
+            </div>
+            <p class="demo-note">Illustration · sample values</p>
+          </div>
         </div>
-        <div class="stats">
-          <div><span class="demo-label">Steps</span><b data-count="6,240">6,240</b><small>Today</small></div>
-          <div><span class="demo-label">Resting HR</span><b><span data-count="58">58</span> bpm</b><small>Today</small></div>
-          <div><span class="demo-label">Weight</span><b class="missing">No reading</b><small>Shown as missing, not zero</small></div>
-        </div>
-        <p class="demo-note">Illustration · sample values</p>
       </div>
     </div>
   </section>
