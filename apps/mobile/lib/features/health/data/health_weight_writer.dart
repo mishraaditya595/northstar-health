@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/services.dart' show MethodChannel, PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:health/health.dart' hide HealthValue;
 
@@ -43,8 +44,10 @@ abstract interface class HealthWeightWriter {
   Future<bool> delete(SavedWeight saved);
 }
 
-/// [HealthWeightWriter] over the `health` plugin. BeyondRep's own code logs no
-/// record ids, values or exception text.
+/// [HealthWeightWriter] over the `health` plugin. On Android the write goes
+/// through `WeightWriter.kt` instead, because the plugin logs every written
+/// value to logcat (ADR-0016). BeyondRep's own code logs no record ids, values
+/// or exception text.
 class PlatformHealthWeightWriter implements HealthWeightWriter {
   PlatformHealthWeightWriter(this._health, {bool? isIos, UuidFactory? ids})
     : isIos = isIos ?? defaultTargetPlatform == TargetPlatform.iOS,
@@ -52,6 +55,8 @@ class PlatformHealthWeightWriter implements HealthWeightWriter {
 
   final Health _health;
   final UuidFactory _ids;
+
+  static const _androidWeight = MethodChannel('beyondrep/health_weight');
 
   @override
   final bool isIos;
@@ -126,6 +131,7 @@ class PlatformHealthWeightWriter implements HealthWeightWriter {
         return const HealthWriteUnavailable();
       }
       final clientRecordId = _ids.newId();
+      if (!isIos) return await _writeAndroid(kg, at, clientRecordId);
       final id = await _health.writeHealthDataUUID(
         value: kg,
         unit: HealthDataUnit.KILOGRAM,
@@ -134,7 +140,6 @@ class PlatformHealthWeightWriter implements HealthWeightWriter {
         endTime: at,
         recordingMethod: RecordingMethod.manual,
         clientRecordId: clientRecordId,
-        // Android only stores the client id when a version comes with it.
         clientRecordVersion: 1,
       );
       // The plugin turns native failures into an empty result, so only a
@@ -144,6 +149,34 @@ class PlatformHealthWeightWriter implements HealthWeightWriter {
           : HealthWeightWriteOk(id, clientRecordId);
     } catch (e) {
       return _failure(e);
+    }
+  }
+
+  /// One manual `WeightRecord` with client record id [clientRecordId] at
+  /// version 1, written natively so no value reaches logcat.
+  Future<HealthWriteResult> _writeAndroid(
+    double kg,
+    DateTime at,
+    String clientRecordId,
+  ) async {
+    try {
+      final id = await _androidWeight.invokeMethod<String>('write', {
+        'clientRecordId': clientRecordId,
+        'kg': kg,
+        'atMs': at.millisecondsSinceEpoch,
+        'offsetSeconds': at.timeZoneOffset.inSeconds,
+      });
+      return (id == null || id.isEmpty)
+          ? const HealthWriteFailed()
+          : HealthWeightWriteOk(id, clientRecordId);
+    } on PlatformException catch (e) {
+      return switch (e.code) {
+        'permission_denied' => const HealthWriteDenied(),
+        'unavailable' => const HealthWriteUnavailable(),
+        _ => const HealthWriteFailed(),
+      };
+    } catch (_) {
+      return const HealthWriteFailed();
     }
   }
 

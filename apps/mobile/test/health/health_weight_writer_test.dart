@@ -102,6 +102,7 @@ class _FixedIds implements UuidFactory {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   final at = DateTime.utc(2026, 11, 28, 7, 30);
   final v4 = RegExp(
     r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
@@ -240,5 +241,81 @@ void main() {
     expect(await writer(no).delete(saved), isFalse);
     final boom = _FakeHealth()..deleteError = StateError('x');
     expect(await writer(boom).delete(saved), isFalse);
+  });
+
+  group('Android writes through the native weight channel', () {
+    const channel = MethodChannel('beyondrep/health_weight');
+    final calls = <MethodCall>[];
+    Object? reply;
+
+    setUp(() {
+      calls.clear();
+      reply = 'hc-record-id';
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            calls.add(call);
+            final r = reply;
+            if (r is PlatformException) throw r;
+            return r;
+          });
+    });
+
+    tearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    });
+
+    test('sends kg, time, offset and client id; never the plugin', () async {
+      final h = _FakeHealth();
+      final result = await PlatformHealthWeightWriter(
+        h,
+        isIos: false,
+        ids: _FixedIds(),
+      ).write(72.4, at);
+      expect(h.writeCalls, isEmpty);
+      final call = calls.single;
+      expect(call.method, 'write');
+      expect(call.arguments, {
+        'clientRecordId': 'fixed-id',
+        'kg': 72.4,
+        'atMs': at.millisecondsSinceEpoch,
+        'offsetSeconds': at.timeZoneOffset.inSeconds,
+      });
+      expect(result, isA<HealthWeightWriteOk>());
+      final ok = result as HealthWeightWriteOk;
+      expect(ok.platformRecordId, 'hc-record-id');
+      expect(ok.clientRecordId, 'fixed-id');
+    });
+
+    test('an empty or missing record id is a failure', () async {
+      for (final r in ['', null]) {
+        reply = r;
+        expect(
+          await writer(_FakeHealth(), ios: false).write(70, at),
+          isA<HealthWriteFailed>(),
+        );
+      }
+    });
+
+    test('error codes map to denied, unavailable and failed', () async {
+      final cases = {
+        'permission_denied': isA<HealthWriteDenied>(),
+        'unavailable': isA<HealthWriteUnavailable>(),
+        'failed': isA<HealthWriteFailed>(),
+      };
+      for (final MapEntry(:key, :value) in cases.entries) {
+        reply = PlatformException(code: key);
+        expect(await writer(_FakeHealth(), ios: false).write(70, at), value);
+      }
+    });
+
+    test('a missing handler is a failure', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+      expect(
+        await writer(_FakeHealth(), ios: false).write(70, at),
+        isA<HealthWriteFailed>(),
+      );
+    });
   });
 }

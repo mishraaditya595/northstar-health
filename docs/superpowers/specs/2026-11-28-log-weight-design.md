@@ -28,7 +28,7 @@ Adi: "I want people to edit their weight from the app and that reflects in Apple
 
 ## 3. Constraints found
 
-- `health` 14.0.0 has `writeHealthDataUUID(value, unit: KILOGRAM, type: WEIGHT, startTime, recordingMethod: manual, clientRecordId)` returning the platform record id, `deleteByUUID(uuid, type)` (iOS needs the type) and `deleteByClientRecordId` (Android). No native code needed.
+- `health` 14.0.0 has `writeHealthDataUUID(value, unit: KILOGRAM, type: WEIGHT, startTime, recordingMethod: manual, clientRecordId)` returning the platform record id, `deleteByUUID(uuid, type)` (iOS needs the type) and `deleteByClientRecordId` (Android). No native code needed. (Amended 2026-11-28: the plugin logs written values on Android, so the Android write is native; see ADR-0016 decision 3.)
 - As with the workout writer (ADR-0014), Android turns a native failure into an empty or `"null"` result, so only a non-empty id is a success.
 - `package:health` may be imported only by files listed in the import guard test; a new writer file must be added there.
 - iOS: `NSHealthUpdateUsageDescription` must mention weight; `tool/test_ios_privacy_strings.py` checks it. Android: `android.permission.health.WRITE_WEIGHT` in the manifest and the Play Health apps declaration.

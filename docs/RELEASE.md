@@ -578,4 +578,5 @@ Log a new weight to Apple Health / Health Connect. Implemented in source, **not 
 | Undo in the snackbar removes that entry from the Health app / Health Connect | not run |
 | Sheet cannot be closed while saving; the snackbar still appears after it closes | not run |
 | VoiceOver and TalkBack read the sheet, the field error and the snackbar Undo | not run |
+| Android: `adb logcat` during a Save shows no weight value or record id from BeyondRep or the `health` plugin | not run |
 | Store disclosures: Play Health apps declaration lists `WRITE_WEIGHT`; App Privacy answers unchanged | not run |
