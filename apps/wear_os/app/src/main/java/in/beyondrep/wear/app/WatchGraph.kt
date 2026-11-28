@@ -11,10 +11,12 @@ import `in`.beyondrep.wear.link.WearDataItems
 import `in`.beyondrep.wear.store.AndroidSqlDatabase
 import `in`.beyondrep.wear.workout.RunnerFactory
 import `in`.beyondrep.wear.workout.WorkoutRunner
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.util.concurrent.Executors
 
@@ -51,10 +53,24 @@ class WatchGraph(
         _phoneReachable.value = reachable
     }
 
-    val link = DataLayerLink(items, router, Instant::now, ::bump)
-
-    /** Puts queued workouts for the phone until its ack arrives. */
+    /** Puts queued workouts and their heart rate series for the phone until its ack arrives. */
     val outbox = OutboxFlusher(items, journal, dispatcher)
+
+    val link = DataLayerLink(items, router, Instant::now, ::bump, outbox::flush)
+
+    /**
+     * Drops what outlived its retention: a binding the phone did not refresh for 90 days and heart
+     * rate series of workouts that ended more than 7 days ago. Runs at app start.
+     */
+    suspend fun pruneStale(now: Instant = Instant.now()) {
+        try {
+            if (withContext(dispatcher) { journal.pruneStale(now.toEpochMilli()) }) bump()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Tried again at the next start.
+        }
+    }
 
     /** The workout on the watch: journal, Health Services session, foreground service. */
     val runner: WorkoutRunner by lazy { RunnerFactory.create(this, appContext) }

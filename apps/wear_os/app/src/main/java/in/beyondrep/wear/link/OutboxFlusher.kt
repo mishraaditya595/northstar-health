@@ -8,10 +8,11 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
 /**
- * Puts the completed workouts waiting in the journal on `/beyondrep/queue/watch/` until the
+ * Puts the completed workouts waiting in the journal, and the heart rate series of workouts the
+ * phone already acked (`workout_health`, stage 3b), on `/beyondrep/queue/watch/` until the
  * phone's `ack` removes them from the journal. The phone deletes an item once imported, so an item
  * missing from the Data Layer without an ack is put again; the phone answers a repeat as a
- * duplicate. Only the bound account's workouts are put. Triggers: app start, catch-up, the phone becoming reachable and a finished workout.
+ * duplicate. Only the bound account's workouts and series are put. Triggers: app start, catch-up, the phone becoming reachable and a finished workout.
  */
 class OutboxFlusher(
     private val items: DataItems,
@@ -23,7 +24,7 @@ class OutboxFlusher(
             // A workout of another account stays queued: it is never sent under this account and never deleted.
             val pending = withContext(dispatcher) {
                 val bound = journal.binding()?.accountKey ?: return@withContext emptyList()
-                journal.pendingCompleted(bound, LIMIT)
+                journal.pendingCompleted(bound, LIMIT) + journal.pendingWorkoutHealth(bound, LIMIT)
             }
             if (pending.isEmpty()) return
             val present = items.all(DataLayerPaths.WATCH_QUEUE_PREFIX).map { it.path }.toSet()

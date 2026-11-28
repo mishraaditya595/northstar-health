@@ -2,9 +2,11 @@ package `in`.beyondrep.wear.workout
 
 import `in`.beyondrep.wear.app.WatchGraph
 import `in`.beyondrep.wear.core.contracts.SetValues
+import `in`.beyondrep.wear.core.contracts.WatchTimestamp
 import `in`.beyondrep.wear.core.session.HeartRateTracker
 import `in`.beyondrep.wear.core.session.OrphanSessionPolicy
 import `in`.beyondrep.wear.core.session.WorkoutController
+import `in`.beyondrep.wear.core.session.WorkoutHealthBuilder
 import `in`.beyondrep.wear.core.session.WorkoutSummary
 import `in`.beyondrep.wear.core.session.WorkoutTemplate
 import `in`.beyondrep.wear.exercise.ExerciseOwner
@@ -50,7 +52,7 @@ sealed interface RunnerState {
  * Drives one workout: the journal-backed [WorkoutController], the Health Services session (only
  * for sensors and to keep the process alive) and the foreground service. The journal is the
  * authority: a set shows as saved only after its commit. Everything that touches the journal runs
- * on `graph.dispatcher`. Heart rate and calories live in memory only. Start, restore, finish,
+ * on `graph.dispatcher`. Heart rate and calories live in memory; at finish the per-minute series and the total go into one journal row (`session_health`) until the phone's ack. Start, restore, finish,
  * discard, account changes and every action take one [lock], so the awaits on Health Services
  * can never interleave two of them (two active sessions, an action on a half-restored workout).
  */
@@ -226,12 +228,30 @@ class WorkoutRunner(
             readingsJob?.cancel()
             // A failed queue is retried by restore(): the finished session is in the journal.
             safe(Unit) { controller.queueCompleted(null) }
+            // The series waits in the journal until the phone acks the workout. A failure only loses it.
+            safe(Unit) { saveWorkoutHealth(controller, endedAt) }
             val summary = synchronized(tracker) { WorkoutSummary.of(controller, endedAt, tracker.average, calories) }
             haptics?.onDeadline(null)
             safe(Unit) { service.stop() }
             _state.value = RunnerState.Finished(summary)
             graph.bump()
         }
+    }
+
+    /**
+     * Keeps the per-minute heart rate and the total calories next to the finished session (the
+     * journal's only health rows, ADR-0015). Runs on the journal dispatcher. Nothing is saved when
+     * the workout has neither.
+     */
+    private fun saveWorkoutHealth(controller: WorkoutController, endedAt: Instant) {
+        val start = controller.startedAt
+        val end = WorkoutController.completedAt(controller.sessionId, graph.journal) ?: endedAt
+        val (series, kcal) = synchronized(tracker) { tracker.minuteSeries(start) to calories }
+        val message = WorkoutHealthBuilder.message(
+            controller.workoutId, start, end, series, kcal?.toDouble(), controller.accountKey, makeId(),
+            WatchTimestamp.format(clock()),
+        ) ?: return
+        graph.journal.saveWorkoutHealth(controller.sessionId, controller.accountKey, message, end.toEpochMilli())
     }
 
     /** Commit first; nothing from a discarded workout is sent. */

@@ -61,6 +61,26 @@ class WorkoutRunnerTest {
     private fun runner(sensors: FakeSensors, service: FakeServiceControl, haptics: RestHaptics? = null) = WorkoutRunner(
         graph, sensors, service, Instant::now, "watch-test", { "UTC" }, CoroutineScope(Dispatchers.Unconfined), haptics)
 
+    private val t0 = Instant.parse("2026-10-23T11:00:00Z")
+    private var now = t0
+
+    /** A runner whose clock the test moves, so the workout has a real length. */
+    private fun timedRunner(sensors: FakeSensors) = WorkoutRunner(
+        graph, sensors, FakeServiceControl(), { now }, "watch-test", { "UTC" }, CoroutineScope(Dispatchers.Unconfined))
+
+    /** The phone's ack of the queued completed workout, as the Data Layer would deliver it. */
+    private suspend fun ackCompleted(result: String = "stored") {
+        val completed = withContext(graph.dispatcher) { graph.journal.pendingCompleted(5).single() }
+        val ack = WatchMessage(
+            UUID.randomUUID().toString(), "2026-10-23T11:41:00Z", TEST_KEY,
+            WatchMessageBody.Ack(completed.messageId, result, null))
+        withContext(graph.dispatcher) {
+            graph.link.onChanges(listOf(DataChange(DataLayerPaths.phoneQueue(ack.messageId), ack.encode(), deleted = false)))
+        }
+    }
+
+    private suspend fun pendingSeries() = withContext(graph.dispatcher) { graph.journal.pendingWorkoutHealth(TEST_KEY, 5) }
+
     private suspend fun activeSessions() = withContext(graph.dispatcher) { graph.journal.activeSessionAccounts() }
 
     private suspend fun untilIdle(runner: WorkoutRunner) = withTimeout(5_000) {
@@ -235,17 +255,63 @@ class WorkoutRunnerTest {
     }
 
     @Test
-    fun healthValuesNeverReachTheJournalOrTheDataLayer() = runBlocking<Unit> {
-        // Sentinels that show up nowhere else: a leak of either would be a bug.
+    fun finishSavesTheSeriesWithTheWorkout() = runBlocking<Unit> {
         val sensors = FakeSensors(
-            scripted = listOf(SensorReading.HeartRate(173.0, Instant.now()), SensorReading.Calories(987.0)),
+            scripted = listOf(
+                SensorReading.HeartRate(70.0, t0.plusSeconds(5)),
+                SensorReading.HeartRate(72.0, t0.plusSeconds(50)),
+                SensorReading.HeartRate(80.0, t0.plusSeconds(125)),
+                SensorReading.Calories(987.0),
+            ),
         )
-        val runner = runner(sensors, FakeServiceControl())
+        val runner = timedRunner(sensors)
+        now = t0
+        runner.start(template)
+        runner.log(values())
+        now = t0.plusSeconds(600)
+        runner.finish()
+        assertTrue(pendingSeries().isEmpty(), "held back until the phone acks the workout")
+        ackCompleted()
+        val series = pendingSeries().single()
+        val body = assertIs<WatchMessageBody.WorkoutHealth>(series.body)
+        assertEquals(listOf(71, 80), body.heartRate.map { it.bpm })
+        assertEquals(listOf("2026-10-23T11:00:00Z", "2026-10-23T11:02:00Z"), body.heartRate.map { it.atUtc })
+        assertEquals(987.0, body.totalKcal)
+        assertEquals("2026-10-23T11:00:00Z", body.startUtc)
+        assertEquals("2026-10-23T11:10:00Z", body.endUtc)
+        val completed = items.puts.map { WatchMessage.decode(it.second) }
+            .map { it.body }.filterIsInstance<WatchMessageBody.CompletedWorkout>().single()
+        assertEquals(completed.workoutId, body.workoutId)
+    }
+
+    @Test
+    fun finishWithoutReadingsSavesNoSeries() = runBlocking<Unit> {
+        val runner = timedRunner(FakeSensors(startResult = SensorStart(false, false)))
+        now = t0
+        runner.start(template)
+        runner.log(values())
+        now = t0.plusSeconds(600)
+        runner.finish()
+        ackCompleted()
+        assertTrue(pendingSeries().isEmpty())
+    }
+
+    @Test
+    fun healthValuesNeverReachTheJournalOrTheDataLayer() = runBlocking<Unit> {
+        // Sentinels that show up nowhere else: a leak of either would be a bug. They may be in the
+        // session_health row and in the workout_health put, and nowhere else.
+        val sensors = FakeSensors(
+            scripted = listOf(SensorReading.HeartRate(173.0, t0.plusSeconds(5)), SensorReading.Calories(987.0)),
+        )
+        val runner = timedRunner(sensors)
+        now = t0
         runner.start(template)
         assertEquals(173, running(runner).heartRate)
         assertEquals(987, running(runner).calories)
         runner.log(values())
+        now = t0.plusSeconds(600)
         runner.finish()
+        ackCompleted() // releases the series: the one place the values may travel
         val sentinel = Regex("""\b(173|987)\b""")
         val db = SQLiteDatabase.openDatabase(
             context.getDatabasePath(dbName).path, null, SQLiteDatabase.OPEN_READONLY)
@@ -255,17 +321,20 @@ class WorkoutRunnerTest {
                 while (c.moveToNext()) tables += c.getString(0)
             }
             assertTrue(tables.isNotEmpty())
+            assertTrue("session_health" in tables)
             val dump = StringBuilder()
+            val seriesRows = StringBuilder()
             for (table in tables) {
                 db.rawQuery("SELECT * FROM \"$table\"", null).use { c ->
                     while (c.moveToNext()) {
+                        val row = if (table == "session_health") seriesRows else dump
                         for (i in 0 until c.columnCount) {
                             when (c.getType(i)) {
-                                Cursor.FIELD_TYPE_BLOB -> dump.append(String(c.getBlob(i), Charsets.UTF_8))
+                                Cursor.FIELD_TYPE_BLOB -> row.append(String(c.getBlob(i), Charsets.UTF_8))
                                 Cursor.FIELD_TYPE_NULL -> Unit
-                                else -> dump.append(c.getString(i))
+                                else -> row.append(c.getString(i))
                             }
-                            dump.append(' ')
+                            row.append(' ')
                         }
                     }
                 }
@@ -275,16 +344,26 @@ class WorkoutRunnerTest {
             for (forbidden in listOf("bpm", "heart", "calor")) {
                 assertFalse(text.contains(forbidden), "journal rows contain \"$forbidden\"")
             }
+            // The values wait here, and only here, until the phone's answer.
+            assertTrue(seriesRows.contains("173") && seriesRows.contains("987"))
         } finally {
             db.close()
         }
         assertTrue(items.puts.isNotEmpty())
+        var healthPuts = 0
         for ((path, json) in items.puts) {
+            val type = WatchMessage.decode(json).type
+            if (type == "workout_health") {
+                healthPuts += 1
+                assertTrue(json.contains("173") && json.contains("987"))
+                continue
+            }
             assertFalse(sentinel.containsMatchIn(json), "Data Layer item $path contains a health sentinel")
             for (forbidden in listOf("bpm", "heart", "calor")) {
                 assertFalse(json.lowercase().contains(forbidden), "Data Layer item $path contains \"$forbidden\"")
             }
         }
+        assertEquals(1, healthPuts)
     }
 
     // --- Restore, account changes and concurrency ------------------------------------------------

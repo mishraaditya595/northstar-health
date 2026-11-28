@@ -62,6 +62,8 @@ class WearMainActivity : ComponentActivity() {
             }
         }
         lifecycleScope.launch {
+            // Old heart rate series and a silent binding go before anything else is read.
+            graph.pruneStale()
             // A workout the system interrupted comes back from the journal.
             try {
                 graph.runner.restore()
