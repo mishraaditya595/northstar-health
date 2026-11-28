@@ -1,5 +1,6 @@
 package `in`.beyondrep.wear.core.contracts
 
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -14,6 +15,9 @@ data class SessionCommand(
     /** Only for `add_set`. */
     val exerciseId: String? = null,
 )
+
+/** One per-minute heart rate average of `workout_health`; `bpm` is a whole number from 25 to 250. */
+data class HeartRatePoint(val atUtc: String, val bpm: Int)
 
 /**
  * A validated message body. Nested lists and objects are checked strictly and kept as plain
@@ -35,6 +39,18 @@ sealed interface WatchMessageBody {
     ) : WatchMessageBody
 
     data class Ack(val ackedMessageId: String, val result: String, val reason: String?) : WatchMessageBody
+
+    /**
+     * The heart rate and total calories of one finished workout (stage 3b). With `health_snapshot`
+     * the only message that carries health values; missing values are left out, never 0.
+     */
+    data class WorkoutHealth(
+        val workoutId: String,
+        val startUtc: String,
+        val endUtc: String,
+        val heartRate: List<HeartRatePoint>,
+        val totalKcal: Double?,
+    ) : WatchMessageBody
 
     /** Not sent by Wear (spec 4.5) but still decoded and encoded. */
     data class WorkoutLink(val workoutId: String, val healthkitWorkoutUuid: String) : WatchMessageBody
@@ -63,6 +79,7 @@ data class WatchMessage(
             is WatchMessageBody.Ack -> "ack"
             is WatchMessageBody.WorkoutLink -> "workout_link"
             is WatchMessageBody.Join -> "join"
+            is WatchMessageBody.WorkoutHealth -> "workout_health"
         }
 
     private fun bodyObject(): JsonObject = when (val b = body) {
@@ -92,6 +109,18 @@ data class WatchMessage(
         )
         is WatchMessageBody.Join -> JsonObject(
             b.sessionId?.let { mapOf("session_id" to JsonPrimitive(it)) } ?: emptyMap())
+        is WatchMessageBody.WorkoutHealth -> {
+            val out = linkedMapOf<String, JsonElement>(
+                "workout_id" to JsonPrimitive(b.workoutId), "start_utc" to JsonPrimitive(b.startUtc),
+                "end_utc" to JsonPrimitive(b.endUtc),
+                "heart_rate" to JsonArray(
+                    b.heartRate.map {
+                        JsonObject(mapOf("at_utc" to JsonPrimitive(it.atUtc), "bpm" to StrictObject.number(it.bpm)))
+                    }),
+            )
+            b.totalKcal?.let { out["total_kcal"] = StrictObject.number(it) }
+            JsonObject(out)
+        }
         is WatchMessageBody.Ack -> {
             val out = linkedMapOf<String, JsonElement>(
                 "acked_message_id" to JsonPrimitive(b.ackedMessageId), "result" to JsonPrimitive(b.result))
@@ -114,7 +143,7 @@ data class WatchMessage(
         private val types = setOf(
             "account_binding", "account_cleared", "plans_snapshot", "health_snapshot",
             "workout_event", "session_state", "session_command", "completed_workout", "ack",
-            "workout_link", "join",
+            "workout_link", "join", "workout_health",
         )
 
         fun decode(json: String): WatchMessage {
@@ -288,6 +317,31 @@ data class WatchMessage(
                     val b = body(setOf("workout_id", "healthkit_workout_uuid"))
                     WatchMessageBody.WorkoutLink(b.uuid("workout_id"), b.uuid("healthkit_workout_uuid"))
                 }
+                "workout_health" -> {
+                    val b = body(setOf("workout_id", "start_utc", "end_utc", "heart_rate"), setOf("total_kcal"))
+                    val workoutId = b.uuid("workout_id")
+                    val startText = b.dateTime("start_utc")
+                    val endText = b.dateTime("end_utc")
+                    val start = WatchTimestamp.milliseconds(startText) ?: throw ContractException("invalid_value")
+                    val end = WatchTimestamp.milliseconds(endText) ?: throw ContractException("invalid_value")
+                    if (end <= start) throw ContractException("invalid_value")
+                    var previous = Long.MIN_VALUE
+                    val points = b.array("heart_rate", max = 600).map { item ->
+                        val p = StrictObject(item, setOf("at_utc", "bpm"))
+                        val at = p.dateTime("at_utc")
+                        val atMs = WatchTimestamp.milliseconds(at) ?: throw ContractException("invalid_value")
+                        // Inside the workout and strictly increasing; JSON Schema cannot say so.
+                        if (atMs < start || atMs > end || atMs <= previous) throw ContractException("invalid_value")
+                        previous = atMs
+                        HeartRatePoint(at, p.int("bpm", min = 25, max = 250))
+                    }
+                    var kcal: Double? = null
+                    if (b.has("total_kcal")) {
+                        kcal = StrictObject.numberOf(b.dict["total_kcal"])
+                        if (!(kcal > 0 && kcal <= 10_000)) throw ContractException("invalid_value")
+                    }
+                    WatchMessageBody.WorkoutHealth(workoutId, startText, endText, points, kcal)
+                }
                 "join" -> {
                     val b = body(emptySet(), setOf("session_id"))
                     WatchMessageBody.Join(if (b.has("session_id")) b.uuid("session_id") else null)
@@ -297,10 +351,12 @@ data class WatchMessage(
                     val acked = b.uuid("acked_message_id")
                     val result = b.oneOf("result", setOf("stored", "duplicate", "rejected"))
                     val reason = if (b.has("reason")) {
-                        b.oneOf("reason", setOf("wrong_account", "invalid", "unsupported_version"))
+                        b.oneOf("reason", setOf("wrong_account", "invalid", "unsupported_version", "not_written"))
                     } else {
                         null
                     }
+                    // `not_written` goes with `rejected` only.
+                    if (reason == "not_written" && result != "rejected") throw ContractException("invalid_value")
                     WatchMessageBody.Ack(acked, result, reason)
                 }
             }
