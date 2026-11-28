@@ -110,6 +110,9 @@ flutter {
 }
 
 dependencies {
+    // HeartRateWriter writes one Health Connect heart rate record. Same version
+    // as the `health` plugin 14.0.0 (its android/build.gradle); keep in step.
+    implementation("androidx.health.connect:connect-client:1.2.0-alpha06")
     // Wear Data Layer link to the watch app (WearLinkBridge). Must stay in step
     // with apps/wear_os so both builds speak the same Data Layer version.
     implementation("com.google.android.gms:play-services-wearable:19.0.0")

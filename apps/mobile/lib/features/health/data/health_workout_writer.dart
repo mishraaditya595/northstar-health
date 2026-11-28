@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/services.dart'
+    show MethodChannel, PlatformException, MissingPluginException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:health/health.dart' hide HealthValue;
 
@@ -67,6 +69,85 @@ class HealthWriteUnavailable extends HealthWriteResult {
   const HealthWriteUnavailable();
 }
 
+/// Writes and deletes the ONE heart rate record of a watch workout on Android
+/// (Health Connect). The `health` plugin writes one record per call and logs
+/// every bpm value to logcat, so heart rate goes through a small native
+/// handler (`HeartRateWriter.kt`) that logs nothing. Never throws.
+abstract interface class HeartRateNativeWriter {
+  /// Inserts one record with all [samples] (client record id and [version]
+  /// make a retry an upsert); the result carries the Health Connect record id.
+  Future<HealthWriteResult> write({
+    required String clientRecordId,
+    required int version,
+    required DateTime start,
+    required DateTime end,
+    required int offsetMinutes,
+    required List<HeartRateMinute> samples,
+  });
+
+  Future<HealthWriteResult> delete(String clientRecordId);
+}
+
+/// [HeartRateNativeWriter] over the `beyondrep/health_heart_rate` channel.
+/// Error codes: `permission_denied`, `unavailable`, anything else is a failure.
+class PlatformHeartRateWriter implements HeartRateNativeWriter {
+  const PlatformHeartRateWriter();
+
+  static const _channel = MethodChannel('beyondrep/health_heart_rate');
+
+  HealthWriteResult _failure(Object error) {
+    if (error is MissingPluginException) return const HealthWriteUnavailable();
+    if (error is PlatformException) {
+      return switch (error.code) {
+        'permission_denied' => const HealthWriteDenied(),
+        'unavailable' => const HealthWriteUnavailable(),
+        _ => const HealthWriteFailed(),
+      };
+    }
+    return const HealthWriteFailed();
+  }
+
+  @override
+  Future<HealthWriteResult> write({
+    required String clientRecordId,
+    required int version,
+    required DateTime start,
+    required DateTime end,
+    required int offsetMinutes,
+    required List<HeartRateMinute> samples,
+  }) async {
+    try {
+      final id = await _channel.invokeMethod<String>('write', {
+        'clientRecordId': clientRecordId,
+        'version': version,
+        'startMs': start.millisecondsSinceEpoch,
+        'endMs': end.millisecondsSinceEpoch,
+        'offsetSeconds': offsetMinutes * 60,
+        'samples': [
+          for (final s in samples) [s.at.millisecondsSinceEpoch, s.bpm],
+        ],
+      });
+      return id == null || id.isEmpty
+          ? const HealthWriteFailed()
+          : HealthWriteOk(id);
+    } catch (e) {
+      return _failure(e);
+    }
+  }
+
+  @override
+  Future<HealthWriteResult> delete(String clientRecordId) async {
+    try {
+      await _channel.invokeMethod<Object?>('delete', {
+        'clientRecordId': clientRecordId,
+      });
+      return const HealthWriteOk('');
+    } catch (e) {
+      return _failure(e);
+    }
+  }
+}
+
 /// A workout in the health store written by BeyondRep (phone or watch).
 class OwnStoredWorkout {
   const OwnStoredWorkout({
@@ -125,10 +206,14 @@ bool _isOwnSource(String source) =>
 /// no record ids, times or exception text; the plugin itself prints record
 /// ids (no health values) to the device log.
 class PlatformHealthWorkoutWriter implements HealthWorkoutWriter {
-  PlatformHealthWorkoutWriter(this._health, {bool? isIos})
-    : isIos = isIos ?? defaultTargetPlatform == TargetPlatform.iOS;
+  PlatformHealthWorkoutWriter(
+    this._health, {
+    bool? isIos,
+    this._heartRate = const PlatformHeartRateWriter(),
+  }) : isIos = isIos ?? defaultTargetPlatform == TargetPlatform.iOS;
 
   final Health _health;
+  final HeartRateNativeWriter _heartRate;
 
   @override
   final bool isIos;
@@ -180,11 +265,12 @@ class PlatformHealthWorkoutWriter implements HealthWorkoutWriter {
     ],
   ];
 
+  // Heart rate and calories ask for read too: the history page reads back
+  // what the phone saved, so a write-only grant would save without showing.
   List<HealthDataAccess> _access(bool watchHealth) => [
     HealthDataAccess.READ_WRITE,
     if (watchHealth && !isIos) ...[
-      HealthDataAccess.WRITE,
-      // Read too, so the history page can show the calories it saved.
+      HealthDataAccess.READ_WRITE,
       HealthDataAccess.READ_WRITE,
     ],
   ];
@@ -263,18 +349,16 @@ class PlatformHealthWorkoutWriter implements HealthWorkoutWriter {
       // The plugin turns every native failure into an empty result (Android
       // catches all exceptions), so only a non-empty record id is a success.
       if (returned.isEmpty) return const HealthWriteFailed();
-      if (!isIos) {
-        for (var i = 0; i < record.heartRate.length; i++) {
-          final minute = record.heartRate[i];
-          final ok = await _health.writeHealthData(
-            value: minute.bpm.toDouble(),
-            type: HealthDataType.HEART_RATE,
-            startTime: minute.at,
-            clientRecordId: '${record.workoutUuid}-hr-$i',
-            clientRecordVersion: record.version.toDouble(),
-          );
-          if (!ok) return const HealthWriteFailed();
-        }
+      if (!isIos && record.heartRate.isNotEmpty) {
+        final hr = await _heartRate.write(
+          clientRecordId: '${record.workoutUuid}:heart_rate',
+          version: record.version,
+          start: record.start,
+          end: record.end,
+          offsetMinutes: record.offsetMinutes,
+          samples: record.heartRate,
+        );
+        if (hr is! HealthWriteOk) return hr;
       }
       return HealthWriteOk(returned);
     } catch (e) {
@@ -306,16 +390,18 @@ class PlatformHealthWorkoutWriter implements HealthWorkoutWriter {
           clientRecordId: workoutUuid,
         );
         if (deleted && start != null && end != null) {
-          final calories = await _health.deleteByClientRecordId(
-            dataTypeKey: HealthDataType.TOTAL_CALORIES_BURNED,
-            clientRecordId: '$workoutUuid:calories',
-          );
-          final heartRate = await _health.delete(
-            type: HealthDataType.HEART_RATE,
-            startTime: start,
-            endTime: end.add(const Duration(seconds: 1)),
-          );
-          if (!calories || !heartRate) return const HealthWriteFailed();
+          // A watch workout. Once its session is gone the calories and the
+          // single heart rate record go on a best-effort basis: a failure
+          // here (heart rate access revoked, say) must not keep the delete
+          // pending forever, and a record left behind is only a value that
+          // no session explains.
+          try {
+            await _health.deleteByClientRecordId(
+              dataTypeKey: HealthDataType.TOTAL_CALORIES_BURNED,
+              clientRecordId: '$workoutUuid:calories',
+            );
+          } catch (_) {}
+          await _heartRate.delete('$workoutUuid:heart_rate');
         }
       }
       // false is a failed delete (Android) or a failed or not-found delete
