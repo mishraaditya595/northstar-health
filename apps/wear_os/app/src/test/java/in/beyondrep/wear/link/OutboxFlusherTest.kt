@@ -8,10 +8,10 @@ import `in`.beyondrep.wear.core.contracts.WatchMessage
 import `in`.beyondrep.wear.core.contracts.WatchMessageBody
 import `in`.beyondrep.wear.core.link.DataChange
 import `in`.beyondrep.wear.core.link.DataLayerPaths
-import `in`.beyondrep.wear.core.session.TemplateExercise
-import `in`.beyondrep.wear.core.session.TemplateSet
 import `in`.beyondrep.wear.core.session.WorkoutController
-import `in`.beyondrep.wear.core.session.WorkoutTemplate
+import `in`.beyondrep.wear.testing.OTHER_TEST_KEY
+import `in`.beyondrep.wear.testing.bindForTest
+import `in`.beyondrep.wear.testing.syntheticTemplate
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.junit.Before
@@ -27,7 +27,7 @@ import kotlin.test.assertTrue
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class OutboxFlusherTest {
-    private val key = "0123456789abcdef".repeat(4)
+    private val key = `in`.beyondrep.wear.testing.TEST_KEY
     private lateinit var graph: WatchGraph
     private lateinit var items: RecordingItems
 
@@ -36,18 +36,14 @@ class OutboxFlusherTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         items = RecordingItems()
         graph = WatchGraph(context, "outbox-test-${UUID.randomUUID()}.db", items)
+        graph.journal.bindForTest(key)
     }
 
-    private fun queueOne(): String = runBlocking {
+    private fun queueOne(accountKey: String = key): String = runBlocking {
         withContext(graph.dispatcher) {
-            val template = WorkoutTemplate(
-                "Synthetic push",
-                exercises = listOf(
-                    TemplateExercise("ex-1", "Bench press", "reps", null, 0, listOf(TemplateSet(UUID.randomUUID().toString(), 0))),
-                ),
-            )
+            val template = syntheticTemplate()
             val controller = WorkoutController.start(
-                template, graph.journal, key, "kg", "watch-test", Instant::now, "UTC") { UUID.randomUUID().toString() }
+                template, graph.journal, accountKey, "kg", "watch-test", Instant::now, "UTC") { UUID.randomUUID().toString() }
             val set = template.exercises[0].sets[0]
             controller.log(SetValues(set.setId, "ex-1", 0, reps = 5, loadGrams = 40_000))
             controller.markCompleted()
@@ -105,5 +101,13 @@ class OutboxFlusherTest {
         items.failPuts = false
         graph.outbox.flush()
         assertEquals(1, items.puts.size)
+    }
+
+    @Test
+    fun aWorkoutOfAnotherAccountIsNotPut() = runBlocking<Unit> {
+        queueOne(OTHER_TEST_KEY)
+        graph.outbox.flush()
+        assertTrue(items.puts.isEmpty(), "a workout is never sent under another account")
+        assertEquals(1, graph.journal.pendingCompleted(5).size)
     }
 }

@@ -9,6 +9,8 @@ import `in`.beyondrep.wear.link.DataLayerLink
 import `in`.beyondrep.wear.link.OutboxFlusher
 import `in`.beyondrep.wear.link.WearDataItems
 import `in`.beyondrep.wear.store.AndroidSqlDatabase
+import `in`.beyondrep.wear.workout.RunnerFactory
+import `in`.beyondrep.wear.workout.WorkoutRunner
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,14 +24,14 @@ import java.util.concurrent.Executors
  * write, so screens recompute what they show.
  */
 class WatchGraph(
-    context: Context,
+    private val appContext: Context,
     databaseName: String = "beyondrep_watch.db",
-    items: DataItems = WearDataItems(context.applicationContext),
+    items: DataItems = WearDataItems(appContext.applicationContext),
 ) {
     val dispatcher: CoroutineDispatcher =
         Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "beyondrep-journal") }.asCoroutineDispatcher()
 
-    val journal = WatchJournal(AndroidSqlDatabase(context, databaseName))
+    val journal = WatchJournal(AndroidSqlDatabase(appContext, databaseName))
     val inbox = PhoneInbox(journal)
     val router = DataLayerRouter(inbox)
 
@@ -53,6 +55,9 @@ class WatchGraph(
 
     /** Puts queued workouts for the phone until its ack arrives. */
     val outbox = OutboxFlusher(items, journal, dispatcher)
+
+    /** The workout on the watch: journal, Health Services session, foreground service. */
+    val runner: WorkoutRunner by lazy { RunnerFactory.create(this, appContext) }
 
     companion object {
         @Volatile
