@@ -128,6 +128,15 @@ test('mountBackdrop stops when reduced motion turns on', () => {
   h.tick(200); h.tick(300);
   assert.equal(h.rafs(), before);
 });
+test('mountBackdrop falls back even if the reduced-motion event never arrives', () => {
+  const h = harness();
+  mountBackdrop(h.canvas, h.win);
+  h.tick(); h.tick(100);
+  assert.equal(h.parent.classList.contains('is-live'), true);
+  h.mq.matches = false;
+  h.tick(200); h.tick(300);
+  assert.equal(h.parent.classList.contains('is-live'), false);
+});
 test('mountBackdrop does nothing without motion', () => {
   const h = harness({ motion: false });
   mountBackdrop(h.canvas, h.win);

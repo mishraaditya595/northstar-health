@@ -167,7 +167,14 @@ export function mountBackdrop(canvas, win) {
   function schedule() { if (!raf && runnable()) raf = win.requestAnimationFrame(draw); }
   function draw(now) {
     raf = 0;
-    if (!runnable()) { last = 0; return; }
+    if (!runnable()) {
+      last = 0;
+      // Motion or a guard turned off without its change event reaching us
+      // (seen once in headless Chromium on this page): fall back to
+      // the static glow here too.
+      if (!torn && !backdropAllowed(env())) setLive(false);
+      return;
+    }
     // 30 fps is plenty for a slow glow and halves the battery cost.
     frame++;
     // Scenes and fonts change the page's height after mount; keep the
