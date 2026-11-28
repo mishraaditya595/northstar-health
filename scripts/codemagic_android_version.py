@@ -23,8 +23,13 @@ may go on when the credentials are missing or a Play lookup (version or build
 number) fails. That AAB is uploaded by hand in Play Console because Google
 Play only accepts API uploads after that.
 
-The result is appended to $CM_ENV as BEYONDREP_VERSION_NAME and
-BEYONDREP_BUILD_NUMBER for later build steps.
+The Wear OS build uploaded by the same job shares the package and gets the next
+versionCode, BEYONDREP_BUILD_NUMBER + 1. "Latest in Play" covers every uploaded
+bundle, phone or watch, so the next phone build is always above the last watch
+build.
+
+The result is appended to $CM_ENV as BEYONDREP_VERSION_NAME,
+BEYONDREP_BUILD_NUMBER and BEYONDREP_WATCH_BUILD_NUMBER for later build steps.
 """
 import os
 from pathlib import Path
@@ -137,14 +142,24 @@ def main(argv: list[str]) -> int:
         new = next_version(release_type, os.environ.get("NS_VERSION_NAME", ""), current)
         version = format_version(new)
         build = resolve_build(raw_build, track)
+        watch_build = int(build) + 1
+        if watch_build > MAX_VERSION_CODE:
+            raise ResolveError(
+                f"Build number {build} leaves no room for the watch build "
+                f"({watch_build} is above Google Play's limit of {MAX_VERSION_CODE})."
+            )
     except ResolveError as error:
         print(f"Version check failed: {error}", file=sys.stderr)
         return 1
     with open(os.environ["CM_ENV"], "a", encoding="utf-8") as env_file:
         env_file.write(f"BEYONDREP_VERSION_NAME={version}\n")
         env_file.write(f"BEYONDREP_BUILD_NUMBER={build}\n")
+        env_file.write(f"BEYONDREP_WATCH_BUILD_NUMBER={watch_build}\n")
     before = format_version(current) if current is not None else "none"
-    print(f"Release type {release_type}: {before} -> {version}, build number {build}")
+    print(
+        f"Release type {release_type}: {before} -> {version}, build number {build}, "
+        f"watch build number {watch_build}"
+    )
     return 0
 
 
