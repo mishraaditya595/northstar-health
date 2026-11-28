@@ -142,6 +142,20 @@ workflows:
       - name: "Install locked dependencies"
         script: |
           flutter pub get --enforce-lockfile
+      - name: "Install Android SDK platform 37"
+        script: |
+          # compileSdk is 37 (health 14.0.0 and connect-client need it) and
+          # the Codemagic image does not ship that platform.
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          test -n "$SDK_ROOT"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [[ ! -x "$SDKMANAGER" ]]; then
+            SDKMANAGER="$(command -v sdkmanager)"
+          fi
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses > /dev/null || true
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "platforms;android-37"
+          test -f "$SDK_ROOT/platforms/android-37/android.jar"
       - name: "Build signed AAB"
         script: |
           set -euo pipefail
