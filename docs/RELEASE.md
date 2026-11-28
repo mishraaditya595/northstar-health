@@ -515,3 +515,18 @@ Opt-in per-account write of completed phone workouts. Implemented in source, **n
 | Airplane mode and low-power: a workout finished offline is saved locally and exported without needing the network | not run |
 | Account A on, sign out, account B: B shows Off and writes nothing | not run |
 | Store disclosures: App Privacy answers, App Store review notes, Play Health apps declaration and the privacy policy mention the write permission before release | not run |
+
+## Log weight device QA (ADR-0016, owner actions, none done)
+
+Log a new weight to Apple Health / Health Connect. Implemented in source, **not released or device-verified**. Every row is not run.
+
+| Check | Result |
+|---|---|
+| iPhone first Save: the HealthKit weight prompt appears once; nothing is asked at connect | not run |
+| Android first Save: the Health Connect permission sheet lists weight write; nothing is asked at connect | not run |
+| Deny the prompt: the sheet stays open with "Open Settings"; after allowing it in Settings, Save works | not run |
+| Save a weight: it shows in the Health app / Health Connect and as the latest weight on the Health tab | not run |
+| Undo in the snackbar removes that entry from the Health app / Health Connect | not run |
+| Sheet cannot be closed while saving; the snackbar still appears after it closes | not run |
+| VoiceOver and TalkBack read the sheet, the field error and the snackbar Undo | not run |
+| Store disclosures: Play Health apps declaration lists `WRITE_WEIGHT`; App Privacy answers unchanged | not run |

@@ -41,8 +41,10 @@ All of these live in `apps/mobile/lib/core/design/`. Look comes from `BeyondRepT
 | Selectable pill / filter / unit toggle | `NsChip` | `inputs.dart` |
 | Form dialog | `showNsDialog` + `NsDialog` | `dialogs.dart` |
 | Yes/no question (dismiss = no) | `showNsConfirm` | `dialogs.dart` |
-| Picker sheet | `showNsSheet` | `dialogs.dart` |
+| Picker sheet (`enableDrag: false` while a save is running) | `showNsSheet` | `dialogs.dart` |
 | Short message (optional one action) | `showNsMessage` | `dialogs.dart` |
+| Short message on a messenger captured earlier (survives a closing sheet) | `showNsMessageOn(messenger, ...)` | `dialogs.dart` |
+| Capture the messenger before opening a sheet | `nsMessengerOf(context)` | `dialogs.dart` |
 | Tab/page title, theme switch, avatar | `PageHeader` | `page_header.dart` |
 | Sub-page back control | `NsBackButton` (in `AppBar`) | `page_header.dart` |
 | Row with glyph, title, subtitle | `NsListCard` | `page_header.dart` |
